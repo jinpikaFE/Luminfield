@@ -1,0 +1,25 @@
+# Godot generated data
+.godot/
+.mono/
+
+# .NET build outputs
+bin/
+obj/
+TestResults/
+*.user
+*.userprefs
+
+# Game exports and local saves
+builds/
+exports/
+*.pck
+*.tmp
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+

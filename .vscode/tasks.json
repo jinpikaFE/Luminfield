@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "/Users/edy/.codex/tools/luminfield/dotnet/dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/Luminfield.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test",
+      "command": "/Users/edy/.codex/tools/luminfield/dotnet/dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Luminfield.Tests/Luminfield.Tests.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
+

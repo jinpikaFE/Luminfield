@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="16" viewBox="0 0 128 16" shape-rendering="crispEdges">
+  <!-- Starbud: seed, sprout, bud, luminous mature bloom -->
+  <rect x="6" y="12" width="4" height="2" fill="#3a2f46"/>
+  <rect x="7" y="10" width="2" height="3" fill="#f0bd73"/>
+
+  <rect x="22" y="8" width="2" height="6" fill="#2d756b"/>
+  <rect x="19" y="8" width="4" height="3" fill="#67c792"/>
+  <rect x="24" y="7" width="4" height="3" fill="#8ee6aa"/>
+  <rect x="21" y="6" width="2" height="2" fill="#d6ed9f"/>
+
+  <rect x="38" y="6" width="3" height="8" fill="#2e766d"/>
+  <rect x="33" y="7" width="5" height="4" fill="#62c68e"/>
+  <rect x="41" y="5" width="4" height="5" fill="#8fe4a9"/>
+  <rect x="36" y="3" width="7" height="5" fill="#c69ce4"/>
+  <rect x="38" y="4" width="3" height="3" fill="#f1c978"/>
+
+  <rect x="54" y="5" width="3" height="9" fill="#286e67"/>
+  <rect x="49" y="7" width="6" height="4" fill="#67c791"/>
+  <rect x="57" y="6" width="5" height="5" fill="#88dfa6"/>
+  <rect x="50" y="2" width="11" height="7" fill="#bd8dd8"/>
+  <rect x="53" y="1" width="5" height="4" fill="#f3ca78"/>
+  <rect x="54" y="2" width="3" height="2" fill="#fff2b0"/>
+  <rect x="49" y="4" width="2" height="2" fill="#8ee6be"/>
+  <rect x="60" y="3" width="2" height="2" fill="#8ee6be"/>
+
+  <!-- Moonroot: seed, sprout, leaves, crystalline mature root -->
+  <rect x="70" y="11" width="5" height="3" fill="#362d4a"/>
+  <rect x="71" y="10" width="3" height="3" fill="#9c83d3"/>
+
+  <rect x="86" y="9" width="2" height="5" fill="#5d4f9e"/>
+  <rect x="82" y="8" width="4" height="4" fill="#4db4a0"/>
+  <rect x="88" y="7" width="4" height="4" fill="#78d5af"/>
+
+  <rect x="102" y="7" width="2" height="7" fill="#6f5ab1"/>
+  <rect x="97" y="7" width="5" height="4" fill="#4bb49d"/>
+  <rect x="104" y="5" width="5" height="5" fill="#7cd9b2"/>
+  <rect x="100" y="3" width="6" height="5" fill="#ab91df"/>
+  <rect x="102" y="4" width="2" height="2" fill="#e8d7ff"/>
+
+  <rect x="118" y="5" width="3" height="9" fill="#6550a8"/>
+  <rect x="113" y="6" width="5" height="5" fill="#49ad99"/>
+  <rect x="121" y="4" width="5" height="6" fill="#7ddab5"/>
+  <rect x="115" y="1" width="10" height="7" fill="#a98cdb"/>
+  <rect x="118" y="2" width="5" height="4" fill="#d9c5ff"/>
+  <rect x="119" y="1" width="2" height="2" fill="#fff2b0"/>
+</svg>

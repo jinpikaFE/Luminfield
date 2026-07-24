@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="16" viewBox="0 0 240 16" shape-rendering="crispEdges">
+  <!-- 0: twilight grass -->
+  <rect x="0" width="16" height="16" fill="#24534d"/>
+  <rect x="1" y="13" width="6" height="2" fill="#204a47"/>
+  <rect x="3" y="5" width="1" height="3" fill="#3f7565"/>
+  <rect x="2" y="7" width="1" height="1" fill="#58a078"/>
+  <rect x="10" y="11" width="2" height="1" fill="#347060"/>
+  <rect x="13" y="3" width="1" height="1" fill="#69a77f"/>
+
+  <!-- 1: alternate grass -->
+  <rect x="16" width="16" height="16" fill="#285a50"/>
+  <rect x="25" y="13" width="7" height="2" fill="#224d49"/>
+  <rect x="20" y="10" width="2" height="2" fill="#397466"/>
+  <rect x="27" y="4" width="1" height="3" fill="#4e8b70"/>
+  <rect x="26" y="6" width="1" height="1" fill="#73b787"/>
+  <rect x="18" y="3" width="1" height="1" fill="#74af86"/>
+
+  <!-- 2: dry star-dusted soil -->
+  <rect x="32" width="16" height="16" fill="#704653"/>
+  <rect x="32" y="0" width="16" height="2" fill="#93616a"/>
+  <rect x="32" y="14" width="16" height="2" fill="#4b3444"/>
+  <rect x="34" y="4" width="12" height="2" fill="#9b6870"/>
+  <rect x="34" y="9" width="12" height="2" fill="#9b6870"/>
+  <rect x="36" y="3" width="1" height="1" fill="#f0be78"/>
+  <rect x="43" y="8" width="1" height="1" fill="#d89372"/>
+
+  <!-- 3: watered star-dusted soil -->
+  <rect x="48" width="16" height="16" fill="#29465d"/>
+  <rect x="48" y="0" width="16" height="2" fill="#47718a"/>
+  <rect x="48" y="14" width="16" height="2" fill="#1b3048"/>
+  <rect x="50" y="4" width="12" height="2" fill="#3f7087"/>
+  <rect x="50" y="9" width="12" height="2" fill="#3f7087"/>
+  <rect x="52" y="3" width="4" height="1" fill="#77c9c5"/>
+  <rect x="58" y="8" width="3" height="1" fill="#6aafbd"/>
+
+  <!-- 4: moonstone stepping path A -->
+  <rect x="64" width="16" height="16" fill="#28574f"/>
+  <rect x="64" y="14" width="6" height="2" fill="#234c49"/>
+  <rect x="65" y="2" width="7" height="5" fill="#7d7489"/>
+  <rect x="66" y="2" width="5" height="1" fill="#a093a4"/>
+  <rect x="73" y="9" width="6" height="5" fill="#675f79"/>
+  <rect x="74" y="9" width="4" height="1" fill="#95879a"/>
+  <rect x="65" y="11" width="4" height="3" fill="#57576d"/>
+  <rect x="68" y="3" width="1" height="1" fill="#e0bd7d"/>
+  <rect x="76" y="12" width="1" height="1" fill="#86d6b1"/>
+
+  <!-- 5: luminous water -->
+  <rect x="80" width="16" height="16" fill="#16536e"/>
+  <rect x="80" y="13" width="16" height="3" fill="#103e5b"/>
+  <rect x="82" y="3" width="9" height="2" fill="#2d8c9b"/>
+  <rect x="86" y="8" width="8" height="2" fill="#45b7b3"/>
+  <rect x="81" y="12" width="6" height="1" fill="#26788c"/>
+  <rect x="91" y="2" width="2" height="1" fill="#9ae8cf"/>
+
+  <!-- 6: cottage wood floor -->
+  <rect x="96" width="16" height="16" fill="#875a63"/>
+  <rect x="96" y="0" width="16" height="1" fill="#b77d79"/>
+  <rect x="96" y="7" width="16" height="1" fill="#603f52"/>
+  <rect x="96" y="15" width="16" height="1" fill="#603f52"/>
+  <rect x="103" width="1" height="7" fill="#6e4858"/>
+  <rect x="108" y="8" width="1" height="7" fill="#6e4858"/>
+  <rect x="98" y="3" width="4" height="1" fill="#a96e70"/>
+
+  <!-- 7: cottage interior wall -->
+  <rect x="112" width="16" height="16" fill="#292d52"/>
+  <rect x="112" y="0" width="16" height="3" fill="#52517b"/>
+  <rect x="112" y="12" width="16" height="4" fill="#b97c6a"/>
+  <rect x="114" y="5" width="3" height="3" fill="#65719a"/>
+  <rect x="123" y="5" width="3" height="3" fill="#f2c66d"/>
+
+  <!-- 8: untilled farm field -->
+  <rect x="128" width="16" height="16" fill="#384f4e"/>
+  <rect x="128" y="0" width="16" height="2" fill="#52665c"/>
+  <rect x="128" y="14" width="16" height="2" fill="#293d43"/>
+  <rect x="132" y="5" width="2" height="2" fill="#6d7664"/>
+  <rect x="139" y="10" width="1" height="1" fill="#d2a96f"/>
+  <rect x="142" y="3" width="1" height="1" fill="#829575"/>
+
+  <!-- 9: flower meadow -->
+  <rect x="144" width="16" height="16" fill="#2a5c51"/>
+  <rect x="153" y="13" width="7" height="3" fill="#234d49"/>
+  <rect x="148" y="7" width="1" height="5" fill="#4d8a6c"/>
+  <rect x="146" y="5" width="2" height="2" fill="#c29ade"/>
+  <rect x="149" y="4" width="2" height="2" fill="#f0c675"/>
+  <rect x="154" y="10" width="1" height="3" fill="#5c9b76"/>
+  <rect x="153" y="8" width="3" height="2" fill="#86d6b1"/>
+
+  <!-- 10: glowing hedge boundary -->
+  <rect x="160" width="16" height="16" fill="#182d43"/>
+  <rect x="160" y="11" width="16" height="5" fill="#2f4058"/>
+  <rect x="161" y="5" width="6" height="7" fill="#355d59"/>
+  <rect x="168" y="3" width="7" height="9" fill="#3c6c60"/>
+  <rect x="164" y="3" width="2" height="2" fill="#6db88c"/>
+  <rect x="171" y="1" width="2" height="2" fill="#8be0b0"/>
+  <rect x="174" y="8" width="1" height="2" fill="#d8b86d"/>
+
+  <!-- 11: pond bank -->
+  <rect x="176" width="16" height="16" fill="#39524e"/>
+  <rect x="176" y="10" width="16" height="6" fill="#174c65"/>
+  <rect x="176" y="9" width="16" height="2" fill="#78a980"/>
+  <rect x="180" y="6" width="2" height="4" fill="#55906f"/>
+  <rect x="187" y="5" width="1" height="5" fill="#70b187"/>
+  <rect x="184" y="12" width="6" height="1" fill="#3d9aa1"/>
+
+  <!-- 12: cottage doorstep -->
+  <rect x="192" width="16" height="16" fill="#4d4359"/>
+  <rect x="193" y="2" width="14" height="12" fill="#9b695e"/>
+  <rect x="195" y="4" width="10" height="10" fill="#6c4d59"/>
+  <rect x="203" y="8" width="2" height="2" fill="#f3ca78"/>
+
+  <!-- 13: moonstone stepping path B -->
+  <rect x="208" width="16" height="16" fill="#2a5950"/>
+  <rect x="218" y="14" width="6" height="2" fill="#234d49"/>
+  <rect x="209" y="9" width="7" height="5" fill="#766d84"/>
+  <rect x="210" y="9" width="5" height="1" fill="#9c8e9d"/>
+  <rect x="216" y="2" width="7" height="5" fill="#615d78"/>
+  <rect x="217" y="2" width="5" height="1" fill="#9088a0"/>
+  <rect x="218" y="11" width="4" height="3" fill="#8b7d90"/>
+  <rect x="212" y="12" width="1" height="1" fill="#e0bd7d"/>
+  <rect x="220" y="4" width="1" height="1" fill="#86d6b1"/>
+
+  <!-- 14: alternate untilled planting bed -->
+  <rect x="224" width="16" height="16" fill="#3b514f"/>
+  <rect x="224" y="0" width="16" height="2" fill="#586b61"/>
+  <rect x="224" y="14" width="16" height="2" fill="#2b3d44"/>
+  <rect x="227" y="9" width="2" height="2" fill="#657166"/>
+  <rect x="233" y="4" width="2" height="1" fill="#8b806b"/>
+  <rect x="237" y="11" width="1" height="1" fill="#d5aa70"/>
+  <rect x="229" y="3" width="1" height="1" fill="#779075"/>
+</svg>
