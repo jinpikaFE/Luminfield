@@ -104,10 +104,81 @@ public sealed class SaveService
             : LocaleService.SimplifiedChinese;
         save.Player ??= new PlayerSave();
         save.Player.Energy = Math.Clamp(save.Player.Energy, 0, GameSession.MaxEnergy);
-        save.Player.SelectedSlot = Math.Clamp(save.Player.SelectedSlot, 0, Inventory.SlotCount - 1);
+        save.Player.WateringCanWater = Math.Clamp(
+            save.Player.WateringCanWater,
+            0,
+            GameSession.MaxWateringCanWater
+        );
+        save.Player.SelectedSlot = Math.Clamp(
+            save.Player.SelectedSlot,
+            0,
+            Inventory.HotbarSlotCount - 1
+        );
+        save.Player.X = float.IsFinite(save.Player.X)
+            ? Math.Clamp(save.Player.X, 8, WorldDefinition.Width * 16 - 8)
+            : GameSession.NewGamePlayerX;
+        save.Player.Y = float.IsFinite(save.Player.Y)
+            ? Math.Clamp(save.Player.Y, 8, WorldDefinition.Height * 16 - 8)
+            : GameSession.NewGamePlayerY;
         save.Inventory ??= [];
+        foreach (var slot in save.Inventory)
+        {
+            if (slot.ItemId == DataCatalog.LegacyHoeId)
+            {
+                slot.ItemId = DataCatalog.ShovelId;
+            }
+
+            if (!DataCatalog.Items.TryGetValue(slot.ItemId, out var item))
+            {
+                slot.ItemId = string.Empty;
+                slot.Count = 0;
+                continue;
+            }
+
+            slot.Count = Math.Clamp(slot.Count, 0, item.MaxStack);
+            if (slot.Count == 0)
+            {
+                slot.ItemId = string.Empty;
+            }
+        }
         save.FarmTiles ??= [];
         save.Quest ??= new QuestSave();
+        save.Coins = Math.Max(0, save.Coins);
+        save.Processor ??= new ProcessorSave();
+        if (!string.IsNullOrWhiteSpace(save.Processor.RecipeId) &&
+            DataCatalog.ProcessorRecipes.TryGetValue(save.Processor.RecipeId, out var recipe))
+        {
+            save.Processor.RemainingNights = Math.Clamp(
+                save.Processor.RemainingNights,
+                0,
+                recipe.Nights
+            );
+        }
+        else
+        {
+            save.Processor.RecipeId = string.Empty;
+            save.Processor.RemainingNights = 0;
+        }
+        save.Exploration ??= new ExplorationSave();
+        save.Exploration.DiscoveredChunks ??= [];
+        save.Exploration.DiscoveredChunks = save.Exploration.DiscoveredChunks
+            .Where(id => WorldDefinition.TryParseChunkId(id, out _))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (save.Exploration.DiscoveredChunks.Count == 0)
+        {
+            save.Exploration.DiscoveredChunks.Add(
+                WorldDefinition.ChunkId(new ChunkPosition(0, 0))
+            );
+        }
+        save.Resources ??= new ResourceSave();
+        save.Resources.RemovedNodes ??= [];
+        save.Resources.RemovedNodes = save.Resources.RemovedNodes
+            .Where(id =>
+                WorldDefinition.TryParseCellId(id, out var cell) &&
+                WorldDefinition.ResourceAt(cell) != WorldResourceKind.None)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     private string PreserveBrokenSave()

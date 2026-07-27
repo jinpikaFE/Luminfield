@@ -7,6 +7,8 @@ public sealed partial class FarmView : Node2D
 {
     public static readonly GridPosition MiraCell = new(32, 9);
     public static readonly GridPosition CottageDoorCell = new(16, 11);
+    public static readonly GridPosition ShopCell = new(43, 14);
+    public static readonly GridPosition ProcessorCell = new(36, 14);
 
     private static readonly HashSet<GridPosition> ExtraBlocked =
     [
@@ -15,7 +17,13 @@ public sealed partial class FarmView : Node2D
         new(4, 25), new(5, 25), new(4, 26),
         new(30, 3), new(30, 4),
         new(14, 8), new(14, 9),
-        new(42, 8), new(42, 9)
+        new(42, 8), new(42, 9),
+        new(42, 12), new(43, 12), new(44, 12),
+        new(42, 13), new(43, 13), new(44, 13),
+        new(42, 14), new(43, 14), new(44, 14),
+        new(35, 12), new(36, 12), new(37, 12),
+        new(35, 13), new(36, 13), new(37, 13),
+        new(35, 14), new(36, 14), new(37, 14)
     ];
 
     private readonly GameSession _session;
@@ -26,8 +34,9 @@ public sealed partial class FarmView : Node2D
     private readonly CanvasModulate _canvasModulate;
     private readonly TargetCursor _cursor;
     private readonly PlayerController _player;
+    private readonly WorldChunkStreamer _worldStreamer;
 
-    public FarmView(GameSession session)
+    public FarmView(GameSession session, LocaleService locale)
     {
         _session = session;
         YSortEnabled = true;
@@ -38,16 +47,24 @@ public sealed partial class FarmView : Node2D
         _cropLayer = Layer("Crops", TilePaletteFactory.CreateCrops(), 0);
         _propLayer = Layer("Props", environmentTiles, 5);
         _baseLayer.Visible = false;
+        _soilLayer.Visible = false;
+        _cropLayer.Visible = false;
         _propLayer.Visible = false;
 
+        _worldStreamer = new WorldChunkStreamer(session);
+        _worldStreamer.RegionEntered += key => RegionEntered?.Invoke(key);
+        AddChild(_worldStreamer);
         AddChild(new FarmBackdrop());
+        AddChild(new SouthernWorldGate());
         _canvasModulate = new CanvasModulate { Color = Colors.White };
         AddChild(_canvasModulate);
 
+        AddChild(new FarmSoilStateLayer(session));
+        AddChild(new GeneratedCropLayer(session));
         AddChild(new CropGlowLayer(session));
         AddChild(new MoteField(new Rect2(0, 0, FarmSystem.MapWidth * 16, FarmSystem.MapHeight * 16)));
 
-        var mira = CreateCharacterSprite(8);
+        var mira = GeneratedArt.CreateMiraSprite();
         mira.Name = "Mira";
         mira.Position = CellCenter(MiraCell);
         mira.ZIndex = 8;
@@ -63,6 +80,18 @@ public sealed partial class FarmView : Node2D
             ZIndex = 24,
         });
 
+        var marketStall = GeneratedArt.CreateMarketStallSprite();
+        marketStall.Name = "TwilightMarket";
+        marketStall.Position = CellCenter(ShopCell) + new Vector2(0, 8);
+        marketStall.ZIndex = 7;
+        AddChild(marketStall);
+
+        var infuser = GeneratedArt.CreateMoonwellInfuserSprite();
+        infuser.Name = "MoonwellInfuser";
+        infuser.Position = CellCenter(ProcessorCell) + new Vector2(0, 8);
+        infuser.ZIndex = 7;
+        AddChild(infuser);
+
         _player = new PlayerController(CanOccupy)
         {
             Name = "Player",
@@ -70,8 +99,26 @@ public sealed partial class FarmView : Node2D
             ZIndex = 10
         };
         _player.PositionChanged += position =>
+        {
             _session.SetPlayerState(position.X, position.Y, false);
+            _worldStreamer.UpdatePlayer(position);
+        };
         AddChild(_player);
+        AddChild(new StationBeacon(() => _player.CurrentCell, ShopCell, ThemeFactory.Gold)
+        {
+            Position = CellCenter(ShopCell) + new Vector2(0, 8),
+            ZIndex = 26
+        });
+        AddChild(new StationBeacon(() => _player.CurrentCell, ProcessorCell, ThemeFactory.Mint)
+        {
+            Position = CellCenter(ProcessorCell) + new Vector2(0, 8),
+            ZIndex = 26
+        });
+        AddChild(new CottageEntranceBeacon(() => _player.CurrentCell)
+        {
+            Position = CellCenter(CottageDoorCell),
+            ZIndex = 30
+        });
 
         var camera = new Camera2D
         {
@@ -79,12 +126,13 @@ public sealed partial class FarmView : Node2D
             PositionSmoothingEnabled = false,
             LimitLeft = 0,
             LimitTop = 0,
-            LimitRight = FarmSystem.MapWidth * 16,
-            LimitBottom = FarmSystem.MapHeight * 16
+            LimitRight = WorldDefinition.Width * 16,
+            LimitBottom = WorldDefinition.Height * 16
         };
         _player.AddChild(camera);
+        _worldStreamer.UpdatePlayer(_player.Position);
 
-        _cursor = new TargetCursor(() => _player.TargetCell);
+        _cursor = new TargetCursor(ResolveTargetPreview, locale);
         _cursor.ZIndex = 20;
         AddChild(_cursor);
 
@@ -108,6 +156,9 @@ public sealed partial class FarmView : Node2D
     public event Action<GridPosition>? UseRequested;
     public event Action? MiraRequested;
     public event Action? EnterCottageRequested;
+    public event Action? ShopRequested;
+    public event Action? ProcessorRequested;
+    public event Action<string>? RegionEntered;
     public event Action? StepRequested
     {
         add => _player.Stepped += value;
@@ -115,6 +166,49 @@ public sealed partial class FarmView : Node2D
     }
 
     public Vector2 PlayerPosition => _player.Position;
+
+    private TargetPreview ResolveTargetPreview()
+    {
+        var target = _player.TargetCell;
+        var player = _player.CurrentCell;
+        if (target == MiraCell || IsAdjacent(player, MiraCell))
+        {
+            return TargetPreview.Available(
+                MiraCell,
+                TargetPreviewKind.Character,
+                "target.action.talk"
+            );
+        }
+
+        if (target == CottageDoorCell || IsAdjacent(player, CottageDoorCell))
+        {
+            return TargetPreview.Available(
+                CottageDoorCell,
+                TargetPreviewKind.Door,
+                "target.action.enter"
+            );
+        }
+
+        if (target == ShopCell || IsAdjacent(player, ShopCell))
+        {
+            return TargetPreview.Available(
+                ShopCell,
+                TargetPreviewKind.Station,
+                "target.action.trade"
+            );
+        }
+
+        if (target == ProcessorCell || IsAdjacent(player, ProcessorCell))
+        {
+            return TargetPreview.Available(
+                ProcessorCell,
+                TargetPreviewKind.Station,
+                "target.action.infuse"
+            );
+        }
+
+        return _session.PreviewSelectedTarget(target);
+    }
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -128,9 +222,17 @@ public sealed partial class FarmView : Node2D
         {
             MiraRequested?.Invoke();
         }
-        else if (target == CottageDoorCell)
+        else if (target == CottageDoorCell || IsAdjacent(_player.CurrentCell, CottageDoorCell))
         {
             EnterCottageRequested?.Invoke();
+        }
+        else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
+        {
+            ShopRequested?.Invoke();
+        }
+        else if (target == ProcessorCell || IsAdjacent(_player.CurrentCell, ProcessorCell))
+        {
+            ProcessorRequested?.Invoke();
         }
         else
         {
@@ -272,30 +374,33 @@ public sealed partial class FarmView : Node2D
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
         );
-        if (cell.X is < 1 or >= FarmSystem.MapWidth - 1 ||
-            cell.Y is < 1 or >= FarmSystem.MapHeight - 1)
+        if (!WorldDefinition.IsInBounds(cell))
         {
             return false;
         }
 
-        if (ExtraBlocked.Contains(cell))
+        if (!WorldDefinition.IsHomeCell(cell))
+        {
+            if (WorldDefinition.IsBoundaryCell(cell))
+            {
+                return false;
+            }
+
+            return _session.Resources.IsRemoved(cell) ||
+                !WorldDefinition.IsBlocked(cell);
+        }
+
+        if (WorldDefinition.IsBlocked(cell))
         {
             return false;
         }
 
-        return !_session.Farm.IsReserved(cell);
-    }
-
-    private static Sprite2D CreateCharacterSprite(int frame)
-    {
-        return new Sprite2D
+        if (ExtraBlocked.Contains(cell) || _session.Farm.IsReserved(cell))
         {
-            Texture = GD.Load<Texture2D>("res://assets/pixel/characters.svg"),
-            RegionEnabled = true,
-            RegionRect = new Rect2(frame * 16, 0, 16, 24),
-            TextureFilter = TextureFilterEnum.Nearest,
-            Position = new Vector2(0, -4)
-        };
+            return false;
+        }
+
+        return true;
     }
 
     private static Vector2 CellCenter(GridPosition cell) =>
@@ -305,14 +410,22 @@ public sealed partial class FarmView : Node2D
         Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y) <= 1;
 }
 
-internal sealed partial class TargetCursor : Node2D
+internal sealed partial class StationBeacon : Node2D
 {
-    private readonly Func<GridPosition> _target;
+    private readonly Func<GridPosition> _playerCell;
+    private readonly GridPosition _stationCell;
+    private readonly Color _accent;
     private double _time;
 
-    public TargetCursor(Func<GridPosition> target)
+    public StationBeacon(
+        Func<GridPosition> playerCell,
+        GridPosition stationCell,
+        Color accent
+    )
     {
-        _target = target;
+        _playerCell = playerCell;
+        _stationCell = stationCell;
+        _accent = accent;
     }
 
     public override void _Process(double delta)
@@ -323,21 +436,251 @@ internal sealed partial class TargetCursor : Node2D
 
     public override void _Draw()
     {
-        var target = _target();
-        var origin = new Vector2(target.X * 16, target.Y * 16);
+        var player = _playerCell();
+        var distance = Math.Abs(player.X - _stationCell.X) +
+            Math.Abs(player.Y - _stationCell.Y);
+        var nearby = distance <= 2;
+        var pulse = 0.64f + Mathf.Sin((float)_time * 4.2f) * 0.2f;
+        var accent = new Color(_accent, nearby ? pulse + 0.15f : pulse * 0.4f);
+
+        DrawArc(new Vector2(0, 2), 11 + pulse * 2, 0, Mathf.Tau, 24, accent, nearby ? 2 : 1);
+        DrawCircle(new Vector2(0, -49 + Mathf.Sin((float)_time * 3.8f) * 2), 2.3f, accent);
+        if (!nearby)
+        {
+            return;
+        }
+
+        DrawRect(new Rect2(-8, -63, 16, 11), new Color("#07132bee"), true);
+        DrawRect(new Rect2(-8, -63, 16, 11), accent, false, 1);
+        DrawString(
+            GD.Load<Font>("res://assets/fonts/NotoSansCJKsc-Regular.otf"),
+            new Vector2(-3.5f, -54),
+            "E",
+            HorizontalAlignment.Left,
+            -1,
+            8,
+            ThemeFactory.Ink
+        );
+    }
+}
+
+internal sealed partial class TargetCursor : Node2D
+{
+    private static readonly Font LabelFont =
+        GD.Load<Font>("res://assets/fonts/NotoSansCJKsc-Regular.otf");
+
+    private readonly Func<TargetPreview> _preview;
+    private readonly LocaleService _locale;
+    private double _time;
+
+    public TargetCursor(Func<TargetPreview> preview, LocaleService locale)
+    {
+        _preview = preview;
+        _locale = locale;
+    }
+
+    public override void _Process(double delta)
+    {
+        _time += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var preview = _preview();
+        var origin = new Vector2(preview.Target.X * 16, preview.Target.Y * 16);
         var pulse = 0.62f + Mathf.Sin((float)_time * 4) * 0.18f;
+        var accent = PreviewColor(preview.State);
+        var active = preview.State != TargetPreviewState.Neutral;
         DrawRect(
             new Rect2(origin + new Vector2(2, 2), new Vector2(12, 12)),
-            new Color(0.55f, 0.9f, 0.75f, 0.1f + pulse * 0.08f),
+            new Color(accent, active ? 0.16f + pulse * 0.1f : 0.045f),
             true
         );
-        var mint = new Color(0.55f, 0.94f, 0.75f, pulse + 0.2f);
+        DrawObjectHighlight(preview.Kind, origin, accent, pulse);
+
+        var outline = new Color(
+            accent,
+            active ? Math.Min(1, pulse + 0.28f) : 0.48f
+        );
         const float edge = 5;
-        DrawPolyline([origin + new Vector2(1, edge), origin + Vector2.One, origin + new Vector2(edge, 1)], mint, 1.5f);
-        DrawPolyline([origin + new Vector2(15 - edge, 1), origin + new Vector2(15, 1), origin + new Vector2(15, edge)], mint, 1.5f);
-        DrawPolyline([origin + new Vector2(1, 15 - edge), origin + new Vector2(1, 15), origin + new Vector2(edge, 15)], mint, 1.5f);
-        DrawPolyline([origin + new Vector2(15 - edge, 15), origin + new Vector2(15, 15), origin + new Vector2(15, 15 - edge)], mint, 1.5f);
-        DrawCircle(origin + new Vector2(8, 8), 1.2f, new Color("#f4cf78"));
+        DrawPolyline([origin + new Vector2(1, edge), origin + Vector2.One, origin + new Vector2(edge, 1)], outline, 1.5f);
+        DrawPolyline([origin + new Vector2(15 - edge, 1), origin + new Vector2(15, 1), origin + new Vector2(15, edge)], outline, 1.5f);
+        DrawPolyline([origin + new Vector2(1, 15 - edge), origin + new Vector2(1, 15), origin + new Vector2(edge, 15)], outline, 1.5f);
+        DrawPolyline([origin + new Vector2(15 - edge, 15), origin + new Vector2(15, 15), origin + new Vector2(15, 15 - edge)], outline, 1.5f);
+        DrawCircle(origin + new Vector2(8, 8), active ? 1.7f : 1.1f, outline);
+
+        if (active && !string.IsNullOrWhiteSpace(preview.LabelKey))
+        {
+            DrawActionLabel(preview, origin, accent);
+        }
+    }
+
+    private void DrawObjectHighlight(
+        TargetPreviewKind kind,
+        Vector2 origin,
+        Color accent,
+        float pulse
+    )
+    {
+        var fill = new Color(accent, 0.07f + pulse * 0.035f);
+        var line = new Color(accent, 0.56f + pulse * 0.32f);
+        switch (kind)
+        {
+            case TargetPreviewKind.Tree:
+                DrawRect(new Rect2(origin + new Vector2(-21, -56), new Vector2(58, 72)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-21, -56), new Vector2(58, 72)), line, false, 1.5f);
+                DrawArc(origin + new Vector2(8, -25), 29 + pulse * 2, 0, Mathf.Tau, 28, line, 1.5f);
+                break;
+            case TargetPreviewKind.Crystal:
+                DrawRect(new Rect2(origin + new Vector2(-13, -32), new Vector2(42, 48)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-13, -32), new Vector2(42, 48)), line, false, 1.5f);
+                DrawCircle(origin + new Vector2(8, -8), 22 + pulse * 2, new Color(accent, 0.055f));
+                break;
+            case TargetPreviewKind.Water:
+                DrawCircle(origin + new Vector2(8, 8), 10 + pulse * 2, fill);
+                DrawArc(origin + new Vector2(8, 8), 7 + pulse, 0, Mathf.Tau, 20, line, 1.5f);
+                DrawArc(origin + new Vector2(8, 8), 12 + pulse * 2, 0, Mathf.Tau, 24, new Color(accent, 0.35f), 1);
+                break;
+            case TargetPreviewKind.Crop:
+                DrawRect(new Rect2(origin + new Vector2(-2, -24), new Vector2(20, 40)), fill);
+                DrawArc(origin + new Vector2(8, 1), 12 + pulse * 2, 0, Mathf.Tau, 22, line, 1.5f);
+                break;
+            case TargetPreviewKind.Character:
+                DrawRect(new Rect2(origin + new Vector2(-9, -48), new Vector2(34, 64)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-9, -48), new Vector2(34, 64)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.Door:
+                DrawRect(new Rect2(origin + new Vector2(-2, -34), new Vector2(20, 50)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-2, -34), new Vector2(20, 50)), line, false, 2);
+                break;
+            case TargetPreviewKind.Station:
+                DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.Landmark:
+                DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.Bed:
+                DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), line, false, 1.5f);
+                break;
+        }
+    }
+
+    private void DrawActionLabel(
+        TargetPreview preview,
+        Vector2 origin,
+        Color accent
+    )
+    {
+        var translated = _locale.Tr(preview.LabelKey);
+        var label = preview.IsAvailable ? $"E · {translated}" : translated;
+        var measured = LabelFont.GetStringSize(
+            label,
+            HorizontalAlignment.Left,
+            -1,
+            8
+        );
+        var width = Math.Clamp(measured.X + 12, 38, 118);
+        var top = origin.Y + LabelOffset(preview.Kind);
+        var panel = new Rect2(origin.X + 8 - width / 2, top, width, 13);
+        DrawRect(panel, new Color("#07132bee"), true);
+        DrawRect(panel, new Color(accent, 0.96f), false, 1);
+        DrawString(
+            LabelFont,
+            panel.Position + new Vector2(6, 9.5f),
+            label,
+            HorizontalAlignment.Center,
+            panel.Size.X - 12,
+            8,
+            ThemeFactory.Ink
+        );
+    }
+
+    private static float LabelOffset(TargetPreviewKind kind) => kind switch
+    {
+        TargetPreviewKind.Tree => -72,
+        TargetPreviewKind.Station => -68,
+        TargetPreviewKind.Character => -62,
+        TargetPreviewKind.Door => -49,
+        TargetPreviewKind.Crystal => -47,
+        TargetPreviewKind.Landmark => -56,
+        TargetPreviewKind.Crop => -34,
+        TargetPreviewKind.Bed => -25,
+        _ => -18
+    };
+
+    private static Color PreviewColor(TargetPreviewState state) => state switch
+    {
+        TargetPreviewState.Available => ThemeFactory.Mint,
+        TargetPreviewState.NeedsTool => ThemeFactory.Gold,
+        TargetPreviewState.Blocked => new Color("#e58a9f"),
+        _ => new Color("#8294b8")
+    };
+}
+
+internal sealed partial class CottageEntranceBeacon : Node2D
+{
+    private readonly Func<GridPosition> _playerCell;
+    private double _time;
+
+    public CottageEntranceBeacon(Func<GridPosition> playerCell)
+    {
+        _playerCell = playerCell;
+    }
+
+    public override void _Process(double delta)
+    {
+        _time += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var player = _playerCell();
+        var distance = Math.Abs(player.X - FarmView.CottageDoorCell.X) +
+            Math.Abs(player.Y - FarmView.CottageDoorCell.Y);
+        var nearby = distance <= 3;
+        var pulse = 0.72f + Mathf.Sin((float)_time * 3.6f) * 0.18f;
+        var alpha = nearby ? pulse : pulse * 0.58f;
+        var mint = new Color(ThemeFactory.Mint, alpha);
+        var gold = new Color(ThemeFactory.Gold, Math.Min(alpha + 0.12f, 1));
+
+        DrawLine(new Vector2(-9, -27), new Vector2(-9, 3), mint, nearby ? 2 : 1);
+        DrawLine(new Vector2(9, -27), new Vector2(9, 3), mint, nearby ? 2 : 1);
+        DrawLine(new Vector2(-9, -27), new Vector2(9, -27), gold, nearby ? 2 : 1);
+        DrawArc(new Vector2(0, 6), 11 + pulse * 2, 0, Mathf.Tau, 24, mint, 1.4f);
+        DrawArc(new Vector2(0, 6), 5 + pulse, 0, Mathf.Tau, 16, new Color(gold, alpha * 0.6f), 1);
+
+        var arrowY = -35 + Mathf.Sin((float)_time * 4.2f) * 2;
+        DrawColoredPolygon(
+            [
+                new Vector2(0, arrowY + 5),
+                new Vector2(-5, arrowY),
+                new Vector2(0, arrowY + 2),
+                new Vector2(5, arrowY),
+            ],
+            gold
+        );
+
+        if (!nearby)
+        {
+            return;
+        }
+
+        DrawRect(new Rect2(-7, -47, 14, 10), new Color("#07132be6"), true);
+        DrawRect(new Rect2(-7, -47, 14, 10), gold, false, 1);
+        DrawString(
+            GD.Load<Font>("res://assets/fonts/NotoSansCJKsc-Regular.otf"),
+            new Vector2(-3.5f, -39),
+            "E",
+            HorizontalAlignment.Left,
+            -1,
+            8,
+            ThemeFactory.Ink
+        );
     }
 }
 

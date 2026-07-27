@@ -31,6 +31,82 @@ internal sealed partial class FarmBackdrop : Sprite2D
     }
 }
 
+internal sealed partial class SouthernWorldGate : Node2D
+{
+    public SouthernWorldGate()
+    {
+        ZIndex = -8;
+    }
+
+    public override void _Draw()
+    {
+        const float left = 288;
+        const float top = 476;
+        const float width = 48;
+        const float bottom = 544;
+
+        DrawColoredPolygon(
+            [
+                new Vector2(left - 8, top + 9),
+                new Vector2(left, top),
+                new Vector2(left + width, top),
+                new Vector2(left + width + 8, top + 9),
+                new Vector2(left + width + 5, bottom),
+                new Vector2(left - 5, bottom),
+            ],
+            new Color("#18243b")
+        );
+        DrawRect(
+            new Rect2(left, top, width, bottom - top),
+            new Color("#554f68")
+        );
+
+        for (var y = top + 4; y < bottom; y += 9)
+        {
+            var offset = ((int)((y - top) / 9) & 1) == 0 ? 3 : 9;
+            DrawLine(
+                new Vector2(left + 2, y),
+                new Vector2(left + width - 2, y),
+                new Color("#80738e"),
+                1
+            );
+            for (var x = left + offset; x < left + width; x += 16)
+            {
+                DrawLine(
+                    new Vector2(x, y),
+                    new Vector2(x - 3, y + 8),
+                    new Color("#37364f"),
+                    1
+                );
+            }
+        }
+
+        DrawLine(
+            new Vector2(left, top),
+            new Vector2(left + width, top),
+            new Color("#d0aa73"),
+            2
+        );
+        DrawLine(
+            new Vector2(left - 3, bottom - 1),
+            new Vector2(left + width + 3, bottom - 1),
+            new Color("#26354b"),
+            2
+        );
+
+        DrawGatePost(new Vector2(left - 8, top + 5));
+        DrawGatePost(new Vector2(left + width + 4, top + 5));
+    }
+
+    private void DrawGatePost(Vector2 origin)
+    {
+        DrawRect(new Rect2(origin.X, origin.Y, 5, 20), new Color("#4a3542"));
+        DrawRect(new Rect2(origin.X - 1, origin.Y - 2, 7, 4), new Color("#9f7455"));
+        DrawCircle(origin + new Vector2(2.5f, -4), 3.5f, new Color("#2ce0c2"));
+        DrawCircle(origin + new Vector2(2.5f, -4), 1.5f, new Color("#eff7c8"));
+    }
+}
+
 internal sealed partial class FarmPlotTrim : Node2D
 {
     public FarmPlotTrim()

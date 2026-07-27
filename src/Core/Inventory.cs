@@ -2,7 +2,18 @@ namespace Luminfield.Core;
 
 public sealed class Inventory
 {
-    public const int SlotCount = 8;
+    public const int HotbarSlotCount = 8;
+    public const int SlotCount = 24;
+    public const int StartingToolCount = 5;
+
+    private static readonly string[] StartingTools =
+    [
+        DataCatalog.HandId,
+        DataCatalog.ShovelId,
+        DataCatalog.MacheteId,
+        DataCatalog.WateringCanId,
+        DataCatalog.BucketId
+    ];
 
     private readonly List<InventorySlot> _slots =
         Enumerable.Range(0, SlotCount).Select(_ => new InventorySlot()).ToList();
@@ -20,30 +31,49 @@ public sealed class Inventory
             slot.Count = 0;
         }
 
-        _slots[0].ItemId = DataCatalog.HoeId;
-        _slots[0].Count = 1;
-        _slots[1].ItemId = DataCatalog.WateringCanId;
-        _slots[1].Count = 1;
+        PlaceStartingTools();
         SelectedIndex = 0;
         Changed?.Invoke();
     }
 
     public void Restore(IEnumerable<InventorySlot>? slots, int selectedIndex)
     {
-        for (var index = 0; index < SlotCount; index++)
+        var saved = slots?.Select(slot => slot.Clone()).ToList() ?? [];
+        var selectedItemId = saved.ElementAtOrDefault(selectedIndex)?.ItemId ?? string.Empty;
+        if (selectedItemId == DataCatalog.LegacyHoeId)
         {
-            var source = slots?.ElementAtOrDefault(index);
-            _slots[index].ItemId = source?.ItemId ?? string.Empty;
-            _slots[index].Count = Math.Max(0, source?.Count ?? 0);
+            selectedItemId = DataCatalog.ShovelId;
         }
 
-        SelectedIndex = Math.Clamp(selectedIndex, 0, SlotCount - 1);
+        foreach (var slot in _slots)
+        {
+            slot.ItemId = string.Empty;
+            slot.Count = 0;
+        }
+
+        PlaceStartingTools();
+        foreach (var source in saved)
+        {
+            var itemId = source.ItemId == DataCatalog.LegacyHoeId
+                ? DataCatalog.ShovelId
+                : source.ItemId;
+            if (source.Count <= 0 ||
+                StartingTools.Contains(itemId, StringComparer.Ordinal) ||
+                !DataCatalog.Items.ContainsKey(itemId))
+            {
+                continue;
+            }
+
+            AddWithoutNotification(itemId, source.Count);
+        }
+
+        SelectedIndex = FindRestoredSelection(selectedItemId);
         Changed?.Invoke();
     }
 
     public void Select(int index)
     {
-        var next = Math.Clamp(index, 0, SlotCount - 1);
+        var next = Math.Clamp(index, 0, HotbarSlotCount - 1);
         if (next == SelectedIndex)
         {
             return;
@@ -55,10 +85,10 @@ public sealed class Inventory
 
     public void SelectRelative(int direction)
     {
-        var wrapped = (SelectedIndex + direction) % SlotCount;
+        var wrapped = (SelectedIndex + direction) % HotbarSlotCount;
         if (wrapped < 0)
         {
-            wrapped += SlotCount;
+            wrapped += HotbarSlotCount;
         }
 
         Select(wrapped);
@@ -69,7 +99,7 @@ public sealed class Inventory
     public int Count(string itemId) =>
         _slots.Where(slot => slot.ItemId == itemId).Sum(slot => slot.Count);
 
-    public bool Add(string itemId, int amount)
+    public bool CanAdd(string itemId, int amount)
     {
         if (amount <= 0)
         {
@@ -80,8 +110,18 @@ public sealed class Inventory
         var capacity = _slots
             .Where(slot => slot.IsEmpty || slot.ItemId == itemId)
             .Sum(slot => slot.IsEmpty ? definition.MaxStack : definition.MaxStack - slot.Count);
+        return capacity >= amount;
+    }
 
-        if (capacity < amount)
+    public bool Add(string itemId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return true;
+        }
+
+        var definition = DataCatalog.Item(itemId);
+        if (!CanAdd(itemId, amount))
         {
             return false;
         }
@@ -150,4 +190,58 @@ public sealed class Inventory
     }
 
     public List<InventorySlot> Capture() => _slots.Select(slot => slot.Clone()).ToList();
+
+    private void PlaceStartingTools()
+    {
+        for (var index = 0; index < StartingTools.Length; index++)
+        {
+            _slots[index].ItemId = StartingTools[index];
+            _slots[index].Count = 1;
+        }
+    }
+
+    private void AddWithoutNotification(string itemId, int amount)
+    {
+        var definition = DataCatalog.Item(itemId);
+        var remaining = amount;
+        foreach (var slot in _slots.Where(slot =>
+                     slot.ItemId == itemId &&
+                     slot.Count < definition.MaxStack))
+        {
+            var moved = Math.Min(remaining, definition.MaxStack - slot.Count);
+            slot.Count += moved;
+            remaining -= moved;
+            if (remaining == 0)
+            {
+                return;
+            }
+        }
+
+        foreach (var slot in _slots.Where(slot => slot.IsEmpty))
+        {
+            var moved = Math.Min(remaining, definition.MaxStack);
+            slot.ItemId = itemId;
+            slot.Count = moved;
+            remaining -= moved;
+            if (remaining == 0)
+            {
+                return;
+            }
+        }
+    }
+
+    private int FindRestoredSelection(string itemId)
+    {
+        if (string.IsNullOrWhiteSpace(itemId))
+        {
+            return 0;
+        }
+
+        var index = _slots.FindIndex(
+            0,
+            HotbarSlotCount,
+            slot => slot.ItemId == itemId
+        );
+        return index >= 0 ? index : 0;
+    }
 }

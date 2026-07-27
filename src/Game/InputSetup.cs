@@ -10,6 +10,7 @@ public static class InputSetup
     public const string MoveDown = "move_down";
     public const string Interact = "interact";
     public const string Pause = "pause";
+    public const string Backpack = "backpack";
     public const string HotbarPrevious = "hotbar_previous";
     public const string HotbarNext = "hotbar_next";
 
@@ -37,6 +38,7 @@ public static class InputSetup
         );
         AddAction(Interact, 0.5f, Key.E, Key.Space, JoyButton.A);
         AddAction(Pause, 0.5f, Key.Escape, JoyButton.Start);
+        AddAction(Backpack, 0.5f, Key.B, Key.Tab, JoyButton.Y);
         AddAction(HotbarPrevious, 0.5f, JoyButton.LeftShoulder);
         AddAction(HotbarNext, 0.5f, JoyButton.RightShoulder);
     }

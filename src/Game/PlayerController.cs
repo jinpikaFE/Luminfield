@@ -6,9 +6,12 @@ namespace Luminfield.Game;
 public sealed partial class PlayerController : CharacterBody2D
 {
     private const float Speed = 72;
+    private const float FootContactY = 8;
     private readonly Func<Vector2, bool> _canOccupy;
+    private readonly ActorShadow _shadow;
     private readonly Sprite2D _sprite;
     private Vector2I _facing = Vector2I.Down;
+    private bool _isWalking;
     private double _walkAnimation;
     private double _stepTimer;
     private int _walkFrame;
@@ -16,20 +19,14 @@ public sealed partial class PlayerController : CharacterBody2D
     public PlayerController(Func<Vector2, bool> canOccupy)
     {
         _canOccupy = canOccupy;
-        AddChild(new ActorShadow
+        _shadow = new ActorShadow
         {
             Position = new Vector2(0, 8),
             ZIndex = -1,
-        });
-
-        _sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>("res://assets/pixel/characters.svg"),
-            RegionEnabled = true,
-            RegionRect = new Rect2(0, 0, 16, 24),
-            Position = new Vector2(0, -9),
-            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
         };
+        AddChild(_shadow);
+
+        _sprite = GeneratedArt.CreatePlayerSprite();
         AddChild(_sprite);
     }
 
@@ -65,6 +62,8 @@ public sealed partial class PlayerController : CharacterBody2D
 
         UpdateFacing(direction);
         MoveWithGridCollision(direction * 4);
+        _isWalking = true;
+        _walkFrame = 1 - _walkFrame;
         UpdateSprite();
         PositionChanged?.Invoke(Position);
     }
@@ -84,11 +83,13 @@ public sealed partial class PlayerController : CharacterBody2D
         {
             UpdateFacing(input);
             MoveWithGridCollision(input.Normalized() * Speed * (float)delta);
+            _isWalking = true;
             AnimateWalking(delta);
             PositionChanged?.Invoke(Position);
         }
         else
         {
+            _isWalking = false;
             _walkFrame = 0;
             _walkAnimation = 0;
             _stepTimer = 0;
@@ -143,14 +144,23 @@ public sealed partial class PlayerController : CharacterBody2D
 
     private void UpdateSprite()
     {
-        var baseFrame = _facing switch
+        GeneratedArt.SetPlayerFrame(_sprite, _facing, _isWalking, _walkFrame);
+        if (_isWalking)
         {
-            var facing when facing == Vector2I.Down => 0,
-            var facing when facing == Vector2I.Up => 2,
-            var facing when facing == Vector2I.Right => 4,
-            _ => 6
-        };
-        _sprite.RegionRect = new Rect2((baseFrame + _walkFrame) * 16, 0, 16, 24);
+            var stride = _walkFrame == 0 ? -1f : 1f;
+            _sprite.Position = new Vector2(stride * 0.25f, FootContactY);
+            _sprite.Rotation = _facing.X == 0 ? 0 : stride * 0.018f;
+            _sprite.Scale *= _walkFrame == 0
+                ? new Vector2(1.012f, 0.988f)
+                : new Vector2(0.992f, 1.008f);
+        }
+        else
+        {
+            _sprite.Position = new Vector2(0, FootContactY);
+            _sprite.Rotation = 0;
+        }
+
+        _shadow.SetWalkState(_isWalking, _walkFrame);
     }
 
     private static GridPosition WorldToGrid(Vector2 world) =>
@@ -162,13 +172,30 @@ public sealed partial class PlayerController : CharacterBody2D
 
 internal sealed partial class ActorShadow : Node2D
 {
+    private bool _isWalking;
+    private int _walkFrame;
+
+    public void SetWalkState(bool isWalking, int walkFrame)
+    {
+        if (_isWalking == isWalking && _walkFrame == walkFrame)
+        {
+            return;
+        }
+
+        _isWalking = isWalking;
+        _walkFrame = walkFrame;
+        QueueRedraw();
+    }
+
     public override void _Draw()
     {
-        DrawSetTransform(Vector2.Zero, 0, new Vector2(1.0f, 0.38f));
-        DrawCircle(Vector2.Zero, 7.5f, new Color(0.03f, 0.06f, 0.11f, 0.58f));
+        var stride = _isWalking ? (_walkFrame == 0 ? -0.7f : 0.7f) : 0;
+        var radius = _isWalking ? (_walkFrame == 0 ? 7.1f : 7.8f) : 7.5f;
+        DrawSetTransform(new Vector2(stride, 0), 0, new Vector2(1.0f, 0.38f));
+        DrawCircle(Vector2.Zero, radius, new Color(0.03f, 0.06f, 0.11f, 0.58f));
         DrawArc(
             Vector2.Zero,
-            7.5f,
+            radius,
             0,
             Mathf.Tau,
             24,

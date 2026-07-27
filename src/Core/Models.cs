@@ -65,8 +65,25 @@ public sealed class PlayerSave
     public float X { get; set; } = GameSession.NewGamePlayerX;
     public float Y { get; set; } = GameSession.NewGamePlayerY;
     public int Energy { get; set; } = GameSession.MaxEnergy;
+    public int WateringCanWater { get; set; } = GameSession.MaxWateringCanWater;
     public int SelectedSlot { get; set; }
     public bool InsideCottage { get; set; }
+}
+
+public sealed class ProcessorSave
+{
+    public string RecipeId { get; set; } = string.Empty;
+    public int RemainingNights { get; set; }
+}
+
+public sealed class ExplorationSave
+{
+    public List<string> DiscoveredChunks { get; set; } = [];
+}
+
+public sealed class ResourceSave
+{
+    public List<string> RemovedNodes { get; set; } = [];
 }
 
 public sealed class GameSaveV1
@@ -79,6 +96,10 @@ public sealed class GameSaveV1
     public List<InventorySlot> Inventory { get; set; } = [];
     public List<FarmTileState> FarmTiles { get; set; } = [];
     public QuestSave Quest { get; set; } = new();
+    public int Coins { get; set; } = GameSession.NewGameCoins;
+    public ProcessorSave Processor { get; set; } = new();
+    public ExplorationSave Exploration { get; set; } = new();
+    public ResourceSave Resources { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -92,6 +113,68 @@ public sealed record ActionResult(
     public static ActionResult Fail(string messageKey) => new(false, 0, messageKey);
     public static ActionResult Success(int energyCost = 0, string messageKey = "") =>
         new(true, energyCost, messageKey);
+
+    public static ActionResult Grant(
+        string itemId,
+        int count,
+        int energyCost,
+        string messageKey
+    ) => new(true, energyCost, messageKey, itemId, count);
+}
+
+public enum TargetPreviewState
+{
+    Neutral,
+    Available,
+    NeedsTool,
+    Blocked
+}
+
+public enum TargetPreviewKind
+{
+    None,
+    Ground,
+    Soil,
+    Crop,
+    Tree,
+    Crystal,
+    Water,
+    Landmark,
+    Character,
+    Door,
+    Station,
+    Bed
+}
+
+public sealed record TargetPreview(
+    GridPosition Target,
+    TargetPreviewState State,
+    TargetPreviewKind Kind,
+    string LabelKey = ""
+)
+{
+    public bool IsAvailable => State == TargetPreviewState.Available;
+
+    public static TargetPreview Neutral(GridPosition target) =>
+        new(target, TargetPreviewState.Neutral, TargetPreviewKind.None);
+
+    public static TargetPreview Available(
+        GridPosition target,
+        TargetPreviewKind kind,
+        string labelKey
+    ) => new(target, TargetPreviewState.Available, kind, labelKey);
+
+    public static TargetPreview NeedsTool(
+        GridPosition target,
+        TargetPreviewKind kind,
+        string labelKey
+    ) => new(target, TargetPreviewState.NeedsTool, kind, labelKey);
+
+    public static TargetPreview Blocked(
+        GridPosition target,
+        TargetPreviewKind kind,
+        string labelKey
+    ) => new(target, TargetPreviewState.Blocked, kind, labelKey);
 }
 
 public sealed record InteractionContext(GameSession Session, GridPosition Target);
