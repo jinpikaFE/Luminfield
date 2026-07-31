@@ -8,6 +8,7 @@ public static class FarmLayout
     public static readonly GridPosition ProcessorCell = new(36, 14);
     public static readonly GridPosition ShippingCell = new(8, 14);
     public static readonly GridPosition CommissionBoardCell = new(27, 10);
+    public static readonly GridPosition StarlightMailboxCell = new(19, 10);
 
     private static readonly HashSet<GridPosition> StaticBlocked =
     [
@@ -29,7 +30,8 @@ public static class FarmLayout
         ShopCell,
         ProcessorCell,
         ShippingCell,
-        CommissionBoardCell
+        CommissionBoardCell,
+        StarlightMailboxCell
     ];
 
     public static bool IsStaticBlocked(GridPosition position) =>

@@ -64,8 +64,28 @@ exploration state in the regular save file.
 - Player location, met villagers, relationship points, and daily talk/gift
   records use stable save IDs. Legacy saves remain compatible and unknown IDs
   are filtered.
-- Mail, character events, tile-level walking paths, weather/season schedule
+- Character events, tile-level walking paths, weather/season schedule
   conditions, and four more building interiors remain planned work.
+
+## Starlight Mail and relationship rewards
+
+- An original Starlight Mailbox now stands beside the homestead cottage. Select
+  the Hand and face or stand next to it to open the mailbox. Unread mail uses a
+  mint glow and full object outline; another tool shows the gold Hand
+  requirement. Empty or fully read mail remains inspectable without consuming
+  energy or items.
+- Nemi's welcome letter arrives the morning after the player first meets her.
+  Reaching Trusted Friend with Liora, Tavi, or Nemi schedules one unique reward
+  letter for the following morning: 2 Crystal shards, 4 Lumenwood, or 3
+  Starbud seeds respectively.
+- The Starlight Post panel lists delivered letters, unread state, sender,
+  delivery day, localized body, attachment, and claim result. Reading and
+  claiming route through `GameSession`; a full backpack leaves the attachment
+  safely in the mail.
+- Delivered, read, and claimed states use stable mail IDs in an additive
+  `Mail` projection under `schemaVersion: 1`. Old saves receive an empty
+  mailbox, unknown IDs are filtered, and loading or sleeping cannot duplicate
+  a delivered reward.
 
 ## Seven-day weather, shipping, and eight crops
 
@@ -301,6 +321,9 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-07-31 15:08:11 CST — Added the homestead Starlight Mailbox, first
+  Starlight Post panel, Nemi's welcome letter, and three Trusted Friend reward
+  letters with atomic attachment claims, compatible saves, and visual QA.
 - 2026-07-31 15:00:13 CST — Added Sela, Elowen, Vessa, Orin, and Kael to reach
   eight core villagers, including ordinary-day/Lanternrest schedules,
   bilingual dialogue, gift preferences, relationships, and compatible saves.

@@ -12,6 +12,8 @@ public sealed partial class FarmView : Node2D
     public static readonly GridPosition ShippingCell = FarmLayout.ShippingCell;
     public static readonly GridPosition CommissionBoardCell =
         FarmLayout.CommissionBoardCell;
+    public static readonly GridPosition StarlightMailboxCell =
+        FarmLayout.StarlightMailboxCell;
     public static readonly GridPosition WoodlandStarlightCell =
         WorldDefinition.WoodlandStarlightCell;
     public static readonly GridPosition MoonlitArchiveDoorCell =
@@ -30,6 +32,7 @@ public sealed partial class FarmView : Node2D
     private readonly WorldChunkStreamer _worldStreamer;
     private readonly Sprite2D _shippingBin;
     private readonly Sprite2D _commissionBoard;
+    private readonly Sprite2D _starlightMailbox;
     private readonly Node2D _storageChestLayer;
     private readonly Node2D _farmObjectLayer;
     private GridPosition? _openStorageChest;
@@ -113,6 +116,21 @@ public sealed partial class FarmView : Node2D
             ZIndex = -1
         });
         AddChild(_commissionBoard);
+
+        _starlightMailbox = GeneratedArt.CreateStarlightMailboxSprite(
+            session.Mail.HasUnread
+        );
+        _starlightMailbox.Name = MailCatalog.MailboxId;
+        _starlightMailbox.Position =
+            CellCenter(StarlightMailboxCell) + new Vector2(0, 8);
+        _starlightMailbox.ZIndex = 7;
+        _starlightMailbox.SetMeta("entity_id", MailCatalog.MailboxId);
+        _starlightMailbox.AddChild(new ActorShadow
+        {
+            Position = new Vector2(0, 1),
+            ZIndex = -1
+        });
+        AddChild(_starlightMailbox);
 
         _storageChestLayer = new Node2D
         {
@@ -206,6 +224,7 @@ public sealed partial class FarmView : Node2D
         session.Storage.Changed += RefreshStorageChests;
         session.FarmObjects.Changed += RefreshFarmObjects;
         session.Commission.Changed += RefreshCommissionBoard;
+        session.Mail.Changed += RefreshStarlightMailbox;
         UpdateLighting();
     }
 
@@ -228,6 +247,7 @@ public sealed partial class FarmView : Node2D
     public event Action? ProcessorRequested;
     public event Action? ShippingRequested;
     public event Action? CommissionRequested;
+    public event Action? MailRequested;
     public event Action? StarlightRequested;
     public event Action<GridPosition>? VillagerRequested;
     public event Action<GridPosition>? StorageRequested;
@@ -275,6 +295,12 @@ public sealed partial class FarmView : Node2D
             IsNearCommissionBoard(player))
         {
             return _session.PreviewSelectedTarget(CommissionBoardCell);
+        }
+
+        if (target == StarlightMailboxCell ||
+            IsAdjacent(player, StarlightMailboxCell))
+        {
+            return _session.PreviewSelectedTarget(StarlightMailboxCell);
         }
 
         var storageTarget = ResolveStorageTarget(target, player);
@@ -390,6 +416,11 @@ public sealed partial class FarmView : Node2D
         {
             RequestCommissionBoard();
         }
+        else if (target == StarlightMailboxCell ||
+            IsAdjacent(_player.CurrentCell, StarlightMailboxCell))
+        {
+            RequestStarlightMail();
+        }
         else if (storageTarget is { } chest)
         {
             RequestHandInteraction(() => StorageRequested?.Invoke(chest));
@@ -467,6 +498,7 @@ public sealed partial class FarmView : Node2D
         _session.Storage.Changed -= RefreshStorageChests;
         _session.FarmObjects.Changed -= RefreshFarmObjects;
         _session.Commission.Changed -= RefreshCommissionBoard;
+        _session.Mail.Changed -= RefreshStarlightMailbox;
     }
 
     private TileMapLayer Layer(string name, TileSet tileSet, int zIndex)
@@ -623,6 +655,26 @@ public sealed partial class FarmView : Node2D
         }
 
         CommissionRequested?.Invoke();
+    }
+
+    private void RefreshStarlightMailbox()
+    {
+        GeneratedArt.SetStarlightMailboxState(
+            _starlightMailbox,
+            _session.Mail.HasUnread
+        );
+    }
+
+    private void RequestStarlightMail()
+    {
+        var result = _session.UseSelected(StarlightMailboxCell);
+        if (!result.Succeeded)
+        {
+            NoticeRequested?.Invoke(result.MessageKey);
+            return;
+        }
+
+        MailRequested?.Invoke();
     }
 
     private void RequestStarlight()
@@ -1017,6 +1069,33 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), line, false, 1.7f);
                 DrawArc(origin + new Vector2(8, -18), 24 + pulse * 2, 0, Mathf.Tau, 28, new Color(accent, 0.34f), 1);
                 break;
+            case TargetPreviewKind.Mailbox:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-22, -54),
+                        new Vector2(60, 70)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-22, -54),
+                        new Vector2(60, 70)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -21),
+                    27 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    28,
+                    new Color(accent, 0.34f),
+                    1
+                );
+                break;
             case TargetPreviewKind.StorageChest:
                 DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), line, false, 1.5f);
@@ -1113,6 +1192,7 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewKind.Tree => -72,
         TargetPreviewKind.Station => -68,
         TargetPreviewKind.CommissionBoard => -58,
+        TargetPreviewKind.Mailbox => -67,
         TargetPreviewKind.StorageChest => -48,
         TargetPreviewKind.Path => -22,
         TargetPreviewKind.Fence => -39,

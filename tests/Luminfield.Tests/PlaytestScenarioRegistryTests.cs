@@ -82,6 +82,18 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-commission-map",
             PlaytestScenarioId.CommissionMap
         ),
+        (
+            "--playtest-mailbox-unread",
+            PlaytestScenarioId.MailboxUnread
+        ),
+        (
+            "--playtest-mail-panel",
+            PlaytestScenarioId.MailPanel
+        ),
+        (
+            "--playtest-mail-reward",
+            PlaytestScenarioId.MailReward
+        ),
         ("--playtest-starlight-map", PlaytestScenarioId.StarlightMap),
         (
             "--playtest-starlight-map-restored",

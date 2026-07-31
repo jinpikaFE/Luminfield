@@ -354,6 +354,7 @@ public sealed class SaveService
         );
         save.Starlight = StarlightSystem.NormalizeSave(save.Starlight);
         save.Village = VillageSystem.NormalizeSave(save.Village);
+        save.Mail = MailSystem.NormalizeSave(save.Mail);
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

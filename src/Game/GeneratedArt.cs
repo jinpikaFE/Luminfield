@@ -59,6 +59,11 @@ internal static class GeneratedArt
             "res://assets/generated/woodland_starlight_pedestal.png"
         );
 
+    private static readonly Texture2D StarlightMailbox =
+        GD.Load<Texture2D>(
+            "res://assets/generated/starlight_mailbox.png"
+        );
+
     private static readonly IReadOnlyDictionary<string, int> CropExpansionRows =
         new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -127,6 +132,14 @@ internal static class GeneratedArt
         new(110, 655, 480, 480);
     private static readonly Rect2 WoodlandRenewalRegion =
         new(700, 635, 370, 540);
+    private static readonly Rect2 StarlightMailboxClosedRegion =
+        new(0, 0, 627, 627);
+    private static readonly Rect2 StarlightMailboxUnreadRegion =
+        new(627, 0, 627, 627);
+    private static readonly Rect2 StarlightEnvelopeRegion =
+        new(0, 627, 627, 627);
+    private static readonly Rect2 RelationshipReplyRegion =
+        new(627, 627, 627, 627);
     private static readonly Rect2 StarsoilFertilizerItemRegion =
         new(154, 126, 281, 324);
     private static readonly Rect2 FertilizedSoilRegion =
@@ -528,6 +541,45 @@ internal static class GeneratedArt
     {
         Atlas = DailyCommissionBoard,
         Region = CommissionRewardRegion,
+        FilterClip = true
+    };
+
+    public static Sprite2D CreateStarlightMailboxSprite(bool unread)
+    {
+        var sprite = new Sprite2D
+        {
+            Texture = StarlightMailbox,
+            RegionEnabled = true,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        SetStarlightMailboxState(sprite, unread);
+        return sprite;
+    }
+
+    public static void SetStarlightMailboxState(
+        Sprite2D sprite,
+        bool unread
+    )
+    {
+        var source = unread
+            ? StarlightMailboxUnreadRegion
+            : StarlightMailboxClosedRegion;
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (62f / source.Size.Y);
+    }
+
+    public static Texture2D CreateStarlightEnvelopeIcon() => new AtlasTexture
+    {
+        Atlas = StarlightMailbox,
+        Region = StarlightEnvelopeRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D CreateRelationshipReplyIcon() => new AtlasTexture
+    {
+        Atlas = StarlightMailbox,
+        Region = RelationshipReplyRegion,
         FilterClip = true
     };
 

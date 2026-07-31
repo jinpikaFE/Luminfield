@@ -215,6 +215,19 @@ public sealed class VillageRelationshipSave
     public int LastGiftDay { get; set; }
 }
 
+public sealed class MailEntrySave
+{
+    public string MailId { get; set; } = string.Empty;
+    public int DeliveredDay { get; set; } = 1;
+    public bool IsRead { get; set; }
+    public bool AttachmentClaimed { get; set; }
+}
+
+public sealed class MailSave
+{
+    public List<MailEntrySave> Entries { get; set; } = [];
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -236,6 +249,7 @@ public sealed class GameSaveV1
     public DailyCommissionSave Commission { get; set; } = new();
     public StarlightSave Starlight { get; set; } = new();
     public VillageSave Village { get; set; } = new();
+    public MailSave Mail { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -277,6 +291,7 @@ public enum TargetPreviewKind
     Water,
     Landmark,
     StarlightPedestal,
+    Mailbox,
     Character,
     Door,
     Station,

@@ -25,6 +25,7 @@ public sealed partial class Main : Node
     private ProcessorOverlay? _processorOverlay;
     private ShippingOverlay? _shippingOverlay;
     private CommissionBoardOverlay? _commissionOverlay;
+    private StarlightMailOverlay? _mailOverlay;
     private StarlightPedestalOverlay? _starlightOverlay;
     private CraftingOverlay? _craftingOverlay;
     private StorageOverlay? _storageOverlay;
@@ -34,6 +35,7 @@ public sealed partial class Main : Node
     private bool _playing;
     private bool _paused;
     private bool _titleLanguageOverridden;
+    private bool _mailPlaytest;
 
     public override void _Ready()
     {
@@ -167,6 +169,14 @@ public sealed partial class Main : Node
         }
 
         if (@event.IsActionPressed(InputSetup.Pause) &&
+            _mailOverlay is not null)
+        {
+            CloseStarlightMail();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
             _starlightOverlay is not null)
         {
             CloseStarlightPedestal();
@@ -227,6 +237,7 @@ public sealed partial class Main : Node
             _processorOverlay is null &&
             _shippingOverlay is null &&
             _commissionOverlay is null &&
+            _mailOverlay is null &&
             _starlightOverlay is null &&
             _craftingOverlay is null &&
             _storageOverlay is null &&
@@ -300,6 +311,7 @@ public sealed partial class Main : Node
         _processorOverlay is not null ||
         _shippingOverlay is not null ||
         _commissionOverlay is not null ||
+        _mailOverlay is not null ||
         _starlightOverlay is not null ||
         _craftingOverlay is not null ||
         _storageOverlay is not null ||
@@ -312,6 +324,7 @@ public sealed partial class Main : Node
         _playing = false;
         _paused = false;
         _titleLanguageOverridden = false;
+        _mailPlaytest = false;
         ClearWorld();
         FreeUi(_hud);
         _hud = null;
@@ -329,6 +342,8 @@ public sealed partial class Main : Node
         _shippingOverlay = null;
         FreeUi(_commissionOverlay);
         _commissionOverlay = null;
+        FreeUi(_mailOverlay);
+        _mailOverlay = null;
         FreeUi(_starlightOverlay);
         _starlightOverlay = null;
         FreeUi(_craftingOverlay);
@@ -418,6 +433,12 @@ public sealed partial class Main : Node
                     StartCommissionReadyEnglishPlaytest,
                 [PlaytestScenarioId.CommissionMap] =
                     StartCommissionMapPlaytest,
+                [PlaytestScenarioId.MailboxUnread] =
+                    StartMailboxUnreadPlaytest,
+                [PlaytestScenarioId.MailPanel] =
+                    StartMailPanelPlaytest,
+                [PlaytestScenarioId.MailReward] =
+                    StartMailRewardPlaytest,
                 [PlaytestScenarioId.StarlightMap] =
                     StartStarlightMapPlaytest,
                 [PlaytestScenarioId.StarlightMapRestored] =
@@ -724,6 +745,108 @@ public sealed partial class Main : Node
         if (openBoard)
         {
             Callable.From(OpenCommissionBoard).CallDeferred();
+        }
+    }
+
+    private void StartMailboxUnreadPlaytest()
+    {
+        PrepareMailPlaytest(
+            [
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.NemiWelcomeId,
+                    DeliveredDay = 2
+                }
+            ]
+        );
+        StartMailPlaytestWorld(false);
+    }
+
+    private void StartMailPanelPlaytest()
+    {
+        PrepareMailPlaytest(
+            [
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.NemiWelcomeId,
+                    DeliveredDay = 4
+                },
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.LioraTrustedId,
+                    DeliveredDay = 3
+                },
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.TaviTrustedId,
+                    DeliveredDay = 3,
+                    IsRead = true,
+                    AttachmentClaimed = true
+                }
+            ]
+        );
+        StartMailPlaytestWorld(true);
+    }
+
+    private void StartMailRewardPlaytest()
+    {
+        PrepareMailPlaytest(
+            [
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.LioraTrustedId,
+                    DeliveredDay = 5
+                },
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.NemiWelcomeId,
+                    DeliveredDay = 2,
+                    IsRead = true
+                }
+            ]
+        );
+        StartMailPlaytestWorld(true, true);
+    }
+
+    private void PrepareMailPlaytest(IReadOnlyList<MailEntrySave> entries)
+    {
+        FreeUi(_title);
+        _title = null;
+        _mailPlaytest = true;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = entries.Max(entry => entry.DeliveredDay);
+        save.Mail = new MailSave
+        {
+            Entries = entries.ToList()
+        };
+        _session.Restore(save);
+    }
+
+    private void StartMailPlaytestWorld(
+        bool openPanel,
+        bool claimAttachment = false
+    )
+    {
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            FarmView.StarlightMailboxCell.X * 16 + 8,
+            (FarmView.StarlightMailboxCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openPanel)
+        {
+            Callable.From(() =>
+            {
+                OpenStarlightMail();
+                if (claimAttachment)
+                {
+                    _mailOverlay?.PressClaimForPlaytest();
+                }
+            }).CallDeferred();
         }
     }
 
@@ -1337,6 +1460,7 @@ public sealed partial class Main : Node
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
         _farm.CommissionRequested += OpenCommissionBoard;
+        _farm.MailRequested += OpenStarlightMail;
         _farm.StarlightRequested += OpenStarlightPedestal;
         _farm.VillagerRequested += TalkToVillager;
         _farm.StorageRequested += OpenStorage;
@@ -1763,6 +1887,52 @@ public sealed partial class Main : Node
             _shopOverlay is null &&
             _processorOverlay is null &&
             _shippingOverlay is null &&
+            _mailOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _backpackOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenStarlightMail()
+    {
+        if (_mailOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _mailOverlay = new StarlightMailOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _mailOverlay.CloseRequested += CloseStarlightMail;
+        _mailOverlay.MailChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            if (!_mailPlaytest)
+            {
+                SaveNow(false);
+            }
+        };
+        _uiLayer.AddChild(_mailOverlay);
+    }
+
+    private void CloseStarlightMail()
+    {
+        FreeUi(_mailOverlay);
+        _mailOverlay = null;
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
             _craftingOverlay is null &&
             _storageOverlay is null &&
             _nightlySummaryOverlay is null &&
@@ -2096,6 +2266,7 @@ public sealed partial class Main : Node
         _processorOverlay?.RefreshText();
         _shippingOverlay?.RefreshText();
         _commissionOverlay?.RefreshText();
+        _mailOverlay?.RefreshText();
         _starlightOverlay?.RefreshText();
         _craftingOverlay?.RefreshText();
         _storageOverlay?.RefreshText();

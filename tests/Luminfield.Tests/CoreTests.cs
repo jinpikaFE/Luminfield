@@ -2997,6 +2997,201 @@ public sealed class SaveServiceTests : IDisposable
     }
 
     [Fact]
+    public void MailDeliversNextDayExactlyOnceForMeetingAndTrustedTiers()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Village.Restore(new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.NemiId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.LioraId,
+                    Points = 25
+                },
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.TaviId,
+                    Points = 25
+                },
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.NemiId,
+                    Points = 25
+                }
+            ]
+        });
+
+        Assert.Empty(session.Mail.Delivered);
+        session.EndDay();
+
+        Assert.Equal(4, session.Mail.Delivered.Count);
+        Assert.All(
+            session.Mail.Delivered,
+            mail => Assert.Equal(2, mail.DeliveredDay)
+        );
+        var delivered = session.Mail.Delivered.ToDictionary(
+            mail => mail.Definition.Id,
+            StringComparer.Ordinal
+        );
+        Assert.False(
+            delivered[MailCatalog.NemiWelcomeId].Definition.HasAttachment
+        );
+        Assert.Equal(
+            (DataCatalog.CrystalShardId, 2),
+            (
+                delivered[MailCatalog.LioraTrustedId]
+                    .Definition.AttachmentItemId,
+                delivered[MailCatalog.LioraTrustedId]
+                    .Definition.AttachmentCount
+            )
+        );
+        Assert.Equal(
+            (DataCatalog.LumenwoodId, 4),
+            (
+                delivered[MailCatalog.TaviTrustedId]
+                    .Definition.AttachmentItemId,
+                delivered[MailCatalog.TaviTrustedId]
+                    .Definition.AttachmentCount
+            )
+        );
+        Assert.Equal(
+            (DataCatalog.StarbudSeedId, 3),
+            (
+                delivered[MailCatalog.NemiTrustedId]
+                    .Definition.AttachmentItemId,
+                delivered[MailCatalog.NemiTrustedId]
+                    .Definition.AttachmentCount
+            )
+        );
+        session.EndDay();
+        Assert.Equal(4, session.Mail.Delivered.Count);
+
+        var restored = new GameSession();
+        restored.Restore(session.Capture());
+        restored.EndDay();
+        Assert.Equal(4, restored.Mail.Delivered.Count);
+    }
+
+    [Fact]
+    public void MailAttachmentClaimIsAtomicWhenBackpackIsFull()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Mail.Restore(new MailSave
+        {
+            Entries =
+            [
+                new MailEntrySave
+                {
+                    MailId = MailCatalog.LioraTrustedId,
+                    DeliveredDay = 2
+                }
+            ]
+        });
+        session.Inventory.Restore(
+            Enumerable.Range(0, Inventory.SlotCount - Inventory.StartingToolCount)
+                .Select(_ => new InventorySlot
+                {
+                    ItemId = DataCatalog.StarbudId,
+                    Count = 99
+                }),
+            0
+        );
+
+        var failed = session.ClaimMailAttachment(
+            MailCatalog.LioraTrustedId
+        );
+
+        Assert.False(failed.Succeeded);
+        Assert.Equal("mail.notice.backpack_full", failed.MessageKey);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.False(session.Mail.Delivered.Single().AttachmentClaimed);
+
+        Assert.True(session.Inventory.Remove(DataCatalog.StarbudId, 99));
+        var claimed = session.ClaimMailAttachment(
+            MailCatalog.LioraTrustedId
+        );
+        Assert.True(claimed.Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.True(session.Mail.Delivered.Single().AttachmentClaimed);
+
+        var duplicate = session.ClaimMailAttachment(
+            MailCatalog.LioraTrustedId
+        );
+        Assert.False(duplicate.Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.CrystalShardId));
+    }
+
+    [Fact]
+    public void MailboxPreviewAndActionShareTheHandRule()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var energy = session.Energy;
+
+        var available = session.PreviewSelectedTarget(
+            FarmLayout.StarlightMailboxCell
+        );
+        Assert.True(available.IsAvailable);
+        Assert.Equal(TargetPreviewKind.Mailbox, available.Kind);
+        Assert.True(
+            session.UseSelected(FarmLayout.StarlightMailboxCell).Succeeded
+        );
+
+        session.Inventory.Select(1);
+        var wrongTool = session.PreviewSelectedTarget(
+            FarmLayout.StarlightMailboxCell
+        );
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongTool.State);
+        Assert.False(
+            session.UseSelected(FarmLayout.StarlightMailboxCell).Succeeded
+        );
+        Assert.Equal(energy, session.Energy);
+    }
+
+    [Fact]
+    public void MailSaveFiltersUnknownIdsAndPreservesClaimState()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = 4;
+        save.Coins = 177;
+        save.Mail.Entries =
+        [
+            new MailEntrySave
+            {
+                MailId = MailCatalog.TaviTrustedId,
+                DeliveredDay = 3,
+                IsRead = true,
+                AttachmentClaimed = true
+            },
+            new MailEntrySave
+            {
+                MailId = "unknown_mail",
+                DeliveredDay = 99
+            }
+        ];
+        var service = new SaveService(path);
+        service.Save(save);
+
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(4, result.Save.Day);
+        Assert.Equal(177, result.Save.Coins);
+        var mail = Assert.Single(result.Save.Mail.Entries);
+        Assert.Equal(MailCatalog.TaviTrustedId, mail.MailId);
+        Assert.True(mail.IsRead);
+        Assert.True(mail.AttachmentClaimed);
+    }
+
+    [Fact]
     public void CorruptSaveIsPreservedInsteadOfOverwritten()
     {
         var path = Path.Combine(_directory, "slot_1.json");

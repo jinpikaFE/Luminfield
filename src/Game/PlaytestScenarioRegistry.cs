@@ -35,6 +35,9 @@ public enum PlaytestScenarioId
     CommissionReady,
     CommissionReadyEnglish,
     CommissionMap,
+    MailboxUnread,
+    MailPanel,
+    MailReward,
     StarlightMap,
     StarlightMapRestored,
     StarlightPanel,
@@ -130,6 +133,18 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.CommissionMap,
             "--playtest-commission-map"
+        ),
+        new(
+            PlaytestScenarioId.MailboxUnread,
+            "--playtest-mailbox-unread"
+        ),
+        new(
+            PlaytestScenarioId.MailPanel,
+            "--playtest-mail-panel"
+        ),
+        new(
+            PlaytestScenarioId.MailReward,
+            "--playtest-mail-reward"
         ),
         new(
             PlaytestScenarioId.StarlightMap,

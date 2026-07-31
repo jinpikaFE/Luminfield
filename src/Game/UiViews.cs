@@ -389,6 +389,14 @@ public sealed partial class HudView : Control
                 _session.Starlight.Current.Nodes.Count
             );
         }
+        if (_session.Mail.HasUnread)
+        {
+            objectiveText = _locale.Tr(
+                "mail.hud",
+                objectiveText,
+                _session.Mail.UnreadCount
+            );
+        }
         _objective.Text = objectiveText;
         _controls.Text = _locale.Tr("hud.controls");
         RefreshLocationChrome();

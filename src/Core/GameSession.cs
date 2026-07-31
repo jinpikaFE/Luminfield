@@ -23,6 +23,7 @@ public sealed class GameSession
     public DailyCommissionSystem Commission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
     public VillageSystem Village { get; } = new();
+    public MailSystem Mail { get; } = new();
 
     public int Energy { get; private set; } = MaxEnergy;
     public int WateringCanWater { get; private set; } = MaxWateringCanWater;
@@ -62,6 +63,7 @@ public sealed class GameSession
         Commission.Changed += NotifyChanged;
         Starlight.Changed += NotifyChanged;
         Village.Changed += NotifyChanged;
+        Mail.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -80,6 +82,7 @@ public sealed class GameSession
         Commission.Reset(Clock.Day);
         Starlight.Reset();
         Village.Reset();
+        Mail.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -105,6 +108,7 @@ public sealed class GameSession
         Exploration.Restore(save.Exploration);
         Starlight.Restore(save.Starlight);
         Village.Restore(save.Village);
+        Mail.Restore(save.Mail);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -187,6 +191,16 @@ public sealed class GameSession
             }
 
             return UseHand(FarmLayout.CommissionBoardCell);
+        }
+
+        if (target == FarmLayout.StarlightMailboxCell)
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return UseHand(FarmLayout.StarlightMailboxCell);
         }
 
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -382,6 +396,27 @@ public sealed class GameSession
                     TargetPreviewKind.CommissionBoard,
                     "target.need.hand"
                 );
+        }
+
+        if (target == FarmLayout.StarlightMailboxCell)
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    FarmLayout.StarlightMailboxCell,
+                    TargetPreviewKind.Mailbox,
+                    "target.need.hand"
+                );
+            }
+
+            var actionKey = Mail.HasUnread
+                ? "target.action.open_unread_mail"
+                : "target.action.check_mail";
+            return TargetPreview.Available(
+                FarmLayout.StarlightMailboxCell,
+                TargetPreviewKind.Mailbox,
+                actionKey
+            );
         }
 
         if (Storage.HasChest(target))
@@ -794,6 +829,11 @@ public sealed class GameSession
             return ActionResult.Success(messageKey: "commission.opened");
         }
 
+        if (target == FarmLayout.StarlightMailboxCell)
+        {
+            return ActionResult.Success(messageKey: "mail.opened");
+        }
+
         if (Storage.HasChest(target))
         {
             return ActionResult.Success(messageKey: "storage.opened");
@@ -1073,6 +1113,11 @@ public sealed class GameSession
         return result;
     }
 
+    public ActionResult ReadMail(string mailId) => Mail.Read(mailId);
+
+    public ActionResult ClaimMailAttachment(string mailId) =>
+        Mail.ClaimAttachment(mailId, Inventory);
+
     public StarlightContributionResult ContributeToStarlightNode(
         string nodeId
     )
@@ -1106,6 +1151,7 @@ public sealed class GameSession
         Coins += settlement.TotalCoins;
         Clock.StartNextDay();
         Commission.RefreshForDay(Clock.Day);
+        Mail.DeliverForDay(Clock.Day, Village);
         LastRespawnedResources = Resources.ResolveDay(
             Clock.Day,
             Starlight.WoodlandRenewalUnlocked
@@ -1151,7 +1197,8 @@ public sealed class GameSession
         FarmObjects = FarmObjects.Capture(),
         Commission = Commission.Capture(),
         Starlight = Starlight.Capture(),
-        Village = Village.Capture()
+        Village = Village.Capture(),
+        Mail = Mail.Capture()
     };
 
     private TargetPreview PreviewArchiveTarget(GridPosition target)
