@@ -20,6 +20,8 @@ public sealed partial class FarmView : Node2D
         VillageCatalog.MoonlitArchiveDoorCell;
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
         VillageCatalog.MoonstoneWorkshopDoorCell;
+    public static readonly GridPosition StarweaverTeaHouseDoorCell =
+        VillageCatalog.StarweaverTeaHouseDoorCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -198,6 +200,14 @@ public sealed partial class FarmView : Node2D
             Position = CellCenter(MoonstoneWorkshopDoorCell),
             ZIndex = 30
         });
+        AddChild(new VillageEntranceBeacon(
+            () => _player.CurrentCell,
+            StarweaverTeaHouseDoorCell
+        )
+        {
+            Position = CellCenter(StarweaverTeaHouseDoorCell),
+            ZIndex = 30
+        });
 
         var camera = new Camera2D
         {
@@ -243,6 +253,7 @@ public sealed partial class FarmView : Node2D
     public event Action? EnterCottageRequested;
     public event Action? EnterArchiveRequested;
     public event Action? EnterWorkshopRequested;
+    public event Action? EnterTeaHouseRequested;
     public event Action? ShopRequested;
     public event Action? ProcessorRequested;
     public event Action? ShippingRequested;
@@ -276,6 +287,13 @@ public sealed partial class FarmView : Node2D
         {
             return _session.PreviewSelectedTarget(
                 MoonstoneWorkshopDoorCell
+            );
+        }
+
+        if (target == StarweaverTeaHouseDoorCell)
+        {
+            return _session.PreviewSelectedTarget(
+                StarweaverTeaHouseDoorCell
             );
         }
 
@@ -345,6 +363,13 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        if (IsAdjacent(player, StarweaverTeaHouseDoorCell))
+        {
+            return _session.PreviewSelectedTarget(
+                StarweaverTeaHouseDoorCell
+            );
+        }
+
         if (target == ShopCell || IsAdjacent(player, ShopCell))
         {
             return PreviewHandInteraction(
@@ -393,6 +418,13 @@ public sealed partial class FarmView : Node2D
         if (target == MoonstoneWorkshopDoorCell)
         {
             EnterWorkshopRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == StarweaverTeaHouseDoorCell)
+        {
+            EnterTeaHouseRequested?.Invoke();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -446,6 +478,13 @@ public sealed partial class FarmView : Node2D
                  ))
         {
             EnterWorkshopRequested?.Invoke();
+        }
+        else if (IsAdjacent(
+                     _player.CurrentCell,
+                     StarweaverTeaHouseDoorCell
+                 ))
+        {
+            EnterTeaHouseRequested?.Invoke();
         }
         else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
         {

@@ -2039,6 +2039,109 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
+    public void VessaWorksInsideTeaHouseWhileLanternrestStaysIndependent()
+    {
+        var beforeWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            1,
+            VillageCatalog.StarweaverTeaHouseOpenMinute - 30
+        );
+        var atWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            1,
+            10 * 60
+        );
+        var afterWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            1,
+            14 * 60
+        );
+        var lanternrest = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            CalendarSystem.DaysPerWeek,
+            10 * 60
+        );
+
+        Assert.NotNull(beforeWork);
+        Assert.Equal(PlayerLocationIds.World, beforeWork.LocationId);
+        Assert.NotNull(atWork);
+        Assert.Equal(
+            PlayerLocationIds.StarweaverTeaHouse,
+            atWork.LocationId
+        );
+        Assert.Equal(
+            VillageCatalog.StarwovenTeaCounterCell.Y + 1,
+            atWork.Position.Y
+        );
+        Assert.NotNull(afterWork);
+        Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
+        Assert.NotNull(lanternrest);
+        Assert.Equal(PlayerLocationIds.World, lanternrest.LocationId);
+        Assert.NotEqual(atWork.Position, lanternrest.Position);
+    }
+
+    [Fact]
+    public void VessaTalkAndGiftUseTheTeaHouseSceneProjection()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(1, 10 * 60);
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarweaverTeaHouse
+        );
+        var vessa = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            session.Clock.Day,
+            session.Clock.MinuteOfDay
+        );
+        Assert.NotNull(vessa);
+        Assert.Equal(
+            PlayerLocationIds.StarweaverTeaHouse,
+            vessa.LocationId
+        );
+
+        var talkPreview = session.PreviewSelectedTarget(vessa.Position);
+        Assert.True(talkPreview.IsAvailable);
+        Assert.Equal("target.action.talk", talkPreview.LabelKey);
+        var talk = session.InteractWithVillager(
+            vessa.Position,
+            out var talkResult
+        );
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(talk);
+
+        Assert.True(session.Inventory.Add(DataCatalog.CloudleafId, 2));
+        Assert.True(
+            session.Inventory.PromoteToHotbar(DataCatalog.CloudleafId)
+        );
+        var giftPreview = session.PreviewSelectedTarget(vessa.Position);
+        Assert.True(giftPreview.IsAvailable);
+        Assert.Equal("target.action.gift", giftPreview.LabelKey);
+        var gift = session.InteractWithVillager(
+            vessa.Position,
+            out var giftResult
+        );
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(gift);
+        Assert.Equal(GiftReaction.Loved, gift.GiftReaction);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.CloudleafId));
+
+        session.SetPlayerLocation(
+            VillageCatalog.StarweaverTeaHouseDoorCell.X * 16 + 8,
+            VillageCatalog.StarweaverTeaHouseDoorCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        Assert.Null(session.InteractWithVillager(
+            vessa.Position,
+            out var wrongScene
+        ));
+        Assert.False(wrongScene.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.CloudleafId));
+    }
+
+    [Fact]
     public void ArchiveDoorDeskAndExitShareLocationAwareRules()
     {
         var session = new GameSession();
@@ -2156,6 +2259,91 @@ public sealed class VillageSystemTests
             TargetPreviewState.Blocked,
             session.PreviewSelectedTarget(door).State
         );
+    }
+
+    [Fact]
+    public void TeaHouseDoorCounterAndExitShareLocationAwareHandRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var door = VillageCatalog.StarweaverTeaHouseDoorCell;
+        session.Clock.Reset(
+            1,
+            VillageCatalog.StarweaverTeaHouseOpenMinute - 1
+        );
+
+        var closed = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, closed.State);
+        Assert.Equal("target.status.tea_house_closed", closed.LabelKey);
+        Assert.False(session.TryEnterStarweaverTeaHouse().Succeeded);
+
+        session.Clock.Reset(
+            1,
+            VillageCatalog.StarweaverTeaHouseOpenMinute
+        );
+        var open = session.PreviewSelectedTarget(door);
+        Assert.True(open.IsAvailable);
+        Assert.Equal("target.action.enter_tea_house", open.LabelKey);
+        Assert.True(session.TryEnterStarweaverTeaHouse().Succeeded);
+
+        session.Inventory.Select(1);
+        var energy = session.Energy;
+        var coins = session.Coins;
+        var wrongDoorTool = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongDoorTool.State);
+        Assert.False(session.TryEnterStarweaverTeaHouse().Succeeded);
+        Assert.Equal(PlayerLocationIds.World, session.PlayerLocationId);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarweaverTeaHouse
+        );
+        var counterWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.StarwovenTeaCounterCell
+        );
+        var exitWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.StarweaverTeaHouseExitCell
+        );
+        Assert.Equal(TargetPreviewState.NeedsTool, counterWithTool.State);
+        Assert.Equal(TargetPreviewState.NeedsTool, exitWithTool.State);
+        Assert.False(session.InspectStarwovenTeaCounter().Succeeded);
+        Assert.False(session.TryExitStarweaverTeaHouse().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+
+        session.Inventory.Select(0);
+        var counter = session.PreviewSelectedTarget(
+            VillageCatalog.StarwovenTeaCounterCell
+        );
+        var exit = session.PreviewSelectedTarget(
+            VillageCatalog.StarweaverTeaHouseExitCell
+        );
+        Assert.True(counter.IsAvailable);
+        Assert.Equal(
+            "target.action.inspect_tea_counter",
+            counter.LabelKey
+        );
+        Assert.True(exit.IsAvailable);
+        Assert.True(session.InspectStarwovenTeaCounter().Succeeded);
+        Assert.True(session.TryExitStarweaverTeaHouse().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+
+        session.SetPlayerLocation(
+            door.X * 16 + 8,
+            (door.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        session.Clock.Reset(
+            1,
+            VillageCatalog.StarweaverTeaHouseCloseMinute
+        );
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterStarweaverTeaHouse().Succeeded);
     }
 
     [Fact]
@@ -2664,6 +2852,43 @@ public sealed class LocaleTests
         var chinese = locale.Keys(LocaleService.SimplifiedChinese).Order().ToArray();
         Assert.Equal(english, chinese);
         Assert.DoesNotContain(english, key => locale.Tr(key).StartsWith('['));
+    }
+
+    [Fact]
+    public void TeaHouseInteractionKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = new[]
+        {
+            "target.action.enter_tea_house",
+            "target.action.exit_tea_house",
+            "target.action.inspect_tea_counter",
+            "target.status.tea_house_closed",
+            "notice.enter_tea_house",
+            "notice.leave_tea_house",
+            "notice.tea_house_closed",
+            "notice.tea_house_world_only",
+            "tea_house.counter.name",
+            "tea_house.counter.dialogue"
+        };
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
     }
 
     [Fact]
@@ -3432,6 +3657,79 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(
             PlayerLocationIds.World,
             migrated.Save.Player.LocationId
+        );
+    }
+
+    [Fact]
+    public void TeaHouseLocationAndLegacyLocationsLoadSafely()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarweaverTeaHouse
+        );
+        service.Save(session.Capture());
+
+        var teaHouseResult = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, teaHouseResult.Status);
+        Assert.NotNull(teaHouseResult.Save);
+        Assert.Equal(
+            PlayerLocationIds.StarweaverTeaHouse,
+            teaHouseResult.Save.Player.LocationId
+        );
+        var restored = new GameSession();
+        restored.Restore(teaHouseResult.Save);
+        Assert.True(restored.InsideTeaHouse);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 504,
+                "y": 152,
+                "energy": 100,
+                "selectedSlot": 0
+              }
+            }
+            """
+        );
+
+        var legacy = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, legacy.Status);
+        Assert.NotNull(legacy.Save);
+        Assert.Equal(PlayerLocationIds.World, legacy.Save.Player.LocationId);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 328,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "locationId": "retired_tea_room"
+              }
+            }
+            """
+        );
+
+        var unknown = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
+        Assert.NotNull(unknown.Save);
+        Assert.Equal(
+            PlayerLocationIds.World,
+            unknown.Save.Player.LocationId
         );
     }
 

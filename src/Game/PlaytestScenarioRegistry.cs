@@ -15,6 +15,9 @@ public enum PlaytestScenarioId
     WorkshopTavi,
     Workshop,
     WorkshopDoor,
+    TeaHouseVessa,
+    TeaHouse,
+    TeaHouseDoor,
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
@@ -85,6 +88,15 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.WorkshopDoor,
             "--playtest-workshop-door"
+        ),
+        new(
+            PlaytestScenarioId.TeaHouseVessa,
+            "--playtest-tea-house-vessa"
+        ),
+        new(PlaytestScenarioId.TeaHouse, "--playtest-tea-house"),
+        new(
+            PlaytestScenarioId.TeaHouseDoor,
+            "--playtest-tea-house-door"
         ),
         new(
             PlaytestScenarioId.VillageDialogue,

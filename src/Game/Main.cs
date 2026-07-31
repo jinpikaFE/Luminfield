@@ -16,6 +16,7 @@ public sealed partial class Main : Node
     private CottageView? _cottage;
     private ArchiveView? _archive;
     private WorkshopView? _workshop;
+    private TeaHouseView? _teaHouse;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -402,6 +403,12 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
                 [PlaytestScenarioId.WorkshopDoor] =
                     StartWorkshopDoorPlaytest,
+                [PlaytestScenarioId.TeaHouseVessa] =
+                    StartTeaHouseVessaPlaytest,
+                [PlaytestScenarioId.TeaHouse] =
+                    StartTeaHousePlaytest,
+                [PlaytestScenarioId.TeaHouseDoor] =
+                    StartTeaHouseDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
                     StartVillageDialoguePlaytest,
                 [PlaytestScenarioId.SelaDialogue] =
@@ -1226,6 +1233,72 @@ public sealed partial class Main : Node
         }
     }
 
+    private void StartTeaHouseDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            10 * 60,
+            new GridPosition(
+                VillageCatalog.StarweaverTeaHouseDoorCell.X,
+                VillageCatalog.StarweaverTeaHouseDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartTeaHousePlaytest()
+    {
+        StartTeaHousePlaytest(false);
+    }
+
+    private void StartTeaHouseVessaPlaytest()
+    {
+        StartTeaHousePlaytest(true);
+    }
+
+    private void StartTeaHousePlaytest(bool giveGift)
+    {
+        const int day = 1;
+        const int minuteOfDay = 10 * 60;
+        var vessa = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            day,
+            minuteOfDay
+        );
+        if (vessa is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            10 * 16 + 8,
+            PlayerLocationIds.StarweaverTeaHouse
+        );
+        _session.Inventory.Select(0);
+        if (giveGift)
+        {
+            _session.Inventory.Add(DataCatalog.CloudleafId, 2);
+            _session.Inventory.PromoteToHotbar(
+                DataCatalog.CloudleafId
+            );
+        }
+
+        _playing = true;
+        EnsureHud();
+        ShowTeaHouse(false);
+        if (giveGift)
+        {
+            Callable.From(
+                () => TalkToVillager(vessa.Position)
+            ).CallDeferred();
+        }
+    }
+
     private void StartVillageRestdayEnglishPlaytest()
     {
         _locale.SetLocale(LocaleService.English);
@@ -1483,6 +1556,10 @@ public sealed partial class Main : Node
         {
             ShowWorkshop(false);
         }
+        else if (_session.InsideTeaHouse)
+        {
+            ShowTeaHouse(false);
+        }
         else
         {
             ShowFarm(false);
@@ -1503,7 +1580,8 @@ public sealed partial class Main : Node
     private void ShowFarm(
         bool fromCottage,
         bool fromArchive = false,
-        bool fromWorkshop = false
+        bool fromWorkshop = false,
+        bool fromTeaHouse = false
     )
     {
         ClearWorld();
@@ -1531,6 +1609,14 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromTeaHouse)
+        {
+            _session.SetPlayerLocation(
+                VillageCatalog.StarweaverTeaHouseDoorCell.X * 16 + 8,
+                (VillageCatalog.StarweaverTeaHouseDoorCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
@@ -1538,6 +1624,7 @@ public sealed partial class Main : Node
         _farm.EnterCottageRequested += () => ShowCottage(true);
         _farm.EnterArchiveRequested += TryEnterMoonlitArchive;
         _farm.EnterWorkshopRequested += TryEnterMoonstoneWorkshop;
+        _farm.EnterTeaHouseRequested += TryEnterStarweaverTeaHouse;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -1563,6 +1650,10 @@ public sealed partial class Main : Node
         else if (fromWorkshop)
         {
             _hud?.ShowNotice("notice.leave_workshop");
+        }
+        else if (fromTeaHouse)
+        {
+            _hud?.ShowNotice("notice.leave_tea_house");
         }
     }
 
@@ -1633,6 +1724,32 @@ public sealed partial class Main : Node
         if (fromWorld)
         {
             _hud?.ShowNotice("notice.enter_workshop");
+        }
+    }
+
+    private void ShowTeaHouse(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                20 * 16 + 8,
+                18 * 16 + 8,
+                PlayerLocationIds.StarweaverTeaHouse
+            );
+        }
+
+        _teaHouse = new TeaHouseView(_session, _locale);
+        _teaHouse.ExitRequested += TryLeaveStarweaverTeaHouse;
+        _teaHouse.TeaCounterRequested += InspectStarwovenTeaCounter;
+        _teaHouse.VillagerRequested += TalkToVillager;
+        _teaHouse.StepRequested += () => _audio.Play(PixelSound.Step);
+        _world = _teaHouse;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_tea_house");
         }
     }
 
@@ -1841,6 +1958,51 @@ public sealed partial class Main : Node
             () => { },
             GeneratedArt.RelationshipIcon(
                 RelationshipTier.TrustedFriend
+            )
+        );
+    }
+
+    private void TryEnterStarweaverTeaHouse()
+    {
+        var result = _session.TryEnterStarweaverTeaHouse();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowTeaHouse(true);
+    }
+
+    private void TryLeaveStarweaverTeaHouse()
+    {
+        var result = _session.TryExitStarweaverTeaHouse();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, false, false, true);
+    }
+
+    private void InspectStarwovenTeaCounter()
+    {
+        var result = _session.InspectStarwovenTeaCounter();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowDialogue(
+            "tea_house.counter.name",
+            result.MessageKey,
+            () => { },
+            GeneratedArt.RelationshipIcon(
+                RelationshipTier.NewAcquaintance
             )
         );
     }
@@ -2417,6 +2579,11 @@ public sealed partial class Main : Node
         {
             _workshop.ControlsEnabled = enabled;
         }
+
+        if (_teaHouse is not null)
+        {
+            _teaHouse.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -2430,6 +2597,7 @@ public sealed partial class Main : Node
         _cottage = null;
         _archive = null;
         _workshop = null;
+        _teaHouse = null;
     }
 
     private static void FreeUi(CanvasItem? item)

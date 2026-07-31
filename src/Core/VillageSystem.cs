@@ -121,6 +121,8 @@ public static class VillageCatalog
     public const string MoonlitArchiveLandmarkId = "moonlit_archive";
     public const string MoonstoneWorkshopLandmarkId =
         "moonstone_workshop";
+    public const string StarweaverTeaHouseLandmarkId =
+        "starweaver_tea_house";
 
     public static readonly GridArea VillageBounds = new(77, 30, 115, 63);
     public static readonly GridPosition VillageGateCell = new(97, 59);
@@ -133,10 +135,18 @@ public static class VillageCatalog
         new(20, 19);
     public static readonly GridPosition MoonRuneWorkbenchCell =
         new(20, 9);
+    public static readonly GridPosition StarweaverTeaHouseDoorCell =
+        new(107, 42);
+    public static readonly GridPosition StarweaverTeaHouseExitCell =
+        new(20, 19);
+    public static readonly GridPosition StarwovenTeaCounterCell =
+        new(20, 9);
     public const int MoonlitArchiveOpenMinute = 8 * 60;
     public const int MoonlitArchiveCloseMinute = 20 * 60;
     public const int MoonstoneWorkshopOpenMinute = 8 * 60;
     public const int MoonstoneWorkshopCloseMinute = 19 * 60;
+    public const int StarweaverTeaHouseOpenMinute = 9 * 60;
+    public const int StarweaverTeaHouseCloseMinute = 21 * 60;
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -148,8 +158,8 @@ public static class VillageCatalog
             [new GridArea(82, 34, 90, 40)]
         ),
         new(
-            "starweaver_tea_house",
-            new GridPosition(107, 42),
+            StarweaverTeaHouseLandmarkId,
+            StarweaverTeaHouseDoorCell,
             1,
             "village.landmark.tea_house",
             [new GridArea(102, 35, 111, 41)]
@@ -495,10 +505,10 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.vessa.morning"
                     ),
-                    Slot(
+                    TeaHouseSlot(
                         9,
                         13,
-                        new GridPosition(84, 44),
+                        new GridPosition(13, 10),
                         NpcFacing.Right,
                         "village.npc.vessa.tea_house"
                     ),
@@ -641,6 +651,13 @@ public static class VillageCatalog
         minuteOfDay >= MoonstoneWorkshopOpenMinute &&
         minuteOfDay < MoonstoneWorkshopCloseMinute;
 
+    public static bool IsStarweaverTeaHouseDoor(GridPosition cell) =>
+        cell == StarweaverTeaHouseDoorCell;
+
+    public static bool IsStarweaverTeaHouseOpen(int minuteOfDay) =>
+        minuteOfDay >= StarweaverTeaHouseOpenMinute &&
+        minuteOfDay < StarweaverTeaHouseCloseMinute;
+
     public static bool IsVillagePath(GridPosition cell)
     {
         if (!IsVillageCell(cell))
@@ -734,6 +751,23 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.MoonstoneWorkshop,
+        position,
+        facing,
+        dialogueKey,
+        weekdayIndices
+    );
+
+    private static NpcScheduleEntry TeaHouseSlot(
+        int startHour,
+        int endHour,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        params int[] weekdayIndices
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        PlayerLocationIds.StarweaverTeaHouse,
         position,
         facing,
         dialogueKey,

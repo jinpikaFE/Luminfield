@@ -40,6 +40,8 @@ public sealed class GameSession
         PlayerLocationId == PlayerLocationIds.MoonlitArchive;
     public bool InsideWorkshop =>
         PlayerLocationId == PlayerLocationIds.MoonstoneWorkshop;
+    public bool InsideTeaHouse =>
+        PlayerLocationId == PlayerLocationIds.StarweaverTeaHouse;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -367,6 +369,11 @@ public sealed class GameSession
             return PreviewWorkshopTarget(target);
         }
 
+        if (InsideTeaHouse)
+        {
+            return PreviewTeaHouseTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -488,6 +495,35 @@ public sealed class GameSession
                 VillageCatalog.MoonstoneWorkshopDoorCell,
                 TargetPreviewKind.Door,
                 "target.status.workshop_closed"
+            );
+        }
+
+        if (VillageCatalog.IsStarweaverTeaHouseDoor(target))
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    VillageCatalog.StarweaverTeaHouseDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+            }
+
+            if (VillageCatalog.IsStarweaverTeaHouseOpen(
+                    Clock.MinuteOfDay
+                ))
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarweaverTeaHouseDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.action.enter_tea_house"
+                );
+            }
+
+            return TargetPreview.Blocked(
+                VillageCatalog.StarweaverTeaHouseDoorCell,
+                TargetPreviewKind.Door,
+                "target.status.tea_house_closed"
             );
         }
 
@@ -1062,6 +1098,54 @@ public sealed class GameSession
             : ActionResult.Fail("notice.needs_hand");
     }
 
+    public ActionResult TryEnterStarweaverTeaHouse()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.tea_house_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return VillageCatalog.IsStarweaverTeaHouseOpen(
+                Clock.MinuteOfDay
+            )
+            ? ActionResult.Success(messageKey: "notice.enter_tea_house")
+            : ActionResult.Fail("notice.tea_house_closed");
+    }
+
+    public ActionResult InspectStarwovenTeaCounter()
+    {
+        if (!InsideTeaHouse)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return ActionResult.Success(
+            messageKey: "tea_house.counter.dialogue"
+        );
+    }
+
+    public ActionResult TryExitStarweaverTeaHouse()
+    {
+        if (!InsideTeaHouse)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(messageKey: "notice.leave_tea_house")
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         var item = DataCatalog.Item(itemId);
@@ -1325,6 +1409,61 @@ public sealed class GameSession
 
             return TargetPreview.NeedsTool(
                 VillageCatalog.MoonstoneWorkshopExitCell,
+                TargetPreviewKind.Door,
+                "target.need.hand"
+            );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewTeaHouseTarget(GridPosition target)
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationIds.StarweaverTeaHouse
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        if (target == VillageCatalog.StarwovenTeaCounterCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarwovenTeaCounterCell,
+                    TargetPreviewKind.Station,
+                    "target.action.inspect_tea_counter"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.StarwovenTeaCounterCell,
+                TargetPreviewKind.Station,
+                "target.need.hand"
+            );
+        }
+
+        if (target == VillageCatalog.StarweaverTeaHouseExitCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarweaverTeaHouseExitCell,
+                    TargetPreviewKind.Door,
+                    "target.action.exit_tea_house"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.StarweaverTeaHouseExitCell,
                 TargetPreviewKind.Door,
                 "target.need.hand"
             );

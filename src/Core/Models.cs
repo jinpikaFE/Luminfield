@@ -8,10 +8,11 @@ public static class PlayerLocationIds
     public const string Cottage = "cottage";
     public const string MoonlitArchive = "moonlit_archive";
     public const string MoonstoneWorkshop = "moonstone_workshop";
+    public const string StarweaverTeaHouse = "starweaver_tea_house";
 
     public static bool IsValid(string? locationId) =>
         locationId is World or Cottage or MoonlitArchive or
-            MoonstoneWorkshop;
+            MoonstoneWorkshop or StarweaverTeaHouse;
 
     public static string Normalize(
         string? locationId,

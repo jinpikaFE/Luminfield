@@ -54,6 +54,10 @@ exploration state in the regular save file.
   to 19:00. Tavi works inside from 09:00 to 13:00 on ordinary days. Its
   moon-rune workbench explains the currently available inspection and upkeep
   services and marks tool upgrades as future work without changing the economy.
+- The Starweaver Tea House is the third enterable building and opens from 09:00
+  to 21:00. Vessa works inside from 09:00 to 13:00 on ordinary days. Its
+  starwoven tea counter is a read-only inspection point and does not add
+  purchases, recipes, energy costs, or a new economy contract.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -74,7 +78,7 @@ exploration state in the regular save file.
   `schemaVersion: 1` save. Old saves receive an empty event list; unknown,
   duplicate, orphaned, and same-day out-of-order entries are filtered.
 - Tile-level walking paths, weather/season schedule conditions, more character
-  event chains, and four more building interiors remain planned work.
+  event chains, and three more building interiors remain planned work.
 
 ## Starlight Mail and relationship rewards
 
@@ -129,7 +133,7 @@ placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B now includes the first village, eight NPC schedules, the
-first two enterable buildings, a data-driven relationship and daily-gifting
+first three enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and Liora's first two-stage friendship event.
 
 ## Tools and backpack
@@ -340,6 +344,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 - 2026-07-31 16:34:11 CST — Added Liora's first two-stage friendship event,
   three bilingual pages per stage, final-page completion, ordered stable save
   state, focused playtest scenarios, tests, and macOS visual QA.
+- 2026-07-31 16:32:37 CST — Added the enterable Starweaver Tea House, its
+  09:00–21:00 door rules, read-only tea counter, Vessa's 09:00–13:00 indoor
+  schedule, stable save location, bilingual interactions, and original
+  generated interior.
 - 2026-07-31 15:08:11 CST — Added the homestead Starlight Mailbox, first
   Starlight Post panel, Nemi's welcome letter, and three Trusted Friend reward
   letters with atomic attachment claims, compatible saves, and visual QA.
