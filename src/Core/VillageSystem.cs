@@ -111,6 +111,11 @@ public static class VillageCatalog
     public const string LioraId = "liora";
     public const string TaviId = "tavi";
     public const string NemiId = "nemi";
+    public const string SelaId = "sela";
+    public const string ElowenId = "elowen";
+    public const string VessaId = "vessa";
+    public const string OrinId = "orin";
+    public const string KaelId = "kael";
     public const string VillageGateLandmarkId = "lumen_village_gate";
     public const string MoonlitArchiveLandmarkId = "moonlit_archive";
     public const string MoonstoneWorkshopLandmarkId =
@@ -353,6 +358,266 @@ public static class VillageCatalog
                         new GridPosition(105, 43),
                         NpcFacing.Down,
                         "village.npc.nemi.evening"
+                    )
+                ]
+            ),
+            [SelaId] = new(
+                SelaId,
+                "village.npc.sela.name",
+                "village.npc.sela.role",
+                "village.npc.sela.intro",
+                3,
+                [
+                    DataCatalog.CrystalShardId,
+                    DataCatalog.MoonstonePathId,
+                    DataCatalog.StarlightTorchId
+                ],
+                [ItemKind.Resource, ItemKind.Placeable],
+                [ItemKind.Seed, ItemKind.Fertilizer],
+                [
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(104, 52),
+                        NpcFacing.Left,
+                        "village.npc.sela.restday",
+                        6
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(89, 54),
+                        NpcFacing.Down,
+                        "village.npc.sela.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(90, 54),
+                        NpcFacing.Left,
+                        "village.npc.sela.workshop"
+                    ),
+                    Slot(
+                        13,
+                        17,
+                        new GridPosition(99, 52),
+                        NpcFacing.Up,
+                        "village.npc.sela.plaza"
+                    ),
+                    Slot(
+                        17,
+                        23,
+                        new GridPosition(109, 43),
+                        NpcFacing.Left,
+                        "village.npc.sela.evening"
+                    )
+                ]
+            ),
+            [ElowenId] = new(
+                ElowenId,
+                "village.npc.elowen.name",
+                "village.npc.elowen.role",
+                "village.npc.elowen.intro",
+                4,
+                [
+                    DataCatalog.DewmelonId,
+                    DataCatalog.CloudleafId,
+                    DataCatalog.MoonrootTonicId
+                ],
+                [ItemKind.Produce, ItemKind.Artisan],
+                [ItemKind.Placeable, ItemKind.Resource],
+                [
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(100, 43),
+                        NpcFacing.Down,
+                        "village.npc.elowen.restday",
+                        6
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(98, 58),
+                        NpcFacing.Up,
+                        "village.npc.elowen.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(105, 44),
+                        NpcFacing.Right,
+                        "village.npc.elowen.well"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(100, 54),
+                        NpcFacing.Left,
+                        "village.npc.elowen.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(93, 44),
+                        NpcFacing.Right,
+                        "village.npc.elowen.evening"
+                    )
+                ]
+            ),
+            [VessaId] = new(
+                VessaId,
+                "village.npc.vessa.name",
+                "village.npc.vessa.role",
+                "village.npc.vessa.intro",
+                5,
+                [
+                    DataCatalog.CloudleafId,
+                    DataCatalog.MoonrootId,
+                    DataCatalog.MoonrootTonicId
+                ],
+                [ItemKind.Produce, ItemKind.Seed],
+                [ItemKind.Placeable, ItemKind.Fertilizer],
+                [
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(88, 44),
+                        NpcFacing.Right,
+                        "village.npc.vessa.restday",
+                        6
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(91, 44),
+                        NpcFacing.Left,
+                        "village.npc.vessa.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(84, 44),
+                        NpcFacing.Right,
+                        "village.npc.vessa.tea_house"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(103, 54),
+                        NpcFacing.Left,
+                        "village.npc.vessa.route"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(110, 44),
+                        NpcFacing.Left,
+                        "village.npc.vessa.evening"
+                    )
+                ]
+            ),
+            [OrinId] = new(
+                OrinId,
+                "village.npc.orin.name",
+                "village.npc.orin.role",
+                "village.npc.orin.intro",
+                6,
+                [
+                    DataCatalog.StarbudPreserveId,
+                    DataCatalog.PrismcornId,
+                    DataCatalog.GlowpeaId
+                ],
+                [ItemKind.Artisan, ItemKind.Produce],
+                [ItemKind.Fertilizer, ItemKind.Resource],
+                [
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(101, 54),
+                        NpcFacing.Left,
+                        "village.npc.orin.restday",
+                        6
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(103, 44),
+                        NpcFacing.Right,
+                        "village.npc.orin.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(109, 44),
+                        NpcFacing.Left,
+                        "village.npc.orin.market"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(102, 53),
+                        NpcFacing.Right,
+                        "village.npc.orin.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(93, 53),
+                        NpcFacing.Right,
+                        "village.npc.orin.evening"
+                    )
+                ]
+            ),
+            [KaelId] = new(
+                KaelId,
+                "village.npc.kael.name",
+                "village.npc.kael.role",
+                "village.npc.kael.intro",
+                7,
+                [
+                    DataCatalog.CrystalShardId,
+                    DataCatalog.StarlightTorchId,
+                    DataCatalog.EmberbellId
+                ],
+                [ItemKind.Resource, ItemKind.Placeable],
+                [ItemKind.Seed, ItemKind.Artisan],
+                [
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(96, 43),
+                        NpcFacing.Down,
+                        "village.npc.kael.restday",
+                        6
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(95, 58),
+                        NpcFacing.Up,
+                        "village.npc.kael.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(96, 54),
+                        NpcFacing.Up,
+                        "village.npc.kael.gate"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(98, 54),
+                        NpcFacing.Down,
+                        "village.npc.kael.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(99, 43),
+                        NpcFacing.Left,
+                        "village.npc.kael.evening"
                     )
                 ]
             )

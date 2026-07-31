@@ -1699,36 +1699,47 @@ public sealed class StarlightSystemTests
 public sealed class VillageSystemTests
 {
     [Fact]
-    public void ThreeVillagersHaveCompleteDistinctDailySchedules()
+    public void EightVillagersHaveCompleteDistinctDailySchedules()
     {
         var village = new VillageSystem();
 
-        for (var minute = GameClock.StartMinute;
-             minute < GameClock.EndMinute;
-             minute += GameClock.MinutesPerTick)
+        foreach (var day in new[] { 1, CalendarSystem.DaysPerWeek })
         {
-            var current = village.AllCurrentNpcs(1, minute);
-            Assert.Equal(3, current.Count);
-            Assert.Equal(
-                current.Count,
-                current
-                    .Select(npc => (npc.LocationId, npc.Position))
-                    .Distinct()
-                    .Count()
-            );
-            Assert.All(current, npc =>
+            for (var minute = GameClock.StartMinute;
+                 minute < GameClock.EndMinute;
+                 minute += GameClock.MinutesPerTick)
             {
-                Assert.True(PlayerLocationIds.IsValid(npc.LocationId));
-                if (npc.LocationId == PlayerLocationIds.World)
+                var current = village.AllCurrentNpcs(day, minute);
+                Assert.Equal(8, current.Count);
+                Assert.Equal(
+                    current.Count,
+                    current
+                        .Select(npc => (npc.LocationId, npc.Position))
+                        .Distinct()
+                        .Count()
+                );
+                Assert.All(current, npc =>
                 {
-                    Assert.True(
-                        VillageCatalog.IsVillageCell(npc.Position)
-                    );
-                    Assert.False(
-                        VillageCatalog.IsBlocked(npc.Position)
-                    );
-                }
-            });
+                    Assert.True(PlayerLocationIds.IsValid(npc.LocationId));
+                    if (npc.LocationId == PlayerLocationIds.World)
+                    {
+                        Assert.True(
+                            VillageCatalog.IsVillageCell(npc.Position)
+                        );
+                        Assert.False(
+                            WorldDefinition.IsBlocked(npc.Position)
+                        );
+                        Assert.NotEqual(
+                            VillageCatalog.MoonlitArchiveDoorCell,
+                            npc.Position
+                        );
+                        Assert.NotEqual(
+                            VillageCatalog.VillageGateCell,
+                            npc.Position
+                        );
+                    }
+                });
+            }
         }
 
         var weekday = village.AllCurrentNpcs(1, 10 * 60)
@@ -1747,6 +1758,59 @@ public sealed class VillageSystemTests
                 )
             )
         );
+    }
+
+    [Theory]
+    [InlineData(VillageCatalog.LioraId, DataCatalog.MoonrootId)]
+    [InlineData(VillageCatalog.TaviId, DataCatalog.LumenwoodId)]
+    [InlineData(VillageCatalog.NemiId, DataCatalog.StarbudId)]
+    [InlineData(VillageCatalog.SelaId, DataCatalog.CrystalShardId)]
+    [InlineData(VillageCatalog.ElowenId, DataCatalog.DewmelonId)]
+    [InlineData(VillageCatalog.VessaId, DataCatalog.CloudleafId)]
+    [InlineData(VillageCatalog.OrinId, DataCatalog.StarbudPreserveId)]
+    [InlineData(VillageCatalog.KaelId, DataCatalog.StarlightTorchId)]
+    public void EveryVillagerSupportsTalkGiftAndRelationshipProgress(
+        string npcId,
+        string lovedGiftId
+    )
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var npc = VillageCatalog.CurrentNpc(
+            npcId,
+            session.Clock.Day,
+            session.Clock.MinuteOfDay
+        );
+        Assert.NotNull(npc);
+
+        var introduction = session.InteractWithVillager(
+            npc.Position,
+            out var talkResult
+        );
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(2, introduction.RelationshipPoints);
+
+        Assert.True(session.Inventory.Add(lovedGiftId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(lovedGiftId));
+        var preview = session.PreviewSelectedTarget(npc.Position);
+        Assert.True(preview.IsAvailable);
+        Assert.Equal("target.action.gift", preview.LabelKey);
+
+        var gift = session.InteractWithVillager(
+            npc.Position,
+            out var giftResult
+        );
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(gift);
+        Assert.Equal(GiftReaction.Loved, gift.GiftReaction);
+        Assert.Equal(14, gift.RelationshipPoints);
+        Assert.Equal(
+            14,
+            session.Village.Relationship(npcId).Points
+        );
+        Assert.Equal(0, session.Inventory.Count(lovedGiftId));
     }
 
     [Fact]
@@ -2190,6 +2254,42 @@ public sealed class LocaleTests
         var chinese = locale.Keys(LocaleService.SimplifiedChinese).Order().ToArray();
         Assert.Equal(english, chinese);
         Assert.DoesNotContain(english, key => locale.Tr(key).StartsWith('['));
+    }
+
+    [Fact]
+    public void EveryVillagerDefinitionHasBilingualDialogueAndGiftFeedback()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var definitionKeys = VillageCatalog.Npcs.Values.SelectMany(npc =>
+            new[]
+            {
+                npc.NameKey,
+                npc.RoleKey,
+                npc.IntroductionKey,
+                $"village.npc.{npc.Id}.gift.loved",
+                $"village.npc.{npc.Id}.gift.liked",
+                $"village.npc.{npc.Id}.gift.neutral",
+                $"village.npc.{npc.Id}.gift.disliked"
+            }.Concat(npc.Schedule.Select(slot => slot.DialogueKey))
+        ).Distinct(StringComparer.Ordinal);
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                definitionKeys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
     }
 
     [Fact]
@@ -2776,23 +2876,23 @@ public sealed class SaveServiceTests : IDisposable
     }
 
     [Fact]
-    public void VillageMeetingsRoundTripAndUnknownNpcIdsAreFiltered()
+    public void AllVillageRelationshipsRoundTripAndUnknownNpcIdsAreFiltered()
     {
         var path = Path.Combine(_directory, "slot_1.json");
         var session = new GameSession();
         session.NewGame();
-        var liora = VillageCatalog.CurrentNpc(
-            VillageCatalog.LioraId,
-            session.Clock.Day,
-            session.Clock.MinuteOfDay
-        );
-        Assert.NotNull(liora);
-        var conversation = session.InteractWithVillager(
-            liora.Position,
-            out var interaction
-        );
-        Assert.True(interaction.Succeeded);
-        Assert.NotNull(conversation);
+        foreach (var npc in session.Village.AllCurrentNpcs(
+                     session.Clock.Day,
+                     session.Clock.MinuteOfDay
+                 ))
+        {
+            var conversation = session.InteractWithVillager(
+                npc.Position,
+                out var interaction
+            );
+            Assert.True(interaction.Succeeded);
+            Assert.NotNull(conversation);
+        }
         session.SetPlayerLocation(
             20 * 16 + 8,
             19 * 16 + 8,
@@ -2815,13 +2915,13 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(SaveLoadStatus.Loaded, result.Status);
         Assert.NotNull(result.Save);
         Assert.Equal(
-            [VillageCatalog.LioraId],
-            result.Save.Village.MetNpcIds
+            VillageCatalog.Npcs.Keys.Order(StringComparer.Ordinal),
+            result.Save.Village.MetNpcIds.Order(StringComparer.Ordinal)
         );
-        Assert.Single(result.Save.Village.Relationships);
-        Assert.Equal(
-            2,
-            result.Save.Village.Relationships[0].Points
+        Assert.Equal(8, result.Save.Village.Relationships.Count);
+        Assert.All(
+            result.Save.Village.Relationships,
+            relationship => Assert.Equal(2, relationship.Points)
         );
         Assert.Equal(
             PlayerLocationIds.MoonlitArchive,
@@ -2830,16 +2930,17 @@ public sealed class SaveServiceTests : IDisposable
 
         var restored = new GameSession();
         restored.Restore(result.Save);
-        Assert.Contains(
-            VillageCatalog.LioraId,
-            restored.Village.MetNpcIds
+        Assert.Equal(
+            VillageCatalog.Npcs.Keys.Order(StringComparer.Ordinal),
+            restored.Village.MetNpcIds.Order(StringComparer.Ordinal)
         );
         Assert.True(restored.InsideArchive);
-        Assert.Equal(
-            2,
-            restored.Village.Relationship(
-                VillageCatalog.LioraId
-            ).Points
+        Assert.All(
+            VillageCatalog.Npcs.Keys,
+            npcId => Assert.Equal(
+                2,
+                restored.Village.Relationship(npcId).Points
+            )
         );
     }
 

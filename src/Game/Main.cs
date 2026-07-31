@@ -385,6 +385,10 @@ public sealed partial class Main : Node
                     StartWorkshopDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
                     StartVillageDialoguePlaytest,
+                [PlaytestScenarioId.SelaDialogue] =
+                    StartSelaDialoguePlaytest,
+                [PlaytestScenarioId.VillageExpansion] =
+                    StartVillageExpansionPlaytest,
                 [PlaytestScenarioId.VillageRestdayEnglish] =
                     StartVillageRestdayEnglishPlaytest,
                 [PlaytestScenarioId.Village] = StartVillagePlaytest,
@@ -846,6 +850,40 @@ public sealed partial class Main : Node
     private void StartVillageDialoguePlaytest()
     {
         StartArchivePlaytest(true, false);
+    }
+
+    private void StartSelaDialoguePlaytest()
+    {
+        const int day = 1;
+        const int minuteOfDay = 10 * 60;
+        var sela = VillageCatalog.CurrentNpc(
+            VillageCatalog.SelaId,
+            day,
+            minuteOfDay
+        );
+        if (sela is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        StartVillagePlaytestWorld(
+            day,
+            minuteOfDay,
+            new GridPosition(sela.Position.X, sela.Position.Y + 1)
+        );
+        Callable.From(
+            () => TalkToVillager(sela.Position)
+        ).CallDeferred();
+    }
+
+    private void StartVillageExpansionPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            14 * 60,
+            new GridPosition(97, 55)
+        );
     }
 
     private void StartArchivePlaytest()

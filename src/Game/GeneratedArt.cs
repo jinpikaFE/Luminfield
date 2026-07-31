@@ -41,6 +41,11 @@ internal static class GeneratedArt
             "res://assets/generated/village_npcs.png"
         );
 
+    private static readonly Texture2D VillageNpcsExpansion =
+        GD.Load<Texture2D>(
+            "res://assets/generated/village_npcs_expansion.png"
+        );
+
     private static readonly Texture2D RelationshipGifts =
         GD.Load<Texture2D>(
             "res://assets/generated/relationship_gifts.png"
@@ -164,6 +169,39 @@ internal static class GeneratedArt
             new Rect2(565, 627, 144, 290),
             new Rect2(977, 627, 125, 293),
             new Rect2(1362, 627, 125, 293)
+        ]
+    ];
+    private static readonly Rect2[][] VillageNpcExpansionRegions =
+    [
+        [
+            new Rect2(79, 41, 142, 257),
+            new Rect2(348, 41, 141, 257),
+            new Rect2(646, 41, 112, 257),
+            new Rect2(918, 42, 114, 256)
+        ],
+        [
+            new Rect2(62, 325, 161, 259),
+            new Rect2(347, 325, 154, 259),
+            new Rect2(643, 326, 121, 260),
+            new Rect2(909, 327, 119, 259)
+        ],
+        [
+            new Rect2(79, 606, 126, 249),
+            new Rect2(358, 606, 128, 249),
+            new Rect2(645, 610, 111, 247),
+            new Rect2(918, 610, 112, 247)
+        ],
+        [
+            new Rect2(82, 877, 146, 239),
+            new Rect2(340, 878, 145, 238),
+            new Rect2(648, 882, 115, 235),
+            new Rect2(913, 882, 114, 235)
+        ],
+        [
+            new Rect2(77, 1133, 136, 235),
+            new Rect2(352, 1133, 133, 235),
+            new Rect2(646, 1133, 109, 237),
+            new Rect2(920, 1133, 109, 237)
         ]
     ];
 
@@ -395,15 +433,18 @@ internal static class GeneratedArt
             VillageLandmarkRegions.Length - 1
         )];
 
-    public static Texture2D VillageNpcTexture => VillageNpcs;
+    public static Texture2D VillageNpcTexture(int atlasRow)
+    {
+        if (atlasRow < VillageNpcRegions.Length)
+        {
+            return VillageNpcs;
+        }
+
+        return VillageNpcsExpansion;
+    }
 
     public static Rect2 VillageNpcRegion(int atlasRow, NpcFacing facing)
     {
-        var row = Math.Clamp(
-            atlasRow,
-            0,
-            VillageNpcRegions.Length - 1
-        );
         var column = facing switch
         {
             NpcFacing.Down => 0,
@@ -412,7 +453,22 @@ internal static class GeneratedArt
             NpcFacing.Right => 3,
             _ => 0
         };
-        return VillageNpcRegions[row][column];
+        if (atlasRow < VillageNpcRegions.Length)
+        {
+            var row = Math.Clamp(
+                atlasRow,
+                0,
+                VillageNpcRegions.Length - 1
+            );
+            return VillageNpcRegions[row][column];
+        }
+
+        var expansionRow = Math.Clamp(
+            atlasRow - VillageNpcRegions.Length,
+            0,
+            VillageNpcExpansionRegions.Length - 1
+        );
+        return VillageNpcExpansionRegions[expansionRow][column];
     }
 
     public static Texture2D RelationshipIcon(

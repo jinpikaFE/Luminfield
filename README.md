@@ -37,14 +37,16 @@ The top-right minimap reveals chunks as the player enters them, keeps
 undiscovered territory hidden, marks discovered landmarks, and stores the
 exploration state in the regular save file.
 
-## Lumen Village and the first villagers
+## Lumen Village and eight core villagers
 
 - Follow the southern homestead road east and the Crystal Road north to reach
   the first Lumen Village area. It contains eight original exterior landmarks:
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
   Well, village gate, sign, lantern bench, and glowflower cart.
-- Liora, Tavi, and Nemi change position with the game clock. Day 7,
-  Lanternrest, gives each of them a separate rest-day route.
+- Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael change position with
+  the game clock. Day 7, Lanternrest, gives each of them a separate rest-day
+  route. Their schedule cells remain distinct, walkable, and clear of the
+  village gate and archive entrance.
 - The Moonlit Archive is open from 08:00 to 20:00. Its exterior door highlights
   as the actual target; inside, the central star-chart desk can be read. Liora
   works in the archive from 09:00 to 13:00 on weekdays.
@@ -62,8 +64,8 @@ exploration state in the regular save file.
 - Player location, met villagers, relationship points, and daily talk/gift
   records use stable save IDs. Legacy saves remain compatible and unknown IDs
   are filtered.
-- Mail, character events, tile-level walking paths, five more core villagers,
-  and four more building interiors remain planned work.
+- Mail, character events, tile-level walking paths, weather/season schedule
+  conditions, and four more building interiors remain planned work.
 
 ## Seven-day weather, shipping, and eight crops
 
@@ -97,9 +99,9 @@ These systems complete all eight core phase-A gameplay increments in the
 placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
-implemented. Phase B now includes the first village, three NPC schedules, two
-enterable buildings, and a data-driven relationship and daily-gifting entry
-point.
+implemented. Phase B now includes the first village, eight NPC schedules, the
+first two enterable buildings, and a data-driven relationship and daily-gifting
+entry point.
 
 ## Tools and backpack
 
@@ -299,6 +301,9 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-07-31 15:00:13 CST — Added Sela, Elowen, Vessa, Orin, and Kael to reach
+  eight core villagers, including ordinary-day/Lanternrest schedules,
+  bilingual dialogue, gift preferences, relationships, and compatible saves.
 - 2026-07-31 14:33:48 CST — Added the enterable Moonstone Workshop, its
   08:00–19:00 door rules, moon-rune workbench, Tavi's 09:00–13:00 indoor
   schedule, stable save location, bilingual interactions, and original

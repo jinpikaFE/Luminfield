@@ -32,6 +32,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.VillageDialogue
         ),
         (
+            "--playtest-sela-dialogue",
+            PlaytestScenarioId.SelaDialogue
+        ),
+        (
+            "--playtest-village-expansion",
+            PlaytestScenarioId.VillageExpansion
+        ),
+        (
             "--playtest-village-restday-en",
             PlaytestScenarioId.VillageRestdayEnglish
         ),

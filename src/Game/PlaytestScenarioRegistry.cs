@@ -14,6 +14,8 @@ public enum PlaytestScenarioId
     Workshop,
     WorkshopDoor,
     VillageDialogue,
+    SelaDialogue,
+    VillageExpansion,
     VillageRestdayEnglish,
     Village,
     World,
@@ -74,6 +76,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.VillageDialogue,
             "--playtest-village-dialogue"
+        ),
+        new(
+            PlaytestScenarioId.SelaDialogue,
+            "--playtest-sela-dialogue"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansion,
+            "--playtest-village-expansion"
         ),
         new(
             PlaytestScenarioId.VillageRestdayEnglish,
