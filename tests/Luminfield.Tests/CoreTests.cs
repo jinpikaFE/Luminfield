@@ -1872,6 +1872,109 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
+    public void TaviWorksInsideWorkshopWhileLanternrestStaysIndependent()
+    {
+        var beforeWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            1,
+            VillageCatalog.MoonstoneWorkshopOpenMinute + 30
+        );
+        var atWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            1,
+            10 * 60
+        );
+        var afterWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            1,
+            14 * 60
+        );
+        var lanternrest = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            CalendarSystem.DaysPerWeek,
+            10 * 60
+        );
+
+        Assert.NotNull(beforeWork);
+        Assert.Equal(PlayerLocationIds.World, beforeWork.LocationId);
+        Assert.NotNull(atWork);
+        Assert.Equal(
+            PlayerLocationIds.MoonstoneWorkshop,
+            atWork.LocationId
+        );
+        Assert.Equal(
+            VillageCatalog.MoonRuneWorkbenchCell.Y + 1,
+            atWork.Position.Y
+        );
+        Assert.NotNull(afterWork);
+        Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
+        Assert.NotNull(lanternrest);
+        Assert.Equal(PlayerLocationIds.World, lanternrest.LocationId);
+        Assert.NotEqual(atWork.Position, lanternrest.Position);
+    }
+
+    [Fact]
+    public void TaviTalkAndGiftUseTheWorkshopSceneProjection()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(1, 10 * 60);
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        var tavi = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            session.Clock.Day,
+            session.Clock.MinuteOfDay
+        );
+        Assert.NotNull(tavi);
+        Assert.Equal(
+            PlayerLocationIds.MoonstoneWorkshop,
+            tavi.LocationId
+        );
+
+        var talkPreview = session.PreviewSelectedTarget(tavi.Position);
+        Assert.True(talkPreview.IsAvailable);
+        Assert.Equal("target.action.talk", talkPreview.LabelKey);
+        var talk = session.InteractWithVillager(
+            tavi.Position,
+            out var talkResult
+        );
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(talk);
+
+        Assert.True(session.Inventory.Add(DataCatalog.LumenwoodId, 2));
+        Assert.True(
+            session.Inventory.PromoteToHotbar(DataCatalog.LumenwoodId)
+        );
+        var giftPreview = session.PreviewSelectedTarget(tavi.Position);
+        Assert.True(giftPreview.IsAvailable);
+        Assert.Equal("target.action.gift", giftPreview.LabelKey);
+        var gift = session.InteractWithVillager(
+            tavi.Position,
+            out var giftResult
+        );
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(gift);
+        Assert.Equal(GiftReaction.Loved, gift.GiftReaction);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.LumenwoodId));
+
+        session.SetPlayerLocation(
+            VillageCatalog.MoonstoneWorkshopDoorCell.X * 16 + 8,
+            VillageCatalog.MoonstoneWorkshopDoorCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        Assert.Null(session.InteractWithVillager(
+            tavi.Position,
+            out var wrongScene
+        ));
+        Assert.False(wrongScene.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.LumenwoodId));
+    }
+
+    [Fact]
     public void ArchiveDoorDeskAndExitShareLocationAwareRules()
     {
         var session = new GameSession();
@@ -1911,6 +2014,84 @@ public sealed class VillageSystemTests
         Assert.True(exit.IsAvailable);
         Assert.True(session.InspectMoonlitArchiveDesk().Succeeded);
         Assert.True(session.TryExitMoonlitArchive().Succeeded);
+    }
+
+    [Fact]
+    public void WorkshopDoorWorkbenchAndExitShareLocationAwareHandRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var door = VillageCatalog.MoonstoneWorkshopDoorCell;
+
+        var closed = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, closed.State);
+        Assert.Equal("target.status.workshop_closed", closed.LabelKey);
+        Assert.False(session.TryEnterMoonstoneWorkshop().Succeeded);
+
+        session.Clock.Reset(
+            1,
+            VillageCatalog.MoonstoneWorkshopOpenMinute
+        );
+        var open = session.PreviewSelectedTarget(door);
+        Assert.True(open.IsAvailable);
+        Assert.Equal("target.action.enter_workshop", open.LabelKey);
+        Assert.True(session.TryEnterMoonstoneWorkshop().Succeeded);
+
+        session.Inventory.Select(1);
+        var wrongDoorTool = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongDoorTool.State);
+        Assert.False(session.TryEnterMoonstoneWorkshop().Succeeded);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        var energy = session.Energy;
+        var workbenchWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.MoonRuneWorkbenchCell
+        );
+        var exitWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.MoonstoneWorkshopExitCell
+        );
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            workbenchWithTool.State
+        );
+        Assert.Equal(TargetPreviewState.NeedsTool, exitWithTool.State);
+        Assert.False(session.InspectMoonRuneWorkbench().Succeeded);
+        Assert.False(session.TryExitMoonstoneWorkshop().Succeeded);
+        Assert.Equal(energy, session.Energy);
+
+        session.Inventory.Select(0);
+        var workbench = session.PreviewSelectedTarget(
+            VillageCatalog.MoonRuneWorkbenchCell
+        );
+        var exit = session.PreviewSelectedTarget(
+            VillageCatalog.MoonstoneWorkshopExitCell
+        );
+        Assert.True(workbench.IsAvailable);
+        Assert.Equal(
+            "target.action.inspect_workbench",
+            workbench.LabelKey
+        );
+        Assert.True(exit.IsAvailable);
+        Assert.True(session.InspectMoonRuneWorkbench().Succeeded);
+        Assert.True(session.TryExitMoonstoneWorkshop().Succeeded);
+
+        session.SetPlayerLocation(
+            door.X * 16 + 8,
+            (door.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        session.Clock.Reset(
+            1,
+            VillageCatalog.MoonstoneWorkshopCloseMinute
+        );
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewSelectedTarget(door).State
+        );
     }
 
     [Fact]
@@ -2659,6 +2840,58 @@ public sealed class SaveServiceTests : IDisposable
             restored.Village.Relationship(
                 VillageCatalog.LioraId
             ).Points
+        );
+    }
+
+    [Fact]
+    public void WorkshopLocationRoundTripsAndUnknownLocationsFallbackToWorld()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        service.Save(session.Capture());
+
+        var workshopResult = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, workshopResult.Status);
+        Assert.NotNull(workshopResult.Save);
+        Assert.Equal(
+            PlayerLocationIds.MoonstoneWorkshop,
+            workshopResult.Save.Player.LocationId
+        );
+        var restored = new GameSession();
+        restored.Restore(workshopResult.Save);
+        Assert.True(restored.InsideWorkshop);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 328,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "locationId": "removed_interior"
+              }
+            }
+            """
+        );
+
+        var migrated = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, migrated.Status);
+        Assert.NotNull(migrated.Save);
+        Assert.Equal(
+            PlayerLocationIds.World,
+            migrated.Save.Player.LocationId
         );
     }
 

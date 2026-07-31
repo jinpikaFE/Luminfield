@@ -19,6 +19,15 @@ public sealed class PlaytestScenarioRegistryTests
         ("--playtest-archive", PlaytestScenarioId.Archive),
         ("--playtest-archive-door", PlaytestScenarioId.ArchiveDoor),
         (
+            "--playtest-workshop-tavi",
+            PlaytestScenarioId.WorkshopTavi
+        ),
+        ("--playtest-workshop", PlaytestScenarioId.Workshop),
+        (
+            "--playtest-workshop-door",
+            PlaytestScenarioId.WorkshopDoor
+        ),
+        (
             "--playtest-village-dialogue",
             PlaytestScenarioId.VillageDialogue
         ),

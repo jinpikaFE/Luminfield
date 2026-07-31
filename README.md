@@ -48,6 +48,10 @@ exploration state in the regular save file.
 - The Moonlit Archive is open from 08:00 to 20:00. Its exterior door highlights
   as the actual target; inside, the central star-chart desk can be read. Liora
   works in the archive from 09:00 to 13:00 on weekdays.
+- The Moonstone Workshop is the second enterable building and opens from 08:00
+  to 19:00. Tavi works inside from 09:00 to 13:00 on ordinary days. Its
+  moon-rune workbench explains the currently available inspection and upkeep
+  services and marks tool upgrades as future work without changing the economy.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -59,7 +63,7 @@ exploration state in the regular save file.
   records use stable save IDs. Legacy saves remain compatible and unknown IDs
   are filtered.
 - Mail, character events, tile-level walking paths, five more core villagers,
-  and five more building interiors remain planned work.
+  and four more building interiors remain planned work.
 
 ## Seven-day weather, shipping, and eight crops
 
@@ -93,9 +97,9 @@ These systems complete all eight core phase-A gameplay increments in the
 placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
-implemented. Phase B now includes the first village, three NPC schedules, the
-first enterable building, and a data-driven relationship and daily-gifting
-entry point.
+implemented. Phase B now includes the first village, three NPC schedules, two
+enterable buildings, and a data-driven relationship and daily-gifting entry
+point.
 
 ## Tools and backpack
 
@@ -295,6 +299,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-07-31 14:33:48 CST — Added the enterable Moonstone Workshop, its
+  08:00–19:00 door rules, moon-rune workbench, Tavi's 09:00–13:00 indoor
+  schedule, stable save location, bilingual interactions, and original
+  generated interior.
 - 2026-07-31 14:22:15 CST — Replaced the playtest launch condition chain with
   an ordered, test-covered scenario registry while preserving every existing
   flag, priority, and normal startup fallback.

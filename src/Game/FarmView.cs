@@ -16,6 +16,8 @@ public sealed partial class FarmView : Node2D
         WorldDefinition.WoodlandStarlightCell;
     public static readonly GridPosition MoonlitArchiveDoorCell =
         VillageCatalog.MoonlitArchiveDoorCell;
+    public static readonly GridPosition MoonstoneWorkshopDoorCell =
+        VillageCatalog.MoonstoneWorkshopDoorCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -162,9 +164,20 @@ public sealed partial class FarmView : Node2D
             Position = CellCenter(CottageDoorCell),
             ZIndex = 30
         });
-        AddChild(new ArchiveEntranceBeacon(() => _player.CurrentCell)
+        AddChild(new VillageEntranceBeacon(
+            () => _player.CurrentCell,
+            MoonlitArchiveDoorCell
+        )
         {
             Position = CellCenter(MoonlitArchiveDoorCell),
+            ZIndex = 30
+        });
+        AddChild(new VillageEntranceBeacon(
+            () => _player.CurrentCell,
+            MoonstoneWorkshopDoorCell
+        )
+        {
+            Position = CellCenter(MoonstoneWorkshopDoorCell),
             ZIndex = 30
         });
 
@@ -210,6 +223,7 @@ public sealed partial class FarmView : Node2D
     public event Action? MiraRequested;
     public event Action? EnterCottageRequested;
     public event Action? EnterArchiveRequested;
+    public event Action? EnterWorkshopRequested;
     public event Action? ShopRequested;
     public event Action? ProcessorRequested;
     public event Action? ShippingRequested;
@@ -235,6 +249,13 @@ public sealed partial class FarmView : Node2D
         {
             return _session.PreviewSelectedTarget(
                 MoonlitArchiveDoorCell
+            );
+        }
+
+        if (target == MoonstoneWorkshopDoorCell)
+        {
+            return _session.PreviewSelectedTarget(
+                MoonstoneWorkshopDoorCell
             );
         }
 
@@ -291,6 +312,13 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        if (IsAdjacent(player, MoonstoneWorkshopDoorCell))
+        {
+            return _session.PreviewSelectedTarget(
+                MoonstoneWorkshopDoorCell
+            );
+        }
+
         if (target == ShopCell || IsAdjacent(player, ShopCell))
         {
             return PreviewHandInteraction(
@@ -336,6 +364,13 @@ public sealed partial class FarmView : Node2D
             return;
         }
 
+        if (target == MoonstoneWorkshopDoorCell)
+        {
+            EnterWorkshopRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         var villager = ResolveVillageNpcTarget(
             target,
             _player.CurrentCell
@@ -373,6 +408,13 @@ public sealed partial class FarmView : Node2D
                  ))
         {
             EnterArchiveRequested?.Invoke();
+        }
+        else if (IsAdjacent(
+                     _player.CurrentCell,
+                     MoonstoneWorkshopDoorCell
+                 ))
+        {
+            EnterWorkshopRequested?.Invoke();
         }
         else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
         {
@@ -1158,14 +1200,19 @@ internal sealed partial class CottageEntranceBeacon : Node2D
     }
 }
 
-internal sealed partial class ArchiveEntranceBeacon : Node2D
+internal sealed partial class VillageEntranceBeacon : Node2D
 {
     private readonly Func<GridPosition> _playerCell;
+    private readonly GridPosition _target;
     private double _time;
 
-    public ArchiveEntranceBeacon(Func<GridPosition> playerCell)
+    public VillageEntranceBeacon(
+        Func<GridPosition> playerCell,
+        GridPosition target
+    )
     {
         _playerCell = playerCell;
+        _target = target;
     }
 
     public override void _Process(double delta)
@@ -1177,9 +1224,8 @@ internal sealed partial class ArchiveEntranceBeacon : Node2D
     public override void _Draw()
     {
         var player = _playerCell();
-        var target = VillageCatalog.MoonlitArchiveDoorCell;
-        var distance = Math.Abs(player.X - target.X) +
-            Math.Abs(player.Y - target.Y);
+        var distance = Math.Abs(player.X - _target.X) +
+            Math.Abs(player.Y - _target.Y);
         var nearby = distance <= 3;
         var pulse = 0.68f + Mathf.Sin((float)_time * 3.9f) * 0.2f;
         var alpha = nearby ? pulse : pulse * 0.46f;

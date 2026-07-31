@@ -748,6 +748,29 @@ internal sealed partial class ArchiveBackdrop : Node2D
     }
 }
 
+internal sealed partial class WorkshopBackdrop : Node2D
+{
+    private static readonly Texture2D Background =
+        GD.Load<Texture2D>(
+            "res://assets/generated/moonstone_workshop_interior.png"
+        );
+
+    public WorkshopBackdrop()
+    {
+        ZIndex = -100;
+        TextureFilter = TextureFilterEnum.Nearest;
+    }
+
+    public override void _Draw()
+    {
+        DrawTextureRectRegion(
+            Background,
+            new Rect2(0, 0, 640, 360),
+            new Rect2(0, 80, 1536, 864)
+        );
+    }
+}
+
 internal sealed partial class GeneratedCropLayer : Node2D
 {
     private static readonly Texture2D Crops =

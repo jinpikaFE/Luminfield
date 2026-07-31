@@ -10,6 +10,9 @@ public enum PlaytestScenarioId
     ArchiveGift,
     Archive,
     ArchiveDoor,
+    WorkshopTavi,
+    Workshop,
+    WorkshopDoor,
     VillageDialogue,
     VillageRestdayEnglish,
     Village,
@@ -59,6 +62,15 @@ public sealed class PlaytestScenarioRegistry
         new(PlaytestScenarioId.ArchiveGift, "--playtest-archive-gift"),
         new(PlaytestScenarioId.Archive, "--playtest-archive"),
         new(PlaytestScenarioId.ArchiveDoor, "--playtest-archive-door"),
+        new(
+            PlaytestScenarioId.WorkshopTavi,
+            "--playtest-workshop-tavi"
+        ),
+        new(PlaytestScenarioId.Workshop, "--playtest-workshop"),
+        new(
+            PlaytestScenarioId.WorkshopDoor,
+            "--playtest-workshop-door"
+        ),
         new(
             PlaytestScenarioId.VillageDialogue,
             "--playtest-village-dialogue"

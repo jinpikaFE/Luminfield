@@ -36,6 +36,8 @@ public sealed class GameSession
         PlayerLocationId == PlayerLocationIds.Cottage;
     public bool InsideArchive =>
         PlayerLocationId == PlayerLocationIds.MoonlitArchive;
+    public bool InsideWorkshop =>
+        PlayerLocationId == PlayerLocationIds.MoonstoneWorkshop;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -342,6 +344,11 @@ public sealed class GameSession
             return PreviewArchiveTarget(target);
         }
 
+        if (InsideWorkshop)
+        {
+            return PreviewWorkshopTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -414,6 +421,35 @@ public sealed class GameSession
                     TargetPreviewKind.Door,
                     "target.status.archive_closed"
                 );
+        }
+
+        if (VillageCatalog.IsMoonstoneWorkshopDoor(target))
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    VillageCatalog.MoonstoneWorkshopDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+            }
+
+            if (VillageCatalog.IsMoonstoneWorkshopOpen(
+                    Clock.MinuteOfDay
+                ))
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.MoonstoneWorkshopDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.action.enter_workshop"
+                );
+            }
+
+            return TargetPreview.Blocked(
+                VillageCatalog.MoonstoneWorkshopDoorCell,
+                TargetPreviewKind.Door,
+                "target.status.workshop_closed"
+            );
         }
 
         var villager = Village.NpcAt(
@@ -913,6 +949,52 @@ public sealed class GameSession
             : ActionResult.Fail("notice.needs_hand");
     }
 
+    public ActionResult TryEnterMoonstoneWorkshop()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.workshop_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return VillageCatalog.IsMoonstoneWorkshopOpen(Clock.MinuteOfDay)
+            ? ActionResult.Success(messageKey: "notice.enter_workshop")
+            : ActionResult.Fail("notice.workshop_closed");
+    }
+
+    public ActionResult InspectMoonRuneWorkbench()
+    {
+        if (!InsideWorkshop)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return ActionResult.Success(
+            messageKey: "workshop.workbench.dialogue"
+        );
+    }
+
+    public ActionResult TryExitMoonstoneWorkshop()
+    {
+        if (!InsideWorkshop)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(messageKey: "notice.leave_workshop")
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         var item = DataCatalog.Item(itemId);
@@ -1116,6 +1198,61 @@ public sealed class GameSession
                     TargetPreviewKind.Door,
                     "target.need.hand"
                 );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewWorkshopTarget(GridPosition target)
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        if (target == VillageCatalog.MoonRuneWorkbenchCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.MoonRuneWorkbenchCell,
+                    TargetPreviewKind.Station,
+                    "target.action.inspect_workbench"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.MoonRuneWorkbenchCell,
+                TargetPreviewKind.Station,
+                "target.need.hand"
+            );
+        }
+
+        if (target == VillageCatalog.MoonstoneWorkshopExitCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.MoonstoneWorkshopExitCell,
+                    TargetPreviewKind.Door,
+                    "target.action.exit_workshop"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.MoonstoneWorkshopExitCell,
+                TargetPreviewKind.Door,
+                "target.need.hand"
+            );
         }
 
         return TargetPreview.Neutral(target);

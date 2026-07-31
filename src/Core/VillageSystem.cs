@@ -113,14 +113,24 @@ public static class VillageCatalog
     public const string NemiId = "nemi";
     public const string VillageGateLandmarkId = "lumen_village_gate";
     public const string MoonlitArchiveLandmarkId = "moonlit_archive";
+    public const string MoonstoneWorkshopLandmarkId =
+        "moonstone_workshop";
 
     public static readonly GridArea VillageBounds = new(77, 30, 115, 63);
     public static readonly GridPosition VillageGateCell = new(97, 59);
     public static readonly GridPosition MoonlitArchiveDoorCell = new(86, 41);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
     public static readonly GridPosition MoonlitArchiveDeskCell = new(20, 9);
+    public static readonly GridPosition MoonstoneWorkshopDoorCell =
+        new(85, 54);
+    public static readonly GridPosition MoonstoneWorkshopExitCell =
+        new(20, 19);
+    public static readonly GridPosition MoonRuneWorkbenchCell =
+        new(20, 9);
     public const int MoonlitArchiveOpenMinute = 8 * 60;
     public const int MoonlitArchiveCloseMinute = 20 * 60;
+    public const int MoonstoneWorkshopOpenMinute = 8 * 60;
+    public const int MoonstoneWorkshopCloseMinute = 19 * 60;
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -139,8 +149,8 @@ public static class VillageCatalog
             [new GridArea(102, 35, 111, 41)]
         ),
         new(
-            "moonstone_workshop",
-            new GridPosition(85, 54),
+            MoonstoneWorkshopLandmarkId,
+            MoonstoneWorkshopDoorCell,
             2,
             "village.landmark.workshop",
             [new GridArea(81, 47, 90, 53)]
@@ -266,20 +276,20 @@ public static class VillageCatalog
                     ),
                     Slot(
                         6,
-                        8,
+                        9,
                         new GridPosition(86, 55),
                         NpcFacing.Down,
                         "village.npc.tavi.morning"
                     ),
-                    Slot(
-                        8,
-                        12,
-                        new GridPosition(91, 52),
-                        NpcFacing.Left,
+                    WorkshopSlot(
+                        9,
+                        13,
+                        new GridPosition(13, 10),
+                        NpcFacing.Right,
                         "village.npc.tavi.workshop"
                     ),
                     Slot(
-                        12,
+                        13,
                         16,
                         new GridPosition(92, 51),
                         NpcFacing.Right,
@@ -358,6 +368,13 @@ public static class VillageCatalog
         minuteOfDay >= MoonlitArchiveOpenMinute &&
         minuteOfDay < MoonlitArchiveCloseMinute;
 
+    public static bool IsMoonstoneWorkshopDoor(GridPosition cell) =>
+        cell == MoonstoneWorkshopDoorCell;
+
+    public static bool IsMoonstoneWorkshopOpen(int minuteOfDay) =>
+        minuteOfDay >= MoonstoneWorkshopOpenMinute &&
+        minuteOfDay < MoonstoneWorkshopCloseMinute;
+
     public static bool IsVillagePath(GridPosition cell)
     {
         if (!IsVillageCell(cell))
@@ -434,6 +451,23 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.MoonlitArchive,
+        position,
+        facing,
+        dialogueKey,
+        weekdayIndices
+    );
+
+    private static NpcScheduleEntry WorkshopSlot(
+        int startHour,
+        int endHour,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        params int[] weekdayIndices
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        PlayerLocationIds.MoonstoneWorkshop,
         position,
         facing,
         dialogueKey,

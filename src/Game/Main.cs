@@ -15,6 +15,7 @@ public sealed partial class Main : Node
     private FarmView? _farm;
     private CottageView? _cottage;
     private ArchiveView? _archive;
+    private WorkshopView? _workshop;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -377,6 +378,11 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
                 [PlaytestScenarioId.Archive] = StartArchivePlaytest,
                 [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
+                [PlaytestScenarioId.WorkshopTavi] =
+                    StartWorkshopTaviPlaytest,
+                [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
+                [PlaytestScenarioId.WorkshopDoor] =
+                    StartWorkshopDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
                     StartVillageDialoguePlaytest,
                 [PlaytestScenarioId.VillageRestdayEnglish] =
@@ -911,6 +917,72 @@ public sealed partial class Main : Node
         }
     }
 
+    private void StartWorkshopDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            10 * 60,
+            new GridPosition(
+                VillageCatalog.MoonstoneWorkshopDoorCell.X,
+                VillageCatalog.MoonstoneWorkshopDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartWorkshopPlaytest()
+    {
+        StartWorkshopPlaytest(false);
+    }
+
+    private void StartWorkshopTaviPlaytest()
+    {
+        StartWorkshopPlaytest(true);
+    }
+
+    private void StartWorkshopPlaytest(bool giveGift)
+    {
+        const int day = 1;
+        const int minuteOfDay = 10 * 60;
+        var tavi = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            day,
+            minuteOfDay
+        );
+        if (tavi is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        _session.Inventory.Select(0);
+        if (giveGift)
+        {
+            _session.Inventory.Add(DataCatalog.LumenwoodId, 2);
+            _session.Inventory.PromoteToHotbar(
+                DataCatalog.LumenwoodId
+            );
+        }
+
+        _playing = true;
+        EnsureHud();
+        ShowWorkshop(false);
+        if (giveGift)
+        {
+            Callable.From(
+                () => TalkToVillager(tavi.Position)
+            ).CallDeferred();
+        }
+    }
+
     private void StartVillageRestdayEnglishPlaytest()
     {
         _locale.SetLocale(LocaleService.English);
@@ -1164,6 +1236,10 @@ public sealed partial class Main : Node
         {
             ShowArchive(false);
         }
+        else if (_session.InsideWorkshop)
+        {
+            ShowWorkshop(false);
+        }
         else
         {
             ShowFarm(false);
@@ -1183,7 +1259,8 @@ public sealed partial class Main : Node
 
     private void ShowFarm(
         bool fromCottage,
-        bool fromArchive = false
+        bool fromArchive = false,
+        bool fromWorkshop = false
     )
     {
         ClearWorld();
@@ -1203,12 +1280,21 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromWorkshop)
+        {
+            _session.SetPlayerLocation(
+                VillageCatalog.MoonstoneWorkshopDoorCell.X * 16 + 8,
+                (VillageCatalog.MoonstoneWorkshopDoorCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
         _farm.MiraRequested += TalkToMira;
         _farm.EnterCottageRequested += () => ShowCottage(true);
         _farm.EnterArchiveRequested += TryEnterMoonlitArchive;
+        _farm.EnterWorkshopRequested += TryEnterMoonstoneWorkshop;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -1229,6 +1315,10 @@ public sealed partial class Main : Node
         else if (fromArchive)
         {
             _hud?.ShowNotice("notice.leave_archive");
+        }
+        else if (fromWorkshop)
+        {
+            _hud?.ShowNotice("notice.leave_workshop");
         }
     }
 
@@ -1273,6 +1363,32 @@ public sealed partial class Main : Node
         if (fromWorld)
         {
             _hud?.ShowNotice("notice.enter_archive");
+        }
+    }
+
+    private void ShowWorkshop(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                20 * 16 + 8,
+                18 * 16 + 8,
+                PlayerLocationIds.MoonstoneWorkshop
+            );
+        }
+
+        _workshop = new WorkshopView(_session, _locale);
+        _workshop.ExitRequested += TryLeaveMoonstoneWorkshop;
+        _workshop.WorkbenchRequested += InspectMoonRuneWorkbench;
+        _workshop.VillagerRequested += TalkToVillager;
+        _workshop.StepRequested += () => _audio.Play(PixelSound.Step);
+        _world = _workshop;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_workshop");
         }
     }
 
@@ -1420,6 +1536,51 @@ public sealed partial class Main : Node
             () => { },
             GeneratedArt.RelationshipIcon(
                 RelationshipTier.NewAcquaintance
+            )
+        );
+    }
+
+    private void TryEnterMoonstoneWorkshop()
+    {
+        var result = _session.TryEnterMoonstoneWorkshop();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowWorkshop(true);
+    }
+
+    private void TryLeaveMoonstoneWorkshop()
+    {
+        var result = _session.TryExitMoonstoneWorkshop();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, false, true);
+    }
+
+    private void InspectMoonRuneWorkbench()
+    {
+        var result = _session.InspectMoonRuneWorkbench();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowDialogue(
+            "workshop.workbench.name",
+            result.MessageKey,
+            () => { },
+            GeneratedArt.RelationshipIcon(
+                RelationshipTier.TrustedFriend
             )
         );
     }
@@ -1930,6 +2091,11 @@ public sealed partial class Main : Node
         {
             _archive.ControlsEnabled = enabled;
         }
+
+        if (_workshop is not null)
+        {
+            _workshop.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -1942,6 +2108,7 @@ public sealed partial class Main : Node
         _farm = null;
         _cottage = null;
         _archive = null;
+        _workshop = null;
     }
 
     private static void FreeUi(CanvasItem? item)
