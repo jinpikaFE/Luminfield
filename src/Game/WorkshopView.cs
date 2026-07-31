@@ -235,7 +235,7 @@ internal sealed partial class WorkshopNpcLayer : Node2D
                 new Color(0.01f, 0.03f, 0.08f, 0.44f)
             );
             DrawTextureRectRegion(
-                GeneratedArt.VillageNpcTexture,
+                GeneratedArt.VillageNpcTexture(npc.Definition.AtlasRow),
                 new Rect2(
                     anchor - new Vector2(width / 2, height),
                     new Vector2(width, height)
