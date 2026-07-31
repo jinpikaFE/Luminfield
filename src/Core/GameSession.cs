@@ -24,6 +24,7 @@ public sealed class GameSession
     public StarlightSystem Starlight { get; } = new();
     public VillageSystem Village { get; } = new();
     public MailSystem Mail { get; } = new();
+    public CharacterEventSystem CharacterEvents { get; } = new();
 
     public int Energy { get; private set; } = MaxEnergy;
     public int WateringCanWater { get; private set; } = MaxWateringCanWater;
@@ -64,6 +65,7 @@ public sealed class GameSession
         Starlight.Changed += NotifyChanged;
         Village.Changed += NotifyChanged;
         Mail.Changed += NotifyChanged;
+        CharacterEvents.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -83,6 +85,7 @@ public sealed class GameSession
         Starlight.Reset();
         Village.Reset();
         Mail.Reset();
+        CharacterEvents.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -109,6 +112,7 @@ public sealed class GameSession
         Starlight.Restore(save.Starlight);
         Village.Restore(save.Village);
         Mail.Restore(save.Mail);
+        CharacterEvents.Restore(save.CharacterEvents, save.Day);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -926,6 +930,14 @@ public sealed class GameSession
         out ActionResult result
     )
     {
+        var eligibleCharacterEvent = CharacterEvents.EligibleEvent(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationId,
+            Inventory.Selected.ItemId,
+            Village
+        );
         var conversation = Village.Interact(
             target,
             Clock.Day,
@@ -937,11 +949,26 @@ public sealed class GameSession
         );
         if (conversation is not null)
         {
+            if (conversation.GiftReaction is null &&
+                eligibleCharacterEvent is not null)
+            {
+                var characterEvent = CharacterEvents.BeginEvent(
+                    eligibleCharacterEvent
+                );
+                conversation = conversation with
+                {
+                    CharacterEvent = characterEvent
+                };
+            }
+
             Changed?.Invoke();
         }
 
         return conversation;
     }
+
+    public ActionResult CompleteCharacterEvent(string eventId) =>
+        CharacterEvents.CompleteActiveEvent(eventId, Clock.Day);
 
     public ActionResult TryEnterMoonlitArchive()
     {
@@ -1198,7 +1225,8 @@ public sealed class GameSession
         Commission = Commission.Capture(),
         Starlight = Starlight.Capture(),
         Village = Village.Capture(),
-        Mail = Mail.Capture()
+        Mail = Mail.Capture(),
+        CharacterEvents = CharacterEvents.Capture()
     };
 
     private TargetPreview PreviewArchiveTarget(GridPosition target)

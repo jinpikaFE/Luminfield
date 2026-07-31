@@ -19,6 +19,14 @@ public sealed class PlaytestScenarioRegistryTests
         ("--playtest-archive", PlaytestScenarioId.Archive),
         ("--playtest-archive-door", PlaytestScenarioId.ArchiveDoor),
         (
+            "--playtest-liora-event-one",
+            PlaytestScenarioId.LioraEventOne
+        ),
+        (
+            "--playtest-liora-event-two",
+            PlaytestScenarioId.LioraEventTwo
+        ),
+        (
             "--playtest-workshop-tavi",
             PlaytestScenarioId.WorkshopTavi
         ),

@@ -64,8 +64,17 @@ exploration state in the regular save file.
 - Player location, met villagers, relationship points, and daily talk/gift
   records use stable save IDs. Legacy saves remain compatible and unknown IDs
   are filtered.
-- Character events, tile-level walking paths, weather/season schedule
-  conditions, and four more building interiors remain planned work.
+- Liora now has the first complete two-stage friendship event chain. At 25
+  relationship points, speaking to her in the Moonlit Archive reveals “The
+  Faded Return Route.” At 60 points on a later day, “The Remembered Way Home”
+  continues the story. Each stage has three bilingual pages and can complete
+  only after its final page closes.
+- Event completion uses the stable IDs `liora_faded_return_route` and
+  `liora_remembered_way_home` plus completion days in the existing additive
+  `schemaVersion: 1` save. Old saves receive an empty event list; unknown,
+  duplicate, orphaned, and same-day out-of-order entries are filtered.
+- Tile-level walking paths, weather/season schedule conditions, more character
+  event chains, and four more building interiors remain planned work.
 
 ## Starlight Mail and relationship rewards
 
@@ -120,8 +129,8 @@ placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B now includes the first village, eight NPC schedules, the
-first two enterable buildings, and a data-driven relationship and daily-gifting
-entry point.
+first two enterable buildings, a data-driven relationship and daily-gifting
+entry point, relationship mail, and Liora's first two-stage friendship event.
 
 ## Tools and backpack
 
@@ -249,6 +258,11 @@ method. Add a new ID and flag to the registry, then add its setup binding in
 `Main`; focused tests lock the known flag catalog, uniqueness, priority, and
 normal fallback behavior.
 
+Use `--playtest-liora-event-one` and `--playtest-liora-event-two` to open the
+two Liora event stages directly in the Moonlit Archive. These flags preserve
+the existing registry priority and can be combined with
+`--capture-playtest=<path>` for deterministic visual QA.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -296,7 +310,9 @@ Glow coins, the active processing job, artisan goods, watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily commission state, the
 Woodland Watch Starlight's partial offerings and permanent reward, and the
-24-slot backpack are stored in the existing `schemaVersion: 1` save.
+24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's
+character-event completion IDs and dates use another additive projection in
+that same schema.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
 schema. Older saves receive safe defaults and tool-ID migration for the new
@@ -321,6 +337,9 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-07-31 16:34:11 CST — Added Liora's first two-stage friendship event,
+  three bilingual pages per stage, final-page completion, ordered stable save
+  state, focused playtest scenarios, tests, and macOS visual QA.
 - 2026-07-31 15:08:11 CST — Added the homestead Starlight Mailbox, first
   Starlight Post panel, Nemi's welcome letter, and three Trusted Friend reward
   letters with atomic attachment claims, compatible saves, and visual QA.

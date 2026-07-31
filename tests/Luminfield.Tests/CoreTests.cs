@@ -2241,6 +2241,416 @@ public sealed class VillageSystemTests
     }
 }
 
+public sealed class CharacterEventSystemTests
+{
+    [Fact]
+    public void FirstMeetingAndThresholdCrossingDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 25,
+            metLiora: false
+        );
+
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.LioraPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.liora.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 23,
+            metLiora: true,
+            lastTalkDay: 0
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.LioraPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+    }
+
+    [Fact]
+    public void FadedReturnRouteRequiresEveryConditionAndCompletesOnce()
+    {
+        var prepared = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 25,
+            metLiora: true
+        );
+
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.LioraPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.LioraFadedReturnRouteId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            2,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.LioraFadedReturnRouteId
+            )
+        );
+        var saved = Assert.Single(
+            prepared.Session.Capture().CharacterEvents.Entries
+        );
+        Assert.Equal(
+            CharacterEventCatalog.LioraFadedReturnRouteId,
+            saved.EventId
+        );
+        Assert.Equal(2, saved.CompletedDay);
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            2,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.LioraFadedReturnRouteId
+            )
+        );
+
+        var repeat = prepared.Session.InteractWithVillager(
+            prepared.LioraPosition,
+            out var repeatResult
+        );
+        Assert.True(repeatResult.Succeeded);
+        Assert.NotNull(repeat);
+        Assert.Null(repeat.CharacterEvent);
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void RememberedWayHomeRequiresAnEarlierCompletionDay()
+    {
+        var sameDay = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 60,
+            metLiora: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.LioraPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var laterDay = PrepareLioraSession(
+            day: 3,
+            relationshipPoints: 60,
+            metLiora: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.LioraPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.LioraRememberedWayHomeId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.LioraRememberedWayHomeId
+        ).Succeeded);
+
+        laterDay.Session.Clock.Reset(4, 10 * 60);
+        var completedTalk = laterDay.Session.InteractWithVillager(
+            laterDay.LioraPosition,
+            out var completedResult
+        );
+        Assert.True(completedResult.Succeeded);
+        Assert.NotNull(completedTalk);
+        Assert.Null(completedTalk.CharacterEvent);
+    }
+
+    [Fact]
+    public void GiftsWrongToolsAndWrongScenesNeverProgressTheEvent()
+    {
+        var wrongTool = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 25,
+            metLiora: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.LioraPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+        Assert.False(wrongTool.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        ).Succeeded);
+
+        var gift = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 25,
+            metLiora: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.MoonrootId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonrootId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.LioraPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareLioraSession(
+            day: 2,
+            relationshipPoints: 25,
+            metLiora: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            VillageCatalog.MoonlitArchiveDoorCell.X * 16 + 8,
+            VillageCatalog.MoonlitArchiveDoorCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.LioraPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+    }
+
+    [Fact]
+    public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
+    {
+        Assert.Empty(
+            CharacterEventSystem.NormalizeSave(null, 5).Entries
+        );
+
+        var normalized = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId = "unknown_event",
+                        CompletedDay = 1
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 3
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 2
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraRememberedWayHomeId,
+                        CompletedDay = 5
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraRememberedWayHomeId,
+                        CompletedDay = 4
+                    }
+                ]
+            },
+            5
+        );
+
+        Assert.Collection(
+            normalized.Entries,
+            first =>
+            {
+                Assert.Equal(
+                    CharacterEventCatalog.LioraFadedReturnRouteId,
+                    first.EventId
+                );
+                Assert.Equal(2, first.CompletedDay);
+            },
+            second =>
+            {
+                Assert.Equal(
+                    CharacterEventCatalog.LioraRememberedWayHomeId,
+                    second.EventId
+                );
+                Assert.Equal(4, second.CompletedDay);
+            }
+        );
+
+        var invalidOrder = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 3
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraRememberedWayHomeId,
+                        CompletedDay = 3
+                    }
+                ]
+            },
+            5
+        );
+
+        Assert.Single(invalidOrder.Entries);
+        Assert.Equal(
+            CharacterEventCatalog.LioraFadedReturnRouteId,
+            invalidOrder.Entries[0].EventId
+        );
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition LioraPosition
+    ) PrepareLioraSession(
+        int day,
+        int relationshipPoints,
+        bool metLiora,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 10 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 17 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metLiora ? [VillageCatalog.LioraId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.LioraId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        var liora = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            day,
+            minuteOfDay
+        );
+        Assert.NotNull(liora);
+        Assert.Equal(
+            PlayerLocationIds.MoonlitArchive,
+            liora.LocationId
+        );
+        return (session, liora.Position);
+    }
+}
+
 public sealed class LocaleTests
 {
     [Fact]
@@ -2287,6 +2697,33 @@ public sealed class LocaleTests
             locale.SetLocale(language);
             Assert.All(
                 definitionKeys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
+    public void EveryCharacterEventPageExistsInBothLanguages()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var dialogueKeys = CharacterEventCatalog.Definitions
+            .SelectMany(definition => definition.DialogueKeys)
+            .ToArray();
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                dialogueKeys,
                 key => Assert.False(locale.Tr(key).StartsWith('['))
             );
         }
@@ -2521,6 +2958,8 @@ public sealed class SaveServiceTests : IDisposable
             DataCatalog.WoodlandStarlight.Nodes.Count,
             result.Save.Starlight.Nodes.Count
         );
+        Assert.NotNull(result.Save.CharacterEvents);
+        Assert.Empty(result.Save.CharacterEvents.Entries);
     }
 
     [Fact]

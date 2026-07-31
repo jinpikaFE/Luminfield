@@ -1638,6 +1638,8 @@ public sealed partial class DialogueOverlay : FullScreenUi
     private readonly Label _body;
     private readonly Label _continue;
     private Action? _closed;
+    private IReadOnlyList<string> _pages = [];
+    private int _pageIndex;
     private double _inputDelay = 0.15;
 
     public DialogueOverlay(Theme theme, LocaleService locale) : base(theme)
@@ -1703,10 +1705,34 @@ public sealed partial class DialogueOverlay : FullScreenUi
         Action closed,
         Texture2D? icon = null,
         string status = ""
+    ) => ShowDialoguePages(
+        speaker,
+        [body],
+        closed,
+        icon,
+        status
+    );
+
+    public void ShowDialoguePages(
+        string speaker,
+        IReadOnlyList<string> pages,
+        Action closed,
+        Texture2D? icon = null,
+        string status = ""
     )
     {
+        if (pages.Count == 0)
+        {
+            throw new ArgumentException(
+                "Dialogue must contain at least one page.",
+                nameof(pages)
+            );
+        }
+
         _speaker.Text = speaker;
-        _body.Text = body;
+        _pages = pages;
+        _pageIndex = 0;
+        _body.Text = _pages[_pageIndex];
         _icon.Texture = icon;
         _icon.Visible = icon is not null;
         _status.Text = status;
@@ -1723,6 +1749,15 @@ public sealed partial class DialogueOverlay : FullScreenUi
     {
         if (_inputDelay > 0 || !@event.IsActionPressed(InputSetup.Interact))
         {
+            return;
+        }
+
+        if (_pageIndex + 1 < _pages.Count)
+        {
+            _pageIndex++;
+            _body.Text = _pages[_pageIndex];
+            _inputDelay = 0.08;
+            GetViewport().SetInputAsHandled();
             return;
         }
 

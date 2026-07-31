@@ -393,6 +393,10 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
                 [PlaytestScenarioId.Archive] = StartArchivePlaytest,
                 [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
+                [PlaytestScenarioId.LioraEventOne] =
+                    StartLioraEventOnePlaytest,
+                [PlaytestScenarioId.LioraEventTwo] =
+                    StartLioraEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1031,6 +1035,84 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartLioraEventOnePlaytest()
+    {
+        StartLioraEventPlaytest(2, 25, new CharacterEventSave());
+    }
+
+    private void StartLioraEventTwoPlaytest()
+    {
+        StartLioraEventPlaytest(
+            3,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartLioraEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    )
+    {
+        const int minuteOfDay = 10 * 60;
+        var liora = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            day,
+            minuteOfDay
+        );
+        if (liora is null)
+        {
+            StartArchivePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 17 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.LioraId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.LioraId,
+                    Points = relationshipPoints,
+                    LastTalkDay = day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents;
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(
+            () => TalkToVillager(liora.Position)
+        ).CallDeferred();
+    }
+
     private void StartArchivePlaytest(
         bool openDialogue,
         bool giveGift
@@ -1645,11 +1727,27 @@ public sealed partial class Main : Node
             conversation.RelationshipPoints,
             VillageSystem.MaximumRelationshipPoints
         );
-        ShowDialogue(
+        var characterEvent = conversation.CharacterEvent;
+        var dialogueKeys = characterEvent is not null
+            ? characterEvent.DialogueKeys
+            : [conversation.DialogueKey];
+        ShowDialoguePages(
             conversation.NameKey,
-            conversation.DialogueKey,
+            dialogueKeys,
             () =>
             {
+                if (characterEvent is not null)
+                {
+                    var completion = _session.CompleteCharacterEvent(
+                        characterEvent.EventId
+                    );
+                    if (!completion.Succeeded)
+                    {
+                        _hud?.ShowNotice(completion.MessageKey);
+                        return;
+                    }
+                }
+
                 SaveNow(false);
             },
             icon,
@@ -2106,13 +2204,27 @@ public sealed partial class Main : Node
         Action closed,
         Texture2D? icon = null,
         string status = ""
+    ) => ShowDialoguePages(
+        speakerKey,
+        [dialogueKey],
+        closed,
+        icon,
+        status
+    );
+
+    private void ShowDialoguePages(
+        string speakerKey,
+        IReadOnlyList<string> dialogueKeys,
+        Action closed,
+        Texture2D? icon = null,
+        string status = ""
     )
     {
         SetWorldControls(false);
         _dialogueOverlay = new DialogueOverlay(_theme, _locale);
-        _dialogueOverlay.ShowDialogue(
+        _dialogueOverlay.ShowDialoguePages(
             _locale.Tr(speakerKey),
-            _locale.Tr(dialogueKey),
+            dialogueKeys.Select(key => _locale.Tr(key)).ToList(),
             () =>
             {
                 _dialogueOverlay = null;

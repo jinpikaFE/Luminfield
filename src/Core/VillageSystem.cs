@@ -95,7 +95,8 @@ public sealed record VillageConversation(
     bool FirstMeeting,
     GiftReaction? GiftReaction,
     int RelationshipPoints,
-    RelationshipTier RelationshipTier
+    RelationshipTier RelationshipTier,
+    CharacterEventDialogue? CharacterEvent = null
 );
 
 public sealed record VillageInteractionCheck(

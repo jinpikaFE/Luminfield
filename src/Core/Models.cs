@@ -228,6 +228,17 @@ public sealed class MailSave
     public List<MailEntrySave> Entries { get; set; } = [];
 }
 
+public sealed class CharacterEventEntrySave
+{
+    public string EventId { get; set; } = string.Empty;
+    public int CompletedDay { get; set; } = 1;
+}
+
+public sealed class CharacterEventSave
+{
+    public List<CharacterEventEntrySave> Entries { get; set; } = [];
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -250,6 +261,7 @@ public sealed class GameSaveV1
     public StarlightSave Starlight { get; set; } = new();
     public VillageSave Village { get; set; } = new();
     public MailSave Mail { get; set; } = new();
+    public CharacterEventSave CharacterEvents { get; set; } = new();
 }
 
 public sealed record ActionResult(
