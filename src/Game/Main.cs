@@ -65,160 +65,11 @@ public sealed partial class Main : Node
         ShowTitle();
 
         var userArgs = OS.GetCmdlineUserArgs();
-        if (userArgs.Contains("--playtest-door"))
+        var playtestSetup = CreatePlaytestScenarioRegistry()
+            .ResolveSetup(userArgs);
+        if (playtestSetup is not null)
         {
-            Callable.From(StartDoorPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-cottage"))
-        {
-            Callable.From(StartCottagePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-crops"))
-        {
-            Callable.From(StartCropPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-economy"))
-        {
-            Callable.From(StartEconomyPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-processor"))
-        {
-            Callable.From(StartProcessorPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-archive-gift"))
-        {
-            Callable.From(StartArchiveGiftPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-archive"))
-        {
-            Callable.From(StartArchivePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-archive-door"))
-        {
-            Callable.From(StartArchiveDoorPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-village-dialogue"))
-        {
-            Callable.From(StartVillageDialoguePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-village-restday-en"))
-        {
-            Callable.From(StartVillageRestdayEnglishPlaytest)
-                .CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-village"))
-        {
-            Callable.From(StartVillagePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-world"))
-        {
-            Callable.From(StartWorldPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-gate"))
-        {
-            Callable.From(StartGatePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-backpack"))
-        {
-            Callable.From(StartBackpackPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-resource"))
-        {
-            Callable.From(StartResourcePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-target"))
-        {
-            Callable.From(StartTargetPreviewPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-phase-a"))
-        {
-            Callable.From(StartPhaseAPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-phase-a-summary"))
-        {
-            Callable.From(StartPhaseASummaryPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-phase-a-rain"))
-        {
-            Callable.From(StartPhaseARainPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-resource-respawn"))
-        {
-            Callable.From(StartResourceRespawnPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-crafting"))
-        {
-            Callable.From(StartCraftingPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-placeables"))
-        {
-            Callable.From(StartFarmPlaceablesPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-chest-placement"))
-        {
-            Callable.From(StartChestPlacementPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-storage"))
-        {
-            Callable.From(StartStoragePlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-commission-offer"))
-        {
-            Callable.From(StartCommissionOfferPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-commission-ready"))
-        {
-            Callable.From(StartCommissionReadyPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-commission-ready-en"))
-        {
-            Callable.From(StartCommissionReadyEnglishPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-commission-map"))
-        {
-            Callable.From(StartCommissionMapPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-starlight-map"))
-        {
-            Callable.From(StartStarlightMapPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-starlight-map-restored"))
-        {
-            Callable.From(StartStarlightRestoredMapPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-starlight-panel"))
-        {
-            Callable.From(StartStarlightPanelPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-starlight-restored"))
-        {
-            Callable.From(StartStarlightRestoredPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-starlight-restored-en"))
-        {
-            Callable.From(StartStarlightRestoredEnglishPlaytest)
-                .CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-quality-crafting"))
-        {
-            Callable.From(StartQualityCraftingPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-quality-backpack-en"))
-        {
-            Callable.From(StartQualityBackpackEnglishPlaytest)
-                .CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-quality-backpack"))
-        {
-            Callable.From(StartQualityBackpackPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-quality"))
-        {
-            Callable.From(StartQualityPlaytest).CallDeferred();
-        }
-        else if (userArgs.Contains("--playtest-farm"))
-        {
-            CallDeferred(MethodName.StartNewGame);
+            Callable.From(playtestSetup).CallDeferred();
         }
 
         var captureArgument = userArgs.FirstOrDefault(value =>
@@ -513,6 +364,70 @@ public sealed partial class Main : Node
         EnsureHud();
         ShowFarm(false);
     }
+
+    private PlaytestScenarioRegistry CreatePlaytestScenarioRegistry() =>
+        new(
+            new Dictionary<PlaytestScenarioId, Action>
+            {
+                [PlaytestScenarioId.Door] = StartDoorPlaytest,
+                [PlaytestScenarioId.Cottage] = StartCottagePlaytest,
+                [PlaytestScenarioId.Crops] = StartCropPlaytest,
+                [PlaytestScenarioId.Economy] = StartEconomyPlaytest,
+                [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
+                [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
+                [PlaytestScenarioId.Archive] = StartArchivePlaytest,
+                [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
+                [PlaytestScenarioId.VillageDialogue] =
+                    StartVillageDialoguePlaytest,
+                [PlaytestScenarioId.VillageRestdayEnglish] =
+                    StartVillageRestdayEnglishPlaytest,
+                [PlaytestScenarioId.Village] = StartVillagePlaytest,
+                [PlaytestScenarioId.World] = StartWorldPlaytest,
+                [PlaytestScenarioId.Gate] = StartGatePlaytest,
+                [PlaytestScenarioId.Backpack] = StartBackpackPlaytest,
+                [PlaytestScenarioId.Resource] = StartResourcePlaytest,
+                [PlaytestScenarioId.Target] = StartTargetPreviewPlaytest,
+                [PlaytestScenarioId.PhaseA] = StartPhaseAPlaytest,
+                [PlaytestScenarioId.PhaseASummary] =
+                    StartPhaseASummaryPlaytest,
+                [PlaytestScenarioId.PhaseARain] =
+                    StartPhaseARainPlaytest,
+                [PlaytestScenarioId.ResourceRespawn] =
+                    StartResourceRespawnPlaytest,
+                [PlaytestScenarioId.Crafting] = StartCraftingPlaytest,
+                [PlaytestScenarioId.Placeables] =
+                    StartFarmPlaceablesPlaytest,
+                [PlaytestScenarioId.ChestPlacement] =
+                    StartChestPlacementPlaytest,
+                [PlaytestScenarioId.Storage] = StartStoragePlaytest,
+                [PlaytestScenarioId.CommissionOffer] =
+                    StartCommissionOfferPlaytest,
+                [PlaytestScenarioId.CommissionReady] =
+                    StartCommissionReadyPlaytest,
+                [PlaytestScenarioId.CommissionReadyEnglish] =
+                    StartCommissionReadyEnglishPlaytest,
+                [PlaytestScenarioId.CommissionMap] =
+                    StartCommissionMapPlaytest,
+                [PlaytestScenarioId.StarlightMap] =
+                    StartStarlightMapPlaytest,
+                [PlaytestScenarioId.StarlightMapRestored] =
+                    StartStarlightRestoredMapPlaytest,
+                [PlaytestScenarioId.StarlightPanel] =
+                    StartStarlightPanelPlaytest,
+                [PlaytestScenarioId.StarlightRestored] =
+                    StartStarlightRestoredPlaytest,
+                [PlaytestScenarioId.StarlightRestoredEnglish] =
+                    StartStarlightRestoredEnglishPlaytest,
+                [PlaytestScenarioId.QualityCrafting] =
+                    StartQualityCraftingPlaytest,
+                [PlaytestScenarioId.QualityBackpackEnglish] =
+                    StartQualityBackpackEnglishPlaytest,
+                [PlaytestScenarioId.QualityBackpack] =
+                    StartQualityBackpackPlaytest,
+                [PlaytestScenarioId.Quality] = StartQualityPlaytest,
+                [PlaytestScenarioId.Farm] = StartNewGame
+            }
+        );
 
     private void StartProcessorPlaytest()
     {

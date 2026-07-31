@@ -210,6 +210,19 @@ the day early.
 | Crafting | C | X |
 | Pause | Esc | Start |
 
+## Developer playtest scenarios
+
+Developer launch flags are registered in priority order in
+[`PlaytestScenarioRegistry.cs`](src/Game/PlaytestScenarioRegistry.cs). The
+registry uses exact, case-sensitive matching; when multiple known flags are
+present, the first registered scenario wins. With no known playtest flag, the
+game keeps the normal title-screen startup.
+
+`Main.CreatePlaytestScenarioRegistry()` binds every scenario ID to its setup
+method. Add a new ID and flag to the registry, then add its setup binding in
+`Main`; focused tests lock the known flag catalog, uniqueness, priority, and
+normal fallback behavior.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -279,3 +292,9 @@ which is required for local launch on current macOS versions. Developer ID
 signing and notarization are intentionally outside this vertical slice.
 
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
+
+## Change log
+
+- 2026-07-31 14:22:15 CST — Replaced the playtest launch condition chain with
+  an ordered, test-covered scenario registry while preserving every existing
+  flag, priority, and normal startup fallback.
