@@ -71,10 +71,45 @@ public sealed class FarmSystem
         {
             X = position.X,
             Y = position.Y,
-            Tilled = true
+            Tilled = true,
+            QualityRoll = -1
         };
         TileChanged?.Invoke(position);
         return ActionResult.Success(2);
+    }
+
+    public ActionResult TryFertilize(
+        GridPosition position,
+        string fertilizerId
+    )
+    {
+        if (!DataCatalog.Items.TryGetValue(
+                fertilizerId,
+                out var fertilizer
+            ) ||
+            fertilizer.Kind != ItemKind.Fertilizer)
+        {
+            return ActionResult.Fail("fertilizer.invalid");
+        }
+
+        if (!_tiles.TryGetValue(position, out var tile) || !tile.Tilled)
+        {
+            return ActionResult.Fail("fertilizer.needs_tilled_soil");
+        }
+
+        if (!string.IsNullOrWhiteSpace(tile.CropId))
+        {
+            return ActionResult.Fail("fertilizer.before_planting");
+        }
+
+        if (!string.IsNullOrWhiteSpace(tile.FertilizerId))
+        {
+            return ActionResult.Fail("fertilizer.already_applied");
+        }
+
+        tile.FertilizerId = fertilizer.Id;
+        TileChanged?.Invoke(position);
+        return ActionResult.Success(messageKey: "fertilizer.applied");
     }
 
     public ActionResult TryWater(GridPosition position, int availableEnergy)
@@ -99,7 +134,44 @@ public sealed class FarmSystem
         return ActionResult.Success(2);
     }
 
-    public ActionResult TryPlant(GridPosition position, string cropId)
+    public bool ApplyWeatherWatering(GridPosition position)
+    {
+        return ApplyAutomaticWatering(position);
+    }
+
+    public bool ApplyAutomaticWatering(GridPosition position)
+    {
+        if (!_tiles.TryGetValue(position, out var tile) ||
+            !tile.Tilled ||
+            tile.Watered)
+        {
+            return false;
+        }
+
+        tile.Watered = true;
+        TileChanged?.Invoke(position);
+        return true;
+    }
+
+    public int ApplyWeatherWatering()
+    {
+        var watered = 0;
+        foreach (var position in _tiles.Keys)
+        {
+            if (ApplyWeatherWatering(position))
+            {
+                watered++;
+            }
+        }
+
+        return watered;
+    }
+
+    public ActionResult TryPlant(
+        GridPosition position,
+        string cropId,
+        int plantedDay = 1
+    )
     {
         if (!_tiles.TryGetValue(position, out var tile) || !tile.Tilled)
         {
@@ -114,8 +186,42 @@ public sealed class FarmSystem
         _ = DataCatalog.Crop(cropId);
         tile.CropId = cropId;
         tile.WateredNights = 0;
+        tile.QualityRoll = StableQualityRoll(
+            position,
+            cropId,
+            plantedDay
+        );
         TileChanged?.Invoke(position);
         return ActionResult.Success();
+    }
+
+    public CropQuality HarvestQualityAt(GridPosition position)
+    {
+        if (!_tiles.TryGetValue(position, out var tile) ||
+            string.IsNullOrWhiteSpace(tile.CropId) ||
+            tile.FertilizerId != DataCatalog.StarsoilFertilizerId)
+        {
+            return CropQuality.Regular;
+        }
+
+        return tile.QualityRoll is >= 0 and < 20
+            ? CropQuality.Starlight
+            : CropQuality.Luminous;
+    }
+
+    public string? HarvestItemIdAt(GridPosition position)
+    {
+        if (!_tiles.TryGetValue(position, out var tile) ||
+            string.IsNullOrWhiteSpace(tile.CropId))
+        {
+            return null;
+        }
+
+        var crop = DataCatalog.Crop(tile.CropId);
+        return DataCatalog.ProduceItemId(
+            crop.HarvestItemId,
+            HarvestQualityAt(position)
+        );
     }
 
     public ActionResult TryHarvest(GridPosition position)
@@ -131,10 +237,14 @@ public sealed class FarmSystem
             return ActionResult.Fail("notice.not_ready");
         }
 
+        var harvestItemId = HarvestItemIdAt(position)
+            ?? definition.HarvestItemId;
         tile.CropId = null;
+        tile.FertilizerId = null;
         tile.WateredNights = 0;
+        tile.QualityRoll = -1;
         TileChanged?.Invoke(position);
-        return new ActionResult(true, 0, string.Empty, definition.HarvestItemId, 1);
+        return new ActionResult(true, 0, string.Empty, harvestItemId, 1);
     }
 
     public int EndDay()
@@ -179,4 +289,25 @@ public sealed class FarmSystem
         .ThenBy(tile => tile.X)
         .Select(tile => tile.Clone())
         .ToList();
+
+    private static int StableQualityRoll(
+        GridPosition position,
+        string cropId,
+        int plantedDay
+    )
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var character in cropId)
+            {
+                hash = (hash ^ character) * 16777619u;
+            }
+
+            hash = (hash ^ (uint)position.X) * 16777619u;
+            hash = (hash ^ (uint)position.Y) * 16777619u;
+            hash = (hash ^ (uint)Math.Max(1, plantedDay)) * 16777619u;
+            return (int)(hash % 100);
+        }
+    }
 }

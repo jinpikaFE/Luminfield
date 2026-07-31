@@ -123,6 +123,8 @@ public sealed partial class HudView : Control
     private readonly LocaleService _locale;
     private readonly Label _day;
     private readonly Label _time;
+    private readonly Label _weather;
+    private readonly TextureRect _weatherIcon;
     private readonly Label _objective;
     private readonly ProgressBar _energy;
     private readonly Label _energyText;
@@ -146,7 +148,7 @@ public sealed partial class HudView : Control
         _locale = locale;
         AddChild(new HudChrome());
 
-        var clockPanel = PanelAt(new Vector2(8, 8), new Vector2(94, 46));
+        var clockPanel = PanelAt(new Vector2(8, 8), new Vector2(122, 46));
         clockPanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
@@ -160,12 +162,28 @@ public sealed partial class HudView : Control
         var clockColumn = new VBoxContainer();
         clockColumn.AddThemeConstantOverride("separation", 0);
         clockPanel.AddChild(clockColumn);
-        _day = ThemeFactory.Label(size: 11, color: ThemeFactory.Gold);
-        _time = ThemeFactory.Label(size: 16, color: ThemeFactory.Mint);
-        clockColumn.AddChild(_day);
+        var dayRow = new HBoxContainer();
+        dayRow.AddThemeConstantOverride("separation", 2);
+        _day = ThemeFactory.Label(size: 9, color: ThemeFactory.Gold);
+        _day.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _weatherIcon = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(16, 16),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        dayRow.AddChild(_day);
+        dayRow.AddChild(_weatherIcon);
+        _time = ThemeFactory.Label(size: 14, color: ThemeFactory.Mint);
+        _weather = ThemeFactory.Label(size: 7, color: new Color("#a8bfd2"));
+        _weather.ClipText = true;
+        clockColumn.AddChild(dayRow);
         clockColumn.AddChild(_time);
+        clockColumn.AddChild(_weather);
 
-        var objectivePanel = PanelAt(new Vector2(110, 8), new Vector2(330, 46));
+        var objectivePanel = PanelAt(new Vector2(138, 8), new Vector2(302, 72));
         objectivePanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
@@ -176,7 +194,7 @@ public sealed partial class HudView : Control
                 7
             )
         );
-        _objective = ThemeFactory.Label(size: 11);
+        _objective = ThemeFactory.Label(size: 8);
         _objective.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _objective.VerticalAlignment = VerticalAlignment.Center;
         objectivePanel.AddChild(_objective);
@@ -287,6 +305,7 @@ public sealed partial class HudView : Control
         session.Changed += Refresh;
         session.EnergyChanged += Refresh;
         session.WaterChanged += Refresh;
+        session.PlayerMoved += RefreshLocationChrome;
         locale.LocaleChanged += Refresh;
         Refresh();
     }
@@ -319,8 +338,19 @@ public sealed partial class HudView : Control
 
     public void Refresh()
     {
-        _day.Text = _locale.Tr("hud.day", _session.Clock.Day);
+        var weekday = _locale.Tr(CalendarSystem.WeekdayKey(_session.Clock.Day));
+        _day.Text = _locale.Tr("hud.day_weekday", _session.Clock.Day, weekday);
         _time.Text = _locale.Tr("hud.time", _session.Clock.DisplayTime);
+        var weatherName = _locale.Tr(_session.Weather.Current.NameKey);
+        var forecastName = _locale.Tr(_session.Weather.Forecast.NameKey);
+        _weather.Text = _locale.Tr("hud.weather_line", weatherName, forecastName);
+        _weather.TooltipText = _locale.Tr(
+            "hud.weather_tooltip",
+            weatherName,
+            forecastName
+        );
+        _weatherIcon.Texture = GeneratedArt.CreateWeatherIcon(_session.Weather.CurrentId);
+        _weatherIcon.TooltipText = _weather.TooltipText;
         _energy.Value = _session.Energy;
         _energyText.Text = _locale.Tr("hud.energy", _session.Energy, GameSession.MaxEnergy);
         _water.Text = _locale.Tr(
@@ -329,11 +359,39 @@ public sealed partial class HudView : Control
             GameSession.MaxWateringCanWater
         );
         _coins.Text = _locale.Tr("hud.coins", _session.Coins);
-        _objective.Text = $"✦ {_locale.Tr(
+        var tutorialObjective = $"✦ {_locale.Tr(
             _session.Quest.ObjectiveKey,
             _session.Quest.ObjectiveCount
         )}";
+        var objectiveText = tutorialObjective;
+        if (_session.Commission.Accepted && !_session.Commission.Claimed)
+        {
+            var commission = _session.Commission.Current;
+            var progress = _session.Commission.DisplayProgress(
+                _session.Inventory
+            );
+            objectiveText = _locale.Tr(
+                "commission.hud",
+                tutorialObjective,
+                _locale.Tr(commission.TitleKey),
+                progress,
+                commission.RequiredCount
+            );
+        }
+
+        if (_session.Starlight.Discovered)
+        {
+            objectiveText = _locale.Tr(
+                "starlight.hud",
+                objectiveText,
+                _locale.Tr(_session.Starlight.Current.NameKey),
+                _session.Starlight.CompletedNodeCount,
+                _session.Starlight.Current.Nodes.Count
+            );
+        }
+        _objective.Text = objectiveText;
         _controls.Text = _locale.Tr("hud.controls");
+        RefreshLocationChrome();
 
         for (var index = 0; index < _slots.Count; index++)
         {
@@ -383,7 +441,14 @@ public sealed partial class HudView : Control
         _session.Changed -= Refresh;
         _session.EnergyChanged -= Refresh;
         _session.WaterChanged -= Refresh;
+        _session.PlayerMoved -= RefreshLocationChrome;
         _locale.LocaleChanged -= Refresh;
+    }
+
+    private void RefreshLocationChrome()
+    {
+        _minimap.Visible =
+            _session.PlayerLocationId == PlayerLocationIds.World;
     }
 
     private PanelContainer PanelAt(Vector2 position, Vector2 size)
@@ -520,6 +585,7 @@ internal sealed partial class MinimapView : Control
         WorldBiome.Home => new Color("#31545d"),
         WorldBiome.WhisperingWoods => new Color("#173a42"),
         WorldBiome.StarfallMeadow => new Color("#2c6660"),
+        WorldBiome.LumenVillage => new Color("#476b70"),
         WorldBiome.CrystalVale => new Color("#24536b"),
         WorldBiome.MoonwaterWetlands => new Color("#14506a"),
         WorldBiome.StarfallRuins => new Color("#45456d"),
@@ -647,6 +713,16 @@ internal sealed partial class HotbarSlotContent : Control
             destinationSize
         );
         DrawTextureRectRegion(texture, destination, source);
+        var quality = DataCatalog.ItemQuality(_itemId);
+        if (quality != CropQuality.Regular)
+        {
+            var badgeSource = GeneratedArt.QualityBadgeRegion(quality);
+            DrawTextureRectRegion(
+                GeneratedArt.CropQualityFertilizerTexture,
+                new Rect2(25, 24, 10, 10),
+                badgeSource
+            );
+        }
     }
 
     internal static bool TryGetIconRegion(
@@ -655,7 +731,28 @@ internal sealed partial class HotbarSlotContent : Control
         out Rect2 region
     )
     {
-        texture = itemId switch
+        if (GeneratedArt.TryCropExpansionItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (GeneratedArt.TryStarwovenChestItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (GeneratedArt.TryFarmObjectItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (GeneratedArt.TryCropQualityItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        var visualItemId = DataCatalog.BaseItemId(itemId);
+        texture = visualItemId switch
         {
             DataCatalog.HandId or
             DataCatalog.ShovelId or
@@ -668,7 +765,7 @@ internal sealed partial class HotbarSlotContent : Control
             DataCatalog.StarbudPreserveId or DataCatalog.MoonrootTonicId => EconomyIcons,
             _ => ItemIcons
         };
-        region = itemId switch
+        region = visualItemId switch
         {
             DataCatalog.HandId => ToolRegion(0),
             DataCatalog.ShovelId => ToolRegion(1),
@@ -704,6 +801,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
     private readonly Label _title;
     private readonly Label _summary;
     private readonly Label _hint;
+    private readonly Button _craft;
     private readonly Button _close;
     private readonly List<PanelContainer> _slots = [];
     private readonly List<HotbarSlotContent> _contents = [];
@@ -773,11 +871,20 @@ public sealed partial class BackpackOverlay : FullScreenUi
             _contents.Add(content);
         }
 
+        var actions = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center
+        };
+        actions.AddThemeConstantOverride("separation", 8);
+        _craft = ThemeFactory.Button("");
+        _craft.CustomMinimumSize = new Vector2(160, 28);
+        _craft.Pressed += () => CraftingRequested?.Invoke();
+        actions.AddChild(_craft);
         _close = ThemeFactory.Button("");
         _close.CustomMinimumSize = new Vector2(160, 28);
-        _close.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         _close.Pressed += () => CloseRequested?.Invoke();
-        column.AddChild(_close);
+        actions.AddChild(_close);
+        column.AddChild(actions);
 
         session.Changed += RefreshText;
         locale.LocaleChanged += RefreshText;
@@ -786,6 +893,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
     }
 
     public event Action? CloseRequested;
+    public event Action? CraftingRequested;
 
     public void RefreshText()
     {
@@ -793,6 +901,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
         var used = _session.Inventory.Slots.Count(slot => !slot.IsEmpty);
         _summary.Text = _locale.Tr("backpack.capacity", used, Inventory.SlotCount);
         _hint.Text = _locale.Tr("backpack.hint");
+        _craft.Text = _locale.Tr("backpack.craft");
         _close.Text = _locale.Tr("backpack.close");
 
         for (var index = 0; index < Inventory.SlotCount; index++)
@@ -837,6 +946,351 @@ public sealed partial class BackpackOverlay : FullScreenUi
     }
 }
 
+public sealed partial class ShippingOverlay : FullScreenUi
+{
+    private readonly GameSession _session;
+    private readonly LocaleService _locale;
+    private readonly Label _title;
+    private readonly Label _summary;
+    private readonly Label _availableHeader;
+    private readonly Label _pendingHeader;
+    private readonly Label _status;
+    private readonly Button _close;
+    private readonly Dictionary<string, Button> _queueButtons = [];
+    private readonly Dictionary<string, Button> _reclaimButtons = [];
+
+    public ShippingOverlay(
+        Theme theme,
+        GameSession session,
+        LocaleService locale
+    ) : base(theme)
+    {
+        _session = session;
+        _locale = locale;
+        AddChild(Dim(new Color(0.015f, 0.02f, 0.08f, 0.8f)));
+
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
+
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(548, 332) };
+        panel.AddThemeStyleboxOverride(
+            "panel",
+            ThemeFactory.Box(new Color("#0c1735fa"), ThemeFactory.Gold, 2, 9)
+        );
+        center.AddChild(panel);
+
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 5);
+        panel.AddChild(column);
+
+        var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 8);
+        header.AddChild(AtlasIcon(GeneratedArt.CreateShippingBinIcon(false), new Vector2(44, 38)));
+        _title = ThemeFactory.Label(size: 20, color: ThemeFactory.Mint);
+        _title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _title.VerticalAlignment = VerticalAlignment.Center;
+        _summary = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
+        _summary.HorizontalAlignment = HorizontalAlignment.Right;
+        _summary.VerticalAlignment = VerticalAlignment.Center;
+        header.AddChild(_title);
+        header.AddChild(_summary);
+        column.AddChild(header);
+
+        var columns = new HBoxContainer();
+        columns.AddThemeConstantOverride("separation", 10);
+        column.AddChild(columns);
+        var availableColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var pendingColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        availableColumn.AddThemeConstantOverride("separation", 3);
+        pendingColumn.AddThemeConstantOverride("separation", 3);
+        columns.AddChild(availableColumn);
+        columns.AddChild(pendingColumn);
+
+        _availableHeader = ThemeFactory.Label(size: 11, color: ThemeFactory.Gold);
+        _pendingHeader = ThemeFactory.Label(size: 11, color: ThemeFactory.Gold);
+        availableColumn.AddChild(_availableHeader);
+        pendingColumn.AddChild(_pendingHeader);
+
+        var availableScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(254, 186),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        var pendingScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(254, 186),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        var available = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(250, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        var pending = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(250, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        available.AddThemeConstantOverride("separation", 3);
+        pending.AddThemeConstantOverride("separation", 3);
+        availableScroll.AddChild(available);
+        pendingScroll.AddChild(pending);
+        availableColumn.AddChild(availableScroll);
+        pendingColumn.AddChild(pendingScroll);
+
+        foreach (var itemId in DataCatalog.SellableItemIds)
+        {
+            var queue = ThemeFactory.Button("");
+            queue.CustomMinimumSize = new Vector2(254, 28);
+            queue.AddThemeFontSizeOverride("font_size", 9);
+            queue.Pressed += () => Execute(() => _session.QueueForShipping(itemId));
+            available.AddChild(queue);
+            _queueButtons[itemId] = queue;
+
+            var reclaim = ThemeFactory.Button("");
+            reclaim.CustomMinimumSize = new Vector2(254, 28);
+            reclaim.AddThemeFontSizeOverride("font_size", 9);
+            reclaim.Pressed += () => Execute(() => _session.ReclaimFromShipping(itemId));
+            pending.AddChild(reclaim);
+            _reclaimButtons[itemId] = reclaim;
+        }
+
+        _status = ThemeFactory.Label(size: 9, color: ThemeFactory.Mint);
+        _status.HorizontalAlignment = HorizontalAlignment.Center;
+        _status.CustomMinimumSize = new Vector2(500, 18);
+        column.AddChild(_status);
+
+        _close = ThemeFactory.Button("");
+        _close.CustomMinimumSize = new Vector2(180, 28);
+        _close.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        _close.Pressed += () => CloseRequested?.Invoke();
+        column.AddChild(_close);
+
+        session.Changed += RefreshText;
+        locale.LocaleChanged += RefreshText;
+        RefreshText();
+        _close.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    public event Action? CloseRequested;
+    public event Action? ShippingChanged;
+
+    public void RefreshText()
+    {
+        _title.Text = _locale.Tr("shipping.title");
+        _summary.Text = _locale.Tr(
+            "shipping.pending_summary",
+            _session.Shipping.PendingItemCount,
+            _session.Shipping.PendingValue
+        );
+        _availableHeader.Text = _locale.Tr("shipping.available");
+        _pendingHeader.Text = _locale.Tr("shipping.pending");
+        _close.Text = _locale.Tr("menu.back");
+
+        foreach (var itemId in DataCatalog.SellableItemIds)
+        {
+            var item = DataCatalog.Item(itemId);
+            var itemName = _locale.Tr(item.NameKey);
+            var available = _session.Inventory.Count(itemId);
+            var pending = _session.Shipping.PendingCount(itemId);
+            _queueButtons[itemId].Text = _locale.Tr(
+                "shipping.queue_action",
+                itemName,
+                available
+            );
+            _queueButtons[itemId].Disabled = available <= 0;
+            var isQualityProduce =
+                DataCatalog.ItemQuality(itemId) != CropQuality.Regular;
+            _queueButtons[itemId].Visible =
+                !isQualityProduce || available > 0;
+            _reclaimButtons[itemId].Text = _locale.Tr(
+                "shipping.reclaim_action",
+                itemName,
+                pending
+            );
+            _reclaimButtons[itemId].Disabled = pending <= 0;
+            _reclaimButtons[itemId].Visible =
+                !isQualityProduce || pending > 0;
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Changed -= RefreshText;
+        _locale.LocaleChanged -= RefreshText;
+    }
+
+    private void Execute(Func<ActionResult> action)
+    {
+        var result = action();
+        _status.Text = _locale.Tr(result.MessageKey);
+        if (result.Succeeded)
+        {
+            ShippingChanged?.Invoke();
+        }
+        RefreshText();
+    }
+
+    private static TextureRect AtlasIcon(Texture2D texture, Vector2 size) => new()
+    {
+        Texture = texture,
+        CustomMinimumSize = size,
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+        MouseFilter = MouseFilterEnum.Ignore
+    };
+}
+
+public sealed partial class NightlySummaryOverlay : FullScreenUi
+{
+    public NightlySummaryOverlay(
+        Theme theme,
+        GameSession session,
+        LocaleService locale
+    ) : base(theme)
+    {
+        AddChild(Dim(new Color(0.01f, 0.02f, 0.08f, 0.88f)));
+
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
+
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(456, 310) };
+        panel.AddThemeStyleboxOverride(
+            "panel",
+            ThemeFactory.Box(new Color("#0c1735fc"), ThemeFactory.Mint, 2, 10)
+        );
+        center.AddChild(panel);
+
+        var column = new VBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center
+        };
+        column.AddThemeConstantOverride("separation", 6);
+        panel.AddChild(column);
+
+        var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 8);
+        header.AddChild(Icon(GeneratedArt.CreateEarningsIcon(), new Vector2(52, 42)));
+        var headerText = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var title = ThemeFactory.Label(
+            locale.Tr("shipping.summary.title"),
+            21,
+            ThemeFactory.Mint
+        );
+        var endedDay = session.Shipping.LastSettlement.Day;
+        var subtitle = ThemeFactory.Label(
+            locale.Tr("shipping.summary.day", endedDay),
+            10,
+            ThemeFactory.Gold
+        );
+        headerText.AddChild(title);
+        headerText.AddChild(subtitle);
+        header.AddChild(headerText);
+        header.AddChild(Icon(
+            GeneratedArt.CreateWeatherIcon(session.Weather.CurrentId),
+            new Vector2(38, 38)
+        ));
+        column.AddChild(header);
+
+        var lines = new VBoxContainer();
+        lines.AddThemeConstantOverride("separation", 2);
+        lines.CustomMinimumSize = new Vector2(402, 128);
+        column.AddChild(lines);
+        if (session.Shipping.LastSettlement.Lines.Count == 0)
+        {
+            var empty = ThemeFactory.Label(
+                locale.Tr("shipping.summary.empty"),
+                11,
+                ThemeFactory.MutedInk
+            );
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            empty.VerticalAlignment = VerticalAlignment.Center;
+            empty.CustomMinimumSize = new Vector2(402, 118);
+            lines.AddChild(empty);
+        }
+        else
+        {
+            foreach (var line in session.Shipping.LastSettlement.Lines)
+            {
+                var row = ThemeFactory.Label(
+                    locale.Tr(
+                        "shipping.summary.line",
+                        locale.Tr(DataCatalog.Item(line.ItemId).NameKey),
+                        line.Count,
+                        line.TotalCoins
+                    ),
+                    10,
+                    ThemeFactory.Ink
+                );
+                row.HorizontalAlignment = HorizontalAlignment.Center;
+                lines.AddChild(row);
+            }
+        }
+
+        var total = ThemeFactory.Label(
+            locale.Tr(
+                "shipping.summary.total",
+                session.Shipping.LastSettlement.TotalItems,
+                session.Shipping.LastSettlement.TotalCoins
+            ),
+            15,
+            ThemeFactory.Gold
+        );
+        total.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(total);
+
+        if (session.LastRespawnedResources > 0)
+        {
+            var respawned = ThemeFactory.Label(
+                locale.Tr(
+                    "shipping.summary.resources_respawned",
+                    session.LastRespawnedResources
+                ),
+                9,
+                ThemeFactory.Mint
+            );
+            respawned.HorizontalAlignment = HorizontalAlignment.Center;
+            column.AddChild(respawned);
+        }
+
+        var newDay = ThemeFactory.Label(
+            locale.Tr(
+                "shipping.summary.new_day",
+                session.Clock.Day,
+                locale.Tr(CalendarSystem.WeekdayKey(session.Clock.Day)),
+                locale.Tr(session.Weather.Current.NameKey),
+                locale.Tr(session.Weather.Forecast.NameKey)
+            ),
+            9,
+            new Color("#a8d9cf")
+        );
+        newDay.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(newDay);
+
+        var continueButton = ThemeFactory.Button(locale.Tr("shipping.summary.continue"));
+        continueButton.CustomMinimumSize = new Vector2(190, 30);
+        continueButton.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        continueButton.Pressed += () => ContinueRequested?.Invoke();
+        column.AddChild(continueButton);
+        continueButton.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    public event Action? ContinueRequested;
+
+    private static TextureRect Icon(Texture2D texture, Vector2 size) => new()
+    {
+        Texture = texture,
+        CustomMinimumSize = size,
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+        MouseFilter = MouseFilterEnum.Ignore
+    };
+}
+
 public sealed partial class ShopOverlay : FullScreenUi
 {
     private readonly GameSession _session;
@@ -864,7 +1318,7 @@ public sealed partial class ShopOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(522, 300) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(548, 332) };
         panel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.Box(new Color("#101a3af8"), ThemeFactory.Gold, 2, 9)
@@ -887,40 +1341,48 @@ public sealed partial class ShopOverlay : FullScreenUi
         tradeColumns.AddThemeConstantOverride("separation", 10);
         column.AddChild(tradeColumns);
 
-        var buyColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var sellColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        buyColumn.AddThemeConstantOverride("separation", 4);
-        sellColumn.AddThemeConstantOverride("separation", 4);
-        tradeColumns.AddChild(buyColumn);
-        tradeColumns.AddChild(sellColumn);
+        var buyPanel = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var sellPanel = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        buyPanel.AddThemeConstantOverride("separation", 4);
+        sellPanel.AddThemeConstantOverride("separation", 4);
+        tradeColumns.AddChild(buyPanel);
+        tradeColumns.AddChild(sellPanel);
 
         _buyHeader = ThemeFactory.Label(size: 12, color: ThemeFactory.Gold);
         _sellHeader = ThemeFactory.Label(size: 12, color: ThemeFactory.Gold);
-        buyColumn.AddChild(_buyHeader);
-        sellColumn.AddChild(_sellHeader);
+        buyPanel.AddChild(_buyHeader);
+        sellPanel.AddChild(_sellHeader);
 
-        AddTradeButton(
-            buyColumn,
-            _buyButtons,
-            DataCatalog.StarbudSeedId,
-            () => _session.BuyItem(DataCatalog.StarbudSeedId)
-        );
-        AddTradeButton(
-            buyColumn,
-            _buyButtons,
-            DataCatalog.MoonrootSeedId,
-            () => _session.BuyItem(DataCatalog.MoonrootSeedId)
-        );
+        var buyScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(252, 190),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        var sellScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(252, 190),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        var buyColumn = new VBoxContainer { CustomMinimumSize = new Vector2(238, 0) };
+        var sellColumn = new VBoxContainer { CustomMinimumSize = new Vector2(238, 0) };
+        buyColumn.AddThemeConstantOverride("separation", 4);
+        sellColumn.AddThemeConstantOverride("separation", 4);
+        buyScroll.AddChild(buyColumn);
+        sellScroll.AddChild(sellColumn);
+        buyPanel.AddChild(buyScroll);
+        sellPanel.AddChild(sellScroll);
 
-        foreach (var itemId in new[]
-                 {
-                     DataCatalog.StarbudId,
-                     DataCatalog.MoonrootId,
-                     DataCatalog.StarbudPreserveId,
-                     DataCatalog.MoonrootTonicId,
-                     DataCatalog.LumenwoodId,
-                     DataCatalog.CrystalShardId
-                 })
+        foreach (var itemId in DataCatalog.SeedItemIds)
+        {
+            AddTradeButton(
+                buyColumn,
+                _buyButtons,
+                itemId,
+                () => _session.BuyItem(itemId)
+            );
+        }
+
+        foreach (var itemId in DataCatalog.SellableItemIds)
         {
             AddTradeButton(
                 sellColumn,
@@ -944,7 +1406,7 @@ public sealed partial class ShopOverlay : FullScreenUi
         session.Changed += RefreshText;
         locale.LocaleChanged += RefreshText;
         RefreshText();
-        _buyButtons[DataCatalog.StarbudSeedId].CallDeferred(Control.MethodName.GrabFocus);
+        _buyButtons[DataCatalog.SeedItemIds[0]].CallDeferred(Control.MethodName.GrabFocus);
     }
 
     public event Action? CloseRequested;
@@ -972,12 +1434,15 @@ public sealed partial class ShopOverlay : FullScreenUi
         foreach (var pair in _sellButtons)
         {
             var item = DataCatalog.Item(pair.Key);
+            var owned = _session.Inventory.Count(pair.Key);
             pair.Value.Text = _locale.Tr(
                 "shop.sell_action",
                 _locale.Tr(item.NameKey),
                 item.SellPrice,
-                _session.Inventory.Count(pair.Key)
+                owned
             );
+            pair.Value.Visible =
+                item.Quality == CropQuality.Regular || owned > 0;
         }
     }
 
@@ -1141,7 +1606,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
             _locale.Tr(DataCatalog.Item(recipe.InputItemId).NameKey),
             recipe.InputCount,
             _locale.Tr(DataCatalog.Item(recipe.OutputItemId).NameKey),
-            _session.Inventory.Count(recipe.InputItemId)
+            _session.Inventory.CountFamily(recipe.InputItemId)
         );
     }
 
@@ -1159,7 +1624,9 @@ public sealed partial class ProcessorOverlay : FullScreenUi
 
 public sealed partial class DialogueOverlay : FullScreenUi
 {
+    private readonly TextureRect _icon;
     private readonly Label _speaker;
+    private readonly Label _status;
     private readonly Label _body;
     private readonly Label _continue;
     private Action? _closed;
@@ -1173,8 +1640,8 @@ public sealed partial class DialogueOverlay : FullScreenUi
 
         var panel = new PanelContainer
         {
-            Position = new Vector2(38, 238),
-            Size = new Vector2(564, 104)
+            Position = new Vector2(36, 226),
+            Size = new Vector2(568, 116)
         };
         panel.AddThemeStyleboxOverride(
             "panel",
@@ -1182,24 +1649,60 @@ public sealed partial class DialogueOverlay : FullScreenUi
         );
         AddChild(panel);
 
-        var column = new VBoxContainer();
+        var column = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
         column.AddThemeConstantOverride("separation", 3);
         panel.AddChild(column);
+
+        var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 8);
+        column.AddChild(header);
+        _icon = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(38, 38),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            TextureFilter = TextureFilterEnum.Nearest,
+            Visible = false
+        };
+        header.AddChild(_icon);
+
+        var identity = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        identity.AddThemeConstantOverride("separation", 0);
+        header.AddChild(identity);
         _speaker = ThemeFactory.Label(size: 15, color: ThemeFactory.Gold);
+        _status = ThemeFactory.Label(size: 9, color: ThemeFactory.Mint);
+        _status.Visible = false;
+        identity.AddChild(_speaker);
+        identity.AddChild(_status);
         _body = ThemeFactory.Label(size: 12);
         _body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _body.CustomMinimumSize = new Vector2(525, 48);
+        _body.CustomMinimumSize = new Vector2(525, 35);
         _continue = ThemeFactory.Label(locale.Tr("dialogue.continue"), 9, ThemeFactory.MutedInk);
         _continue.HorizontalAlignment = HorizontalAlignment.Right;
-        column.AddChild(_speaker);
         column.AddChild(_body);
         column.AddChild(_continue);
     }
 
-    public void ShowDialogue(string speaker, string body, Action closed)
+    public void ShowDialogue(
+        string speaker,
+        string body,
+        Action closed,
+        Texture2D? icon = null,
+        string status = ""
+    )
     {
         _speaker.Text = speaker;
         _body.Text = body;
+        _icon.Texture = icon;
+        _icon.Visible = icon is not null;
+        _status.Text = status;
+        _status.Visible = !string.IsNullOrWhiteSpace(status);
         _closed = closed;
     }
 

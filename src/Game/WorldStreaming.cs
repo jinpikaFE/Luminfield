@@ -84,6 +84,7 @@ internal sealed partial class WorldChunk : Node2D
         );
         AddChild(new WorldChunkGround(chunk));
         AddChild(new WorldChunkProps(chunk, session));
+        AddChild(new WorldVillageChunk(chunk, session));
     }
 }
 
@@ -183,6 +184,7 @@ internal sealed partial class WorldChunkGround : Node2D
             var accent = biome switch
             {
                 WorldBiome.StarfallMeadow => new Color("#9de7ad"),
+                WorldBiome.LumenVillage => new Color("#e7c87d"),
                 WorldBiome.MoonwaterWetlands => new Color("#4cc9bf"),
                 WorldBiome.StarfallRuins => new Color("#9d83cf"),
                 _ => new Color("#397568")
@@ -220,6 +222,8 @@ internal sealed partial class WorldChunkGround : Node2D
                 alternate ? new Color("#102f38") : new Color("#123743"),
             WorldBiome.StarfallMeadow =>
                 alternate ? new Color("#1c4b49") : new Color("#205350"),
+            WorldBiome.LumenVillage =>
+                alternate ? new Color("#243f4c") : new Color("#294854"),
             WorldBiome.CrystalVale =>
                 alternate ? new Color("#183d4e") : new Color("#1c4656"),
             WorldBiome.MoonwaterWetlands =>
@@ -248,6 +252,7 @@ internal sealed partial class WorldChunkProps : Node2D
         TextureFilter = TextureFilterEnum.Nearest;
         Material = GeneratedArt.CreateChromaKeyMaterial();
         session.Resources.Changed += OnResourceChanged;
+        session.Starlight.Changed += OnStarlightChanged;
     }
 
     public override void _Draw()
@@ -260,6 +265,12 @@ internal sealed partial class WorldChunkProps : Node2D
                     _chunk.X * WorldDefinition.ChunkSize + localX,
                     _chunk.Y * WorldDefinition.ChunkSize + localY
                 );
+                if (WorldDefinition.IsWoodlandStarlightCell(cell))
+                {
+                    DrawWoodlandStarlight(localX, localY);
+                    continue;
+                }
+
                 var atlasIndex = WorldDefinition.PropAtlasIndex(cell);
                 if (atlasIndex < 0 || _session.Resources.IsRemoved(cell))
                 {
@@ -286,6 +297,7 @@ internal sealed partial class WorldChunkProps : Node2D
     public override void _ExitTree()
     {
         _session.Resources.Changed -= OnResourceChanged;
+        _session.Starlight.Changed -= OnStarlightChanged;
     }
 
     private void OnResourceChanged(GridPosition cell)
@@ -294,6 +306,35 @@ internal sealed partial class WorldChunkProps : Node2D
         {
             QueueRedraw();
         }
+    }
+
+    private void OnStarlightChanged()
+    {
+        if (WorldDefinition.GetChunk(
+                WorldDefinition.WoodlandStarlightCell
+            ) == _chunk)
+        {
+            QueueRedraw();
+        }
+    }
+
+    private void DrawWoodlandStarlight(int localX, int localY)
+    {
+        var source = GeneratedArt.WoodlandStarlightRegion(
+            _session.Starlight.RewardUnlocked
+        );
+        var height = 78f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        var destination = new Rect2(
+            anchor - new Vector2(width / 2, height),
+            new Vector2(width, height)
+        );
+        DrawTextureRectRegion(
+            GeneratedArt.WoodlandStarlightTexture,
+            destination,
+            source
+        );
     }
 
     private static Vector2 PropSize(int index) => index switch
@@ -316,4 +357,117 @@ internal sealed partial class WorldChunkProps : Node2D
         15 => new Vector2(42, 64),
         _ => new Vector2(32, 32)
     };
+}
+
+internal sealed partial class WorldVillageChunk : Node2D
+{
+    private readonly ChunkPosition _chunk;
+    private readonly GameSession _session;
+
+    public WorldVillageChunk(ChunkPosition chunk, GameSession session)
+    {
+        _chunk = chunk;
+        _session = session;
+        ZIndex = 5;
+        TextureFilter = TextureFilterEnum.Nearest;
+        session.Clock.TimeChanged += OnTimeChanged;
+    }
+
+    public override void _Draw()
+    {
+        foreach (var landmark in VillageCatalog.Landmarks
+                     .Where(value =>
+                         WorldDefinition.GetChunk(value.Anchor) == _chunk
+                     )
+                     .OrderBy(value => value.Anchor.Y)
+                     .ThenBy(value => value.Anchor.X))
+        {
+            DrawLandmark(landmark);
+        }
+
+        foreach (var npc in _session.Village
+                     .CurrentNpcs(
+                         _session.Clock.Day,
+                         _session.Clock.MinuteOfDay,
+                         PlayerLocationIds.World
+                     )
+                     .Where(value =>
+                         WorldDefinition.GetChunk(value.Position) == _chunk
+                     )
+                     .OrderBy(value => value.Position.Y)
+                     .ThenBy(value => value.Position.X))
+        {
+            DrawNpc(npc);
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Clock.TimeChanged -= OnTimeChanged;
+    }
+
+    private void DrawLandmark(VillageLandmarkDefinition landmark)
+    {
+        var source = GeneratedArt.VillageLandmarkRegion(
+            landmark.AtlasIndex
+        );
+        var height = LandmarkHeight(landmark.AtlasIndex);
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = LocalAnchor(landmark.Anchor);
+        DrawTextureRectRegion(
+            GeneratedArt.VillageLandmarkTexture,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawNpc(VillageNpcState npc)
+    {
+        var source = GeneratedArt.VillageNpcRegion(
+            npc.Definition.AtlasRow,
+            npc.Facing
+        );
+        var height = npc.Definition.AtlasRow == 0 ? 54f : 52f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = LocalAnchor(npc.Position);
+        DrawCircle(
+            anchor - new Vector2(0, 1),
+            7,
+            new Color(0.01f, 0.03f, 0.08f, 0.44f)
+        );
+        DrawTextureRectRegion(
+            GeneratedArt.VillageNpcTexture,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private Vector2 LocalAnchor(GridPosition cell) => new(
+        (cell.X - _chunk.X * WorldDefinition.ChunkSize) * 16 + 8,
+        (cell.Y - _chunk.Y * WorldDefinition.ChunkSize) * 16 + 15
+    );
+
+    private static float LandmarkHeight(int atlasIndex) => atlasIndex switch
+    {
+        0 => 100,
+        1 => 90,
+        2 => 98,
+        3 => 76,
+        4 => 82,
+        5 => 48,
+        6 => 44,
+        7 => 46,
+        _ => 48
+    };
+
+    private void OnTimeChanged()
+    {
+        QueueRedraw();
+    }
 }

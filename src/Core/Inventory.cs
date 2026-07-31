@@ -99,6 +99,9 @@ public sealed class Inventory
     public int Count(string itemId) =>
         _slots.Where(slot => slot.ItemId == itemId).Sum(slot => slot.Count);
 
+    public int CountFamily(string itemId) =>
+        DataCatalog.ItemFamilyIds(itemId).Sum(Count);
+
     public bool CanAdd(string itemId, int amount)
     {
         if (amount <= 0)
@@ -189,6 +192,137 @@ public sealed class Inventory
         return true;
     }
 
+    public bool RemoveFamily(string itemId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return true;
+        }
+
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        if (!RemoveFamilyFrom(simulated, itemId, amount))
+        {
+            return false;
+        }
+
+        ApplySimulation(simulated);
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool TryExchange(
+        IReadOnlyList<CraftingIngredient> removals,
+        string outputItemId,
+        int outputCount
+    )
+    {
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        foreach (var removal in removals)
+        {
+            if (!RemoveFrom(simulated, removal.ItemId, removal.Count))
+            {
+                return false;
+            }
+        }
+
+        if (!AddTo(simulated, outputItemId, outputCount))
+        {
+            return false;
+        }
+
+        foreach (var removal in removals)
+        {
+            _ = RemoveFrom(_slots, removal.ItemId, removal.Count);
+        }
+        _ = AddTo(_slots, outputItemId, outputCount);
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool TryRemoveMany(IReadOnlyList<CraftingIngredient> removals)
+    {
+        if (removals.Count == 0 ||
+            removals.Any(removal => removal.Count <= 0))
+        {
+            return false;
+        }
+
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        foreach (var removal in removals)
+        {
+            if (!RemoveFrom(
+                    simulated,
+                    removal.ItemId,
+                    removal.Count
+                ))
+            {
+                return false;
+            }
+        }
+
+        ApplySimulation(simulated);
+
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool TryRemoveFamilies(
+        IReadOnlyList<CraftingIngredient> removals
+    )
+    {
+        if (removals.Count == 0 ||
+            removals.Any(removal => removal.Count <= 0))
+        {
+            return false;
+        }
+
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        foreach (var removal in removals)
+        {
+            if (!RemoveFamilyFrom(
+                    simulated,
+                    removal.ItemId,
+                    removal.Count
+                ))
+            {
+                return false;
+            }
+        }
+
+        ApplySimulation(simulated);
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool PromoteToHotbar(string itemId)
+    {
+        var sourceIndex = _slots.FindIndex(slot => slot.ItemId == itemId && !slot.IsEmpty);
+        if (sourceIndex < 0)
+        {
+            return false;
+        }
+
+        if (sourceIndex < HotbarSlotCount)
+        {
+            Select(sourceIndex);
+            return true;
+        }
+
+        var targetIndex = Enumerable.Range(
+            StartingToolCount,
+            HotbarSlotCount - StartingToolCount
+        ).FirstOrDefault(index => _slots[index].IsEmpty, -1);
+        if (targetIndex < 0)
+        {
+            targetIndex = StartingToolCount;
+        }
+
+        (_slots[targetIndex], _slots[sourceIndex]) = (_slots[sourceIndex], _slots[targetIndex]);
+        SelectedIndex = targetIndex;
+        Changed?.Invoke();
+        return true;
+    }
+
     public List<InventorySlot> Capture() => _slots.Select(slot => slot.Clone()).ToList();
 
     private void PlaceStartingTools()
@@ -202,9 +336,107 @@ public sealed class Inventory
 
     private void AddWithoutNotification(string itemId, int amount)
     {
-        var definition = DataCatalog.Item(itemId);
+        _ = AddTo(_slots, itemId, amount);
+    }
+
+    private static bool RemoveFrom(
+        IList<InventorySlot> slots,
+        string itemId,
+        int amount
+    )
+    {
+        if (amount <= 0)
+        {
+            return true;
+        }
+
+        if (slots.Where(slot => slot.ItemId == itemId).Sum(slot => slot.Count) < amount)
+        {
+            return false;
+        }
+
         var remaining = amount;
-        foreach (var slot in _slots.Where(slot =>
+        for (var index = slots.Count - 1; index >= 0 && remaining > 0; index--)
+        {
+            var slot = slots[index];
+            if (slot.ItemId != itemId)
+            {
+                continue;
+            }
+
+            var removed = Math.Min(remaining, slot.Count);
+            slot.Count -= removed;
+            remaining -= removed;
+            if (slot.Count == 0)
+            {
+                slot.ItemId = string.Empty;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool RemoveFamilyFrom(
+        IList<InventorySlot> slots,
+        string itemId,
+        int amount
+    )
+    {
+        if (amount <= 0)
+        {
+            return true;
+        }
+
+        var family = DataCatalog.ItemFamilyIds(itemId);
+        var available = family.Sum(id =>
+            slots.Where(slot => slot.ItemId == id).Sum(slot => slot.Count)
+        );
+        if (available < amount)
+        {
+            return false;
+        }
+
+        var remaining = amount;
+        foreach (var familyItemId in family)
+        {
+            if (remaining <= 0)
+            {
+                break;
+            }
+
+            var count = slots
+                .Where(slot => slot.ItemId == familyItemId)
+                .Sum(slot => slot.Count);
+            var removed = Math.Min(remaining, count);
+            _ = RemoveFrom(slots, familyItemId, removed);
+            remaining -= removed;
+        }
+
+        return remaining == 0;
+    }
+
+    private static bool AddTo(
+        IList<InventorySlot> slots,
+        string itemId,
+        int amount
+    )
+    {
+        if (amount <= 0)
+        {
+            return true;
+        }
+
+        var definition = DataCatalog.Item(itemId);
+        var capacity = slots
+            .Where(slot => slot.IsEmpty || slot.ItemId == itemId)
+            .Sum(slot => slot.IsEmpty ? definition.MaxStack : definition.MaxStack - slot.Count);
+        if (capacity < amount)
+        {
+            return false;
+        }
+
+        var remaining = amount;
+        foreach (var slot in slots.Where(slot =>
                      slot.ItemId == itemId &&
                      slot.Count < definition.MaxStack))
         {
@@ -213,11 +445,11 @@ public sealed class Inventory
             remaining -= moved;
             if (remaining == 0)
             {
-                return;
+                return true;
             }
         }
 
-        foreach (var slot in _slots.Where(slot => slot.IsEmpty))
+        foreach (var slot in slots.Where(slot => slot.IsEmpty))
         {
             var moved = Math.Min(remaining, definition.MaxStack);
             slot.ItemId = itemId;
@@ -225,9 +457,11 @@ public sealed class Inventory
             remaining -= moved;
             if (remaining == 0)
             {
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     private int FindRestoredSelection(string itemId)
@@ -243,5 +477,14 @@ public sealed class Inventory
             slot => slot.ItemId == itemId
         );
         return index >= 0 ? index : 0;
+    }
+
+    private void ApplySimulation(IReadOnlyList<InventorySlot> simulated)
+    {
+        for (var index = 0; index < _slots.Count; index++)
+        {
+            _slots[index].ItemId = simulated[index].ItemId;
+            _slots[index].Count = simulated[index].Count;
+        }
     }
 }

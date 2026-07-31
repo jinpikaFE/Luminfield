@@ -14,6 +14,7 @@ public sealed partial class Main : Node
     private Node2D? _world;
     private FarmView? _farm;
     private CottageView? _cottage;
+    private ArchiveView? _archive;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -21,6 +22,12 @@ public sealed partial class Main : Node
     private CompletionOverlay? _completionOverlay;
     private ShopOverlay? _shopOverlay;
     private ProcessorOverlay? _processorOverlay;
+    private ShippingOverlay? _shippingOverlay;
+    private CommissionBoardOverlay? _commissionOverlay;
+    private StarlightPedestalOverlay? _starlightOverlay;
+    private CraftingOverlay? _craftingOverlay;
+    private StorageOverlay? _storageOverlay;
+    private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
     private FadeTransition? _fadeTransition;
     private bool _playing;
@@ -78,6 +85,31 @@ public sealed partial class Main : Node
         {
             Callable.From(StartProcessorPlaytest).CallDeferred();
         }
+        else if (userArgs.Contains("--playtest-archive-gift"))
+        {
+            Callable.From(StartArchiveGiftPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-archive"))
+        {
+            Callable.From(StartArchivePlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-archive-door"))
+        {
+            Callable.From(StartArchiveDoorPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-village-dialogue"))
+        {
+            Callable.From(StartVillageDialoguePlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-village-restday-en"))
+        {
+            Callable.From(StartVillageRestdayEnglishPlaytest)
+                .CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-village"))
+        {
+            Callable.From(StartVillagePlaytest).CallDeferred();
+        }
         else if (userArgs.Contains("--playtest-world"))
         {
             Callable.From(StartWorldPlaytest).CallDeferred();
@@ -98,9 +130,111 @@ public sealed partial class Main : Node
         {
             Callable.From(StartTargetPreviewPlaytest).CallDeferred();
         }
+        else if (userArgs.Contains("--playtest-phase-a"))
+        {
+            Callable.From(StartPhaseAPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-phase-a-summary"))
+        {
+            Callable.From(StartPhaseASummaryPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-phase-a-rain"))
+        {
+            Callable.From(StartPhaseARainPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-resource-respawn"))
+        {
+            Callable.From(StartResourceRespawnPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-crafting"))
+        {
+            Callable.From(StartCraftingPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-placeables"))
+        {
+            Callable.From(StartFarmPlaceablesPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-chest-placement"))
+        {
+            Callable.From(StartChestPlacementPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-storage"))
+        {
+            Callable.From(StartStoragePlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-commission-offer"))
+        {
+            Callable.From(StartCommissionOfferPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-commission-ready"))
+        {
+            Callable.From(StartCommissionReadyPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-commission-ready-en"))
+        {
+            Callable.From(StartCommissionReadyEnglishPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-commission-map"))
+        {
+            Callable.From(StartCommissionMapPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-starlight-map"))
+        {
+            Callable.From(StartStarlightMapPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-starlight-map-restored"))
+        {
+            Callable.From(StartStarlightRestoredMapPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-starlight-panel"))
+        {
+            Callable.From(StartStarlightPanelPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-starlight-restored"))
+        {
+            Callable.From(StartStarlightRestoredPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-starlight-restored-en"))
+        {
+            Callable.From(StartStarlightRestoredEnglishPlaytest)
+                .CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-quality-crafting"))
+        {
+            Callable.From(StartQualityCraftingPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-quality-backpack-en"))
+        {
+            Callable.From(StartQualityBackpackEnglishPlaytest)
+                .CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-quality-backpack"))
+        {
+            Callable.From(StartQualityBackpackPlaytest).CallDeferred();
+        }
+        else if (userArgs.Contains("--playtest-quality"))
+        {
+            Callable.From(StartQualityPlaytest).CallDeferred();
+        }
         else if (userArgs.Contains("--playtest-farm"))
         {
             CallDeferred(MethodName.StartNewGame);
+        }
+
+        var captureArgument = userArgs.FirstOrDefault(value =>
+            value.StartsWith(
+                "--capture-playtest=",
+                StringComparison.Ordinal
+            )
+        );
+        if (!string.IsNullOrWhiteSpace(captureArgument))
+        {
+            var capturePath = captureArgument[
+                "--capture-playtest=".Length..
+            ];
+            Callable.From(
+                () => CapturePlaytest(capturePath)
+            ).CallDeferred();
         }
     }
 
@@ -116,6 +250,33 @@ public sealed partial class Main : Node
         {
             EndDay();
         }
+    }
+
+    private async void CapturePlaytest(string resourcePath)
+    {
+        for (var frame = 0; frame < 12; frame++)
+        {
+            await ToSignal(
+                GetTree(),
+                SceneTree.SignalName.ProcessFrame
+            );
+        }
+
+        var image = GetViewport().GetTexture().GetImage();
+        var targetPath = ProjectSettings.GlobalizePath(resourcePath);
+        var error = image.SavePng(targetPath);
+        if (error != Error.Ok)
+        {
+            GD.PushError(
+                $"Could not capture playtest image: {targetPath}"
+            );
+        }
+        else
+        {
+            GD.Print($"Captured playtest image: {targetPath}");
+        }
+
+        GetTree().Quit(error == Error.Ok ? 0 : 1);
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -139,6 +300,51 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) && _shippingOverlay is not null)
+        {
+            CloseShipping();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) && _commissionOverlay is not null)
+        {
+            CloseCommissionBoard();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _starlightOverlay is not null)
+        {
+            CloseStarlightPedestal();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if ((@event.IsActionPressed(InputSetup.Pause) ||
+             @event.IsActionPressed(InputSetup.Crafting)) &&
+            _craftingOverlay is not null)
+        {
+            CloseCrafting();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) && _storageOverlay is not null)
+        {
+            CloseStorage();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) && _nightlySummaryOverlay is not null)
+        {
+            CloseNightlySummary();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if ((@event.IsActionPressed(InputSetup.Pause) ||
              @event.IsActionPressed(InputSetup.Backpack)) &&
             _backpackOverlay is not null)
@@ -155,11 +361,24 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Crafting) && !IsInputBlocked)
+        {
+            OpenCrafting();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Pause) &&
             _dialogueOverlay is null &&
             _completionOverlay is null &&
             _shopOverlay is null &&
             _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
             _fadeTransition is null)
         {
@@ -227,6 +446,12 @@ public sealed partial class Main : Node
         _completionOverlay is not null ||
         _shopOverlay is not null ||
         _processorOverlay is not null ||
+        _shippingOverlay is not null ||
+        _commissionOverlay is not null ||
+        _starlightOverlay is not null ||
+        _craftingOverlay is not null ||
+        _storageOverlay is not null ||
+        _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
         _fadeTransition is not null;
 
@@ -248,6 +473,18 @@ public sealed partial class Main : Node
         _shopOverlay = null;
         FreeUi(_processorOverlay);
         _processorOverlay = null;
+        FreeUi(_shippingOverlay);
+        _shippingOverlay = null;
+        FreeUi(_commissionOverlay);
+        _commissionOverlay = null;
+        FreeUi(_starlightOverlay);
+        _starlightOverlay = null;
+        FreeUi(_craftingOverlay);
+        _craftingOverlay = null;
+        FreeUi(_storageOverlay);
+        _storageOverlay = null;
+        FreeUi(_nightlySummaryOverlay);
+        _nightlySummaryOverlay = null;
         FreeUi(_backpackOverlay);
         _backpackOverlay = null;
         FreeUi(_fadeTransition);
@@ -317,19 +554,343 @@ public sealed partial class Main : Node
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
-        _session.Farm.Restore(
-        [
-            CropState(12, 16, DataCatalog.StarbudId, 0),
-            CropState(14, 16, DataCatalog.StarbudId, 1),
-            CropState(16, 16, DataCatalog.StarbudId, 2),
-            CropState(20, 16, DataCatalog.MoonrootId, 0),
-            CropState(22, 16, DataCatalog.MoonrootId, 1),
-            CropState(24, 16, DataCatalog.MoonrootId, 2),
-            CropState(28, 16, DataCatalog.MoonrootId, 3),
-        ]);
+        var columns = new[] { 12, 14, 16, 20, 22, 24, 27, 29 };
+        var crops = new List<FarmTileState>();
+        for (var index = 0; index < DataCatalog.CropIds.Count; index++)
+        {
+            var crop = DataCatalog.Crop(DataCatalog.CropIds[index]);
+            crops.Add(CropState(columns[index], 16, crop.Id, crop.MatureAfterWateredNights));
+            crops.Add(CropState(columns[index], 20, crop.Id, 0));
+        }
+        _session.Farm.Restore(crops);
         _playing = true;
         EnsureHud();
         ShowFarm(false);
+    }
+
+    private void StartCraftingPlaytest()
+    {
+        StartNewGame();
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 20);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 20);
+        OpenCrafting();
+    }
+
+    private void StartQualityCraftingPlaytest()
+    {
+        StartNewGame();
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 6);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 5);
+        OpenCrafting();
+    }
+
+    private void StartQualityBackpackPlaytest()
+    {
+        StartNewGame();
+        _session.Inventory.Add(DataCatalog.StarsoilFertilizerId, 4);
+        _session.Inventory.Add(DataCatalog.StarbudId, 2);
+        _session.Inventory.Add(DataCatalog.StarbudLuminousId, 2);
+        _session.Inventory.Add(DataCatalog.StarbudStarlightId, 1);
+        _session.Inventory.Add(DataCatalog.MoonrootLuminousId, 2);
+        _session.Inventory.Add(DataCatalog.MoonrootStarlightId, 1);
+        Callable.From(OpenBackpack).CallDeferred();
+    }
+
+    private void StartQualityBackpackEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartQualityBackpackPlaytest();
+    }
+
+    private void StartQualityPlaytest()
+    {
+        StartNewGame();
+        _session.Farm.Restore(
+        [
+            new FarmTileState
+            {
+                X = 12,
+                Y = 16,
+                Tilled = true
+            },
+            new FarmTileState
+            {
+                X = 14,
+                Y = 16,
+                Tilled = true,
+                FertilizerId = DataCatalog.StarsoilFertilizerId
+            },
+            new FarmTileState
+            {
+                X = 16,
+                Y = 16,
+                Tilled = true,
+                FertilizerId = DataCatalog.StarsoilFertilizerId,
+                CropId = DataCatalog.StarbudId,
+                WateredNights = 2,
+                QualityRoll = 55
+            },
+            new FarmTileState
+            {
+                X = 20,
+                Y = 16,
+                Tilled = true,
+                FertilizerId = DataCatalog.StarsoilFertilizerId,
+                CropId = DataCatalog.MoonrootId,
+                WateredNights = 3,
+                QualityRoll = 5
+            },
+            new FarmTileState
+            {
+                X = 22,
+                Y = 16,
+                Tilled = true,
+                CropId = DataCatalog.CloudleafId,
+                WateredNights = 2,
+                QualityRoll = 80
+            }
+        ]);
+        _session.Inventory.Add(DataCatalog.StarsoilFertilizerId, 3);
+        _session.Inventory.Add(DataCatalog.StarbudLuminousId, 2);
+        _session.Inventory.Add(DataCatalog.StarbudStarlightId, 1);
+        _session.Inventory.PromoteToHotbar(
+            DataCatalog.StarsoilFertilizerId
+        );
+        _session.SetPlayerState(12 * 16 + 8, 15 * 16 + 8, false);
+        ShowFarm(false);
+    }
+
+    private void StartFarmPlaceablesPlaytest()
+    {
+        StartNewGame();
+        PlacePlaytestObjects(
+            DataCatalog.MoonstonePathId,
+            Enumerable.Range(20, 4).Select(x => new GridPosition(x, 13))
+        );
+        PlacePlaytestObjects(
+            DataCatalog.StarwoodFenceId,
+            Enumerable.Range(25, 4).Select(x => new GridPosition(x, 13))
+        );
+        PlacePlaytestObjects(
+            DataCatalog.StarlightTorchId,
+            [
+                new GridPosition(19, 13),
+                new GridPosition(30, 13)
+            ]
+        );
+        PlacePlaytestObjects(
+            DataCatalog.DewfallSprinklerId,
+            [
+                new GridPosition(15, 16),
+                new GridPosition(21, 16),
+                new GridPosition(28, 16)
+            ]
+        );
+        foreach (var target in new[]
+                 {
+                     new GridPosition(15, 15),
+                     new GridPosition(16, 16),
+                     new GridPosition(15, 17),
+                     new GridPosition(14, 16)
+                 })
+        {
+            _session.Farm.TryTill(target, GameSession.MaxEnergy);
+            _session.Farm.TryPlant(target, DataCatalog.StarbudId);
+        }
+        _session.Inventory.Add(DataCatalog.StarlightTorchId, 1);
+        _session.Inventory.PromoteToHotbar(DataCatalog.StarlightTorchId);
+        _session.SetPlayerState(31 * 16 + 8, 12 * 16 + 8, false);
+        ShowFarm(false);
+    }
+
+    private void PlacePlaytestObjects(
+        string itemId,
+        IEnumerable<GridPosition> positions
+    )
+    {
+        var cells = positions.ToList();
+        _session.Inventory.Add(itemId, cells.Count);
+        _session.Inventory.PromoteToHotbar(itemId);
+        foreach (var position in cells)
+        {
+            _session.UseSelected(position);
+        }
+    }
+
+    private void StartChestPlacementPlaytest()
+    {
+        StartNewGame();
+        _session.Inventory.Add(DataCatalog.StarwovenChestId, 1);
+        _session.Inventory.PromoteToHotbar(DataCatalog.StarwovenChestId);
+        _session.SetPlayerState(25 * 16 + 8, 12 * 16 + 8, false);
+        ShowFarm(false);
+    }
+
+    private void StartStoragePlaytest()
+    {
+        StartNewGame();
+        var chest = new GridPosition(25, 13);
+        _session.Inventory.Add(DataCatalog.StarwovenChestId, 1);
+        _session.Inventory.PromoteToHotbar(DataCatalog.StarwovenChestId);
+        _session.UseSelected(chest);
+        _session.Inventory.Add(DataCatalog.StarbudSeedId, 5);
+        _session.Inventory.Add(DataCatalog.CloudleafId, 3);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 4);
+        _session.StoreInChest(chest, DataCatalog.StarbudSeedId);
+        _session.StoreInChest(chest, DataCatalog.CloudleafId);
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(25 * 16 + 8, 14 * 16 + 8, false);
+        ShowFarm(false);
+        OpenStorage(chest);
+    }
+
+    private void StartCommissionOfferPlaytest()
+    {
+        StartCommissionPlaytest();
+    }
+
+    private void StartCommissionReadyPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.EndDay();
+        _session.AcceptDailyCommission();
+        _session.Commission.RecordGather(DataCatalog.LumenwoodId, 3);
+        StartCommissionPlaytestWorld();
+    }
+
+    private void StartCommissionReadyEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartCommissionReadyPlaytest();
+    }
+
+    private void StartCommissionMapPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.EndDay();
+        _session.AcceptDailyCommission();
+        _session.Commission.RecordGather(DataCatalog.LumenwoodId, 2);
+        StartCommissionPlaytestWorld(false);
+    }
+
+    private void StartCommissionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        StartCommissionPlaytestWorld();
+    }
+
+    private void StartCommissionPlaytestWorld(bool openBoard = true)
+    {
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            FarmView.CommissionBoardCell.X * 16 + 8,
+            (FarmView.CommissionBoardCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openBoard)
+        {
+            Callable.From(OpenCommissionBoard).CallDeferred();
+        }
+    }
+
+    private void StartStarlightMapPlaytest()
+    {
+        StartStarlightPlaytestWorld(false);
+    }
+
+    private void StartStarlightPanelPlaytest()
+    {
+        PrepareStarlightPlaytest();
+        _session.Inventory.Add(DataCatalog.StarbudId, 1);
+        _session.Inventory.Add(DataCatalog.MoonrootId, 1);
+        _session.ContributeToStarlightNode(
+            DataCatalog.WoodlandHarvestNodeId
+        );
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 3);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 1);
+        _session.ContributeToStarlightNode(
+            DataCatalog.WoodlandMaterialsNodeId
+        );
+        StartStarlightPlaytestWorld();
+    }
+
+    private void StartStarlightRestoredPlaytest()
+    {
+        PrepareRestoredStarlightPlaytest();
+        StartStarlightPlaytestWorld();
+    }
+
+    private void StartStarlightRestoredMapPlaytest()
+    {
+        PrepareRestoredStarlightPlaytest();
+        StartStarlightPlaytestWorld(false);
+    }
+
+    private void PrepareRestoredStarlightPlaytest()
+    {
+        PrepareStarlightPlaytest();
+        _session.Inventory.Add(DataCatalog.StarbudId, 1);
+        _session.Inventory.Add(DataCatalog.MoonrootId, 1);
+        _session.Inventory.Add(DataCatalog.CloudleafId, 1);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 6);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 2);
+        _session.Inventory.Add(DataCatalog.StarbudPreserveId, 1);
+        _session.Inventory.Add(DataCatalog.MoonrootTonicId, 1);
+        _session.Inventory.Add(DataCatalog.StarwovenChestId, 1);
+        _session.ContributeToStarlightNode(
+            DataCatalog.WoodlandHarvestNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.WoodlandMaterialsNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.WoodlandCraftNodeId
+        );
+    }
+
+    private void StartStarlightRestoredEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartStarlightRestoredPlaytest();
+    }
+
+    private void PrepareStarlightPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Starlight.Discover();
+    }
+
+    private void StartStarlightPlaytestWorld(bool openPedestal = true)
+    {
+        if (_title is not null)
+        {
+            PrepareStarlightPlaytest();
+        }
+
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            FarmView.WoodlandStarlightCell.X * 16 + 8,
+            (FarmView.WoodlandStarlightCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openPedestal)
+        {
+            Callable.From(OpenStarlightPedestal).CallDeferred();
+        }
     }
 
     private void StartEconomyPlaytest()
@@ -337,8 +898,10 @@ public sealed partial class Main : Node
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
-        _session.Inventory.Add(DataCatalog.StarbudId, 4);
-        _session.Inventory.Add(DataCatalog.MoonrootId, 4);
+        foreach (var cropId in DataCatalog.CropIds)
+        {
+            _session.Inventory.Add(cropId, 4);
+        }
         _session.SetPlayerState(
             FarmView.ShopCell.X * 16 + 8,
             (FarmView.ShopCell.Y + 1) * 16 + 8,
@@ -348,6 +911,120 @@ public sealed partial class Main : Node
         EnsureHud();
         ShowFarm(false);
         Callable.From(OpenShop).CallDeferred();
+    }
+
+    private void StartVillagePlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            10 * 60,
+            new GridPosition(97, 45)
+        );
+    }
+
+    private void StartVillageDialoguePlaytest()
+    {
+        StartArchivePlaytest(true, false);
+    }
+
+    private void StartArchivePlaytest()
+    {
+        StartArchivePlaytest(false, false);
+    }
+
+    private void StartArchiveGiftPlaytest()
+    {
+        StartArchivePlaytest(true, true);
+    }
+
+    private void StartArchiveDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            10 * 60,
+            new GridPosition(
+                VillageCatalog.MoonlitArchiveDoorCell.X,
+                VillageCatalog.MoonlitArchiveDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartArchivePlaytest(
+        bool openDialogue,
+        bool giveGift
+    )
+    {
+        const int day = 1;
+        const int minuteOfDay = 10 * 60;
+        var liora = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            day,
+            minuteOfDay
+        );
+        if (liora is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            17 * 16 + 8,
+            PlayerLocationIds.MoonlitArchive
+        );
+        _session.Inventory.Select(0);
+        if (giveGift)
+        {
+            _session.Inventory.Add(DataCatalog.MoonrootId, 2);
+            _session.Inventory.PromoteToHotbar(
+                DataCatalog.MoonrootId
+            );
+        }
+
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        if (openDialogue)
+        {
+            Callable.From(
+                () => TalkToVillager(liora.Position)
+            ).CallDeferred();
+        }
+    }
+
+    private void StartVillageRestdayEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartVillagePlaytestWorld(
+            CalendarSystem.DaysPerWeek,
+            14 * 60,
+            new GridPosition(97, 50)
+        );
+    }
+
+    private void StartVillagePlaytestWorld(
+        int day,
+        int minuteOfDay,
+        GridPosition playerCell
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerState(
+            playerCell.X * 16 + 8,
+            playerCell.Y * 16 + 8,
+            false
+        );
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
     }
 
     private void StartWorldPlaytest()
@@ -383,8 +1060,14 @@ public sealed partial class Main : Node
     private void StartBackpackPlaytest()
     {
         StartNewGame();
-        _session.Inventory.Add(DataCatalog.StarbudSeedId, 12);
-        _session.Inventory.Add(DataCatalog.MoonrootSeedId, 7);
+        foreach (var seedId in DataCatalog.SeedItemIds)
+        {
+            _session.Inventory.Add(seedId, 7);
+        }
+        foreach (var cropId in DataCatalog.CropIds)
+        {
+            _session.Inventory.Add(cropId, 3);
+        }
         _session.Inventory.Add(DataCatalog.LumenwoodId, 8);
         _session.Inventory.Add(DataCatalog.CrystalShardId, 3);
         Callable.From(OpenBackpack).CallDeferred();
@@ -417,6 +1100,86 @@ public sealed partial class Main : Node
         _playing = true;
         EnsureHud();
         ShowFarm(false);
+    }
+
+    private void StartPhaseAPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.StarbudId, 5);
+        _session.Inventory.Add(DataCatalog.MoonrootId, 3);
+        _session.Inventory.Add(DataCatalog.StarbudPreserveId, 1);
+        _session.SetPlayerState(
+            FarmView.ShippingCell.X * 16 + 8,
+            (FarmView.ShippingCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenShipping).CallDeferred();
+    }
+
+    private void StartPhaseASummaryPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.StarbudId, 3);
+        _session.Inventory.Add(DataCatalog.MoonrootId, 2);
+        _session.Inventory.Add(DataCatalog.StarbudPreserveId, 1);
+        _session.QueueForShipping(DataCatalog.StarbudId);
+        _session.QueueForShipping(DataCatalog.StarbudId);
+        _session.QueueForShipping(DataCatalog.MoonrootId);
+        _session.QueueForShipping(DataCatalog.StarbudPreserveId);
+        _session.EndDay();
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(ShowNightlySummary).CallDeferred();
+    }
+
+    private void StartPhaseARainPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 2;
+        save.Weather = new WeatherSave
+        {
+            Day = 2,
+            CurrentId = DataCatalog.RainWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        _session.Restore(save);
+        _session.Inventory.Add(DataCatalog.StarbudId, 1);
+        _session.QueueForShipping(DataCatalog.StarbudId);
+        _session.SetPlayerState(
+            FarmView.ShippingCell.X * 16 + 8,
+            (FarmView.ShippingCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartResourceRespawnPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var crystal = FindResourceWithNorthernApproach(WorldResourceKind.Crystal);
+        _session.Inventory.Select(1);
+        _session.UseSelected(crystal);
+        _session.EndDay();
+        _session.EndDay();
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(ShowNightlySummary).CallDeferred();
     }
 
     private static GridPosition FindResourceWithNorthernApproach(
@@ -482,6 +1245,10 @@ public sealed partial class Main : Node
         {
             ShowCottage(false);
         }
+        else if (_session.InsideArchive)
+        {
+            ShowArchive(false);
+        }
         else
         {
             ShowFarm(false);
@@ -499,7 +1266,10 @@ public sealed partial class Main : Node
         _uiLayer.AddChild(_hud);
     }
 
-    private void ShowFarm(bool fromCottage)
+    private void ShowFarm(
+        bool fromCottage,
+        bool fromArchive = false
+    )
     {
         ClearWorld();
         if (fromCottage)
@@ -510,19 +1280,41 @@ public sealed partial class Main : Node
                 false
             );
         }
+        else if (fromArchive)
+        {
+            _session.SetPlayerLocation(
+                VillageCatalog.MoonlitArchiveDoorCell.X * 16 + 8,
+                (VillageCatalog.MoonlitArchiveDoorCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
         _farm.MiraRequested += TalkToMira;
         _farm.EnterCottageRequested += () => ShowCottage(true);
+        _farm.EnterArchiveRequested += TryEnterMoonlitArchive;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
+        _farm.ShippingRequested += OpenShipping;
+        _farm.CommissionRequested += OpenCommissionBoard;
+        _farm.StarlightRequested += OpenStarlightPedestal;
+        _farm.VillagerRequested += TalkToVillager;
+        _farm.StorageRequested += OpenStorage;
+        _farm.NoticeRequested += key => _hud?.ShowNotice(key);
         _farm.RegionEntered += key => _hud?.ShowNotice(key, 2.6);
         _farm.StepRequested += () => _audio.Play(PixelSound.Step);
         _world = _farm;
         AddChild(_world);
         MoveChild(_world, 1);
-        _hud?.ShowNotice(fromCottage ? "notice.leave_cottage" : string.Empty);
+        if (fromCottage)
+        {
+            _hud?.ShowNotice("notice.leave_cottage");
+        }
+        else if (fromArchive)
+        {
+            _hud?.ShowNotice("notice.leave_archive");
+        }
     }
 
     private void ShowCottage(bool fromFarm)
@@ -543,6 +1335,32 @@ public sealed partial class Main : Node
         _hud?.ShowNotice(fromFarm ? "notice.enter_cottage" : string.Empty);
     }
 
+    private void ShowArchive(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                20 * 16 + 8,
+                17 * 16 + 8,
+                PlayerLocationIds.MoonlitArchive
+            );
+        }
+
+        _archive = new ArchiveView(_session, _locale);
+        _archive.ExitRequested += TryLeaveMoonlitArchive;
+        _archive.DeskRequested += InspectMoonlitArchiveDesk;
+        _archive.VillagerRequested += TalkToVillager;
+        _archive.StepRequested += () => _audio.Play(PixelSound.Step);
+        _world = _archive;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_archive");
+        }
+    }
+
     private void UseFarmTarget(GridPosition target)
     {
         var selectedId = _session.Inventory.Selected.ItemId;
@@ -558,15 +1376,19 @@ public sealed partial class Main : Node
             _hud?.ShowNotice(result.MessageKey);
         }
 
+        var selectedIsSeed =
+            DataCatalog.Items.TryGetValue(selectedId, out var selectedItem) &&
+            selectedItem.Kind == ItemKind.Seed;
         var sound = result.GrantedItemId is not null
             ? PixelSound.Harvest
-            : selectedId switch
+            : selectedIsSeed
+                ? PixelSound.Plant
+                : selectedId switch
             {
                 DataCatalog.ShovelId => PixelSound.Till,
                 DataCatalog.MacheteId => PixelSound.Harvest,
                 DataCatalog.WateringCanId => PixelSound.Water,
                 DataCatalog.BucketId => PixelSound.Water,
-                DataCatalog.StarbudSeedId or DataCatalog.MoonrootSeedId => PixelSound.Plant,
                 _ => PixelSound.Chime
             };
         _audio.Play(sound);
@@ -586,7 +1408,7 @@ public sealed partial class Main : Node
             _ => "dialogue.mira.planting"
         };
 
-        ShowDialogue(dialogueKey, () =>
+        ShowDialogue("dialogue.mira.name", dialogueKey, () =>
         {
             if (stage == QuestStage.TalkToMira)
             {
@@ -602,6 +1424,89 @@ public sealed partial class Main : Node
                 ShowCompletion();
             }
         });
+    }
+
+    private void TalkToVillager(GridPosition target)
+    {
+        var conversation = _session.InteractWithVillager(
+            target,
+            out var result
+        );
+        if (!result.Succeeded || conversation is null)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        var icon = conversation.GiftReaction is { } giftReaction
+            ? GeneratedArt.GiftReactionIcon(giftReaction)
+            : GeneratedArt.RelationshipIcon(
+                conversation.RelationshipTier
+            );
+        var relationshipStatus = string.Format(
+            _locale.Tr("village.relationship.progress"),
+            _locale.Tr(RelationshipTierKey(
+                conversation.RelationshipTier
+            )),
+            conversation.RelationshipPoints,
+            VillageSystem.MaximumRelationshipPoints
+        );
+        ShowDialogue(
+            conversation.NameKey,
+            conversation.DialogueKey,
+            () =>
+            {
+                SaveNow(false);
+            },
+            icon,
+            relationshipStatus
+        );
+    }
+
+    private void TryEnterMoonlitArchive()
+    {
+        var result = _session.TryEnterMoonlitArchive();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowArchive(true);
+    }
+
+    private void TryLeaveMoonlitArchive()
+    {
+        var result = _session.TryExitMoonlitArchive();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, true);
+    }
+
+    private void InspectMoonlitArchiveDesk()
+    {
+        var result = _session.InspectMoonlitArchiveDesk();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowDialogue(
+            "archive.desk.name",
+            result.MessageKey,
+            () => { },
+            GeneratedArt.RelationshipIcon(
+                RelationshipTier.NewAcquaintance
+            )
+        );
     }
 
     private void OpenShop()
@@ -626,7 +1531,15 @@ public sealed partial class Main : Node
     {
         FreeUi(_shopOverlay);
         _shopOverlay = null;
-        if (!_paused && _processorOverlay is null && _fadeTransition is null)
+        if (!_paused &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _fadeTransition is null)
         {
             SetWorldControls(true);
         }
@@ -654,7 +1567,136 @@ public sealed partial class Main : Node
     {
         FreeUi(_processorOverlay);
         _processorOverlay = null;
-        if (!_paused && _shopOverlay is null && _fadeTransition is null)
+        if (!_paused &&
+            _shopOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenShipping()
+    {
+        if (_shippingOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _shippingOverlay = new ShippingOverlay(_theme, _session, _locale);
+        _shippingOverlay.CloseRequested += CloseShipping;
+        _shippingOverlay.ShippingChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_shippingOverlay);
+    }
+
+    private void CloseShipping()
+    {
+        FreeUi(_shippingOverlay);
+        _shippingOverlay = null;
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenCommissionBoard()
+    {
+        if (_commissionOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _farm?.SetCommissionBoardOpen(true);
+        _commissionOverlay = new CommissionBoardOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _commissionOverlay.CloseRequested += CloseCommissionBoard;
+        _commissionOverlay.CommissionChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_commissionOverlay);
+    }
+
+    private void CloseCommissionBoard()
+    {
+        FreeUi(_commissionOverlay);
+        _commissionOverlay = null;
+        _farm?.SetCommissionBoardOpen(false);
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _backpackOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenStarlightPedestal()
+    {
+        if (_starlightOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _session.Starlight.Discover();
+        _starlightOverlay = new StarlightPedestalOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _starlightOverlay.CloseRequested += CloseStarlightPedestal;
+        _starlightOverlay.StarlightChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_starlightOverlay);
+    }
+
+    private void CloseStarlightPedestal()
+    {
+        FreeUi(_starlightOverlay);
+        _starlightOverlay = null;
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _backpackOverlay is null &&
+            _fadeTransition is null)
         {
             SetWorldControls(true);
         }
@@ -670,6 +1712,11 @@ public sealed partial class Main : Node
         SetWorldControls(false);
         _backpackOverlay = new BackpackOverlay(_theme, _session, _locale);
         _backpackOverlay.CloseRequested += CloseBackpack;
+        _backpackOverlay.CraftingRequested += () =>
+        {
+            CloseBackpack();
+            OpenCrafting();
+        };
         _uiLayer.AddChild(_backpackOverlay);
     }
 
@@ -680,18 +1727,107 @@ public sealed partial class Main : Node
         if (!_paused &&
             _shopOverlay is null &&
             _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
             _fadeTransition is null)
         {
             SetWorldControls(true);
         }
     }
 
-    private void ShowDialogue(string dialogueKey, Action closed)
+    private void OpenCrafting()
+    {
+        if (_craftingOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _craftingOverlay = new CraftingOverlay(_theme, _session, _locale);
+        _craftingOverlay.CloseRequested += CloseCrafting;
+        _craftingOverlay.Crafted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_craftingOverlay);
+    }
+
+    private void CloseCrafting()
+    {
+        FreeUi(_craftingOverlay);
+        _craftingOverlay = null;
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _storageOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _backpackOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenStorage(GridPosition position)
+    {
+        if (_storageOverlay is not null ||
+            _session.Storage.ChestAt(position) is null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _farm?.SetStorageChestOpen(position);
+        _storageOverlay = new StorageOverlay(_theme, _session, _locale, position);
+        _storageOverlay.CloseRequested += CloseStorage;
+        _storageOverlay.StorageChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_storageOverlay);
+    }
+
+    private void CloseStorage()
+    {
+        FreeUi(_storageOverlay);
+        _storageOverlay = null;
+        _farm?.SetStorageChestOpen(null);
+        if (!_paused &&
+            _shopOverlay is null &&
+            _processorOverlay is null &&
+            _shippingOverlay is null &&
+            _commissionOverlay is null &&
+            _starlightOverlay is null &&
+            _craftingOverlay is null &&
+            _nightlySummaryOverlay is null &&
+            _backpackOverlay is null &&
+            _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void ShowDialogue(
+        string speakerKey,
+        string dialogueKey,
+        Action closed,
+        Texture2D? icon = null,
+        string status = ""
+    )
     {
         SetWorldControls(false);
         _dialogueOverlay = new DialogueOverlay(_theme, _locale);
         _dialogueOverlay.ShowDialogue(
-            _locale.Tr("dialogue.mira.name"),
+            _locale.Tr(speakerKey),
             _locale.Tr(dialogueKey),
             () =>
             {
@@ -701,10 +1837,23 @@ public sealed partial class Main : Node
                 {
                     SetWorldControls(true);
                 }
-            }
+            },
+            icon,
+            status
         );
         _uiLayer.AddChild(_dialogueOverlay);
     }
+
+    private static string RelationshipTierKey(
+        RelationshipTier tier
+    ) => tier switch
+    {
+        RelationshipTier.TrustedFriend =>
+            "village.relationship.trusted_friend",
+        RelationshipTier.KindredLight =>
+            "village.relationship.kindred_light",
+        _ => "village.relationship.new_acquaintance"
+    };
 
     private void EndDay()
     {
@@ -726,13 +1875,32 @@ public sealed partial class Main : Node
             () =>
             {
                 _fadeTransition = null;
-                if (!_paused)
-                {
-                    SetWorldControls(true);
-                }
+                ShowNightlySummary();
             }
         );
         _uiLayer.AddChild(_fadeTransition);
+    }
+
+    private void ShowNightlySummary()
+    {
+        FreeUi(_nightlySummaryOverlay);
+        _nightlySummaryOverlay = new NightlySummaryOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _nightlySummaryOverlay.ContinueRequested += CloseNightlySummary;
+        _uiLayer.AddChild(_nightlySummaryOverlay);
+    }
+
+    private void CloseNightlySummary()
+    {
+        FreeUi(_nightlySummaryOverlay);
+        _nightlySummaryOverlay = null;
+        if (!_paused && _fadeTransition is null)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void OpenPause()
@@ -812,6 +1980,11 @@ public sealed partial class Main : Node
         _pauseOverlay?.RefreshText();
         _shopOverlay?.RefreshText();
         _processorOverlay?.RefreshText();
+        _shippingOverlay?.RefreshText();
+        _commissionOverlay?.RefreshText();
+        _starlightOverlay?.RefreshText();
+        _craftingOverlay?.RefreshText();
+        _storageOverlay?.RefreshText();
         _backpackOverlay?.RefreshText();
         _hud?.Refresh();
     }
@@ -837,6 +2010,11 @@ public sealed partial class Main : Node
         {
             _cottage.ControlsEnabled = enabled;
         }
+
+        if (_archive is not null)
+        {
+            _archive.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -848,6 +2026,7 @@ public sealed partial class Main : Node
         _world = null;
         _farm = null;
         _cottage = null;
+        _archive = null;
     }
 
     private static void FreeUi(CanvasItem? item)

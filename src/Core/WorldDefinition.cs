@@ -5,6 +5,7 @@ public enum WorldBiome
     Home,
     WhisperingWoods,
     StarfallMeadow,
+    LumenVillage,
     CrystalVale,
     MoonwaterWetlands,
     StarfallRuins
@@ -33,11 +34,23 @@ public static class WorldDefinition
     public const int ChunkSize = 32;
     public const int ChunkColumns = Width / ChunkSize;
     public const int ChunkRows = Height / ChunkSize;
+    public const string WoodlandStarlightLandmarkId = "woods_lantern";
+    public static readonly GridPosition WoodlandStarlightCell = new(34, 72);
 
     public static readonly IReadOnlyList<WorldLandmark> Landmarks =
     [
-        new("woods_lantern", new GridPosition(34, 72), 8, "world.landmark.woods_lantern"),
-        new("meadow_arch", new GridPosition(101, 39), 6, "world.landmark.meadow_arch"),
+        new(
+            WoodlandStarlightLandmarkId,
+            WoodlandStarlightCell,
+            8,
+            "world.landmark.woods_lantern"
+        ),
+        new(
+            VillageCatalog.VillageGateLandmarkId,
+            VillageCatalog.VillageGateCell,
+            -1,
+            "world.landmark.village_gate"
+        ),
         new("crystal_well", new GridPosition(77, 84), 9, "world.landmark.crystal_well"),
         new("wetland_monolith", new GridPosition(164, 43), 15, "world.landmark.wetland_monolith"),
         new("ruins_pillar", new GridPosition(121, 105), 7, "world.landmark.ruins_pillar"),
@@ -124,6 +137,11 @@ public static class WorldDefinition
             return WorldBiome.WhisperingWoods;
         }
 
+        if (VillageCatalog.IsVillageCell(cell))
+        {
+            return WorldBiome.LumenVillage;
+        }
+
         if (cell.X < 128 && cell.Y < 68)
         {
             return WorldBiome.StarfallMeadow;
@@ -147,6 +165,7 @@ public static class WorldDefinition
         WorldBiome.Home => "world.region.home",
         WorldBiome.WhisperingWoods => "world.region.woods",
         WorldBiome.StarfallMeadow => "world.region.meadow",
+        WorldBiome.LumenVillage => "world.region.village",
         WorldBiome.CrystalVale => "world.region.crystal",
         WorldBiome.MoonwaterWetlands => "world.region.wetlands",
         WorldBiome.StarfallRuins => "world.region.ruins",
@@ -163,7 +182,8 @@ public static class WorldDefinition
         var monolithBranch = cell.Y is >= 42 and <= 48 && cell.X is >= 159 and <= 166;
         var woodsBranch = cell.Y is >= 71 and <= 73 && cell.X is >= 19 and <= 48;
         return farmGate || northernRoad || crystalRoad || southernRoad ||
-            wetlandRoad || monolithBranch || woodsBranch;
+            wetlandRoad || monolithBranch || woodsBranch ||
+            VillageCatalog.IsVillagePath(cell);
     }
 
     public static bool IsWater(GridPosition cell)
@@ -203,6 +223,9 @@ public static class WorldDefinition
     public static WorldLandmark? LandmarkAt(GridPosition cell) =>
         Landmarks.FirstOrDefault(value => value.Position == cell);
 
+    public static bool IsWoodlandStarlightCell(GridPosition cell) =>
+        cell == WoodlandStarlightCell;
+
     public static int PropAtlasIndex(GridPosition cell)
     {
         if (!IsInBounds(cell) || IsHomeCell(cell))
@@ -222,6 +245,22 @@ public static class WorldDefinition
         }
 
         var roll = (int)(Hash(cell.X, cell.Y) % 100);
+        if (VillageCatalog.IsVillageCell(cell))
+        {
+            if (VillageCatalog.IsBlocked(cell))
+            {
+                return -1;
+            }
+
+            return roll switch
+            {
+                < 2 => 13,
+                < 4 => 4,
+                < 5 => 5,
+                _ => -1
+            };
+        }
+
         return GetBiome(cell) switch
         {
             WorldBiome.WhisperingWoods => roll switch
@@ -288,6 +327,11 @@ public static class WorldDefinition
         }
 
         if (IsWater(cell))
+        {
+            return true;
+        }
+
+        if (VillageCatalog.IsBlocked(cell))
         {
             return true;
         }

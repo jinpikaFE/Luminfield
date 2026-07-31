@@ -14,10 +14,158 @@ internal static class GeneratedArt
     private static readonly Texture2D EconomyAssets =
         GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
 
+    private static readonly Texture2D PhaseAAssets =
+        GD.Load<Texture2D>("res://assets/generated/phase_a_systems.png");
+
+    private static readonly Texture2D CropExpansion =
+        GD.Load<Texture2D>("res://assets/generated/crop_expansion.png");
+
+    private static readonly Texture2D StarwovenChest =
+        GD.Load<Texture2D>("res://assets/generated/starwoven_chest.png");
+
+    private static readonly Texture2D FarmPlaceables =
+        GD.Load<Texture2D>("res://assets/generated/farm_placeables.png");
+
+    private static readonly Texture2D CropQualityFertilizer =
+        GD.Load<Texture2D>(
+            "res://assets/generated/crop_quality_fertilizer.png"
+        );
+
+    private static readonly Texture2D VillageLandmarks =
+        GD.Load<Texture2D>(
+            "res://assets/generated/village_landmarks.png"
+        );
+
+    private static readonly Texture2D VillageNpcs =
+        GD.Load<Texture2D>(
+            "res://assets/generated/village_npcs.png"
+        );
+
+    private static readonly Texture2D RelationshipGifts =
+        GD.Load<Texture2D>(
+            "res://assets/generated/relationship_gifts.png"
+        );
+
+    private static readonly Texture2D DailyCommissionBoard =
+        GD.Load<Texture2D>("res://assets/generated/daily_commission_board.png");
+
+    private static readonly Texture2D WoodlandStarlightPedestal =
+        GD.Load<Texture2D>(
+            "res://assets/generated/woodland_starlight_pedestal.png"
+        );
+
+    private static readonly IReadOnlyDictionary<string, int> CropExpansionRows =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [DataCatalog.CloudleafId] = 0,
+            [DataCatalog.GlowpeaId] = 1,
+            [DataCatalog.EmberbellId] = 2,
+            [DataCatalog.PrismcornId] = 3,
+            [DataCatalog.DewmelonId] = 4,
+            [DataCatalog.DuskbellId] = 5
+        };
+
     private static readonly Rect2 StarbudPreserveRegion = new(185, 125, 275, 330);
     private static readonly Rect2 MoonrootTonicRegion = new(805, 75, 220, 420);
     private static readonly Rect2 MarketStallRegion = new(55, 630, 515, 565);
     private static readonly Rect2 MoonwellInfuserRegion = new(665, 615, 505, 535);
+    private static readonly Rect2[] PhaseAIconRegions =
+    [
+        new Rect2(70, 125, 300, 350),
+        new Rect2(430, 155, 310, 290),
+        new Rect2(815, 150, 320, 310),
+        new Rect2(1180, 130, 320, 350),
+        new Rect2(770, 555, 350, 320),
+        new Rect2(1145, 555, 360, 330)
+    ];
+    private static readonly Rect2 ClosedShippingBinRegion =
+        new(55, 535, 315, 350);
+    private static readonly Rect2 OpenShippingBinRegion =
+        new(425, 530, 315, 365);
+    private static readonly Rect2 StarwovenChestItemRegion =
+        new(160, 181, 333, 333);
+    private static readonly Rect2 StarwovenChestClosedRegion =
+        new(652, 113, 427, 427);
+    private static readonly Rect2 StarwovenChestOpenRegion =
+        new(96, 653, 477, 477);
+    private static readonly Rect2 StarwovenChestCraftRegion =
+        new(680, 680, 444, 444);
+    private static readonly IReadOnlyDictionary<string, Rect2> FarmObjectRegions =
+        new Dictionary<string, Rect2>(StringComparer.Ordinal)
+        {
+            [DataCatalog.MoonstonePathId] = new(90, 146, 340, 323),
+            [DataCatalog.StarwoodFenceId] = new(507, 192, 244, 277),
+            [DataCatalog.StarlightTorchId] = new(933, 109, 90, 363),
+            [DataCatalog.DewfallSprinklerId] = new(1185, 265, 222, 197)
+        };
+    private static readonly IReadOnlyDictionary<string, Rect2> FarmObjectIconRegions =
+        new Dictionary<string, Rect2>(StringComparer.Ordinal)
+        {
+            [DataCatalog.MoonstonePathId] = new(106, 614, 280, 281),
+            [DataCatalog.StarwoodFenceId] = new(458, 625, 270, 252),
+            [DataCatalog.StarlightTorchId] = new(837, 617, 226, 278),
+            [DataCatalog.DewfallSprinklerId] = new(1141, 627, 322, 267)
+        };
+    private static readonly Rect2 CommissionBoardClosedRegion =
+        new(83, 139, 483, 488);
+    private static readonly Rect2 CommissionBoardActiveRegion =
+        new(671, 125, 503, 502);
+    private static readonly Rect2 CommissionParchmentRegion =
+        new(157, 627, 370, 494);
+    private static readonly Rect2 CommissionRewardRegion =
+        new(723, 627, 413, 491);
+    private static readonly Rect2 WoodlandStarlightDormantRegion =
+        new(90, 65, 520, 520);
+    private static readonly Rect2 WoodlandStarlightActiveRegion =
+        new(650, 65, 520, 520);
+    private static readonly Rect2 StarlightNodeSealRegion =
+        new(110, 655, 480, 480);
+    private static readonly Rect2 WoodlandRenewalRegion =
+        new(700, 635, 370, 540);
+    private static readonly Rect2 StarsoilFertilizerItemRegion =
+        new(154, 126, 281, 324);
+    private static readonly Rect2 FertilizedSoilRegion =
+        new(597, 288, 278, 151);
+    private static readonly Rect2 StarsoilFertilizerCraftRegion =
+        new(1036, 94, 367, 362);
+    private static readonly Rect2 RegularQualityRegion =
+        new(181, 631, 184, 256);
+    private static readonly Rect2 LuminousQualityRegion =
+        new(594, 607, 262, 305);
+    private static readonly Rect2 StarlightQualityRegion =
+        new(1049, 563, 336, 362);
+    private static readonly Rect2[] VillageLandmarkRegions =
+    [
+        new Rect2(52, 41, 366, 412),
+        new Rect2(418, 109, 384, 343),
+        new Rect2(849, 37, 405, 413),
+        new Rect2(1254, 105, 372, 357),
+        new Rect2(39, 516, 379, 338),
+        new Rect2(418, 538, 418, 311),
+        new Rect2(836, 584, 368, 262),
+        new Rect2(1277, 604, 325, 245)
+    ];
+    private static readonly Rect2[][] VillageNpcRegions =
+    [
+        [
+            new Rect2(154, 10, 156, 292),
+            new Rect2(565, 10, 156, 292),
+            new Rect2(977, 9, 129, 295),
+            new Rect2(1361, 10, 127, 295)
+        ],
+        [
+            new Rect2(161, 318, 153, 309),
+            new Rect2(560, 318, 150, 309),
+            new Rect2(980, 319, 137, 308),
+            new Rect2(1348, 320, 136, 307)
+        ],
+        [
+            new Rect2(160, 627, 147, 290),
+            new Rect2(565, 627, 144, 290),
+            new Rect2(977, 627, 125, 293),
+            new Rect2(1362, 627, 125, 293)
+        ]
+    ];
 
     private static readonly Rect2[] PlayerFrames =
     [
@@ -79,6 +227,361 @@ internal static class GeneratedArt
 
     public static Sprite2D CreateMoonwellInfuserSprite() =>
         CreateEconomySprite(MoonwellInfuserRegion, 70);
+
+    public static Sprite2D CreateShippingBinSprite(bool open)
+    {
+        var sprite = new Sprite2D
+        {
+            Texture = PhaseAAssets,
+            RegionEnabled = true,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        SetShippingBinState(sprite, open);
+        return sprite;
+    }
+
+    public static void SetShippingBinState(Sprite2D sprite, bool open)
+    {
+        var source = open ? OpenShippingBinRegion : ClosedShippingBinRegion;
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (56f / source.Size.Y);
+    }
+
+    public static Texture2D CreateWeatherIcon(string weatherId) =>
+        CreatePhaseAIcon(DataCatalog.Weather(weatherId).AtlasIndex);
+
+    public static Texture2D CreateForecastIcon() =>
+        CreatePhaseAIcon(3);
+
+    public static Texture2D CreateShippingBinIcon(bool open) => new AtlasTexture
+    {
+        Atlas = PhaseAAssets,
+        Region = open ? OpenShippingBinRegion : ClosedShippingBinRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D CreateCalendarIcon() =>
+        CreatePhaseAIcon(4);
+
+    public static Texture2D CreateEarningsIcon() =>
+        CreatePhaseAIcon(5);
+
+    public static Sprite2D CreateStarwovenChestSprite(bool open)
+    {
+        var sprite = new Sprite2D
+        {
+            Texture = StarwovenChest,
+            RegionEnabled = true,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        SetStarwovenChestState(sprite, open);
+        return sprite;
+    }
+
+    public static void SetStarwovenChestState(Sprite2D sprite, bool open)
+    {
+        var source = open ? StarwovenChestOpenRegion : StarwovenChestClosedRegion;
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (42f / source.Size.Y);
+    }
+
+    public static Texture2D CreateStarwovenChestItemIcon() => new AtlasTexture
+    {
+        Atlas = StarwovenChest,
+        Region = StarwovenChestItemRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D CreateCraftingIcon() => new AtlasTexture
+    {
+        Atlas = StarwovenChest,
+        Region = StarwovenChestCraftRegion,
+        FilterClip = true
+    };
+
+    public static Sprite2D CreateFarmObjectSprite(string itemId)
+    {
+        var definition = DataCatalog.FarmObject(itemId);
+        var source = FarmObjectRegions[itemId];
+        var sprite = new Sprite2D
+        {
+            Texture = FarmPlaceables,
+            RegionEnabled = true,
+            RegionRect = source,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        if (definition.Kind == FarmObjectKind.Path)
+        {
+            var largestSide = Math.Max(source.Size.X, source.Size.Y);
+            sprite.Scale = Vector2.One * (16f / largestSide);
+            return sprite;
+        }
+
+        var targetHeight = definition.Kind switch
+        {
+            FarmObjectKind.Fence => 24f,
+            FarmObjectKind.Torch => 29f,
+            FarmObjectKind.Sprinkler => 18f,
+            _ => 16f
+        };
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (targetHeight / source.Size.Y);
+        return sprite;
+    }
+
+    public static Texture2D CreateFarmObjectItemIcon(string itemId) =>
+        new AtlasTexture
+        {
+            Atlas = FarmPlaceables,
+            Region = FarmObjectIconRegions[itemId],
+            FilterClip = true
+        };
+
+    public static bool TryFarmObjectItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = FarmPlaceables;
+        return FarmObjectIconRegions.TryGetValue(itemId, out region);
+    }
+
+    public static Texture2D CreateStarsoilFertilizerCraftIcon() =>
+        new AtlasTexture
+        {
+            Atlas = CropQualityFertilizer,
+            Region = StarsoilFertilizerCraftRegion,
+            FilterClip = true
+        };
+
+    public static bool TryCropQualityItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = CropQualityFertilizer;
+        region = itemId == DataCatalog.StarsoilFertilizerId
+            ? StarsoilFertilizerItemRegion
+            : default;
+        return region.Size != Vector2.Zero;
+    }
+
+    public static Texture2D CropQualityFertilizerTexture =>
+        CropQualityFertilizer;
+
+    public static Rect2 FertilizedSoilTextureRegion =>
+        FertilizedSoilRegion;
+
+    public static Rect2 QualityBadgeRegion(CropQuality quality)
+    {
+        return quality switch
+        {
+            CropQuality.Luminous => LuminousQualityRegion,
+            CropQuality.Starlight => StarlightQualityRegion,
+            _ => RegularQualityRegion
+        };
+    }
+
+    public static Texture2D VillageLandmarkTexture => VillageLandmarks;
+
+    public static Rect2 VillageLandmarkRegion(int atlasIndex) =>
+        VillageLandmarkRegions[Math.Clamp(
+            atlasIndex,
+            0,
+            VillageLandmarkRegions.Length - 1
+        )];
+
+    public static Texture2D VillageNpcTexture => VillageNpcs;
+
+    public static Rect2 VillageNpcRegion(int atlasRow, NpcFacing facing)
+    {
+        var row = Math.Clamp(
+            atlasRow,
+            0,
+            VillageNpcRegions.Length - 1
+        );
+        var column = facing switch
+        {
+            NpcFacing.Down => 0,
+            NpcFacing.Up => 1,
+            NpcFacing.Left => 2,
+            NpcFacing.Right => 3,
+            _ => 0
+        };
+        return VillageNpcRegions[row][column];
+    }
+
+    public static Texture2D RelationshipIcon(
+        RelationshipTier tier
+    )
+    {
+        var column = tier switch
+        {
+            RelationshipTier.TrustedFriend => 1,
+            RelationshipTier.KindredLight => 2,
+            _ => 0
+        };
+        return CreateRelationshipAtlas(column, 0);
+    }
+
+    public static Texture2D GiftReactionIcon(GiftReaction reaction)
+    {
+        var column = reaction switch
+        {
+            GiftReaction.Loved => 0,
+            GiftReaction.Disliked => 2,
+            _ => 1
+        };
+        return CreateRelationshipAtlas(column, 1);
+    }
+
+    public static Sprite2D CreateCommissionBoardSprite(bool active)
+    {
+        var sprite = new Sprite2D
+        {
+            Texture = DailyCommissionBoard,
+            RegionEnabled = true,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        SetCommissionBoardState(sprite, active);
+        return sprite;
+    }
+
+    public static void SetCommissionBoardState(Sprite2D sprite, bool active)
+    {
+        var source = active
+            ? CommissionBoardActiveRegion
+            : CommissionBoardClosedRegion;
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (56f / source.Size.Y);
+    }
+
+    public static Texture2D CreateCommissionParchmentIcon() => new AtlasTexture
+    {
+        Atlas = DailyCommissionBoard,
+        Region = CommissionParchmentRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D CreateCommissionRewardIcon() => new AtlasTexture
+    {
+        Atlas = DailyCommissionBoard,
+        Region = CommissionRewardRegion,
+        FilterClip = true
+    };
+
+    public static Sprite2D CreateWoodlandStarlightSprite(bool active)
+    {
+        var sprite = new Sprite2D
+        {
+            Texture = WoodlandStarlightPedestal,
+            RegionEnabled = true,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        SetWoodlandStarlightState(sprite, active);
+        return sprite;
+    }
+
+    public static void SetWoodlandStarlightState(
+        Sprite2D sprite,
+        bool active
+    )
+    {
+        var source = WoodlandStarlightRegion(active);
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (78f / source.Size.Y);
+    }
+
+    public static Texture2D CreateStarlightNodeSealIcon() => new AtlasTexture
+    {
+        Atlas = WoodlandStarlightPedestal,
+        Region = StarlightNodeSealRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D CreateWoodlandRenewalIcon() => new AtlasTexture
+    {
+        Atlas = WoodlandStarlightPedestal,
+        Region = WoodlandRenewalRegion,
+        FilterClip = true
+    };
+
+    public static Texture2D WoodlandStarlightTexture =>
+        WoodlandStarlightPedestal;
+
+    public static Rect2 WoodlandStarlightRegion(bool active)
+    {
+        if (active)
+        {
+            return WoodlandStarlightActiveRegion;
+        }
+
+        return WoodlandStarlightDormantRegion;
+    }
+
+    public static bool TryStarwovenChestItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = StarwovenChest;
+        region = itemId == DataCatalog.StarwovenChestId
+            ? StarwovenChestItemRegion
+            : default;
+        return region.Size != Vector2.Zero;
+    }
+
+    public static Texture2D CropExpansionTexture => CropExpansion;
+
+    public static bool TryCropExpansionRow(string cropId, out int row) =>
+        CropExpansionRows.TryGetValue(cropId, out row);
+
+    public static bool TryCropExpansionItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = CropExpansion;
+        region = default;
+        if (!DataCatalog.Items.TryGetValue(itemId, out var item))
+        {
+            return false;
+        }
+
+        var cropId = item.Kind switch
+        {
+            ItemKind.Seed => item.CropId,
+            ItemKind.Produce => DataCatalog.BaseItemId(item.Id),
+            _ => null
+        };
+        if (cropId is null || !TryCropExpansionRow(cropId, out var row))
+        {
+            return false;
+        }
+
+        region = CropExpansionRegion(row, item.Kind == ItemKind.Seed ? 0 : 1);
+        return true;
+    }
+
+    public static Rect2 CropExpansionRegion(int row, int column)
+    {
+        const int columns = 6;
+        const int rows = 6;
+        const float width = 1536;
+        const float height = 1024;
+        var cellWidth = width / columns;
+        var top = MathF.Floor(row * height / rows);
+        var bottom = MathF.Floor((row + 1) * height / rows);
+        return new Rect2(column * cellWidth, top, cellWidth, bottom - top);
+    }
 
     public static (Texture2D Texture, Rect2 Region) EconomyItemIcon(string itemId) =>
         itemId switch
@@ -166,6 +669,23 @@ internal static class GeneratedArt
         };
     }
 
+    private static AtlasTexture CreatePhaseAIcon(int index) => new()
+    {
+        Atlas = PhaseAAssets,
+        Region = PhaseAIconRegions[index],
+        FilterClip = true
+    };
+
+    private static AtlasTexture CreateRelationshipAtlas(
+        int column,
+        int row
+    ) => new()
+    {
+        Atlas = RelationshipGifts,
+        Region = new Rect2(column * 512, row * 512, 512, 512),
+        FilterClip = true
+    };
+
     private static int DirectionIndex(Vector2I facing)
     {
         if (facing == Vector2I.Up)
@@ -193,6 +713,29 @@ internal sealed partial class CottageBackdrop : Node2D
     {
         ZIndex = -100;
         TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+    }
+
+    public override void _Draw()
+    {
+        DrawTextureRectRegion(
+            Background,
+            new Rect2(0, 0, 640, 360),
+            new Rect2(0, 80, 1536, 864)
+        );
+    }
+}
+
+internal sealed partial class ArchiveBackdrop : Node2D
+{
+    private static readonly Texture2D Background =
+        GD.Load<Texture2D>(
+            "res://assets/generated/moonlit_archive_interior.png"
+        );
+
+    public ArchiveBackdrop()
+    {
+        ZIndex = -100;
+        TextureFilter = TextureFilterEnum.Nearest;
     }
 
     public override void _Draw()
@@ -250,38 +793,71 @@ internal sealed partial class GeneratedCropLayer : Node2D
 
         foreach (var tile in _session.Farm.Tiles.Values)
         {
+            if (tile.FertilizerId == DataCatalog.StarsoilFertilizerId)
+            {
+                var fertilizerSource =
+                    GeneratedArt.FertilizedSoilTextureRegion;
+                var fertilizerScale = 15f / fertilizerSource.Size.X;
+                AddChild(new Sprite2D
+                {
+                    Texture = GeneratedArt.CropQualityFertilizerTexture,
+                    RegionEnabled = true,
+                    RegionRect = fertilizerSource,
+                    Scale = Vector2.One * fertilizerScale,
+                    Position = new Vector2(
+                        tile.X * 16 + 8,
+                        tile.Y * 16 + 11
+                    ),
+                    TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+                });
+            }
+
             if (string.IsNullOrWhiteSpace(tile.CropId))
             {
                 continue;
             }
 
             var definition = DataCatalog.Crop(tile.CropId);
-            var stage = definition.GetStageIndex(tile.WateredNights);
-            var frames = tile.CropId == DataCatalog.StarbudId
-                ? StarbudFrames
-                : MoonrootFrames;
-            var frameIndex = tile.CropId == DataCatalog.StarbudId && stage == 2
-                ? 3
-                : Math.Clamp(stage, 0, frames.Length - 1);
-            var source = frames[frameIndex];
-            var height = frameIndex switch
+            var frameIndex = definition.GetVisualStageIndex(tile.WateredNights);
+            Texture2D texture;
+            Rect2 source;
+            Material? material;
+            float height;
+            if (GeneratedArt.TryCropExpansionRow(tile.CropId, out var expandedRow))
             {
-                0 => 10f,
-                1 => 16f,
-                2 => 23f,
-                _ => 29f
-            };
+                texture = GeneratedArt.CropExpansionTexture;
+                source = GeneratedArt.CropExpansionRegion(expandedRow, frameIndex + 2);
+                material = null;
+                height = 34f;
+            }
+            else
+            {
+                texture = Crops;
+                var frames = tile.CropId == DataCatalog.StarbudId
+                    ? StarbudFrames
+                    : MoonrootFrames;
+                source = frames[Math.Clamp(frameIndex, 0, frames.Length - 1)];
+                material = GeneratedArt.CreateChromaKeyMaterial();
+                height = frameIndex switch
+                {
+                    0 => 10f,
+                    1 => 16f,
+                    2 => 23f,
+                    _ => 29f
+                };
+            }
+
             var baseline = new Vector2(tile.X * 16 + 8, tile.Y * 16 + 15);
             var scale = height / source.Size.Y;
             AddChild(new Sprite2D
             {
-                Texture = Crops,
+                Texture = texture,
                 RegionEnabled = true,
                 RegionRect = source,
                 Scale = new Vector2(scale, scale),
                 Position = baseline - new Vector2(0, height / 2),
                 TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
-                Material = GeneratedArt.CreateChromaKeyMaterial()
+                Material = material
             });
         }
     }

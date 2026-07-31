@@ -18,6 +18,105 @@ internal static class FarmVisualLayout
     public static bool IsPlantingBed(GridPosition position) => FarmSystem.IsPlantingBed(position);
 }
 
+internal sealed partial class FarmWeatherOverlay : CanvasLayer
+{
+    public FarmWeatherOverlay(GameSession session)
+    {
+        Layer = 40;
+        AddChild(new WeatherEffectView(session));
+    }
+}
+
+internal sealed partial class WeatherEffectView : Control
+{
+    private readonly GameSession _session;
+    private double _time;
+
+    public WeatherEffectView(GameSession session)
+    {
+        _session = session;
+        MouseFilter = MouseFilterEnum.Ignore;
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        session.Weather.Changed += OnWeatherChanged;
+    }
+
+    public override void _Process(double delta)
+    {
+        _time += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        if (_session.Weather.CurrentId == DataCatalog.RainWeatherId)
+        {
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color("#10284a20"));
+            for (var index = 0; index < 62; index++)
+            {
+                var x = Mathf.PosMod(
+                    index * 73 + (float)_time * 145,
+                    Math.Max(1, Size.X + 48)
+                ) - 24;
+                var y = Mathf.PosMod(
+                    index * 41 + (float)_time * 205,
+                    Math.Max(1, Size.Y + 36)
+                ) - 18;
+                var length = 5 + index % 4;
+                DrawLine(
+                    new Vector2(x, y),
+                    new Vector2(x - 2, y + length),
+                    index % 5 == 0
+                        ? new Color("#a4f4e2a8")
+                        : new Color("#79cde58c"),
+                    index % 7 == 0 ? 1.5f : 1
+                );
+            }
+            return;
+        }
+
+        if (_session.Weather.CurrentId != DataCatalog.StardustWindWeatherId)
+        {
+            return;
+        }
+
+        DrawRect(new Rect2(Vector2.Zero, Size), new Color("#4c2d7420"));
+        for (var index = 0; index < 34; index++)
+        {
+            var x = Mathf.PosMod(
+                index * 97 + (float)_time * (22 + index % 4 * 5),
+                Math.Max(1, Size.X + 36)
+            ) - 18;
+            var y = Mathf.PosMod(
+                index * 53 + Mathf.Sin((float)_time * 1.3f + index) * 10,
+                Math.Max(1, Size.Y)
+            );
+            var color = (index % 3) switch
+            {
+                0 => new Color("#83f0d2b8"),
+                1 => new Color("#c7a2f0a8"),
+                _ => new Color("#f4d486a6")
+            };
+            DrawCircle(new Vector2(x, y), index % 6 == 0 ? 1.8f : 1.1f, color);
+            if (index % 6 == 0)
+            {
+                DrawLine(
+                    new Vector2(x - 4, y),
+                    new Vector2(x + 4, y),
+                    new Color(color, 0.48f),
+                    1
+                );
+            }
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Weather.Changed -= OnWeatherChanged;
+    }
+
+    private void OnWeatherChanged() => QueueRedraw();
+}
+
 internal sealed partial class FarmBackdrop : Sprite2D
 {
     public FarmBackdrop()

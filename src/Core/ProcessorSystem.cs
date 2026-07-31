@@ -47,12 +47,12 @@ public sealed class ProcessorSystem
             return ActionResult.Fail("processor.unknown_recipe");
         }
 
-        if (inventory.Count(recipe.InputItemId) < recipe.InputCount)
+        if (inventory.CountFamily(recipe.InputItemId) < recipe.InputCount)
         {
             return ActionResult.Fail("processor.missing_ingredients");
         }
 
-        if (!inventory.Remove(recipe.InputItemId, recipe.InputCount))
+        if (!inventory.RemoveFamily(recipe.InputItemId, recipe.InputCount))
         {
             return ActionResult.Fail("processor.missing_ingredients");
         }

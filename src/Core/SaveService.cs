@@ -103,6 +103,12 @@ public sealed class SaveService
             ? save.Locale
             : LocaleService.SimplifiedChinese;
         save.Player ??= new PlayerSave();
+        save.Player.LocationId = PlayerLocationIds.Normalize(
+            save.Player.LocationId,
+            save.Player.InsideCottage
+        );
+        save.Player.InsideCottage =
+            save.Player.LocationId == PlayerLocationIds.Cottage;
         save.Player.Energy = Math.Clamp(save.Player.Energy, 0, GameSession.MaxEnergy);
         save.Player.WateringCanWater = Math.Clamp(
             save.Player.WateringCanWater,
@@ -142,6 +148,40 @@ public sealed class SaveService
             }
         }
         save.FarmTiles ??= [];
+        foreach (var tile in save.FarmTiles)
+        {
+            if (!tile.Tilled)
+            {
+                tile.Watered = false;
+                tile.FertilizerId = null;
+                tile.CropId = null;
+                tile.WateredNights = 0;
+                tile.QualityRoll = -1;
+                continue;
+            }
+
+            if (tile.FertilizerId != DataCatalog.StarsoilFertilizerId)
+            {
+                tile.FertilizerId = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(tile.CropId) ||
+                !DataCatalog.Crops.ContainsKey(tile.CropId))
+            {
+                tile.CropId = null;
+                tile.WateredNights = 0;
+                tile.QualityRoll = -1;
+                continue;
+            }
+
+            var crop = DataCatalog.Crop(tile.CropId);
+            tile.WateredNights = Math.Clamp(
+                tile.WateredNights,
+                0,
+                crop.MatureAfterWateredNights
+            );
+            tile.QualityRoll = Math.Clamp(tile.QualityRoll, 0, 99);
+        }
         save.Quest ??= new QuestSave();
         save.Coins = Math.Max(0, save.Coins);
         save.Processor ??= new ProcessorSave();
@@ -179,6 +219,201 @@ public sealed class SaveService
                 WorldDefinition.ResourceAt(cell) != WorldResourceKind.None)
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        save.Resources.DepletedNodes ??= [];
+        var datedDepletions = save.Resources.DepletedNodes
+            .Where(entry =>
+                WorldDefinition.TryParseCellId(entry.NodeId, out var cell) &&
+                WorldDefinition.ResourceAt(cell) != WorldResourceKind.None)
+            .GroupBy(entry => entry.NodeId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => Math.Clamp(
+                    group.Max(entry => entry.RemovedDay),
+                    1,
+                    save.Day
+                ),
+                StringComparer.Ordinal
+            );
+        foreach (var id in save.Resources.RemovedNodes)
+        {
+            datedDepletions.TryAdd(id, save.Day);
+        }
+
+        save.Resources.DepletedNodes = datedDepletions
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new ResourceDepletionSave
+            {
+                NodeId = pair.Key,
+                RemovedDay = pair.Value
+            })
+            .ToList();
+        save.Resources.RemovedNodes = save.Resources.DepletedNodes
+            .Select(entry => entry.NodeId)
+            .ToList();
+        save.Weather ??= new WeatherSave();
+        var weatherMatchesDay = save.Weather.Day == save.Day;
+        save.Weather.Day = save.Day;
+        save.Weather.CurrentId = weatherMatchesDay &&
+            DataCatalog.WeatherDefinitions.ContainsKey(
+            save.Weather.CurrentId
+        )
+            ? save.Weather.CurrentId
+            : WeatherSystem.WeatherForDay(save.Day);
+        save.Weather.ForecastId = weatherMatchesDay &&
+            DataCatalog.WeatherDefinitions.ContainsKey(
+            save.Weather.ForecastId
+        )
+            ? save.Weather.ForecastId
+            : WeatherSystem.WeatherForDay(save.Day + 1);
+        save.Shipping ??= new ShippingSave();
+        save.Shipping.Pending = NormalizeShippingEntries(save.Shipping.Pending);
+        save.Shipping.LastSettlement ??= new ShippingSettlementSave();
+        save.Shipping.LastSettlement.Day = Math.Max(
+            0,
+            Math.Min(save.Shipping.LastSettlement.Day, save.Day)
+        );
+        save.Shipping.LastSettlement.Entries = NormalizeShippingEntries(
+            save.Shipping.LastSettlement.Entries
+        );
+        save.Storage ??= new StorageSave();
+        save.Storage.Chests ??= [];
+        var occupiedFarmTiles = save.FarmTiles
+            .Select(tile => tile.Position)
+            .ToHashSet();
+        var farm = new FarmSystem();
+        save.Storage.Chests = save.Storage.Chests
+            .Where(chest =>
+            {
+                var position = new GridPosition(chest.X, chest.Y);
+                return WorldDefinition.IsHomeCell(position) &&
+                    !WorldDefinition.IsBlocked(position) &&
+                    !FarmLayout.IsStaticBlocked(position) &&
+                    !FarmSystem.IsPlantingBed(position) &&
+                    !farm.IsReserved(position) &&
+                    !occupiedFarmTiles.Contains(position);
+            })
+            .GroupBy(chest => new GridPosition(chest.X, chest.Y))
+            .Select(group =>
+            {
+                var chest = group.First();
+                chest.Items = NormalizeStorageItems(chest.Items);
+                return chest;
+            })
+            .OrderBy(chest => chest.Y)
+            .ThenBy(chest => chest.X)
+            .ToList();
+        save.FarmObjects ??= new FarmObjectSave();
+        save.FarmObjects.Objects ??= [];
+        var occupiedStorageCells = save.Storage.Chests
+            .Select(chest => new GridPosition(chest.X, chest.Y))
+            .ToHashSet();
+        var occupiedObjectCells = new HashSet<GridPosition>();
+        var normalizedFarmObjects = new List<PlacedFarmObjectSave>();
+        foreach (var entry in save.FarmObjects.Objects
+                     .OrderBy(entry => entry.Y)
+                     .ThenBy(entry => entry.X))
+        {
+            if (!DataCatalog.FarmObjects.TryGetValue(
+                    entry.ItemId,
+                    out var definition
+                ))
+            {
+                continue;
+            }
+
+            var position = new GridPosition(entry.X, entry.Y);
+            var isPlantingBed = FarmSystem.IsPlantingBed(position);
+            var hasCorrectSurface =
+                definition.Surface == FarmObjectSurface.PlantingBed
+                    ? isPlantingBed
+                    : !isPlantingBed;
+            if (!WorldDefinition.IsHomeCell(position) ||
+                WorldDefinition.IsBlocked(position) ||
+                FarmLayout.IsStaticBlocked(position) ||
+                farm.IsReserved(position) ||
+                occupiedFarmTiles.Contains(position) ||
+                occupiedStorageCells.Contains(position) ||
+                occupiedObjectCells.Contains(position) ||
+                !hasCorrectSurface)
+            {
+                continue;
+            }
+
+            occupiedObjectCells.Add(position);
+            normalizedFarmObjects.Add(new PlacedFarmObjectSave
+            {
+                X = position.X,
+                Y = position.Y,
+                ItemId = definition.ItemId
+            });
+        }
+        save.FarmObjects.Objects = normalizedFarmObjects;
+        save.Commission = DailyCommissionSystem.NormalizeSave(
+            save.Commission,
+            save.Day
+        );
+        save.Starlight = StarlightSystem.NormalizeSave(save.Starlight);
+        save.Village = VillageSystem.NormalizeSave(save.Village);
+    }
+
+    private static List<ShippingEntrySave> NormalizeShippingEntries(
+        IEnumerable<ShippingEntrySave>? entries
+    ) => (entries ?? [])
+        .Where(entry =>
+            entry.Count > 0 &&
+            DataCatalog.Items.TryGetValue(entry.ItemId, out var item) &&
+            item.SellPrice > 0
+        )
+        .GroupBy(entry => entry.ItemId, StringComparer.Ordinal)
+        .Select(group => new ShippingEntrySave
+        {
+            ItemId = group.Key,
+            Count = Math.Min(
+                group.Sum(entry => entry.Count),
+                Inventory.SlotCount * 99
+            )
+        })
+            .OrderBy(entry => entry.ItemId, StringComparer.Ordinal)
+            .ToList();
+
+    private static List<InventorySlot> NormalizeStorageItems(
+        IEnumerable<InventorySlot>? slots
+    )
+    {
+        var normalized = new List<InventorySlot>();
+        foreach (var group in (slots ?? [])
+                     .Where(slot =>
+                         slot.Count > 0 &&
+                         DataCatalog.StorableItemIds.Contains(
+                             slot.ItemId,
+                             StringComparer.Ordinal
+                         ))
+                     .GroupBy(slot => slot.ItemId, StringComparer.Ordinal)
+                     .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            var definition = DataCatalog.Item(group.Key);
+            var remaining = Math.Min(
+                group.Sum(slot => Math.Max(0, slot.Count)),
+                StorageChestState.SlotCount * definition.MaxStack
+            );
+            while (remaining > 0 && normalized.Count < StorageChestState.SlotCount)
+            {
+                var count = Math.Min(remaining, definition.MaxStack);
+                normalized.Add(new InventorySlot
+                {
+                    ItemId = group.Key,
+                    Count = count
+                });
+                remaining -= count;
+            }
+
+            if (normalized.Count >= StorageChestState.SlotCount)
+            {
+                break;
+            }
+        }
+
+        return normalized;
     }
 
     private string PreserveBrokenSave()

@@ -19,22 +19,83 @@ The playable loop is:
 
 After the tutorial, the farm opens into a repeatable economy loop:
 
-- Buy Starbud and Moonroot seeds at the Twilight Market.
-- Sell raw crops and more valuable artisan goods for glow coins.
+- Buy seeds for eight original crops at the Twilight Market.
+- Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
+  Duskbell, and more valuable artisan goods for glow coins.
 - Load two crops into the Moonwell Infuser, sleep one night, then collect
   Starbud preserve or Moonroot tonic.
 - Reinvest the proceeds in more seeds to keep expanding the farm.
 
 The original 48×32 farm now opens through its illuminated southern gate into a
-192×128-cell exploration world. Six regions are connected by walkable roads:
-the home farm, Whispering Woods, Starfall Meadow, Crystal Vale, Moonwater
-Wetlands, and Starfall Ruins. The world is loaded in 32×32-cell chunks; only
-the current 3×3 neighborhood remains active, so the camera can travel across
-the full map without constructing every region at once.
+192×128-cell exploration world. Seven regions are connected by walkable roads:
+the home farm, Whispering Woods, Starfall Meadow, Lumen Village, Crystal Vale,
+Moonwater Wetlands, and Starfall Ruins. The world is loaded in 32×32-cell
+chunks; only the current 3×3 neighborhood remains active, so the camera can
+travel across the full map without constructing every region at once.
 
 The top-right minimap reveals chunks as the player enters them, keeps
 undiscovered territory hidden, marks discovered landmarks, and stores the
 exploration state in the regular save file.
+
+## Lumen Village and the first villagers
+
+- Follow the southern homestead road east and the Crystal Road north to reach
+  the first Lumen Village area. It contains eight original exterior landmarks:
+  the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
+  Well, village gate, sign, lantern bench, and glowflower cart.
+- Liora, Tavi, and Nemi change position with the game clock. Day 7,
+  Lanternrest, gives each of them a separate rest-day route.
+- The Moonlit Archive is open from 08:00 to 20:00. Its exterior door highlights
+  as the actual target; inside, the central star-chart desk can be read. Liora
+  works in the archive from 09:00 to 13:00 on weekdays.
+- Select the Hand, then face or stand next to a villager to talk. A first
+  meeting uses an introduction, and the first conversation each day adds two
+  relationship points.
+- Move a non-tool item into the hotbar and select it to give one gift per
+  villager per day. Loved, liked, neutral, and disliked reactions use per-NPC
+  preferences plus item categories. Dialogue shows an original reaction icon,
+  relationship tier, and current points.
+- Player location, met villagers, relationship points, and daily talk/gift
+  records use stable save IDs. Legacy saves remain compatible and unknown IDs
+  are filtered.
+- Mail, character events, tile-level walking paths, five more core villagers,
+  and five more building interiors remain planned work.
+
+## Seven-day weather, shipping, and eight crops
+
+- Seven days form a week. The HUD shows the day, an original weekday name,
+  current weather, and the next-day forecast.
+- Clear, rain, and stardust wind are currently available. Rain automatically
+  waters tilled soil, while rain and stardust wind have distinct world effects.
+- A Star Shipping Chest now stands on the west side of the homestead. Select
+  the Hand and approach it to queue crops, artisan goods, or gathered resources,
+  or reclaim them before sleeping.
+- Sleeping settles every queued item at its stable sell price, adds the earnings
+  to the purse, and opens an itemized nightly summary with the new day and
+  forecast.
+- Gathered crystals regrow after two days and trees after seven days. The
+  nightly summary reports newly regrown resource sites, while depletion dates
+  and respawn cycles survive saving and loading.
+
+| Crop | Watered nights | Seed price | Harvest value |
+| --- | ---: | ---: | ---: |
+| Starbud | 2 | ◈15 | ◈22 |
+| Moonroot | 3 | ◈24 | ◈38 |
+| Cloudleaf | 2 | ◈12 | ◈18 |
+| Glowpea | 3 | ◈20 | ◈32 |
+| Emberbell | 4 | ◈28 | ◈48 |
+| Prismcorn | 5 | ◈36 | ◈68 |
+| Dewmelon | 5 | ◈40 | ◈76 |
+| Duskbell | 4 | ◈30 | ◈54 |
+
+These systems complete all eight core phase-A gameplay increments in the
+[gameplay expansion outline](docs/玩法扩展大纲.md). Crafting, the first
+placeable facility, the daily commission board, and the first Starlight
+Pedestal are complete. The first roads, fences, lights, and sprinklers are now
+complete as well. Three crop-quality tiers and the first fertilizer are now
+implemented. Phase B now includes the first village, three NPC schedules, the
+first enterable building, and a data-driven relationship and daily-gifting
+entry point.
 
 ## Tools and backpack
 
@@ -57,9 +118,83 @@ crystals, water, crops, NPCs, doors, stations, and the bed highlight their
 actual object footprint instead of showing an unexplained ground square.
 
 Trees yield Lumenwood and crystal clusters yield Crystal shards. Gathered
-nodes disappear, become walkable, and remain gathered after saving. Legacy
-saves that contain the old `hoe` item are migrated to the new fixed tool order
-without dropping seeds or harvests.
+nodes temporarily disappear and become walkable; crystals return after two
+days and trees after seven. Legacy permanently removed nodes begin a safe
+respawn cycle on their load day, while the old `hoe` item still migrates to the
+fixed tool order without dropping seeds or harvests.
+
+## Crafting and Starwoven storage
+
+- Press `C` to open Starweaving anywhere, or enter it from the top of the
+  backpack.
+- The panel now contains six recipes: Starsoil Fertilizer, Starwoven Chest,
+  Moonstone Path, Starwood Fence, Starlight Torch, and Dewfall Sprinkler.
+  Missing materials or a full backpack never consume any items.
+- One Lumenwood plus one Crystal shard crafts two Starsoil Fertilizers.
+- One Crystal shard crafts four paths; two Lumenwood craft four fences; one
+  Lumenwood plus one shard craft two torches; four Lumenwood plus three shards
+  craft one sprinkler.
+- Paths, fences, and torches use clear homestead ground outside planting beds.
+  Paths remain walkable, while fences and torches block movement. A sprinkler
+  occupies an untilled planting-bed cell and waters the four orthogonal tilled
+  cells before crops advance during sleep.
+- A crafted chest moves into an available hotbar slot and becomes selected.
+  Face a clear homestead cell and press `E` to place it. Farm plots, fixed
+  facilities, obstacles, and existing chests report why placement is blocked.
+- Return to slot 1, the Hand, then approach a chest and press `E` to open it.
+  Every chest has 16 independent slots for seeds, produce, artisan goods,
+  gathered materials, and spare chests.
+- Chest positions and contents are part of the normal save. Older saves receive
+  an empty storage list without losing existing progress.
+
+## Crop quality and Starsoil Fertilizer
+
+- All eight crops now have Regular, Luminous, and Starlight quality tiers.
+  Luminous produce is worth about 1.5× its regular value and Starlight about
+  2.25×. Stable item IDs keep each tier separately stackable and sellable.
+- With Starsoil selected, only an empty, tilled, unfertilized cell shows the
+  mint `E · Apply Starsoil` action. Untilled, already fertilized, and planted
+  cells explain the blocker without consuming fertilizer or energy.
+- One application affects one crop. It guarantees at least Luminous quality,
+  with a stable 20% Starlight result based on crop, cell, and planting day, so
+  saving and loading cannot reroll the harvest.
+- Harvest clears the fertilizer. Tutorial progress, delivery commissions,
+  processing, and Starlight offerings accept all three qualities as the same
+  crop family and consume lower-value quality first.
+
+## Daily commission board
+
+- A Starlamp Commission Board stands between the cottage and greenhouse.
+  Select the Hand, approach its mint outline, and press `E`; other tools explain
+  that the Hand is required without consuming any resource.
+- One deterministic offer rotates each day. Planting, gathering, and delivery
+  templates are available now. Accepted work appears in the HUD, expires after
+  sleeping if unfinished, and is replaced by the next day's offer.
+- Planting records only successful target crops, gathering records only items
+  actually granted to the backpack, and delivery removes items atomically only
+  when the reward can be claimed.
+- The day, stable definition ID, acceptance, progress, and claim state are
+  saved. Older saves and unknown commission IDs safely receive the current
+  day's offer without losing unrelated progress.
+
+## Woodland Watch Starlight
+
+- The old watchlight in Whispering Woods is now a restorable Starlight
+  Pedestal. Select the Hand, approach its real object outline, and press `E`;
+  other tools only request the Hand and consume no energy or items.
+- Its three constellation nodes accept partial offerings: any three different
+  mature crops; six Lumenwood plus two Crystal shards; and one each of Starbud
+  preserve, Moonroot tonic, and a Starwoven Chest.
+- Every candidate item is capped by the node definition. An offer with no
+  usable items removes nothing, partial progress persists, and the full
+  restoration can activate only once.
+- Full restoration changes the world sprite from dormant stone to flowing
+  mint-and-blue starlight and permanently shortens Whispering Woods tree
+  regrowth from seven days to four. Other trees and crystals are unchanged.
+- Discovery, stable node IDs, per-item contributions, and the permanent reward
+  remain in the existing `schemaVersion: 1` save. Older saves receive empty
+  nodes, while unknown or overfilled data is normalized without unlocking the
+  reward or clearing unrelated progress.
 
 One in-game day lasts about four real minutes. Sleeping in the cottage can end
 the day early.
@@ -72,6 +207,7 @@ the day early.
 | Use / interact | E / Space | A |
 | Hotbar | 1–8 | Shoulder buttons |
 | Backpack | B / Tab | Y |
+| Crafting | C | X |
 | Pause | Esc | Start |
 
 ## Local toolchain
@@ -84,6 +220,17 @@ The implementation is pinned to:
 
 For this workspace the tools are installed outside the repository at
 `/Users/edy/.codex/tools/luminfield/`.
+
+On macOS, double-click
+`/Users/edy/.codex/tools/luminfield/Luminfield Godot.app`, or run:
+
+```bash
+./scripts/open_editor_macos.command
+```
+
+The launcher injects the project-local `DOTNET_ROOT`. Opening the original
+`Godot_mono.app` directly from Finder omits that environment and can produce a
+`Failed to load .NET runtime / hostfxr` dialog.
 
 ```bash
 export LUMINFIELD_TOOLS=/Users/edy/.codex/tools/luminfield
@@ -107,10 +254,16 @@ godot --headless --path . --quit-after 180
 The save file is written atomically to `user://saves/slot_1.json`. Corrupt saves
 are preserved with a `.broken-<timestamp>` suffix.
 Glow coins, the active processing job, artisan goods, watering-can water,
-gathered world nodes, and the 24-slot backpack are stored in the existing
-`schemaVersion: 1` save. Older saves receive safe defaults and tool-ID
-migration for the new additive fields. Discovered world chunks are stored as
-stable chunk IDs; older saves begin with the home chunk revealed.
+world-resource depletion dates, weather, the pending shipping chest, placed
+Starwoven Chests with their 16-slot contents, the daily commission state, the
+Woodland Watch Starlight's partial offerings and permanent reward, and the
+24-slot backpack are stored in the existing `schemaVersion: 1` save.
+Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
+Starlight Torches, and Dewfall Sprinklers use additive fields in that same
+schema. Older saves receive safe defaults and tool-ID migration for the new
+additive fields.
+Discovered world chunks are stored as stable chunk IDs; older saves begin with
+the home chunk revealed.
 
 Release outputs are created at:
 

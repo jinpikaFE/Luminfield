@@ -15,13 +15,27 @@ public sealed class GameSession
     public ProcessorSystem Processor { get; } = new();
     public ExplorationSystem Exploration { get; } = new();
     public WorldResourceSystem Resources { get; } = new();
+    public WeatherSystem Weather { get; } = new();
+    public ShippingBinSystem Shipping { get; } = new();
+    public CraftingSystem Crafting { get; } = new();
+    public StorageSystem Storage { get; } = new();
+    public FarmObjectSystem FarmObjects { get; } = new();
+    public DailyCommissionSystem Commission { get; } = new();
+    public StarlightSystem Starlight { get; } = new();
+    public VillageSystem Village { get; } = new();
 
     public int Energy { get; private set; } = MaxEnergy;
     public int WateringCanWater { get; private set; } = MaxWateringCanWater;
     public int Coins { get; private set; } = NewGameCoins;
+    public int LastRespawnedResources { get; private set; }
     public float PlayerX { get; private set; } = NewGamePlayerX;
     public float PlayerY { get; private set; } = NewGamePlayerY;
-    public bool InsideCottage { get; private set; }
+    public string PlayerLocationId { get; private set; } =
+        PlayerLocationIds.World;
+    public bool InsideCottage =>
+        PlayerLocationId == PlayerLocationIds.Cottage;
+    public bool InsideArchive =>
+        PlayerLocationId == PlayerLocationIds.MoonlitArchive;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -39,6 +53,13 @@ public sealed class GameSession
         Processor.Changed += NotifyChanged;
         Exploration.Changed += NotifyChanged;
         Resources.Changed += _ => NotifyChanged();
+        Weather.Changed += NotifyChanged;
+        Shipping.Changed += NotifyChanged;
+        Storage.Changed += _ => NotifyChanged();
+        FarmObjects.Changed += _ => NotifyChanged();
+        Commission.Changed += NotifyChanged;
+        Starlight.Changed += NotifyChanged;
+        Village.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -50,12 +71,20 @@ public sealed class GameSession
         Processor.Reset();
         Exploration.Reset();
         Resources.Reset();
+        Weather.Reset(Clock.Day);
+        Shipping.Reset();
+        Storage.Reset();
+        FarmObjects.Reset();
+        Commission.Reset(Clock.Day);
+        Starlight.Reset();
+        Village.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
+        LastRespawnedResources = 0;
         PlayerX = NewGamePlayerX;
         PlayerY = NewGamePlayerY;
-        InsideCottage = false;
+        PlayerLocationId = PlayerLocationIds.World;
         Locale = locale;
         EnergyChanged?.Invoke();
         WaterChanged?.Invoke();
@@ -67,10 +96,25 @@ public sealed class GameSession
         Clock.Reset(save.Day, save.MinuteOfDay);
         Inventory.Restore(save.Inventory, save.Player.SelectedSlot);
         Farm.Restore(save.FarmTiles);
+        Storage.Restore(save.Storage, Farm);
+        FarmObjects.Restore(save.FarmObjects, Farm, Storage);
         Quest.Restore(save.Quest);
         Processor.Restore(save.Processor);
         Exploration.Restore(save.Exploration);
-        Resources.Restore(save.Resources);
+        Starlight.Restore(save.Starlight);
+        Village.Restore(save.Village);
+        Resources.Restore(
+            save.Resources,
+            save.Day,
+            Starlight.WoodlandRenewalUnlocked
+        );
+        Weather.Restore(save.Weather, save.Day);
+        Shipping.Restore(save.Shipping);
+        Commission.Restore(save.Commission, save.Day);
+        if (Weather.Current.AutoWatersCrops)
+        {
+            Farm.ApplyWeatherWatering();
+        }
         Energy = Math.Clamp(save.Player.Energy, 0, MaxEnergy);
         WateringCanWater = Math.Clamp(
             save.Player.WateringCanWater,
@@ -78,9 +122,13 @@ public sealed class GameSession
             MaxWateringCanWater
         );
         Coins = Math.Max(0, save.Coins);
+        LastRespawnedResources = 0;
         PlayerX = save.Player.X;
         PlayerY = save.Player.Y;
-        InsideCottage = save.Player.InsideCottage;
+        PlayerLocationId = PlayerLocationIds.Normalize(
+            save.Player.LocationId,
+            save.Player.InsideCottage
+        );
         Locale = save.Locale;
         EnergyChanged?.Invoke();
         WaterChanged?.Invoke();
@@ -95,10 +143,21 @@ public sealed class GameSession
 
     public void SetPlayerState(float x, float y, bool insideCottage)
     {
+        SetPlayerLocation(
+            x,
+            y,
+            insideCottage
+                ? PlayerLocationIds.Cottage
+                : PlayerLocationIds.World
+        );
+    }
+
+    public void SetPlayerLocation(float x, float y, string locationId)
+    {
         PlayerX = x;
         PlayerY = y;
-        InsideCottage = insideCottage;
-        if (!insideCottage)
+        PlayerLocationId = PlayerLocationIds.Normalize(locationId);
+        if (PlayerLocationId == PlayerLocationIds.World)
         {
             Exploration.Discover(
                 new GridPosition(
@@ -118,6 +177,31 @@ public sealed class GameSession
             return ActionResult.Fail("notice.not_ready");
         }
 
+        if (FarmLayout.IsCommissionBoardCell(target))
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return UseHand(FarmLayout.CommissionBoardCell);
+        }
+
+        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return UseHand(WorldDefinition.WoodlandStarlightCell);
+        }
+
+        if (FarmObjects.HasObject(target))
+        {
+            return ActionResult.Fail("notice.placeable_occupied");
+        }
+
         ActionResult result;
         switch (selected.ItemId)
         {
@@ -130,7 +214,8 @@ public sealed class GameSession
                         target,
                         selected.ItemId,
                         Energy,
-                        Inventory
+                        Inventory,
+                        Clock.Day
                     );
                     break;
                 }
@@ -139,6 +224,7 @@ public sealed class GameSession
                 if (result.Succeeded)
                 {
                     Quest.OnTilled();
+                    ApplyCurrentWeatherTo(target);
                 }
                 break;
             case DataCatalog.MacheteId:
@@ -146,7 +232,8 @@ public sealed class GameSession
                     target,
                     selected.ItemId,
                     Energy,
-                    Inventory
+                    Inventory,
+                    Clock.Day
                 );
                 break;
             case DataCatalog.WateringCanId:
@@ -166,23 +253,71 @@ public sealed class GameSession
                 break;
             case DataCatalog.BucketId:
                 return RefillWateringCan(target);
-            case DataCatalog.StarbudSeedId:
-            case DataCatalog.MoonrootSeedId:
+            default:
                 var item = DataCatalog.Item(selected.ItemId);
+                if (item.Kind == ItemKind.Placeable)
+                {
+                    if (item.Id == DataCatalog.StarwovenChestId)
+                    {
+                        return Storage.Place(
+                            target,
+                            Farm,
+                            Inventory,
+                            FarmObjects.HasObject
+                        );
+                    }
+
+                    if (DataCatalog.FarmObjects.ContainsKey(item.Id))
+                    {
+                        return FarmObjects.Place(
+                            item.Id,
+                            target,
+                            Farm,
+                            Storage,
+                            Inventory
+                        );
+                    }
+
+                    return ActionResult.Fail("notice.not_ready");
+                }
+
+                if (item.Kind == ItemKind.Fertilizer)
+                {
+                    result = Farm.TryFertilize(target, item.Id);
+                    if (result.Succeeded)
+                    {
+                        Inventory.Remove(item.Id, 1);
+                    }
+                    break;
+                }
+
+                if (item.Kind != ItemKind.Seed || item.CropId is null)
+                {
+                    return ActionResult.Fail("notice.not_ready");
+                }
+
                 if (selected.Count <= 0 || item.CropId is null)
                 {
                     return ActionResult.Fail("notice.no_seed");
                 }
 
-                result = Farm.TryPlant(target, item.CropId);
+                result = Farm.TryPlant(target, item.CropId, Clock.Day);
                 if (result.Succeeded)
                 {
                     Inventory.Remove(selected.ItemId, 1);
                     Quest.OnPlanted(item.CropId);
+                    Commission.RecordPlant(item.CropId);
+                    ApplyCurrentWeatherTo(target);
                 }
                 break;
-            default:
-                return ActionResult.Fail("notice.not_ready");
+        }
+
+        if (result.Succeeded && result.GrantedItemId is not null)
+        {
+            Commission.RecordGather(
+                DataCatalog.BaseItemId(result.GrantedItemId),
+                result.GrantedItemCount
+            );
         }
 
         if (result.Succeeded && result.EnergyCost > 0)
@@ -202,8 +337,106 @@ public sealed class GameSession
             return TargetPreview.Neutral(target);
         }
 
+        if (InsideArchive)
+        {
+            return PreviewArchiveTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
+        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    WorldDefinition.WoodlandStarlightCell,
+                    TargetPreviewKind.StarlightPedestal,
+                    "target.action.open_starlight"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                WorldDefinition.WoodlandStarlightCell,
+                TargetPreviewKind.StarlightPedestal,
+                "target.need.hand"
+            );
+        }
+
+        if (FarmLayout.IsCommissionBoardCell(target))
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    FarmLayout.CommissionBoardCell,
+                    TargetPreviewKind.CommissionBoard,
+                    "target.action.open_commission"
+                )
+                : TargetPreview.NeedsTool(
+                    FarmLayout.CommissionBoardCell,
+                    TargetPreviewKind.CommissionBoard,
+                    "target.need.hand"
+                );
+        }
+
+        if (Storage.HasChest(target))
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    target,
+                    TargetPreviewKind.StorageChest,
+                    "target.action.open_storage"
+                )
+                : TargetPreview.NeedsTool(
+                    target,
+                    TargetPreviewKind.StorageChest,
+                    "target.need.hand"
+                );
+        }
+
+        if (VillageCatalog.IsMoonlitArchiveDoor(target))
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    VillageCatalog.MoonlitArchiveDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+            }
+
+            return VillageCatalog.IsMoonlitArchiveOpen(Clock.MinuteOfDay)
+                ? TargetPreview.Available(
+                    VillageCatalog.MoonlitArchiveDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.action.enter_archive"
+                )
+                : TargetPreview.Blocked(
+                    VillageCatalog.MoonlitArchiveDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.status.archive_closed"
+                );
+        }
+
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationId
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        var placedFarmObject = FarmObjects.ItemAt(target);
+        if (placedFarmObject is not null)
+        {
+            return TargetPreview.Blocked(
+                target,
+                PreviewKindForFarmObject(placedFarmObject),
+                "target.status.placed"
+            );
+        }
+
         var landmark = WorldDefinition.LandmarkAt(target);
         if (landmark is not null)
         {
@@ -250,15 +483,75 @@ public sealed class GameSession
                 );
         }
 
+        if (selectedId == DataCatalog.StarwovenChestId)
+        {
+            var issue = Storage.CheckPlacement(
+                target,
+                Farm,
+                FarmObjects.HasObject
+            );
+            return issue switch
+            {
+                ChestPlacementIssue.None when selected.Count > 0 =>
+                    TargetPreview.Available(
+                        target,
+                        TargetPreviewKind.StorageChest,
+                        "target.action.place_chest"
+                    ),
+                ChestPlacementIssue.NotHome => TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.StorageChest,
+                    "target.blocked.place_home"
+                ),
+                ChestPlacementIssue.None => TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.StorageChest,
+                    "target.blocked.no_chest_item"
+                ),
+                _ => TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.StorageChest,
+                    "target.blocked.place_clear"
+                )
+            };
+        }
+
+        if (DataCatalog.FarmObjects.ContainsKey(selectedId))
+        {
+            return PreviewFarmObjectPlacement(
+                selectedId,
+                selected.Count,
+                target
+            );
+        }
+
         if (!WorldDefinition.IsHomeCell(target) ||
             !FarmSystem.IsPlantingBed(target))
         {
+            if (selectedId == DataCatalog.StarsoilFertilizerId)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Ground,
+                    "target.blocked.fertilizer_needs_tilled"
+                );
+            }
+
             return TargetPreview.Neutral(target);
         }
 
         Farm.Tiles.TryGetValue(target, out var tile);
         if (!string.IsNullOrWhiteSpace(tile?.CropId))
         {
+            if (selectedId == DataCatalog.StarsoilFertilizerId)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Crop,
+                    "target.blocked.fertilizer_before_planting"
+                );
+            }
+
             var crop = DataCatalog.Crop(tile.CropId);
             if (crop.IsMature(tile.WateredNights))
             {
@@ -271,7 +564,9 @@ public sealed class GameSession
                     );
                 }
 
-                return Inventory.CanAdd(crop.HarvestItemId, 1)
+                var harvestItemId = Farm.HarvestItemIdAt(target)
+                    ?? crop.HarvestItemId;
+                return Inventory.CanAdd(harvestItemId, 1)
                     ? TargetPreview.Available(
                         target,
                         TargetPreviewKind.Crop,
@@ -326,7 +621,33 @@ public sealed class GameSession
 
         if (tile?.Tilled == true)
         {
-            if (selectedId is DataCatalog.StarbudSeedId or DataCatalog.MoonrootSeedId)
+            if (selectedId == DataCatalog.StarsoilFertilizerId)
+            {
+                if (!string.IsNullOrWhiteSpace(tile.FertilizerId))
+                {
+                    return TargetPreview.Blocked(
+                        target,
+                        TargetPreviewKind.Soil,
+                        "target.status.fertilized"
+                    );
+                }
+
+                return selected.Count > 0
+                    ? TargetPreview.Available(
+                        target,
+                        TargetPreviewKind.Soil,
+                        "target.action.fertilize"
+                    )
+                    : TargetPreview.Blocked(
+                        target,
+                        TargetPreviewKind.Soil,
+                        "target.blocked.no_fertilizer"
+                    );
+            }
+
+            if (DataCatalog.Items.TryGetValue(selectedId, out var selectedItem) &&
+                selectedItem.Kind == ItemKind.Seed &&
+                selectedItem.CropId is not null)
             {
                 return selected.Count > 0
                     ? TargetPreview.Available(
@@ -345,6 +666,15 @@ public sealed class GameSession
                 target,
                 TargetPreviewKind.Soil,
                 "target.need.seed"
+            );
+        }
+
+        if (selectedId == DataCatalog.StarsoilFertilizerId)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.Ground,
+                "target.blocked.fertilizer_needs_tilled"
             );
         }
 
@@ -417,6 +747,22 @@ public sealed class GameSession
 
     private ActionResult UseHand(GridPosition target)
     {
+        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        {
+            Starlight.Discover();
+            return ActionResult.Success(messageKey: "starlight.opened");
+        }
+
+        if (target == FarmLayout.CommissionBoardCell)
+        {
+            return ActionResult.Success(messageKey: "commission.opened");
+        }
+
+        if (Storage.HasChest(target))
+        {
+            return ActionResult.Success(messageKey: "storage.opened");
+        }
+
         var tile = Farm.Tiles.GetValueOrDefault(target);
         if (tile?.CropId is not null)
         {
@@ -426,7 +772,9 @@ public sealed class GameSession
                 return ActionResult.Fail("notice.not_ready");
             }
 
-            if (!Inventory.CanAdd(crop.HarvestItemId, 1))
+            var harvestItemId = Farm.HarvestItemIdAt(target)
+                ?? crop.HarvestItemId;
+            if (!Inventory.CanAdd(harvestItemId, 1))
             {
                 return ActionResult.Fail("notice.inventory_full");
             }
@@ -435,7 +783,9 @@ public sealed class GameSession
             if (harvested.Succeeded && harvested.GrantedItemId is not null)
             {
                 Inventory.Add(harvested.GrantedItemId, harvested.GrantedItemCount);
-                Quest.OnHarvested(harvested.GrantedItemId);
+                Quest.OnHarvested(
+                    DataCatalog.BaseItemId(harvested.GrantedItemId)
+                );
             }
 
             return harvested;
@@ -495,6 +845,74 @@ public sealed class GameSession
         return givesSeeds;
     }
 
+    public VillageConversation? InteractWithVillager(
+        GridPosition target,
+        out ActionResult result
+    )
+    {
+        var conversation = Village.Interact(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationId,
+            Inventory.Selected.ItemId,
+            Inventory,
+            out result
+        );
+        if (conversation is not null)
+        {
+            Changed?.Invoke();
+        }
+
+        return conversation;
+    }
+
+    public ActionResult TryEnterMoonlitArchive()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.archive_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return VillageCatalog.IsMoonlitArchiveOpen(Clock.MinuteOfDay)
+            ? ActionResult.Success(messageKey: "notice.enter_archive")
+            : ActionResult.Fail("notice.archive_closed");
+    }
+
+    public ActionResult InspectMoonlitArchiveDesk()
+    {
+        if (!InsideArchive)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return ActionResult.Success(
+            messageKey: "archive.desk.dialogue"
+        );
+    }
+
+    public ActionResult TryExitMoonlitArchive()
+    {
+        if (!InsideArchive)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(messageKey: "notice.leave_archive")
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         var item = DataCatalog.Item(itemId);
@@ -536,22 +954,90 @@ public sealed class GameSession
         return ActionResult.Success(messageKey: "shop.sold");
     }
 
+    public ActionResult QueueForShipping(string itemId) =>
+        Shipping.QueueOne(itemId, Inventory);
+
+    public ActionResult ReclaimFromShipping(string itemId) =>
+        Shipping.ReclaimOne(itemId, Inventory);
+
     public ActionResult StartProcessing(string recipeId) =>
         Processor.Start(recipeId, Inventory);
 
     public ActionResult CollectProcessedItem() =>
         Processor.Collect(Inventory);
 
-    public void EndDay()
+    public ActionResult CraftItem(string recipeId) =>
+        Crafting.Craft(recipeId, Inventory);
+
+    public ActionResult StoreInChest(GridPosition position, string itemId) =>
+        Storage.StoreOne(position, itemId, Inventory);
+
+    public ActionResult TakeFromChest(GridPosition position, string itemId) =>
+        Storage.TakeOne(position, itemId, Inventory);
+
+    public ActionResult AcceptDailyCommission() =>
+        Commission.Accept();
+
+    public DailyCommissionClaimResult ClaimDailyCommission()
     {
+        var result = Commission.Claim(Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Coins += result.RewardCoins;
+        Changed?.Invoke();
+        return result;
+    }
+
+    public StarlightContributionResult ContributeToStarlightNode(
+        string nodeId
+    )
+    {
+        var result = Starlight.Contribute(nodeId, Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        if (result.Activated)
+        {
+            LastRespawnedResources += Resources.ResolveDay(
+                Clock.Day,
+                Starlight.WoodlandRenewalUnlocked
+            );
+        }
+
+        Changed?.Invoke();
+        return result;
+    }
+
+    public ShippingSettlement EndDay()
+    {
+        var endedDay = Clock.Day;
+        FarmObjects.ApplySprinklers(Farm);
         Farm.EndDay();
         Processor.ResolveNight();
         Quest.OnNightResolved(Farm.CountMatureCrop(DataCatalog.StarbudId));
+        var settlement = Shipping.Settle(endedDay);
+        Coins += settlement.TotalCoins;
         Clock.StartNextDay();
+        Commission.RefreshForDay(Clock.Day);
+        LastRespawnedResources = Resources.ResolveDay(
+            Clock.Day,
+            Starlight.WoodlandRenewalUnlocked
+        );
+        Weather.AdvanceToDay(Clock.Day);
+        if (Weather.Current.AutoWatersCrops)
+        {
+            Farm.ApplyWeatherWatering();
+        }
         Energy = MaxEnergy;
         EnergyChanged?.Invoke();
         DayEnded?.Invoke();
         Changed?.Invoke();
+        return settlement;
     }
 
     public GameSaveV1 Capture() => new()
@@ -567,6 +1053,7 @@ public sealed class GameSession
             Energy = Energy,
             WateringCanWater = WateringCanWater,
             SelectedSlot = Inventory.SelectedIndex,
+            LocationId = PlayerLocationId,
             InsideCottage = InsideCottage
         },
         Inventory = Inventory.Capture(),
@@ -575,8 +1062,175 @@ public sealed class GameSession
         Coins = Coins,
         Processor = Processor.Capture(),
         Exploration = Exploration.Capture(),
-        Resources = Resources.Capture()
+        Resources = Resources.Capture(),
+        Weather = Weather.Capture(),
+        Shipping = Shipping.Capture(),
+        Storage = Storage.Capture(),
+        FarmObjects = FarmObjects.Capture(),
+        Commission = Commission.Capture(),
+        Starlight = Starlight.Capture(),
+        Village = Village.Capture()
     };
+
+    private TargetPreview PreviewArchiveTarget(GridPosition target)
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationIds.MoonlitArchive
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        if (target == VillageCatalog.MoonlitArchiveDeskCell)
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    VillageCatalog.MoonlitArchiveDeskCell,
+                    TargetPreviewKind.Station,
+                    "target.action.read_archive"
+                )
+                : TargetPreview.NeedsTool(
+                    VillageCatalog.MoonlitArchiveDeskCell,
+                    TargetPreviewKind.Station,
+                    "target.need.hand"
+                );
+        }
+
+        if (target == VillageCatalog.MoonlitArchiveExitCell)
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    VillageCatalog.MoonlitArchiveExitCell,
+                    TargetPreviewKind.Door,
+                    "target.action.exit_archive"
+                )
+                : TargetPreview.NeedsTool(
+                    VillageCatalog.MoonlitArchiveExitCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewVillagerInteraction(
+        VillageNpcState villager,
+        string selectedItemId
+    )
+    {
+        var check = Village.CheckInteraction(
+            villager.Position,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationId,
+            selectedItemId
+        );
+        if (check.IsAvailable)
+        {
+            return TargetPreview.Available(
+                villager.Position,
+                TargetPreviewKind.Character,
+                check.IsGift
+                    ? "target.action.gift"
+                    : "target.action.talk"
+            );
+        }
+
+        if (check.FailureKey == "notice.needs_hand")
+        {
+            return TargetPreview.NeedsTool(
+                villager.Position,
+                TargetPreviewKind.Character,
+                "target.need.hand"
+            );
+        }
+
+        return TargetPreview.Blocked(
+            villager.Position,
+            TargetPreviewKind.Character,
+            check.FailureKey
+        );
+    }
+
+    private void ApplyCurrentWeatherTo(GridPosition target)
+    {
+        if (Weather.Current.AutoWatersCrops)
+        {
+            Farm.ApplyWeatherWatering(target);
+        }
+    }
+
+    private TargetPreview PreviewFarmObjectPlacement(
+        string itemId,
+        int count,
+        GridPosition target
+    )
+    {
+        var kind = PreviewKindForFarmObject(itemId);
+        var issue = FarmObjects.CheckPlacement(
+            itemId,
+            target,
+            Farm,
+            Storage
+        );
+        if (issue == FarmObjectPlacementIssue.None && count > 0)
+        {
+            return TargetPreview.Available(
+                target,
+                kind,
+                ActionKeyForFarmObject(itemId)
+            );
+        }
+
+        if (issue == FarmObjectPlacementIssue.None)
+        {
+            return TargetPreview.Blocked(
+                target,
+                kind,
+                "target.blocked.no_placeable_item"
+            );
+        }
+
+        var labelKey = issue switch
+        {
+            FarmObjectPlacementIssue.NotHome => "target.blocked.place_home",
+            FarmObjectPlacementIssue.WrongSurface =>
+                itemId == DataCatalog.DewfallSprinklerId
+                    ? "target.blocked.sprinkler_bed"
+                    : "target.blocked.place_ground",
+            FarmObjectPlacementIssue.Occupied => "target.blocked.place_occupied",
+            _ => "target.blocked.place_clear"
+        };
+        return TargetPreview.Blocked(target, kind, labelKey);
+    }
+
+    private static TargetPreviewKind PreviewKindForFarmObject(string itemId) =>
+        DataCatalog.FarmObject(itemId).Kind switch
+        {
+            FarmObjectKind.Path => TargetPreviewKind.Path,
+            FarmObjectKind.Fence => TargetPreviewKind.Fence,
+            FarmObjectKind.Torch => TargetPreviewKind.Torch,
+            FarmObjectKind.Sprinkler => TargetPreviewKind.Sprinkler,
+            _ => TargetPreviewKind.Ground
+        };
+
+    private static string ActionKeyForFarmObject(string itemId) =>
+        DataCatalog.FarmObject(itemId).Kind switch
+        {
+            FarmObjectKind.Path => "target.action.place_path",
+            FarmObjectKind.Fence => "target.action.place_fence",
+            FarmObjectKind.Torch => "target.action.place_torch",
+            FarmObjectKind.Sprinkler => "target.action.place_sprinkler",
+            _ => "target.action.place"
+        };
 
     private void NotifyChanged() => Changed?.Invoke();
 }

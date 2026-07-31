@@ -5,26 +5,17 @@ namespace Luminfield.Game;
 
 public sealed partial class FarmView : Node2D
 {
-    public static readonly GridPosition MiraCell = new(32, 9);
-    public static readonly GridPosition CottageDoorCell = new(16, 11);
-    public static readonly GridPosition ShopCell = new(43, 14);
-    public static readonly GridPosition ProcessorCell = new(36, 14);
-
-    private static readonly HashSet<GridPosition> ExtraBlocked =
-    [
-        new(2, 5), new(3, 5), new(2, 6),
-        new(43, 4), new(44, 4), new(44, 5),
-        new(4, 25), new(5, 25), new(4, 26),
-        new(30, 3), new(30, 4),
-        new(14, 8), new(14, 9),
-        new(42, 8), new(42, 9),
-        new(42, 12), new(43, 12), new(44, 12),
-        new(42, 13), new(43, 13), new(44, 13),
-        new(42, 14), new(43, 14), new(44, 14),
-        new(35, 12), new(36, 12), new(37, 12),
-        new(35, 13), new(36, 13), new(37, 13),
-        new(35, 14), new(36, 14), new(37, 14)
-    ];
+    public static readonly GridPosition MiraCell = FarmLayout.MiraCell;
+    public static readonly GridPosition CottageDoorCell = FarmLayout.CottageDoorCell;
+    public static readonly GridPosition ShopCell = FarmLayout.ShopCell;
+    public static readonly GridPosition ProcessorCell = FarmLayout.ProcessorCell;
+    public static readonly GridPosition ShippingCell = FarmLayout.ShippingCell;
+    public static readonly GridPosition CommissionBoardCell =
+        FarmLayout.CommissionBoardCell;
+    public static readonly GridPosition WoodlandStarlightCell =
+        WorldDefinition.WoodlandStarlightCell;
+    public static readonly GridPosition MoonlitArchiveDoorCell =
+        VillageCatalog.MoonlitArchiveDoorCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -35,6 +26,12 @@ public sealed partial class FarmView : Node2D
     private readonly TargetCursor _cursor;
     private readonly PlayerController _player;
     private readonly WorldChunkStreamer _worldStreamer;
+    private readonly Sprite2D _shippingBin;
+    private readonly Sprite2D _commissionBoard;
+    private readonly Node2D _storageChestLayer;
+    private readonly Node2D _farmObjectLayer;
+    private GridPosition? _openStorageChest;
+    private bool _commissionBoardOpen;
 
     public FarmView(GameSession session, LocaleService locale)
     {
@@ -58,6 +55,7 @@ public sealed partial class FarmView : Node2D
         AddChild(new SouthernWorldGate());
         _canvasModulate = new CanvasModulate { Color = Colors.White };
         AddChild(_canvasModulate);
+        AddChild(new FarmWeatherOverlay(session));
 
         AddChild(new FarmSoilStateLayer(session));
         AddChild(new GeneratedCropLayer(session));
@@ -92,6 +90,46 @@ public sealed partial class FarmView : Node2D
         infuser.ZIndex = 7;
         AddChild(infuser);
 
+        _shippingBin = GeneratedArt.CreateShippingBinSprite(
+            session.Shipping.PendingItemCount > 0
+        );
+        _shippingBin.Name = "StarShippingBin";
+        _shippingBin.Position = CellCenter(ShippingCell) + new Vector2(0, 8);
+        _shippingBin.ZIndex = 7;
+        AddChild(_shippingBin);
+
+        _commissionBoard = GeneratedArt.CreateCommissionBoardSprite(
+            session.Commission.Accepted && !session.Commission.Claimed
+        );
+        _commissionBoard.Name = "DailyCommissionBoard";
+        _commissionBoard.Position =
+            CellCenter(CommissionBoardCell) + new Vector2(0, 8);
+        _commissionBoard.ZIndex = 7;
+        _commissionBoard.AddChild(new ActorShadow
+        {
+            Position = new Vector2(0, 1),
+            ZIndex = -1
+        });
+        AddChild(_commissionBoard);
+
+        _storageChestLayer = new Node2D
+        {
+            Name = "PlacedStorageChests",
+            ZIndex = 7,
+            YSortEnabled = true
+        };
+        AddChild(_storageChestLayer);
+        RebuildStorageChests();
+
+        _farmObjectLayer = new Node2D
+        {
+            Name = "PlacedFarmObjects",
+            ZIndex = 6,
+            YSortEnabled = true
+        };
+        AddChild(_farmObjectLayer);
+        RebuildFarmObjects();
+
         _player = new PlayerController(CanOccupy)
         {
             Name = "Player",
@@ -114,9 +152,19 @@ public sealed partial class FarmView : Node2D
             Position = CellCenter(ProcessorCell) + new Vector2(0, 8),
             ZIndex = 26
         });
+        AddChild(new StationBeacon(() => _player.CurrentCell, ShippingCell, ThemeFactory.Gold)
+        {
+            Position = CellCenter(ShippingCell) + new Vector2(0, 8),
+            ZIndex = 26
+        });
         AddChild(new CottageEntranceBeacon(() => _player.CurrentCell)
         {
             Position = CellCenter(CottageDoorCell),
+            ZIndex = 30
+        });
+        AddChild(new ArchiveEntranceBeacon(() => _player.CurrentCell)
+        {
+            Position = CellCenter(MoonlitArchiveDoorCell),
             ZIndex = 30
         });
 
@@ -140,6 +188,11 @@ public sealed partial class FarmView : Node2D
         RefreshAllFarmTiles();
         session.Farm.TileChanged += RefreshFarmTile;
         session.Clock.TimeChanged += UpdateLighting;
+        session.Weather.Changed += UpdateLighting;
+        session.Shipping.Changed += RefreshShippingBin;
+        session.Storage.Changed += RefreshStorageChests;
+        session.FarmObjects.Changed += RefreshFarmObjects;
+        session.Commission.Changed += RefreshCommissionBoard;
         UpdateLighting();
     }
 
@@ -156,8 +209,15 @@ public sealed partial class FarmView : Node2D
     public event Action<GridPosition>? UseRequested;
     public event Action? MiraRequested;
     public event Action? EnterCottageRequested;
+    public event Action? EnterArchiveRequested;
     public event Action? ShopRequested;
     public event Action? ProcessorRequested;
+    public event Action? ShippingRequested;
+    public event Action? CommissionRequested;
+    public event Action? StarlightRequested;
+    public event Action<GridPosition>? VillagerRequested;
+    public event Action<GridPosition>? StorageRequested;
+    public event Action<string>? NoticeRequested;
     public event Action<string>? RegionEntered;
     public event Action? StepRequested
     {
@@ -171,9 +231,44 @@ public sealed partial class FarmView : Node2D
     {
         var target = _player.TargetCell;
         var player = _player.CurrentCell;
+        if (target == MoonlitArchiveDoorCell)
+        {
+            return _session.PreviewSelectedTarget(
+                MoonlitArchiveDoorCell
+            );
+        }
+
+        var villager = ResolveVillageNpcTarget(target, player);
+        if (villager is not null)
+        {
+            return _session.PreviewSelectedTarget(villager.Position);
+        }
+
+        if (WorldDefinition.IsWoodlandStarlightCell(target) ||
+            IsAdjacent(player, WoodlandStarlightCell))
+        {
+            return _session.PreviewSelectedTarget(WoodlandStarlightCell);
+        }
+
+        if (FarmLayout.IsCommissionBoardCell(target) ||
+            IsNearCommissionBoard(player))
+        {
+            return _session.PreviewSelectedTarget(CommissionBoardCell);
+        }
+
+        var storageTarget = ResolveStorageTarget(target, player);
+        if (storageTarget is { } chest)
+        {
+            return PreviewHandInteraction(
+                chest,
+                TargetPreviewKind.StorageChest,
+                "target.action.open_storage"
+            );
+        }
+
         if (target == MiraCell || IsAdjacent(player, MiraCell))
         {
-            return TargetPreview.Available(
+            return PreviewHandInteraction(
                 MiraCell,
                 TargetPreviewKind.Character,
                 "target.action.talk"
@@ -182,16 +277,23 @@ public sealed partial class FarmView : Node2D
 
         if (target == CottageDoorCell || IsAdjacent(player, CottageDoorCell))
         {
-            return TargetPreview.Available(
+            return PreviewHandInteraction(
                 CottageDoorCell,
                 TargetPreviewKind.Door,
                 "target.action.enter"
             );
         }
 
+        if (IsAdjacent(player, MoonlitArchiveDoorCell))
+        {
+            return _session.PreviewSelectedTarget(
+                MoonlitArchiveDoorCell
+            );
+        }
+
         if (target == ShopCell || IsAdjacent(player, ShopCell))
         {
-            return TargetPreview.Available(
+            return PreviewHandInteraction(
                 ShopCell,
                 TargetPreviewKind.Station,
                 "target.action.trade"
@@ -200,10 +302,19 @@ public sealed partial class FarmView : Node2D
 
         if (target == ProcessorCell || IsAdjacent(player, ProcessorCell))
         {
-            return TargetPreview.Available(
+            return PreviewHandInteraction(
                 ProcessorCell,
                 TargetPreviewKind.Station,
                 "target.action.infuse"
+            );
+        }
+
+        if (target == ShippingCell || IsAdjacent(player, ShippingCell))
+        {
+            return PreviewHandInteraction(
+                ShippingCell,
+                TargetPreviewKind.Station,
+                "target.action.ship"
             );
         }
 
@@ -218,21 +329,62 @@ public sealed partial class FarmView : Node2D
         }
 
         var target = _player.TargetCell;
-        if (target == MiraCell || IsAdjacent(_player.CurrentCell, MiraCell))
+        if (target == MoonlitArchiveDoorCell)
         {
-            MiraRequested?.Invoke();
+            EnterArchiveRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        var villager = ResolveVillageNpcTarget(
+            target,
+            _player.CurrentCell
+        );
+        var storageTarget = ResolveStorageTarget(target, _player.CurrentCell);
+        if (villager is not null)
+        {
+            VillagerRequested?.Invoke(villager.Position);
+        }
+        else if (WorldDefinition.IsWoodlandStarlightCell(target) ||
+            IsAdjacent(_player.CurrentCell, WoodlandStarlightCell))
+        {
+            RequestStarlight();
+        }
+        else if (FarmLayout.IsCommissionBoardCell(target) ||
+            IsNearCommissionBoard(_player.CurrentCell))
+        {
+            RequestCommissionBoard();
+        }
+        else if (storageTarget is { } chest)
+        {
+            RequestHandInteraction(() => StorageRequested?.Invoke(chest));
+        }
+        else if (target == MiraCell || IsAdjacent(_player.CurrentCell, MiraCell))
+        {
+            RequestHandInteraction(MiraRequested);
         }
         else if (target == CottageDoorCell || IsAdjacent(_player.CurrentCell, CottageDoorCell))
         {
-            EnterCottageRequested?.Invoke();
+            RequestHandInteraction(EnterCottageRequested);
+        }
+        else if (IsAdjacent(
+                     _player.CurrentCell,
+                     MoonlitArchiveDoorCell
+                 ))
+        {
+            EnterArchiveRequested?.Invoke();
         }
         else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
         {
-            ShopRequested?.Invoke();
+            RequestHandInteraction(ShopRequested);
         }
         else if (target == ProcessorCell || IsAdjacent(_player.CurrentCell, ProcessorCell))
         {
-            ProcessorRequested?.Invoke();
+            RequestHandInteraction(ProcessorRequested);
+        }
+        else if (target == ShippingCell || IsAdjacent(_player.CurrentCell, ShippingCell))
+        {
+            RequestHandInteraction(ShippingRequested);
         }
         else
         {
@@ -260,16 +412,19 @@ public sealed partial class FarmView : Node2D
         {
             return;
         }
-
-        var definition = DataCatalog.Crop(tile.CropId);
-        var atlas = definition.AtlasStartIndex + definition.GetStageIndex(tile.WateredNights);
-        _cropLayer.SetCell(new Vector2I(position.X, position.Y), 0, new Vector2I(atlas, 0));
+        // GeneratedCropLayer owns all crop silhouettes. Keeping the legacy tile
+        // layer empty avoids showing a Starbud placeholder beneath expanded crops.
     }
 
     public override void _ExitTree()
     {
         _session.Farm.TileChanged -= RefreshFarmTile;
         _session.Clock.TimeChanged -= UpdateLighting;
+        _session.Weather.Changed -= UpdateLighting;
+        _session.Shipping.Changed -= RefreshShippingBin;
+        _session.Storage.Changed -= RefreshStorageChests;
+        _session.FarmObjects.Changed -= RefreshFarmObjects;
+        _session.Commission.Changed -= RefreshCommissionBoard;
     }
 
     private TileMapLayer Layer(string name, TileSet tileSet, int zIndex)
@@ -356,11 +511,193 @@ public sealed partial class FarmView : Node2D
         var progress = (_session.Clock.MinuteOfDay - GameClock.StartMinute) /
             (float)(GameClock.EndMinute - GameClock.StartMinute);
         var daylight = Mathf.Sin(progress * Mathf.Pi);
-        _canvasModulate.Color = new Color(
-            0.78f + daylight * 0.17f,
-            0.80f + daylight * 0.15f,
-            0.95f + daylight * 0.05f
+        var red = 0.78f + daylight * 0.17f;
+        var green = 0.80f + daylight * 0.15f;
+        var blue = 0.95f + daylight * 0.05f;
+        if (_session.Weather.CurrentId == DataCatalog.RainWeatherId)
+        {
+            red *= 0.77f;
+            green *= 0.84f;
+            blue *= 0.94f;
+        }
+        else if (_session.Weather.CurrentId == DataCatalog.StardustWindWeatherId)
+        {
+            red *= 0.9f;
+            green *= 0.94f;
+            blue = Math.Min(1f, blue * 1.05f);
+        }
+
+        _canvasModulate.Color = new Color(red, green, blue);
+    }
+
+    private TargetPreview PreviewHandInteraction(
+        GridPosition target,
+        TargetPreviewKind kind,
+        string actionKey
+    ) => _session.Inventory.Selected.ItemId == DataCatalog.HandId
+        ? TargetPreview.Available(target, kind, actionKey)
+        : TargetPreview.NeedsTool(target, kind, "target.need.hand");
+
+    private void RequestHandInteraction(Action? action)
+    {
+        if (_session.Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            NoticeRequested?.Invoke("notice.needs_hand");
+            return;
+        }
+
+        action?.Invoke();
+    }
+
+    private void RefreshShippingBin()
+    {
+        GeneratedArt.SetShippingBinState(
+            _shippingBin,
+            _session.Shipping.PendingItemCount > 0
         );
+    }
+
+    public void SetCommissionBoardOpen(bool open)
+    {
+        _commissionBoardOpen = open;
+        RefreshCommissionBoard();
+    }
+
+    private void RefreshCommissionBoard()
+    {
+        var active = _commissionBoardOpen ||
+            (_session.Commission.Accepted && !_session.Commission.Claimed) ||
+            _session.Commission.IsReady(_session.Inventory);
+        GeneratedArt.SetCommissionBoardState(_commissionBoard, active);
+    }
+
+    private void RequestCommissionBoard()
+    {
+        var result = _session.UseSelected(CommissionBoardCell);
+        if (!result.Succeeded)
+        {
+            NoticeRequested?.Invoke(result.MessageKey);
+            return;
+        }
+
+        CommissionRequested?.Invoke();
+    }
+
+    private void RequestStarlight()
+    {
+        var result = _session.UseSelected(WoodlandStarlightCell);
+        if (!result.Succeeded)
+        {
+            NoticeRequested?.Invoke(result.MessageKey);
+            return;
+        }
+
+        StarlightRequested?.Invoke();
+    }
+
+    public void SetStorageChestOpen(GridPosition? position)
+    {
+        _openStorageChest = position;
+        RebuildStorageChests();
+    }
+
+    private void RefreshStorageChests(GridPosition position)
+    {
+        _ = position;
+        RebuildStorageChests();
+    }
+
+    private void RebuildStorageChests()
+    {
+        foreach (var child in _storageChestLayer.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var pair in _session.Storage.Chests)
+        {
+            var sprite = GeneratedArt.CreateStarwovenChestSprite(
+                _openStorageChest == pair.Key
+            );
+            sprite.Name = $"StarwovenChest_{pair.Key.X}_{pair.Key.Y}";
+            sprite.Position = CellCenter(pair.Key) + new Vector2(0, 8);
+            sprite.ZIndex = pair.Key.Y;
+            sprite.AddChild(new ActorShadow
+            {
+                Position = new Vector2(0, 1),
+                ZIndex = -1
+            });
+            _storageChestLayer.AddChild(sprite);
+        }
+    }
+
+    private void RefreshFarmObjects(GridPosition position)
+    {
+        _ = position;
+        RebuildFarmObjects();
+    }
+
+    private void RebuildFarmObjects()
+    {
+        foreach (var child in _farmObjectLayer.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var pair in _session.FarmObjects.Objects)
+        {
+            var definition = DataCatalog.FarmObject(pair.Value);
+            var sprite = GeneratedArt.CreateFarmObjectSprite(pair.Value);
+            sprite.Name = $"FarmObject_{pair.Value}_{pair.Key.X}_{pair.Key.Y}";
+            sprite.Position = CellCenter(pair.Key);
+            if (definition.Kind != FarmObjectKind.Path)
+            {
+                sprite.Position += new Vector2(0, 8);
+                sprite.ZIndex = pair.Key.Y;
+                sprite.AddChild(new ActorShadow
+                {
+                    Position = new Vector2(0, 1),
+                    ZIndex = -2
+                });
+            }
+            else
+            {
+                sprite.ZIndex = -8;
+            }
+
+            if (definition.Kind is FarmObjectKind.Torch or
+                FarmObjectKind.Sprinkler)
+            {
+                sprite.AddChild(new FarmObjectGlow(definition.Kind)
+                {
+                    Position = definition.Kind == FarmObjectKind.Torch
+                        ? new Vector2(0, -19)
+                        : new Vector2(0, -7),
+                    ZIndex = -1
+                });
+            }
+
+            _farmObjectLayer.AddChild(sprite);
+        }
+    }
+
+    private GridPosition? ResolveStorageTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        if (_session.Storage.HasChest(target))
+        {
+            return target;
+        }
+
+        return _session.Storage.Chests.Keys
+            .Where(cell => IsAdjacent(player, cell))
+            .OrderBy(cell => Math.Abs(cell.X - target.X) + Math.Abs(cell.Y - target.Y))
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .Cast<GridPosition?>()
+            .FirstOrDefault();
     }
 
     private static bool IsMoonstonePath(GridPosition position) =>
@@ -386,6 +723,16 @@ public sealed partial class FarmView : Node2D
                 return false;
             }
 
+            if (_session.Village.NpcAt(
+                    cell,
+                    _session.Clock.Day,
+                    _session.Clock.MinuteOfDay,
+                    PlayerLocationIds.World
+                ) is not null)
+            {
+                return false;
+            }
+
             return _session.Resources.IsRemoved(cell) ||
                 !WorldDefinition.IsBlocked(cell);
         }
@@ -395,7 +742,10 @@ public sealed partial class FarmView : Node2D
             return false;
         }
 
-        if (ExtraBlocked.Contains(cell) || _session.Farm.IsReserved(cell))
+        if (FarmLayout.IsStaticBlocked(cell) ||
+            _session.Farm.IsReserved(cell) ||
+            _session.Storage.HasChest(cell) ||
+            _session.FarmObjects.BlocksMovement(cell))
         {
             return false;
         }
@@ -406,8 +756,70 @@ public sealed partial class FarmView : Node2D
     private static Vector2 CellCenter(GridPosition cell) =>
         new(cell.X * 16 + 8, cell.Y * 16 + 8);
 
+    private VillageNpcState? ResolveVillageNpcTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        var current = _session.Village.CurrentNpcs(
+            _session.Clock.Day,
+            _session.Clock.MinuteOfDay,
+            PlayerLocationIds.World
+        );
+        var exact = current.FirstOrDefault(
+            npc => npc.Position == target
+        );
+        if (exact is not null)
+        {
+            return exact;
+        }
+
+        return current
+            .Where(npc => IsAdjacent(player, npc.Position))
+            .OrderBy(npc =>
+                Math.Abs(npc.Position.X - target.X) +
+                Math.Abs(npc.Position.Y - target.Y)
+            )
+            .ThenBy(npc => npc.Position.Y)
+            .ThenBy(npc => npc.Position.X)
+            .FirstOrDefault();
+    }
+
     private static bool IsAdjacent(GridPosition first, GridPosition second) =>
         Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y) <= 1;
+
+    private static bool IsNearCommissionBoard(GridPosition player) =>
+        Enumerable.Range(26, 3)
+            .Select(x => new GridPosition(x, CommissionBoardCell.Y))
+            .Any(cell => IsAdjacent(player, cell));
+}
+
+internal sealed partial class FarmObjectGlow : Node2D
+{
+    private readonly FarmObjectKind _kind;
+    private double _time;
+
+    public FarmObjectGlow(FarmObjectKind kind)
+    {
+        _kind = kind;
+    }
+
+    public override void _Process(double delta)
+    {
+        _time += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var pulse = 0.82f + Mathf.Sin((float)_time * 2.8f) * 0.18f;
+        var color = _kind == FarmObjectKind.Torch
+            ? ThemeFactory.Gold
+            : ThemeFactory.Mint;
+        DrawCircle(Vector2.Zero, 12 * pulse, new Color(color, 0.035f));
+        DrawCircle(Vector2.Zero, 7 * pulse, new Color(color, 0.075f));
+        DrawCircle(Vector2.Zero, 2.2f * pulse, new Color(color, 0.28f));
+    }
 }
 
 internal sealed partial class StationBeacon : Node2D
@@ -558,9 +970,64 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), line, false, 1.5f);
                 break;
+            case TargetPreviewKind.CommissionBoard:
+                DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), line, false, 1.7f);
+                DrawArc(origin + new Vector2(8, -18), 24 + pulse * 2, 0, Mathf.Tau, 28, new Color(accent, 0.34f), 1);
+                break;
+            case TargetPreviewKind.StorageChest:
+                DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), line, false, 1.5f);
+                DrawArc(origin + new Vector2(8, -8), 20 + pulse, 0, Mathf.Tau, 24, new Color(accent, 0.32f), 1);
+                break;
+            case TargetPreviewKind.Path:
+                DrawRect(new Rect2(origin + new Vector2(0, 0), new Vector2(16, 16)), fill);
+                DrawRect(new Rect2(origin + new Vector2(0, 0), new Vector2(16, 16)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.Fence:
+                DrawRect(new Rect2(origin + new Vector2(-4, -16), new Vector2(24, 32)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-4, -16), new Vector2(24, 32)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.Torch:
+                DrawRect(new Rect2(origin + new Vector2(1, -23), new Vector2(14, 39)), fill);
+                DrawRect(new Rect2(origin + new Vector2(1, -23), new Vector2(14, 39)), line, false, 1.5f);
+                DrawCircle(origin + new Vector2(8, -15), 11 + pulse, new Color(accent, 0.06f));
+                break;
+            case TargetPreviewKind.Sprinkler:
+                DrawRect(new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)), fill);
+                DrawRect(new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)), line, false, 1.5f);
+                DrawArc(origin + new Vector2(8, 3), 12 + pulse, 0, Mathf.Tau, 24, new Color(accent, 0.3f), 1);
+                break;
             case TargetPreviewKind.Landmark:
                 DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.StarlightPedestal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-31, -63),
+                        new Vector2(78, 78)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-31, -63),
+                        new Vector2(78, 78)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -25),
+                    39 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    32,
+                    new Color(accent, 0.38f),
+                    1.2f
+                );
                 break;
             case TargetPreviewKind.Bed:
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
@@ -603,10 +1070,17 @@ internal sealed partial class TargetCursor : Node2D
     {
         TargetPreviewKind.Tree => -72,
         TargetPreviewKind.Station => -68,
+        TargetPreviewKind.CommissionBoard => -58,
+        TargetPreviewKind.StorageChest => -48,
+        TargetPreviewKind.Path => -22,
+        TargetPreviewKind.Fence => -39,
+        TargetPreviewKind.Torch => -48,
+        TargetPreviewKind.Sprinkler => -34,
         TargetPreviewKind.Character => -62,
         TargetPreviewKind.Door => -49,
         TargetPreviewKind.Crystal => -47,
         TargetPreviewKind.Landmark => -56,
+        TargetPreviewKind.StarlightPedestal => -62,
         TargetPreviewKind.Crop => -34,
         TargetPreviewKind.Bed => -25,
         _ => -18
@@ -681,6 +1155,54 @@ internal sealed partial class CottageEntranceBeacon : Node2D
             8,
             ThemeFactory.Ink
         );
+    }
+}
+
+internal sealed partial class ArchiveEntranceBeacon : Node2D
+{
+    private readonly Func<GridPosition> _playerCell;
+    private double _time;
+
+    public ArchiveEntranceBeacon(Func<GridPosition> playerCell)
+    {
+        _playerCell = playerCell;
+    }
+
+    public override void _Process(double delta)
+    {
+        _time += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var player = _playerCell();
+        var target = VillageCatalog.MoonlitArchiveDoorCell;
+        var distance = Math.Abs(player.X - target.X) +
+            Math.Abs(player.Y - target.Y);
+        var nearby = distance <= 3;
+        var pulse = 0.68f + Mathf.Sin((float)_time * 3.9f) * 0.2f;
+        var alpha = nearby ? pulse : pulse * 0.46f;
+        var mint = new Color(ThemeFactory.Mint, alpha);
+        var gold = new Color(ThemeFactory.Gold, Math.Min(alpha + 0.1f, 1));
+
+        DrawRect(
+            new Rect2(-10, -34, 20, 38),
+            new Color(mint, alpha * 0.08f),
+            true
+        );
+        DrawRect(new Rect2(-10, -34, 20, 38), mint, false, nearby ? 2 : 1);
+        DrawArc(new Vector2(0, -34), 10, Mathf.Pi, Mathf.Tau, 18, gold, nearby ? 2 : 1);
+        DrawArc(new Vector2(0, 5), 12 + pulse * 2, 0, Mathf.Tau, 24, mint, 1.4f);
+
+        if (!nearby)
+        {
+            return;
+        }
+
+        var sparkle = new Vector2(0, -45 + Mathf.Sin((float)_time * 4.3f) * 2);
+        DrawLine(sparkle + new Vector2(-4, 0), sparkle + new Vector2(4, 0), gold, 1.5f);
+        DrawLine(sparkle + new Vector2(0, -4), sparkle + new Vector2(0, 4), gold, 1.5f);
     }
 }
 
