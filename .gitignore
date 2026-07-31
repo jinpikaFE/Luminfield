@@ -23,3 +23,5 @@ exports/
 !.vscode/launch.json
 !.vscode/tasks.json
 
+# Local parallel task worktrees
+.worktrees/
