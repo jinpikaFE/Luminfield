@@ -18,6 +18,9 @@ public enum PlaytestScenarioId
     TeaHouseVessa,
     TeaHouse,
     TeaHouseDoor,
+    EmporiumOrin,
+    Emporium,
+    EmporiumDoor,
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
@@ -97,6 +100,15 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.TeaHouseDoor,
             "--playtest-tea-house-door"
+        ),
+        new(
+            PlaytestScenarioId.EmporiumOrin,
+            "--playtest-emporium-orin"
+        ),
+        new(PlaytestScenarioId.Emporium, "--playtest-emporium"),
+        new(
+            PlaytestScenarioId.EmporiumDoor,
+            "--playtest-emporium-door"
         ),
         new(
             PlaytestScenarioId.VillageDialogue,

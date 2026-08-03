@@ -1734,6 +1734,10 @@ public sealed class VillageSystemTests
                             npc.Position
                         );
                         Assert.NotEqual(
+                            VillageCatalog.TwilightEmporiumDoorCell,
+                            npc.Position
+                        );
+                        Assert.NotEqual(
                             VillageCatalog.VillageGateCell,
                             npc.Position
                         );
@@ -2142,6 +2146,115 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
+    public void OrinWorksInsideEmporiumWhileLanternrestStaysIndependent()
+    {
+        var beforeWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            1,
+            VillageCatalog.TwilightEmporiumOpenMinute - 30
+        );
+        var atWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            1,
+            10 * 60
+        );
+        var afterWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            1,
+            14 * 60
+        );
+        var lanternrest = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            CalendarSystem.DaysPerWeek,
+            10 * 60
+        );
+
+        Assert.NotNull(beforeWork);
+        Assert.Equal(PlayerLocationIds.World, beforeWork.LocationId);
+        Assert.NotNull(atWork);
+        Assert.Equal(
+            PlayerLocationIds.TwilightEmporium,
+            atWork.LocationId
+        );
+        Assert.Equal(
+            VillageCatalog.TravelManifestCell.Y + 2,
+            atWork.Position.Y
+        );
+        Assert.NotNull(afterWork);
+        Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
+        Assert.NotNull(lanternrest);
+        Assert.Equal(PlayerLocationIds.World, lanternrest.LocationId);
+        Assert.NotEqual(atWork.Position, lanternrest.Position);
+    }
+
+    [Fact]
+    public void OrinTalkAndGiftUseTheEmporiumSceneProjection()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(1, 10 * 60);
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        var orin = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            session.Clock.Day,
+            session.Clock.MinuteOfDay
+        );
+        Assert.NotNull(orin);
+        Assert.Equal(
+            PlayerLocationIds.TwilightEmporium,
+            orin.LocationId
+        );
+
+        var talkPreview = session.PreviewSelectedTarget(orin.Position);
+        Assert.True(talkPreview.IsAvailable);
+        Assert.Equal("target.action.talk", talkPreview.LabelKey);
+        var talk = session.InteractWithVillager(
+            orin.Position,
+            out var talkResult
+        );
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(talk);
+
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudPreserveId, 2));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.StarbudPreserveId
+        ));
+        var giftPreview = session.PreviewSelectedTarget(orin.Position);
+        Assert.True(giftPreview.IsAvailable);
+        Assert.Equal("target.action.gift", giftPreview.LabelKey);
+        var gift = session.InteractWithVillager(
+            orin.Position,
+            out var giftResult
+        );
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(gift);
+        Assert.Equal(GiftReaction.Loved, gift.GiftReaction);
+        Assert.Equal(
+            1,
+            session.Inventory.Count(DataCatalog.StarbudPreserveId)
+        );
+
+        session.SetPlayerLocation(
+            VillageCatalog.TwilightEmporiumDoorCell.X * 16 + 8,
+            VillageCatalog.TwilightEmporiumDoorCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        Assert.Null(session.InteractWithVillager(
+            orin.Position,
+            out var wrongScene
+        ));
+        Assert.False(wrongScene.Succeeded);
+        Assert.Equal(
+            1,
+            session.Inventory.Count(DataCatalog.StarbudPreserveId)
+        );
+    }
+
+    [Fact]
     public void ArchiveDoorDeskAndExitShareLocationAwareRules()
     {
         var session = new GameSession();
@@ -2347,18 +2460,117 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void VillageLandmarksHaveStableAtlasAndPassableGate()
+    public void EmporiumDoorManifestAndExitShareLocationAwareHandRules()
     {
-        Assert.Equal(8, VillageCatalog.Landmarks.Count);
+        var session = new GameSession();
+        session.NewGame();
+        var door = VillageCatalog.TwilightEmporiumDoorCell;
+        session.Clock.Reset(
+            1,
+            VillageCatalog.TwilightEmporiumOpenMinute - 1
+        );
+
+        var closed = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, closed.State);
+        Assert.Equal("target.status.emporium_closed", closed.LabelKey);
+        Assert.False(session.TryEnterTwilightEmporium().Succeeded);
+
+        session.Clock.Reset(
+            1,
+            VillageCatalog.TwilightEmporiumOpenMinute
+        );
+        var open = session.PreviewSelectedTarget(door);
+        Assert.True(open.IsAvailable);
+        Assert.Equal("target.action.enter_emporium", open.LabelKey);
+        Assert.True(session.TryEnterTwilightEmporium().Succeeded);
+
+        session.Inventory.Select(1);
+        var energy = session.Energy;
+        var coins = session.Coins;
+        var inventory = session.Inventory.Capture()
+            .Select(slot => (slot.ItemId, slot.Count))
+            .ToArray();
+        var wrongDoorTool = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongDoorTool.State);
+        Assert.False(session.TryEnterTwilightEmporium().Succeeded);
+        Assert.Equal(PlayerLocationIds.World, session.PlayerLocationId);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        var manifestWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.TravelManifestCell
+        );
+        var exitWithTool = session.PreviewSelectedTarget(
+            VillageCatalog.TwilightEmporiumExitCell
+        );
+        Assert.Equal(TargetPreviewState.NeedsTool, manifestWithTool.State);
+        Assert.Equal(TargetPreviewState.NeedsTool, exitWithTool.State);
+        Assert.False(session.InspectTravelManifest().Succeeded);
+        Assert.False(session.TryExitTwilightEmporium().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
         Assert.Equal(
-            8,
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.Inventory.Select(0);
+        var manifest = session.PreviewSelectedTarget(
+            VillageCatalog.TravelManifestCell
+        );
+        var exit = session.PreviewSelectedTarget(
+            VillageCatalog.TwilightEmporiumExitCell
+        );
+        Assert.True(manifest.IsAvailable);
+        Assert.Equal("target.action.inspect_manifest", manifest.LabelKey);
+        Assert.True(exit.IsAvailable);
+        var inspected = session.InspectTravelManifest();
+        Assert.True(inspected.Succeeded);
+        Assert.Equal("emporium.manifest.dialogue", inspected.MessageKey);
+        Assert.True(session.TryExitTwilightEmporium().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.SetPlayerLocation(
+            door.X * 16 + 8,
+            (door.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        session.Clock.Reset(
+            1,
+            VillageCatalog.TwilightEmporiumCloseMinute
+        );
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterTwilightEmporium().Succeeded);
+    }
+
+    [Fact]
+    public void VillageLandmarksHaveStableIdsAndPassableEntrances()
+    {
+        Assert.Equal(9, VillageCatalog.Landmarks.Count);
+        Assert.Equal(
+            9,
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.Id)
                 .Distinct(StringComparer.Ordinal)
                 .Count()
         );
         Assert.Equal(
-            Enumerable.Range(0, 8),
+            Enumerable.Range(0, 9),
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.AtlasIndex)
                 .Order()
@@ -2370,6 +2582,22 @@ public sealed class VillageSystemTests
         Assert.True(WorldDefinition.IsPath(
             VillageCatalog.VillageGateCell
         ));
+        Assert.False(WorldDefinition.IsBlocked(
+            VillageCatalog.TwilightEmporiumDoorCell
+        ));
+        Assert.False(WorldDefinition.IsBlocked(new GridPosition(
+            VillageCatalog.TwilightEmporiumDoorCell.X,
+            VillageCatalog.TwilightEmporiumDoorCell.Y + 1
+        )));
+        Assert.True(WorldDefinition.IsPath(
+            VillageCatalog.TwilightEmporiumDoorCell
+        ));
+        Assert.True(WorldDefinition.IsPath(new GridPosition(
+            VillageCatalog.TwilightEmporiumDoorCell.X,
+            VillageCatalog.TwilightEmporiumDoorCell.Y + 1
+        )));
+        Assert.False(WorldDefinition.IsBlocked(new GridPosition(106, 58)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(107, 58)));
         Assert.Equal(
             WorldBiome.LumenVillage,
             WorldDefinition.GetBiome(new GridPosition(97, 48))
@@ -2875,6 +3103,45 @@ public sealed class LocaleTests
             "notice.tea_house_world_only",
             "tea_house.counter.name",
             "tea_house.counter.dialogue"
+        };
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
+    public void EmporiumInteractionKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = new[]
+        {
+            "target.action.enter_emporium",
+            "target.action.exit_emporium",
+            "target.action.inspect_manifest",
+            "target.status.emporium_closed",
+            "notice.enter_emporium",
+            "notice.leave_emporium",
+            "notice.emporium_closed",
+            "notice.emporium_world_only",
+            "emporium.manifest.name",
+            "emporium.manifest.dialogue",
+            "village.landmark.twilight_emporium",
+            "village.npc.orin.emporium"
         };
 
         foreach (var language in new[]
@@ -3725,6 +3992,79 @@ public sealed class SaveServiceTests : IDisposable
 
         var unknown = service.Load();
 
+        Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
+        Assert.NotNull(unknown.Save);
+        Assert.Equal(
+            PlayerLocationIds.World,
+            unknown.Save.Player.LocationId
+        );
+    }
+
+    [Fact]
+    public void EmporiumLocationRoundTripsWithoutChangingLegacyFallbacks()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        service.Save(session.Capture());
+
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(
+            PlayerLocationIds.TwilightEmporium,
+            result.Save.Player.LocationId
+        );
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.InsideTwilightEmporium);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 328,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "insideCottage": true
+              }
+            }
+            """
+        );
+        var legacyCottage = service.Load();
+        Assert.Equal(SaveLoadStatus.Loaded, legacyCottage.Status);
+        Assert.NotNull(legacyCottage.Save);
+        Assert.Equal(
+            PlayerLocationIds.Cottage,
+            legacyCottage.Save.Player.LocationId
+        );
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 328,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "locationId": "retired_travel_shop"
+              }
+            }
+            """
+        );
+        var unknown = service.Load();
         Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
         Assert.NotNull(unknown.Save);
         Assert.Equal(

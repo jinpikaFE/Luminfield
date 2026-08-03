@@ -123,6 +123,8 @@ public static class VillageCatalog
         "moonstone_workshop";
     public const string StarweaverTeaHouseLandmarkId =
         "starweaver_tea_house";
+    public const string TwilightEmporiumLandmarkId =
+        "twilight_emporium";
 
     public static readonly GridArea VillageBounds = new(77, 30, 115, 63);
     public static readonly GridPosition VillageGateCell = new(97, 59);
@@ -141,12 +143,20 @@ public static class VillageCatalog
         new(20, 19);
     public static readonly GridPosition StarwovenTeaCounterCell =
         new(20, 9);
+    public static readonly GridPosition TwilightEmporiumDoorCell =
+        new(110, 61);
+    public static readonly GridPosition TwilightEmporiumExitCell =
+        new(20, 19);
+    public static readonly GridPosition TravelManifestCell =
+        new(20, 8);
     public const int MoonlitArchiveOpenMinute = 8 * 60;
     public const int MoonlitArchiveCloseMinute = 20 * 60;
     public const int MoonstoneWorkshopOpenMinute = 8 * 60;
     public const int MoonstoneWorkshopCloseMinute = 19 * 60;
     public const int StarweaverTeaHouseOpenMinute = 9 * 60;
     public const int StarweaverTeaHouseCloseMinute = 21 * 60;
+    public const int TwilightEmporiumOpenMinute = 10 * 60;
+    public const int TwilightEmporiumCloseMinute = 18 * 60;
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -208,6 +218,13 @@ public static class VillageCatalog
             7,
             "village.landmark.flower_cart",
             [new GridArea(109, 52, 111, 53)]
+        ),
+        new(
+            TwilightEmporiumLandmarkId,
+            TwilightEmporiumDoorCell,
+            8,
+            "village.landmark.twilight_emporium",
+            [new GridArea(107, 55, 113, 60)]
         )
     ];
 
@@ -559,10 +576,17 @@ public static class VillageCatalog
                     ),
                     Slot(
                         9,
-                        13,
+                        10,
                         new GridPosition(109, 44),
                         NpcFacing.Left,
                         "village.npc.orin.market"
+                    ),
+                    EmporiumSlot(
+                        10,
+                        13,
+                        new GridPosition(14, 10),
+                        NpcFacing.Right,
+                        "village.npc.orin.emporium"
                     ),
                     Slot(
                         13,
@@ -658,6 +682,13 @@ public static class VillageCatalog
         minuteOfDay >= StarweaverTeaHouseOpenMinute &&
         minuteOfDay < StarweaverTeaHouseCloseMinute;
 
+    public static bool IsTwilightEmporiumDoor(GridPosition cell) =>
+        cell == TwilightEmporiumDoorCell;
+
+    public static bool IsTwilightEmporiumOpen(int minuteOfDay) =>
+        minuteOfDay >= TwilightEmporiumOpenMinute &&
+        minuteOfDay < TwilightEmporiumCloseMinute;
+
     public static bool IsVillagePath(GridPosition cell)
     {
         if (!IsVillageCell(cell))
@@ -671,9 +702,12 @@ public static class VillageCatalog
             cell.X is >= 84 and <= 110;
         var workshopLane = cell.Y is >= 52 and <= 54 &&
             cell.X is >= 84 and <= 110;
+        var emporiumLane = cell.Y is >= 61 and <= 62 &&
+            cell.X is >= 97 and <= 110;
         var plaza = cell.X is >= 92 and <= 102 &&
             cell.Y is >= 44 and <= 54;
-        return mainLane || archiveLane || workshopLane || plaza;
+        return mainLane || archiveLane || workshopLane ||
+            emporiumLane || plaza;
     }
 
     public static bool IsBlocked(GridPosition cell) =>
@@ -768,6 +802,23 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.StarweaverTeaHouse,
+        position,
+        facing,
+        dialogueKey,
+        weekdayIndices
+    );
+
+    private static NpcScheduleEntry EmporiumSlot(
+        int startHour,
+        int endHour,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        params int[] weekdayIndices
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        PlayerLocationIds.TwilightEmporium,
         position,
         facing,
         dialogueKey,

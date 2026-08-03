@@ -36,6 +36,11 @@ internal static class GeneratedArt
             "res://assets/generated/village_landmarks.png"
         );
 
+    private static readonly Texture2D TwilightEmporiumExterior =
+        GD.Load<Texture2D>(
+            "res://assets/generated/twilight_emporium_exterior.png"
+        );
+
     private static readonly Texture2D VillageNpcs =
         GD.Load<Texture2D>(
             "res://assets/generated/village_npcs.png"
@@ -163,6 +168,8 @@ internal static class GeneratedArt
         new Rect2(836, 584, 368, 262),
         new Rect2(1277, 604, 325, 245)
     ];
+    private static readonly Rect2 TwilightEmporiumExteriorRegion =
+        new(178, 94, 881, 975);
     private static readonly Rect2[][] VillageNpcRegions =
     [
         [
@@ -438,6 +445,12 @@ internal static class GeneratedArt
     }
 
     public static Texture2D VillageLandmarkTexture => VillageLandmarks;
+
+    public static Texture2D TwilightEmporiumExteriorTexture =>
+        TwilightEmporiumExterior;
+
+    public static Rect2 TwilightEmporiumExteriorTextureRegion =>
+        TwilightEmporiumExteriorRegion;
 
     public static Rect2 VillageLandmarkRegion(int atlasIndex) =>
         VillageLandmarkRegions[Math.Clamp(
@@ -887,6 +900,29 @@ internal sealed partial class TeaHouseBackdrop : Node2D
         );
 
     public TeaHouseBackdrop()
+    {
+        ZIndex = -100;
+        TextureFilter = TextureFilterEnum.Nearest;
+    }
+
+    public override void _Draw()
+    {
+        DrawTextureRectRegion(
+            Background,
+            new Rect2(0, 0, 640, 360),
+            new Rect2(0, 80, 1536, 864)
+        );
+    }
+}
+
+internal sealed partial class TwilightEmporiumBackdrop : Node2D
+{
+    private static readonly Texture2D Background =
+        GD.Load<Texture2D>(
+            "res://assets/generated/twilight_emporium_interior.png"
+        );
+
+    public TwilightEmporiumBackdrop()
     {
         ZIndex = -100;
         TextureFilter = TextureFilterEnum.Nearest;

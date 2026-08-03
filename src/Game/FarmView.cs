@@ -22,6 +22,8 @@ public sealed partial class FarmView : Node2D
         VillageCatalog.MoonstoneWorkshopDoorCell;
     public static readonly GridPosition StarweaverTeaHouseDoorCell =
         VillageCatalog.StarweaverTeaHouseDoorCell;
+    public static readonly GridPosition TwilightEmporiumDoorCell =
+        VillageCatalog.TwilightEmporiumDoorCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -254,6 +256,7 @@ public sealed partial class FarmView : Node2D
     public event Action? EnterArchiveRequested;
     public event Action? EnterWorkshopRequested;
     public event Action? EnterTeaHouseRequested;
+    public event Action? EnterTwilightEmporiumRequested;
     public event Action? ShopRequested;
     public event Action? ProcessorRequested;
     public event Action? ShippingRequested;
@@ -294,6 +297,13 @@ public sealed partial class FarmView : Node2D
         {
             return _session.PreviewSelectedTarget(
                 StarweaverTeaHouseDoorCell
+            );
+        }
+
+        if (target == TwilightEmporiumDoorCell)
+        {
+            return _session.PreviewSelectedTarget(
+                TwilightEmporiumDoorCell
             );
         }
 
@@ -370,6 +380,13 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        if (IsAdjacent(player, TwilightEmporiumDoorCell))
+        {
+            return _session.PreviewSelectedTarget(
+                TwilightEmporiumDoorCell
+            );
+        }
+
         if (target == ShopCell || IsAdjacent(player, ShopCell))
         {
             return PreviewHandInteraction(
@@ -425,6 +442,13 @@ public sealed partial class FarmView : Node2D
         if (target == StarweaverTeaHouseDoorCell)
         {
             EnterTeaHouseRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == TwilightEmporiumDoorCell)
+        {
+            EnterTwilightEmporiumRequested?.Invoke();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -485,6 +509,13 @@ public sealed partial class FarmView : Node2D
                  ))
         {
             EnterTeaHouseRequested?.Invoke();
+        }
+        else if (IsAdjacent(
+                     _player.CurrentCell,
+                     TwilightEmporiumDoorCell
+                 ))
+        {
+            EnterTwilightEmporiumRequested?.Invoke();
         }
         else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
         {

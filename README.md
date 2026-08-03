@@ -40,9 +40,10 @@ exploration state in the regular save file.
 ## Lumen Village and eight core villagers
 
 - Follow the southern homestead road east and the Crystal Road north to reach
-  the first Lumen Village area. It contains eight original exterior landmarks:
+  the first Lumen Village area. It preserves eight original exterior landmarks:
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
-  Well, village gate, sign, lantern bench, and glowflower cart.
+  Well, village gate, sign, lantern bench, and glowflower cart, and adds the
+  Twilight Emporium on a southeast lane.
 - Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael change position with
   the game clock. Day 7, Lanternrest, gives each of them a separate rest-day
   route. Their schedule cells remain distinct, walkable, and clear of the
@@ -58,6 +59,11 @@ exploration state in the regular save file.
   to 21:00. Vessa works inside from 09:00 to 13:00 on ordinary days. Its
   starwoven tea counter is a read-only inspection point and does not add
   purchases, recipes, energy costs, or a new economy contract.
+- The Twilight Emporium is the fourth enterable building and opens from 10:00
+  to 18:00. Orin checks travel inventory inside from 10:00 to 13:00 on ordinary
+  days. Its manifest shelf only describes routes and sealed cargo; it adds no
+  purchasing, stock rotation, currency, recipes, energy costs, or economy
+  contract.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -133,7 +139,7 @@ placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B now includes the first village, eight NPC schedules, the
-first three enterable buildings, a data-driven relationship and daily-gifting
+first four enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and Liora's first two-stage friendship event.
 
 ## Tools and backpack
@@ -267,6 +273,11 @@ two Liora event stages directly in the Moonlit Archive. These flags preserve
 the existing registry priority and can be combined with
 `--capture-playtest=<path>` for deterministic visual QA.
 
+Use `--playtest-emporium-door`, `--playtest-emporium`, and
+`--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
+interior manifest shelf, and Orin interaction. They also support deterministic
+capture.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -341,6 +352,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-03 13:46:36 CST — Added the enterable Twilight Emporium, 10:00–18:00
+  door rules, read-only travel manifest, Orin's 10:00–13:00 indoor schedule,
+  stable save location, bilingual interactions, focused playtests, and original
+  generated exterior/interior without expanding the economy contract.
 - 2026-07-31 16:34:11 CST — Added Liora's first two-stage friendship event,
   three bilingual pages per stage, final-page completion, ordered stable save
   state, focused playtest scenarios, tests, and macOS visual QA.

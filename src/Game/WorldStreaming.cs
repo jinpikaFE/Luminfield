@@ -408,6 +408,12 @@ internal sealed partial class WorldVillageChunk : Node2D
 
     private void DrawLandmark(VillageLandmarkDefinition landmark)
     {
+        if (landmark.Id == VillageCatalog.TwilightEmporiumLandmarkId)
+        {
+            DrawTwilightEmporium(landmark.Anchor);
+            return;
+        }
+
         var source = GeneratedArt.VillageLandmarkRegion(
             landmark.AtlasIndex
         );
@@ -416,6 +422,22 @@ internal sealed partial class WorldVillageChunk : Node2D
         var anchor = LocalAnchor(landmark.Anchor);
         DrawTextureRectRegion(
             GeneratedArt.VillageLandmarkTexture,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawTwilightEmporium(GridPosition cell)
+    {
+        var source = GeneratedArt.TwilightEmporiumExteriorTextureRegion;
+        const float height = 100;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = LocalAnchor(cell);
+        DrawTextureRectRegion(
+            GeneratedArt.TwilightEmporiumExteriorTexture,
             new Rect2(
                 anchor - new Vector2(width / 2, height),
                 new Vector2(width, height)
@@ -463,6 +485,7 @@ internal sealed partial class WorldVillageChunk : Node2D
         5 => 48,
         6 => 44,
         7 => 46,
+        8 => 100,
         _ => 48
     };
 

@@ -45,6 +45,15 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.TeaHouseDoor
         ),
         (
+            "--playtest-emporium-orin",
+            PlaytestScenarioId.EmporiumOrin
+        ),
+        ("--playtest-emporium", PlaytestScenarioId.Emporium),
+        (
+            "--playtest-emporium-door",
+            PlaytestScenarioId.EmporiumDoor
+        ),
+        (
             "--playtest-village-dialogue",
             PlaytestScenarioId.VillageDialogue
         ),
