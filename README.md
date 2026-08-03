@@ -40,10 +40,10 @@ exploration state in the regular save file.
 ## Lumen Village and eight core villagers
 
 - Follow the southern homestead road east and the Crystal Road north to reach
-  the first Lumen Village area. It preserves eight original exterior landmarks:
+  the first Lumen Village area. It contains nine original exterior landmarks:
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
-  Well, village gate, sign, lantern bench, and glowflower cart, and adds the
-  Twilight Emporium on a southeast lane.
+  Well, village gate, sign, lantern bench, glowflower cart, and the Twilight
+  Emporium on a southeast lane.
 - Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael change position with
   the game clock. Day 7, Lanternrest, gives each of them a separate rest-day
   route. Their schedule cells remain distinct, walkable, and clear of the
@@ -94,7 +94,7 @@ exploration state in the regular save file.
   normalize independently, so malformed ordering in one chain does not remove
   valid entries from the other.
 - Tile-level walking paths, weather/season schedule conditions, more character
-  event chains, and three more building interiors remain planned work.
+  event chains, and two more building interiors remain planned work.
 
 ## Starlight Mail and relationship rewards
 
@@ -150,7 +150,8 @@ Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B now includes the first village, eight NPC schedules, the
 first four enterable buildings, a data-driven relationship and daily-gifting
-entry point, relationship mail, and Liora's first two-stage friendship event.
+entry point, relationship mail, and complete two-stage friendship event chains
+for both Liora and Tavi.
 
 ## Tools and backpack
 

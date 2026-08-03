@@ -2090,7 +2090,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        ShowFarm(false, true);
+        ShowFarm(false, fromArchive: true);
     }
 
     private void InspectMoonlitArchiveDesk()
@@ -2135,7 +2135,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        ShowFarm(false, false, true);
+        ShowFarm(false, fromWorkshop: true);
     }
 
     private void InspectMoonRuneWorkbench()
@@ -2180,7 +2180,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        ShowFarm(false, false, false, true);
+        ShowFarm(false, fromTeaHouse: true);
     }
 
     private void InspectStarwovenTeaCounter()
