@@ -399,6 +399,10 @@ public sealed partial class Main : Node
                     StartLioraEventOnePlaytest,
                 [PlaytestScenarioId.LioraEventTwo] =
                     StartLioraEventTwoPlaytest,
+                [PlaytestScenarioId.TaviEventOne] =
+                    StartTaviEventOnePlaytest,
+                [PlaytestScenarioId.TaviEventTwo] =
+                    StartTaviEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1184,6 +1188,83 @@ public sealed partial class Main : Node
                 VillageCatalog.MoonstoneWorkshopDoorCell.Y + 1
             )
         );
+    }
+
+    private void StartTaviEventOnePlaytest()
+    {
+        StartTaviEventPlaytest(2, 25, new CharacterEventSave());
+    }
+
+    private void StartTaviEventTwoPlaytest()
+    {
+        StartTaviEventPlaytest(
+            3,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartTaviEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    )
+    {
+        const int minuteOfDay = 10 * 60;
+        var tavi = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            day,
+            minuteOfDay
+        );
+        if (tavi is null)
+        {
+            StartWorkshopPlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 18 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.TaviId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.TaviId,
+                    Points = relationshipPoints,
+                    LastTalkDay = day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents;
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+
+        _playing = true;
+        EnsureHud();
+        ShowWorkshop(false);
+        Callable.From(
+            () => TalkToVillager(tavi.Position)
+        ).CallDeferred();
     }
 
     private void StartWorkshopPlaytest()

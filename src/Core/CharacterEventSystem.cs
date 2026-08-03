@@ -20,6 +20,10 @@ public static class CharacterEventCatalog
         "liora_faded_return_route";
     public const string LioraRememberedWayHomeId =
         "liora_remembered_way_home";
+    public const string TaviCrackedMoonRuneId =
+        "tavi_cracked_moon_rune";
+    public const string TaviMendedLightId =
+        "tavi_mended_light";
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -46,6 +50,29 @@ public static class CharacterEventCatalog
                     "character_event.liora.remembered_way_home.3"
                 ],
                 LioraFadedReturnRouteId
+            ),
+            new(
+                TaviCrackedMoonRuneId,
+                VillageCatalog.TaviId,
+                25,
+                PlayerLocationIds.MoonstoneWorkshop,
+                [
+                    "character_event.tavi.cracked_moon_rune.1",
+                    "character_event.tavi.cracked_moon_rune.2",
+                    "character_event.tavi.cracked_moon_rune.3"
+                ]
+            ),
+            new(
+                TaviMendedLightId,
+                VillageCatalog.TaviId,
+                60,
+                PlayerLocationIds.MoonstoneWorkshop,
+                [
+                    "character_event.tavi.mended_light.1",
+                    "character_event.tavi.mended_light.2",
+                    "character_event.tavi.mended_light.3"
+                ],
+                TaviCrackedMoonRuneId
             )
         ];
 
@@ -115,16 +142,14 @@ public sealed class CharacterEventSystem
             locationId
         );
         if (npc is null ||
-            npc.Definition.Id != VillageCatalog.LioraId ||
-            npc.LocationId != PlayerLocationIds.MoonlitArchive ||
-            locationId != PlayerLocationIds.MoonlitArchive ||
-            !village.MetNpcIds.Contains(VillageCatalog.LioraId))
+            npc.LocationId != locationId ||
+            !village.MetNpcIds.Contains(npc.Definition.Id))
         {
             return null;
         }
 
         var relationshipPoints = village
-            .Relationship(VillageCatalog.LioraId)
+            .Relationship(npc.Definition.Id)
             .Points;
         foreach (var definition in CharacterEventCatalog.Definitions)
         {

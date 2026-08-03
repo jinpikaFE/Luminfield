@@ -2916,6 +2916,247 @@ public sealed class CharacterEventSystemTests
     }
 
     [Fact]
+    public void TaviFirstMeetingThresholdCrossingAndPreviewDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 25,
+            metTavi: false
+        );
+
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.TaviPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.tavi.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 23,
+            metTavi: true,
+            lastTalkDay: 0
+        );
+        var preview = thresholdCrossing.Session.PreviewSelectedTarget(
+            thresholdCrossing.TaviPosition
+        );
+
+        Assert.True(preview.IsAvailable);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.TaviPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+    }
+
+    [Fact]
+    public void TaviCrackedMoonRuneCompletesOnlyAfterDialogueCallback()
+    {
+        var prepared = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 25,
+            metTavi: true
+        );
+
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.TaviPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.TaviCrackedMoonRuneId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.Equal(
+            CharacterEventCatalog.TaviCrackedMoonRuneId,
+            prepared.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.TaviCrackedMoonRuneId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.TaviCrackedMoonRuneId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            2,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.TaviCrackedMoonRuneId
+            )
+        );
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            2,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.TaviCrackedMoonRuneId
+            )
+        );
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.TaviCrackedMoonRuneId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void TaviMendedLightRequiresAnEarlierCompletionDay()
+    {
+        var sameDay = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 60,
+            metTavi: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.TaviPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var laterDay = PrepareTaviSession(
+            day: 3,
+            relationshipPoints: 60,
+            metTavi: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 2
+                    }
+                ]
+            }
+        );
+
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.TaviPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.TaviMendedLightId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.TaviMendedLightId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void TaviGiftsWrongToolsAndWrongScenesNeverProgressEvents()
+    {
+        var wrongTool = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 25,
+            metTavi: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.TaviPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+
+        var gift = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 25,
+            metTavi: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.LumenwoodId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.LumenwoodId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.TaviPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareTaviSession(
+            day: 2,
+            relationshipPoints: 25,
+            metTavi: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            VillageCatalog.MoonstoneWorkshopDoorCell.X * 16 + 8,
+            VillageCatalog.MoonstoneWorkshopDoorCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.TaviPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+    }
+
+    [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
         Assert.Empty(
@@ -3016,6 +3257,116 @@ public sealed class CharacterEventSystemTests
         );
     }
 
+    [Fact]
+    public void CharacterEventSaveNormalizesNpcChainsIndependently()
+    {
+        var normalized = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraFadedReturnRouteId,
+                        CompletedDay = 1
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraRememberedWayHomeId,
+                        CompletedDay = 2
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 4
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 3
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId = CharacterEventCatalog.TaviMendedLightId,
+                        CompletedDay = 3
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId = "unknown_tavi_event",
+                        CompletedDay = 1
+                    }
+                ]
+            },
+            5
+        );
+
+        Assert.Collection(
+            normalized.Entries,
+            first => Assert.Equal(
+                CharacterEventCatalog.LioraFadedReturnRouteId,
+                first.EventId
+            ),
+            second => Assert.Equal(
+                CharacterEventCatalog.LioraRememberedWayHomeId,
+                second.EventId
+            ),
+            third =>
+            {
+                Assert.Equal(
+                    CharacterEventCatalog.TaviCrackedMoonRuneId,
+                    third.EventId
+                );
+                Assert.Equal(3, third.CompletedDay);
+            }
+        );
+
+        var independentTaviChain = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog
+                                .LioraRememberedWayHomeId,
+                        CompletedDay = 4
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        CompletedDay = 2
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId = CharacterEventCatalog.TaviMendedLightId,
+                        CompletedDay = 4
+                    }
+                ]
+            },
+            5
+        );
+
+        Assert.Collection(
+            independentTaviChain.Entries,
+            first => Assert.Equal(
+                CharacterEventCatalog.TaviCrackedMoonRuneId,
+                first.EventId
+            ),
+            second => Assert.Equal(
+                CharacterEventCatalog.TaviMendedLightId,
+                second.EventId
+            )
+        );
+    }
+
     private static (
         GameSession Session,
         GridPosition LioraPosition
@@ -3064,6 +3415,56 @@ public sealed class CharacterEventSystemTests
             liora.LocationId
         );
         return (session, liora.Position);
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition TaviPosition
+    ) PrepareTaviSession(
+        int day,
+        int relationshipPoints,
+        bool metTavi,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 10 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 18 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metTavi ? [VillageCatalog.TaviId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.TaviId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        var tavi = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            day,
+            minuteOfDay
+        );
+        Assert.NotNull(tavi);
+        Assert.Equal(
+            PlayerLocationIds.MoonstoneWorkshop,
+            tavi.LocationId
+        );
+        return (session, tavi.Position);
     }
 }
 

@@ -27,6 +27,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.LioraEventTwo
         ),
         (
+            "--playtest-tavi-event-one",
+            PlaytestScenarioId.TaviEventOne
+        ),
+        (
+            "--playtest-tavi-event-two",
+            PlaytestScenarioId.TaviEventTwo
+        ),
+        (
             "--playtest-workshop-tavi",
             PlaytestScenarioId.WorkshopTavi
         ),

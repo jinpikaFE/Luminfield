@@ -83,6 +83,16 @@ exploration state in the regular save file.
   `liora_remembered_way_home` plus completion days in the existing additive
   `schemaVersion: 1` save. Old saves receive an empty event list; unknown,
   duplicate, orphaned, and same-day out-of-order entries are filtered.
+- Tavi now has the second complete event chain. At 25 relationship points,
+  speaking to him with the Hand inside the Moonstone Workshop reveals “The
+  Cracked Moon-Rune.” After that stage was completed on an earlier day, reaching
+  60 points unlocks “The Mended Light.” The stable IDs are
+  `tavi_cracked_moon_rune` and `tavi_mended_light`; both stages contain three
+  bilingual pages and save their completion day only after the last page closes.
+- Character-event eligibility now resolves the NPC, location, relationship
+  threshold, and prerequisite from each definition. Liora's and Tavi's chains
+  normalize independently, so malformed ordering in one chain does not remove
+  valid entries from the other.
 - Tile-level walking paths, weather/season schedule conditions, more character
   event chains, and three more building interiors remain planned work.
 
@@ -268,10 +278,11 @@ method. Add a new ID and flag to the registry, then add its setup binding in
 `Main`; focused tests lock the known flag catalog, uniqueness, priority, and
 normal fallback behavior.
 
-Use `--playtest-liora-event-one` and `--playtest-liora-event-two` to open the
-two Liora event stages directly in the Moonlit Archive. These flags preserve
-the existing registry priority and can be combined with
-`--capture-playtest=<path>` for deterministic visual QA.
+Use `--playtest-liora-event-one`, `--playtest-liora-event-two`,
+`--playtest-tavi-event-one`, and `--playtest-tavi-event-two` to open the two
+event stages for Liora or Tavi directly in the Moonlit Archive or Moonstone
+Workshop. These flags preserve the existing registry priority and can be
+combined with `--capture-playtest=<path>` for deterministic visual QA.
 
 Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
@@ -325,9 +336,9 @@ Glow coins, the active processing job, artisan goods, watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily commission state, the
 Woodland Watch Starlight's partial offerings and permanent reward, and the
-24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's
-character-event completion IDs and dates use another additive projection in
-that same schema.
+24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's and
+Tavi's character-event completion IDs and dates use another additive projection
+in that same schema.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
 schema. Older saves receive safe defaults and tool-ID migration for the new
@@ -356,6 +367,9 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
   door rules, read-only travel manifest, Orin's 10:00–13:00 indoor schedule,
   stable save location, bilingual interactions, focused playtests, and original
   generated exterior/interior without expanding the economy contract.
+- 2026-08-03 13:34:26 CST — Added Tavi's two-stage friendship event, independent
+  per-NPC event-chain normalization, data-driven eligibility, bilingual dialogue,
+  focused playtest scenarios, tests, and macOS visual QA.
 - 2026-07-31 16:34:11 CST — Added Liora's first two-stage friendship event,
   three bilingual pages per stage, final-page completion, ordered stable save
   state, focused playtest scenarios, tests, and macOS visual QA.
