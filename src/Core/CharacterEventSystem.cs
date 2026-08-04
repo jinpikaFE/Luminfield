@@ -127,7 +127,8 @@ public sealed class CharacterEventSystem
         int minuteOfDay,
         string locationId,
         string selectedItemId,
-        VillageSystem village
+        VillageSystem village,
+        GridPosition? playerPosition = null
     )
     {
         if (selectedItemId != DataCatalog.HandId)
@@ -139,7 +140,8 @@ public sealed class CharacterEventSystem
             target,
             day,
             minuteOfDay,
-            locationId
+            locationId,
+            playerPosition
         );
         if (npc is null ||
             npc.LocationId != locationId ||

@@ -841,7 +841,7 @@ public static class VillageCatalog
         string npcId,
         int day,
         int minuteOfDay
-    ) => CurrentNpc(
+    ) => NpcScheduleSystem.ResolveCatalogNpc(
         npcId,
         day,
         minuteOfDay,
@@ -853,36 +853,12 @@ public static class VillageCatalog
         int day,
         int minuteOfDay,
         string weatherId
-    )
-    {
-        if (!Npcs.TryGetValue(npcId, out var definition))
-        {
-            return null;
-        }
-
-        var normalizedWeatherId = DataCatalog.WeatherDefinitions.ContainsKey(
-            weatherId
-        )
-            ? weatherId
-            : WeatherSystem.WeatherForDay(day);
-        var entry = definition.Schedule
-            .Where(value => value.Matches(
-                day,
-                minuteOfDay,
-                normalizedWeatherId
-            ))
-            .OrderByDescending(value => value.Priority)
-            .FirstOrDefault();
-        return entry is null
-            ? null
-            : new VillageNpcState(
-                definition,
-                entry.LocationId,
-                entry.Position,
-                entry.Facing,
-                entry.DialogueKey
-            );
-    }
+    ) => NpcScheduleSystem.ResolveCatalogNpc(
+        npcId,
+        day,
+        minuteOfDay,
+        weatherId
+    );
 
     private static NpcScheduleEntry Slot(
         int startHour,
@@ -1040,6 +1016,7 @@ public static class VillageCatalog
 public sealed class VillageSystem
 {
     private readonly WeatherSystem? _weather;
+    private readonly NpcScheduleSystem _scheduleSystem = new();
     private readonly HashSet<string> _metNpcIds =
         new(StringComparer.Ordinal);
     private readonly Dictionary<string, VillageRelationshipSave>
@@ -1057,6 +1034,7 @@ public sealed class VillageSystem
 
     public void Reset()
     {
+        _scheduleSystem.ResetRuntime();
         _metNpcIds.Clear();
         _relationships.Clear();
         Changed?.Invoke();
@@ -1064,6 +1042,7 @@ public sealed class VillageSystem
 
     public void Restore(VillageSave? save)
     {
+        _scheduleSystem.ResetRuntime();
         var normalized = NormalizeSave(save);
         _metNpcIds.Clear();
         _relationships.Clear();
@@ -1096,18 +1075,41 @@ public sealed class VillageSystem
         int minuteOfDay,
         string locationId,
         string weatherId
-    ) => VillageCatalog.Npcs.Keys
-        .Select(id => VillageCatalog.CurrentNpc(
-            id,
-            day,
-            minuteOfDay,
-            weatherId
-        ))
-        .Where(state =>
-            state is not null &&
-            state.LocationId == locationId
+    ) => CurrentNpcs(
+        day,
+        minuteOfDay,
+        locationId,
+        weatherId,
+        null
+    );
+
+    public IReadOnlyList<VillageNpcState> CurrentNpcs(
+        int day,
+        int minuteOfDay,
+        string locationId,
+        GridPosition? playerPosition
+    ) => CurrentNpcs(
+        day,
+        minuteOfDay,
+        locationId,
+        CurrentWeatherId(day),
+        playerPosition
+    );
+
+    private IReadOnlyList<VillageNpcState> CurrentNpcs(
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string weatherId,
+        GridPosition? playerPosition
+    ) => _scheduleSystem.ResolveAll(
+        day,
+        minuteOfDay,
+        weatherId,
+        playerPosition is null ? null : locationId,
+        playerPosition
         )
-        .Cast<VillageNpcState>()
+        .Where(state => state.LocationId == locationId)
         .ToList();
 
     public IReadOnlyList<VillageNpcState> AllCurrentNpcs(
@@ -1119,16 +1121,20 @@ public sealed class VillageSystem
         int day,
         int minuteOfDay,
         string weatherId
-    ) => VillageCatalog.Npcs.Keys
-        .Select(id => VillageCatalog.CurrentNpc(
-            id,
-            day,
-            minuteOfDay,
-            weatherId
-        ))
-        .Where(state => state is not null)
-        .Cast<VillageNpcState>()
-        .ToList();
+    ) => _scheduleSystem.ResolveAll(day, minuteOfDay, weatherId);
+
+    public IReadOnlyList<VillageNpcState> AllCurrentNpcs(
+        int day,
+        int minuteOfDay,
+        string playerLocationId,
+        GridPosition playerPosition
+    ) => _scheduleSystem.ResolveAll(
+        day,
+        minuteOfDay,
+        CurrentWeatherId(day),
+        playerLocationId,
+        playerPosition
+    );
 
     public VillageNpcState? NpcAt(
         GridPosition position,
@@ -1150,6 +1156,20 @@ public sealed class VillageSystem
         string locationId,
         string weatherId
     ) => CurrentNpcs(day, minuteOfDay, locationId, weatherId)
+        .FirstOrDefault(state => state.Position == position);
+
+    public VillageNpcState? NpcAt(
+        GridPosition position,
+        int day,
+        int minuteOfDay,
+        string locationId,
+        GridPosition? playerPosition
+    ) => CurrentNpcs(
+        day,
+        minuteOfDay,
+        locationId,
+        playerPosition
+    )
         .FirstOrDefault(state => state.Position == position);
 
     public VillageInteractionCheck CheckInteraction(
@@ -1174,15 +1194,51 @@ public sealed class VillageSystem
         string locationId,
         string selectedItemId,
         string weatherId
+    ) => CheckInteraction(
+        position,
+        day,
+        minuteOfDay,
+        locationId,
+        selectedItemId,
+        weatherId,
+        null
+    );
+
+    public VillageInteractionCheck CheckInteraction(
+        GridPosition position,
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string selectedItemId,
+        GridPosition? playerPosition
+    ) => CheckInteraction(
+        position,
+        day,
+        minuteOfDay,
+        locationId,
+        selectedItemId,
+        CurrentWeatherId(day),
+        playerPosition
+    );
+
+    private VillageInteractionCheck CheckInteraction(
+        GridPosition position,
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string selectedItemId,
+        string weatherId,
+        GridPosition? playerPosition
     )
     {
-        var state = NpcAt(
-            position,
-            day,
-            minuteOfDay,
-            locationId,
-            weatherId
-        );
+        var state = CurrentNpcs(
+                day,
+                minuteOfDay,
+                locationId,
+                weatherId,
+                playerPosition
+            )
+            .FirstOrDefault(value => value.Position == position);
         if (state is null)
         {
             return new VillageInteractionCheck(
@@ -1241,8 +1297,16 @@ public sealed class VillageSystem
         );
     }
 
-    private string CurrentWeatherId(int day) =>
-        _weather?.CurrentId ?? WeatherSystem.WeatherForDay(day);
+    private string CurrentWeatherId(int day)
+    {
+        var normalizedDay = Math.Max(1, day);
+        if (_weather is not null && _weather.Day == normalizedDay)
+        {
+            return _weather.CurrentId;
+        }
+
+        return WeatherSystem.WeatherForDay(normalizedDay);
+    }
 
     public VillageConversation? Interact(
         GridPosition position,
@@ -1251,7 +1315,8 @@ public sealed class VillageSystem
         string locationId,
         string selectedItemId,
         Inventory inventory,
-        out ActionResult result
+        out ActionResult result,
+        GridPosition? playerPosition = null
     )
     {
         var check = CheckInteraction(
@@ -1259,7 +1324,8 @@ public sealed class VillageSystem
             day,
             minuteOfDay,
             locationId,
-            selectedItemId
+            selectedItemId,
+            playerPosition
         );
         if (!check.IsAvailable || check.Npc is null)
         {

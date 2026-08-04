@@ -44,10 +44,11 @@ exploration state in the regular save file.
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
   Well, village gate, sign, lantern bench, glowflower cart, and the Twilight
   Emporium on a southeast lane.
-- Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael change position with
-  the game clock. Day 7, Lanternrest, gives each of them a separate rest-day
-  route. Their schedule cells remain distinct, walkable, and clear of the
-  village gate and archive entrance.
+- Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael follow deterministic
+  four-direction tile paths at each ten-minute clock tick. Day 7, Lanternrest,
+  gives each of them a separate rest-day route. They avoid world/interior
+  collision geometry, one another, the player, exterior doors, interior exits,
+  and the village gate; cross-scene work shifts hand off at safe entrance cells.
 - Schedules now select data-driven weather and season entries before the base
   route while keeping Lanternrest at the highest priority. Rain moves Nemi,
   Sela, and Orin into open interiors; stardust wind changes Tavi, Elowen, and
@@ -99,8 +100,8 @@ exploration state in the regular save file.
   threshold, and prerequisite from each definition. Liora's and Tavi's chains
   normalize independently, so malformed ordering in one chain does not remove
   valid entries from the other.
-- Tile-level walking paths, more character event chains, and two more building
-  interiors remain planned work.
+- More character event chains and two more building interiors remain planned
+  work.
 
 ## Starlight Mail and relationship rewards
 
@@ -303,6 +304,10 @@ Rainveil-day route and the season HUD. Both scenarios restore an explicit
 current weather before resolving the NPC projection and support deterministic
 capture.
 
+Use `--playtest-npc-pathfinding` to open Lumen Village at 13:30 while multiple
+villagers are between schedule anchors. Combine it with
+`--capture-playtest=<path>` for deterministic movement QA.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -383,6 +388,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
   explicit weather/season NPC schedule priorities, bilingual conditional routes
   for all eight villagers, restored-current-weather projection, deterministic
   playtests, and regression coverage without changing the save schema.
+- 2026-08-04 12:10:00 CST — Replaced eight villagers' schedule-boundary
+  teleports with deterministic ten-minute, four-direction tile movement,
+  shared world/interior collision geometry, safe cross-scene entrance handoff,
+  player/NPC reservations, fallback anchors, focused tests, and a movement
+  playtest without adding save fields or scene-owned NPC state.
 - 2026-08-03 13:46:36 CST — Added the enterable Twilight Emporium, 10:00–18:00
   door rules, read-only travel manifest, Orin's 10:00–13:00 indoor schedule,
   stable save location, bilingual interactions, focused playtests, and original

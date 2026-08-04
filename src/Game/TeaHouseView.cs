@@ -129,14 +129,10 @@ public sealed partial class TeaHouseView : Node2D
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
         );
-        if (cell.X is < 2 or > 37 || cell.Y is < 3 or > 20)
-        {
-            return false;
-        }
-
-        if (IsTeaCounterArea(cell) ||
-            IsSeatingArea(cell) ||
-            IsWallFurniture(cell))
+        if (!NpcNavigationMap.IsWalkableGeometry(
+                PlayerLocationIds.StarweaverTeaHouse,
+                cell
+            ))
         {
             return false;
         }
@@ -145,7 +141,8 @@ public sealed partial class TeaHouseView : Node2D
             cell,
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.StarweaverTeaHouse
+            PlayerLocationIds.StarweaverTeaHouse,
+            _player.CurrentCell
         ) is null;
     }
 
@@ -157,7 +154,8 @@ public sealed partial class TeaHouseView : Node2D
         var current = _session.Village.CurrentNpcs(
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.StarweaverTeaHouse
+            PlayerLocationIds.StarweaverTeaHouse,
+            player
         );
         var exact = current.FirstOrDefault(npc => npc.Position == target);
         if (exact is not null)
@@ -179,18 +177,6 @@ public sealed partial class TeaHouseView : Node2D
     private static bool IsTeaCounterArea(GridPosition cell) =>
         cell.X is >= 12 and <= 27 &&
         cell.Y is >= 3 and <= 9;
-
-    private static bool IsSeatingArea(GridPosition cell) =>
-        (cell.X is >= 3 and <= 10 &&
-            cell.Y is >= 10 and <= 15) ||
-        (cell.X is >= 29 and <= 36 &&
-            cell.Y is >= 10 and <= 15);
-
-    private static bool IsWallFurniture(GridPosition cell) =>
-        (cell.X is >= 2 and <= 8 && cell.Y is >= 3 and <= 9) ||
-        (cell.X is >= 31 and <= 37 && cell.Y is >= 3 and <= 9) ||
-        (cell.X is >= 2 and <= 7 && cell.Y is >= 17 and <= 20) ||
-        (cell.X is >= 33 and <= 37 && cell.Y is >= 17 and <= 20);
 
     private static Vector2 CellCenter(GridPosition cell) =>
         new(cell.X * 16 + 8, cell.Y * 16 + 8);
@@ -218,7 +204,8 @@ internal sealed partial class TeaHouseNpcLayer : Node2D
         foreach (var npc in _session.Village.CurrentNpcs(
                      _session.Clock.Day,
                      _session.Clock.MinuteOfDay,
-                     PlayerLocationIds.StarweaverTeaHouse
+                     PlayerLocationIds.StarweaverTeaHouse,
+                     _session.PlayerCell
                  ))
         {
             var source = GeneratedArt.VillageNpcRegion(

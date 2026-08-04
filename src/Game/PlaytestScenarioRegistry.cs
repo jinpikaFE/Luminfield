@@ -26,6 +26,7 @@ public enum PlaytestScenarioId
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
+    NpcPathfinding,
     VillageRestdayEnglish,
     VillageRainSchedule,
     VillageRainveilSchedule,
@@ -133,6 +134,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.VillageExpansion,
             "--playtest-village-expansion"
+        ),
+        new(
+            PlaytestScenarioId.NpcPathfinding,
+            "--playtest-npc-pathfinding"
         ),
         new(
             PlaytestScenarioId.VillageRestdayEnglish,

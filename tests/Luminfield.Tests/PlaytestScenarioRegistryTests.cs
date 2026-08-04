@@ -74,6 +74,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.VillageExpansion
         ),
         (
+            "--playtest-npc-pathfinding",
+            PlaytestScenarioId.NpcPathfinding
+        ),
+        (
             "--playtest-village-restday-en",
             PlaytestScenarioId.VillageRestdayEnglish
         ),

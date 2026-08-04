@@ -1732,6 +1732,296 @@ public sealed class VillageSystemTests
     ];
 
     [Fact]
+    public void VillagersWalkOneCardinalCellPerClockTickWithoutOverlap()
+    {
+        var village = new VillageSystem();
+
+        foreach (var day in new[] { 1, CalendarSystem.DaysPerWeek })
+        {
+            IReadOnlyDictionary<string, VillageNpcState>? previous = null;
+            for (var minute = GameClock.StartMinute;
+                 minute <= GameClock.EndMinute;
+                 minute += GameClock.MinutesPerTick)
+            {
+                var current = village.AllCurrentNpcs(day, minute);
+                Assert.Equal(8, current.Count);
+                Assert.Equal(
+                    current.Count,
+                    current
+                        .Select(npc => (npc.LocationId, npc.Position))
+                        .Distinct()
+                        .Count()
+                );
+                Assert.All(current, npc =>
+                {
+                    Assert.True(NpcNavigationMap.IsNpcPassable(
+                        npc.LocationId,
+                        npc.Position
+                    ));
+                    Assert.False(
+                        NpcNavigationMap.IsCriticalEntranceCell(
+                            npc.LocationId,
+                            npc.Position
+                        )
+                    );
+                });
+
+                var byId = current.ToDictionary(npc => npc.Definition.Id);
+                if (previous is not null)
+                {
+                    foreach (var npcId in VillageCatalog.Npcs.Keys)
+                    {
+                        var before = previous[npcId];
+                        var after = byId[npcId];
+                        if (before.LocationId != after.LocationId)
+                        {
+                            Assert.Equal(
+                                NpcNavigationMap.SafeArrivalCell(
+                                    before.LocationId,
+                                    after.LocationId
+                                ),
+                                after.Position
+                            );
+                            continue;
+                        }
+
+                        var distance = Math.Abs(
+                            before.Position.X - after.Position.X
+                        ) + Math.Abs(
+                            before.Position.Y - after.Position.Y
+                        );
+                        Assert.InRange(distance, 0, 1);
+                        if (distance == 1)
+                        {
+                            Assert.Equal(
+                                FacingFromStep(before.Position, after.Position),
+                                after.Facing
+                            );
+                        }
+                    }
+                }
+
+                previous = byId;
+            }
+        }
+    }
+
+    [Fact]
+    public void CrossSceneSchedulesUseSafeEntrancesThenContinueWalking()
+    {
+        var village = new VillageSystem();
+        var beforeEntry = village.AllCurrentNpcs(1, 8 * 60 + 50)
+            .Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        var atEntry = village.AllCurrentNpcs(1, 9 * 60)
+            .Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        var afterEntry = village.AllCurrentNpcs(1, 9 * 60 + 10)
+            .Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+
+        Assert.Equal(PlayerLocationIds.World, beforeEntry.LocationId);
+        Assert.Equal(PlayerLocationIds.MoonlitArchive, atEntry.LocationId);
+        Assert.Equal(
+            NpcNavigationMap.SafeArrivalCell(
+                PlayerLocationIds.World,
+                PlayerLocationIds.MoonlitArchive
+            ),
+            atEntry.Position
+        );
+        Assert.NotEqual(
+            VillageCatalog.MoonlitArchiveExitCell,
+            atEntry.Position
+        );
+        Assert.Equal(1, Distance(atEntry.Position, afterEntry.Position));
+
+        var beforeExit = village.AllCurrentNpcs(1, 12 * 60 + 50)
+            .Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        var atExit = village.AllCurrentNpcs(1, 13 * 60)
+            .Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        Assert.Equal(PlayerLocationIds.MoonlitArchive, beforeExit.LocationId);
+        Assert.Equal(PlayerLocationIds.World, atExit.LocationId);
+        Assert.Equal(
+            NpcNavigationMap.SafeArrivalCell(
+                PlayerLocationIds.MoonlitArchive,
+                PlayerLocationIds.World
+            ),
+            atExit.Position
+        );
+        Assert.NotEqual(
+            VillageCatalog.MoonlitArchiveDoorCell,
+            atExit.Position
+        );
+    }
+
+    [Fact]
+    public void PathfinderSharesWorldAndInteriorCollisionGeometry()
+    {
+        var worldPath = NpcPathfinder.FindPath(
+            PlayerLocationIds.World,
+            new GridPosition(86, 42),
+            new GridPosition(104, 43)
+        );
+        Assert.NotEmpty(worldPath);
+        Assert.All(worldPath, cell =>
+        {
+            Assert.False(WorldDefinition.IsBlocked(cell));
+            Assert.True(NpcNavigationMap.IsNpcPassable(
+                PlayerLocationIds.World,
+                cell
+            ));
+        });
+
+        var archivePath = NpcPathfinder.FindPath(
+            PlayerLocationIds.MoonlitArchive,
+            new GridPosition(20, 17),
+            new GridPosition(12, 9)
+        );
+        Assert.NotEmpty(archivePath);
+        Assert.DoesNotContain(new GridPosition(20, 10), archivePath);
+        Assert.All(archivePath, cell => Assert.True(
+            NpcNavigationMap.IsNpcPassable(
+                PlayerLocationIds.MoonlitArchive,
+                cell
+            )
+        ));
+    }
+
+    [Fact]
+    public void FailedRouteFallsBackToTheSafeScheduleAnchor()
+    {
+        var definition = VillageCatalog.Npcs[VillageCatalog.LioraId];
+        var entry = NpcScheduleSystem.SelectEntry(
+            definition,
+            1,
+            14 * 60,
+            WeatherSystem.WeatherForDay(1)
+        );
+        Assert.NotNull(entry);
+        var invalidPrevious = new VillageNpcState(
+            definition,
+            PlayerLocationIds.World,
+            new GridPosition(86, 36),
+            NpcFacing.Down,
+            entry.DialogueKey
+        );
+
+        var projected = NpcScheduleSystem.ProjectRouteOrFallback(
+            definition,
+            entry,
+            invalidPrevious
+        );
+
+        Assert.Equal(entry.Position, projected.Position);
+        Assert.Equal(entry.LocationId, projected.LocationId);
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            projected.LocationId,
+            projected.Position
+        ));
+    }
+
+    [Fact]
+    public void RuntimePlayerReservationAccumulatesWaitsAndReleasesOneStep()
+    {
+        var probe = new VillageSystem();
+        var farPlayer = new GridPosition(80, 60);
+        var before = probe.AllCurrentNpcs(
+            1,
+            13 * 60,
+            PlayerLocationIds.World,
+            farPlayer
+        );
+        var expectedNext = probe.AllCurrentNpcs(
+            1,
+            13 * 60 + 10,
+            PlayerLocationIds.World,
+            farPlayer
+        ).Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        var lioraBefore = before.Single(
+            npc => npc.Definition.Id == VillageCatalog.LioraId
+        );
+        Assert.Equal(1, Distance(lioraBefore.Position, expectedNext.Position));
+
+        var blocked = new VillageSystem();
+        var initial = blocked.AllCurrentNpcs(
+            1,
+            13 * 60,
+            PlayerLocationIds.World,
+            farPlayer
+        );
+        var start = initial.Single(
+            npc => npc.Definition.Id == VillageCatalog.LioraId
+        );
+        foreach (var minute in new[]
+                 {
+                     13 * 60 + 10,
+                     13 * 60 + 20,
+                     13 * 60 + 30
+                 })
+        {
+            var states = blocked.AllCurrentNpcs(
+                1,
+                minute,
+                PlayerLocationIds.World,
+                expectedNext.Position
+            );
+            var liora = states.Single(
+                npc => npc.Definition.Id == VillageCatalog.LioraId
+            );
+            Assert.Equal(start.Position, liora.Position);
+            Assert.DoesNotContain(states, npc =>
+                npc.LocationId == PlayerLocationIds.World &&
+                npc.Position == expectedNext.Position
+            );
+            Assert.Equal(
+                states.Count,
+                states
+                    .Select(npc => (npc.LocationId, npc.Position))
+                    .Distinct()
+                    .Count()
+            );
+        }
+
+        var released = blocked.AllCurrentNpcs(
+            1,
+            13 * 60 + 40,
+            PlayerLocationIds.World,
+            farPlayer
+        ).Single(npc => npc.Definition.Id == VillageCatalog.LioraId);
+        Assert.Equal(1, Distance(start.Position, released.Position));
+    }
+
+    [Fact]
+    public void ScheduleProjectionCacheAndSaveRebuildStayDeterministic()
+    {
+        var village = new VillageSystem();
+        var first = village.AllCurrentNpcs(3, 14 * 60 + 30);
+        var repeated = village.AllCurrentNpcs(3, 14 * 60 + 30);
+        Assert.Same(first, repeated);
+
+        var player = new GridPosition(80, 60);
+        var runtimeFirst = village.AllCurrentNpcs(
+            3,
+            14 * 60 + 40,
+            PlayerLocationIds.World,
+            player
+        );
+        var runtimeRepeated = village.AllCurrentNpcs(
+            3,
+            14 * 60 + 40,
+            PlayerLocationIds.World,
+            player
+        );
+        Assert.Same(runtimeFirst, runtimeRepeated);
+
+        var restored = new VillageSystem();
+        restored.Restore(village.Capture());
+        Assert.Equal(
+            first.Select(StateIdentity),
+            restored
+                .AllCurrentNpcs(3, 14 * 60 + 30)
+                .Select(StateIdentity)
+        );
+    }
+
+    [Fact]
     public void EightVillagersHaveCompleteDistinctDailySchedules()
     {
         var village = new VillageSystem();
@@ -1834,6 +2124,7 @@ public sealed class VillageSystemTests
         {
             foreach (var weatherId in ScheduleWeatherIds)
             {
+                IReadOnlyDictionary<string, VillageNpcState>? previous = null;
                 for (var minute = GameClock.StartMinute;
                      minute <= GameClock.EndMinute;
                      minute += GameClock.MinutesPerTick)
@@ -1856,9 +2147,60 @@ public sealed class VillageSystemTests
                     Assert.All(current, npc =>
                         AssertScheduleAnchorPassable(npc)
                     );
+
+                    var byId = current.ToDictionary(
+                        npc => npc.Definition.Id
+                    );
+                    if (previous is not null)
+                    {
+                        AssertScheduleTransition(previous, byId);
+                    }
+
+                    previous = byId;
                 }
             }
         }
+    }
+
+    [Fact]
+    public void SameDayWeatherChangesRebuildTheConditionalPathTimeline()
+    {
+        var village = new VillageSystem();
+        var clear = village.AllCurrentNpcs(
+            1,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var rain = village.AllCurrentNpcs(
+            1,
+            14 * 60,
+            DataCatalog.RainWeatherId
+        );
+        var clearAgain = village.AllCurrentNpcs(
+            1,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+
+        var clearNemi = clear.Single(
+            npc => npc.Definition.Id == VillageCatalog.NemiId
+        );
+        var rainyNemi = rain.Single(
+            npc => npc.Definition.Id == VillageCatalog.NemiId
+        );
+        Assert.Equal(
+            "village.npc.nemi.season_gleamrise",
+            clearNemi.DialogueKey
+        );
+        Assert.Equal(
+            "village.npc.nemi.weather_rain",
+            rainyNemi.DialogueKey
+        );
+        Assert.NotEqual(clearNemi.LocationId, rainyNemi.LocationId);
+        Assert.Equal(
+            clear.Select(StateIdentity),
+            clearAgain.Select(StateIdentity)
+        );
     }
 
     [Fact]
@@ -1995,7 +2337,8 @@ public sealed class VillageSystemTests
             session.Clock.MinuteOfDay,
             session.PlayerLocationId,
             DataCatalog.HandId,
-            session.Village
+            session.Village,
+            session.PlayerCell
         );
         Assert.NotNull(eligible);
         Assert.Equal(
@@ -2020,64 +2363,97 @@ public sealed class VillageSystemTests
     )
     {
         Assert.True(PlayerLocationIds.IsValid(npc.LocationId));
-        if (npc.LocationId == PlayerLocationIds.World)
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            npc.LocationId,
+            npc.Position
+        ));
+        Assert.False(NpcNavigationMap.IsCriticalEntranceCell(
+            npc.LocationId,
+            npc.Position
+        ));
+    }
+
+    private static void AssertScheduleTransition(
+        IReadOnlyDictionary<string, VillageNpcState> previous,
+        IReadOnlyDictionary<string, VillageNpcState> current
+    )
+    {
+        foreach (var npcId in VillageCatalog.Npcs.Keys)
         {
-            Assert.True(VillageCatalog.IsVillageCell(npc.Position));
-            Assert.False(VillageCatalog.IsBlocked(npc.Position));
-            Assert.DoesNotContain(
-                npc.Position,
-                new[]
-                {
-                    VillageCatalog.MoonlitArchiveDoorCell,
-                    VillageCatalog.MoonstoneWorkshopDoorCell,
-                    VillageCatalog.StarweaverTeaHouseDoorCell,
-                    VillageCatalog.TwilightEmporiumDoorCell,
-                    VillageCatalog.VillageGateCell
-                }
-            );
-            return;
+            var before = previous[npcId];
+            var after = current[npcId];
+            if (before.LocationId != after.LocationId)
+            {
+                Assert.Equal(
+                    NpcNavigationMap.SafeArrivalCell(
+                        before.LocationId,
+                        after.LocationId
+                    ),
+                    after.Position
+                );
+                continue;
+            }
+
+            Assert.InRange(Distance(before.Position, after.Position), 0, 1);
         }
 
-        Assert.True(npc.Position.X is >= 2 and <= 37);
-        Assert.True(npc.Position.Y is >= 3 and <= 20);
-        if (npc.LocationId == PlayerLocationIds.MoonlitArchive)
+        var npcIds = VillageCatalog.Npcs.Keys.ToArray();
+        for (var firstIndex = 0;
+             firstIndex < npcIds.Length;
+             firstIndex++)
         {
-            Assert.False(npc.Position.X is >= 16 and <= 23 &&
-                npc.Position.Y is >= 8 and <= 11);
-            Assert.NotEqual(
-                VillageCatalog.MoonlitArchiveExitCell,
-                npc.Position
-            );
-        }
-        else if (npc.LocationId == PlayerLocationIds.MoonstoneWorkshop)
-        {
-            Assert.False(npc.Position.X is >= 15 and <= 24 &&
-                npc.Position.Y is >= 4 and <= 9);
-            Assert.NotEqual(
-                VillageCatalog.MoonstoneWorkshopExitCell,
-                npc.Position
-            );
-        }
-        else if (npc.LocationId == PlayerLocationIds.StarweaverTeaHouse)
-        {
-            Assert.False(npc.Position.X is >= 12 and <= 27 &&
-                npc.Position.Y is >= 3 and <= 9);
-            Assert.NotEqual(
-                VillageCatalog.StarweaverTeaHouseExitCell,
-                npc.Position
-            );
-        }
-        else if (npc.LocationId == PlayerLocationIds.TwilightEmporium)
-        {
-            Assert.False(npc.Position.X is >= 14 and <= 25 &&
-                npc.Position.Y is >= 4 and <= 8);
-            Assert.NotEqual(
-                VillageCatalog.TwilightEmporiumExitCell,
-                npc.Position
-            );
+            for (var secondIndex = firstIndex + 1;
+                 secondIndex < npcIds.Length;
+                 secondIndex++)
+            {
+                var firstBefore = previous[npcIds[firstIndex]];
+                var secondBefore = previous[npcIds[secondIndex]];
+                var firstAfter = current[npcIds[firstIndex]];
+                var secondAfter = current[npcIds[secondIndex]];
+                var sameScene = firstBefore.LocationId ==
+                    secondBefore.LocationId &&
+                    firstAfter.LocationId == secondAfter.LocationId;
+                var swapped = firstBefore.Position == secondAfter.Position &&
+                    secondBefore.Position == firstAfter.Position;
+                Assert.False(sameScene && swapped);
+            }
         }
     }
 
+    private static int Distance(GridPosition first, GridPosition second) =>
+        Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y);
+
+    private static NpcFacing FacingFromStep(
+        GridPosition start,
+        GridPosition destination
+    )
+    {
+        if (destination.X < start.X)
+        {
+            return NpcFacing.Left;
+        }
+
+        if (destination.X > start.X)
+        {
+            return NpcFacing.Right;
+        }
+
+        if (destination.Y < start.Y)
+        {
+            return NpcFacing.Up;
+        }
+
+        return NpcFacing.Down;
+    }
+
+    private static object StateIdentity(VillageNpcState state) => new
+    {
+        NpcId = state.Definition.Id,
+        state.LocationId,
+        state.Position,
+        state.Facing,
+        state.DialogueKey
+    };
     [Theory]
     [InlineData(VillageCatalog.LioraId, DataCatalog.MoonrootId)]
     [InlineData(VillageCatalog.TaviId, DataCatalog.LumenwoodId)]
@@ -2284,9 +2660,13 @@ public sealed class VillageSystemTests
             PlayerLocationIds.MoonstoneWorkshop,
             atWork.LocationId
         );
-        Assert.Equal(
-            VillageCatalog.MoonRuneWorkbenchCell.Y + 1,
-            atWork.Position.Y
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            atWork.LocationId,
+            atWork.Position
+        ));
+        Assert.NotEqual(
+            VillageCatalog.MoonstoneWorkshopExitCell,
+            atWork.Position
         );
         Assert.NotNull(afterWork);
         Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
@@ -2387,9 +2767,13 @@ public sealed class VillageSystemTests
             PlayerLocationIds.StarweaverTeaHouse,
             atWork.LocationId
         );
-        Assert.Equal(
-            VillageCatalog.StarwovenTeaCounterCell.Y + 1,
-            atWork.Position.Y
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            atWork.LocationId,
+            atWork.Position
+        ));
+        Assert.NotEqual(
+            VillageCatalog.StarweaverTeaHouseExitCell,
+            atWork.Position
         );
         Assert.NotNull(afterWork);
         Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
@@ -2490,9 +2874,13 @@ public sealed class VillageSystemTests
             PlayerLocationIds.TwilightEmporium,
             atWork.LocationId
         );
-        Assert.Equal(
-            VillageCatalog.TravelManifestCell.Y + 2,
-            atWork.Position.Y
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            atWork.LocationId,
+            atWork.Position
+        ));
+        Assert.NotEqual(
+            VillageCatalog.TwilightEmporiumExitCell,
+            atWork.Position
         );
         Assert.NotNull(afterWork);
         Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
@@ -2512,12 +2900,12 @@ public sealed class VillageSystemTests
             18 * 16 + 8,
             PlayerLocationIds.TwilightEmporium
         );
-        var orin = VillageCatalog.CurrentNpc(
-            VillageCatalog.OrinId,
+        var orin = session.Village.CurrentNpcs(
             session.Clock.Day,
-            session.Clock.MinuteOfDay
-        );
-        Assert.NotNull(orin);
+            session.Clock.MinuteOfDay,
+            PlayerLocationIds.TwilightEmporium,
+            session.PlayerCell
+        ).Single(npc => npc.Definition.Id == VillageCatalog.OrinId);
         Assert.Equal(
             PlayerLocationIds.TwilightEmporium,
             orin.LocationId

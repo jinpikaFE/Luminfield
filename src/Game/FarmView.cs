@@ -891,7 +891,8 @@ public sealed partial class FarmView : Node2D
                     cell,
                     _session.Clock.Day,
                     _session.Clock.MinuteOfDay,
-                    PlayerLocationIds.World
+                    PlayerLocationIds.World,
+                    _player.CurrentCell
                 ) is not null)
             {
                 return false;
@@ -928,7 +929,8 @@ public sealed partial class FarmView : Node2D
         var current = _session.Village.CurrentNpcs(
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.World
+            PlayerLocationIds.World,
+            player
         );
         var exact = current.FirstOrDefault(
             npc => npc.Position == target

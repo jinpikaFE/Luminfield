@@ -390,7 +390,8 @@ internal sealed partial class WorldVillageChunk : Node2D
                      .CurrentNpcs(
                          _session.Clock.Day,
                          _session.Clock.MinuteOfDay,
-                         PlayerLocationIds.World
+                         PlayerLocationIds.World,
+                         _session.PlayerCell
                      )
                      .Where(value =>
                          WorldDefinition.GetChunk(value.Position) == _chunk

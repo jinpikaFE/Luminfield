@@ -131,12 +131,10 @@ public sealed partial class TwilightEmporiumView : Node2D
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
         );
-        if (cell.X is < 2 or > 37 || cell.Y is < 3 or > 20)
-        {
-            return false;
-        }
-
-        if (IsManifestArea(cell) || IsWallFurniture(cell))
+        if (!NpcNavigationMap.IsWalkableGeometry(
+                PlayerLocationIds.TwilightEmporium,
+                cell
+            ))
         {
             return false;
         }
@@ -145,7 +143,8 @@ public sealed partial class TwilightEmporiumView : Node2D
             cell,
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.TwilightEmporium
+            PlayerLocationIds.TwilightEmporium,
+            _player.CurrentCell
         ) is null;
     }
 
@@ -157,7 +156,8 @@ public sealed partial class TwilightEmporiumView : Node2D
         var current = _session.Village.CurrentNpcs(
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.TwilightEmporium
+            PlayerLocationIds.TwilightEmporium,
+            player
         );
         var exact = current.FirstOrDefault(npc => npc.Position == target);
         if (exact is not null)
@@ -179,12 +179,6 @@ public sealed partial class TwilightEmporiumView : Node2D
     private static bool IsManifestArea(GridPosition cell) =>
         cell.X is >= 14 and <= 25 &&
         cell.Y is >= 4 and <= 8;
-
-    private static bool IsWallFurniture(GridPosition cell) =>
-        (cell.X is >= 2 and <= 10 && cell.Y is >= 3 and <= 10) ||
-        (cell.X is >= 29 and <= 37 && cell.Y is >= 3 and <= 10) ||
-        (cell.X is >= 2 and <= 8 && cell.Y is >= 14 and <= 20) ||
-        (cell.X is >= 31 and <= 37 && cell.Y is >= 14 and <= 20);
 
     private static Vector2 CellCenter(GridPosition cell) =>
         new(cell.X * 16 + 8, cell.Y * 16 + 8);
@@ -214,7 +208,8 @@ internal sealed partial class TwilightEmporiumNpcLayer : Node2D
         foreach (var npc in _session.Village.CurrentNpcs(
                      _session.Clock.Day,
                      _session.Clock.MinuteOfDay,
-                     PlayerLocationIds.TwilightEmporium
+                     PlayerLocationIds.TwilightEmporium,
+                     _session.PlayerCell
                  ))
         {
             var source = GeneratedArt.VillageNpcRegion(

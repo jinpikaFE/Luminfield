@@ -127,14 +127,10 @@ public sealed partial class ArchiveView : Node2D
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
         );
-        if (cell.X is < 2 or > 37 || cell.Y is < 3 or > 20)
-        {
-            return false;
-        }
-
-        if (IsDeskArea(cell) ||
-            IsOrreryArea(cell) ||
-            IsSideFurniture(cell))
+        if (!NpcNavigationMap.IsWalkableGeometry(
+                PlayerLocationIds.MoonlitArchive,
+                cell
+            ))
         {
             return false;
         }
@@ -143,7 +139,8 @@ public sealed partial class ArchiveView : Node2D
             cell,
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.MoonlitArchive
+            PlayerLocationIds.MoonlitArchive,
+            _player.CurrentCell
         ) is null;
     }
 
@@ -155,7 +152,8 @@ public sealed partial class ArchiveView : Node2D
         var current = _session.Village.CurrentNpcs(
             _session.Clock.Day,
             _session.Clock.MinuteOfDay,
-            PlayerLocationIds.MoonlitArchive
+            PlayerLocationIds.MoonlitArchive,
+            player
         );
         var exact = current.FirstOrDefault(npc => npc.Position == target);
         if (exact is not null)
@@ -177,18 +175,6 @@ public sealed partial class ArchiveView : Node2D
     private static bool IsDeskArea(GridPosition cell) =>
         cell.X is >= 16 and <= 23 &&
         cell.Y is >= 8 and <= 11;
-
-    private static bool IsOrreryArea(GridPosition cell) =>
-        cell.X is >= 15 and <= 24 &&
-        cell.Y is >= 3 and <= 6;
-
-    private static bool IsSideFurniture(GridPosition cell) =>
-        (cell.X is >= 2 and <= 5) ||
-        (cell.X is >= 34 and <= 37) ||
-        (cell.X is >= 6 and <= 11 && cell.Y is >= 3 and <= 7) ||
-        (cell.X is >= 28 and <= 33 && cell.Y is >= 3 and <= 7) ||
-        (cell.X is >= 4 and <= 8 && cell.Y is >= 15 and <= 18) ||
-        (cell.X is >= 31 and <= 35 && cell.Y is >= 15 and <= 18);
 
     private static Vector2 CellCenter(GridPosition cell) =>
         new(cell.X * 16 + 8, cell.Y * 16 + 8);
@@ -216,7 +202,8 @@ internal sealed partial class ArchiveNpcLayer : Node2D
         foreach (var npc in _session.Village.CurrentNpcs(
                      _session.Clock.Day,
                      _session.Clock.MinuteOfDay,
-                     PlayerLocationIds.MoonlitArchive
+                     PlayerLocationIds.MoonlitArchive,
+                     _session.PlayerCell
                  ))
         {
             var source = GeneratedArt.VillageNpcRegion(

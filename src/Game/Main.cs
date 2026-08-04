@@ -426,6 +426,8 @@ public sealed partial class Main : Node
                     StartSelaDialoguePlaytest,
                 [PlaytestScenarioId.VillageExpansion] =
                     StartVillageExpansionPlaytest,
+                [PlaytestScenarioId.NpcPathfinding] =
+                    StartNpcPathfindingPlaytest,
                 [PlaytestScenarioId.VillageRestdayEnglish] =
                     StartVillageRestdayEnglishPlaytest,
                 [PlaytestScenarioId.VillageRainSchedule] =
@@ -1032,6 +1034,15 @@ public sealed partial class Main : Node
             1,
             14 * 60,
             new GridPosition(97, 55)
+        );
+    }
+
+    private void StartNpcPathfindingPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            13 * 60 + 30,
+            new GridPosition(97, 45)
         );
     }
 

@@ -34,6 +34,10 @@ public sealed class GameSession
     public float PlayerY { get; private set; } = NewGamePlayerY;
     public string PlayerLocationId { get; private set; } =
         PlayerLocationIds.World;
+    public GridPosition PlayerCell => new(
+        (int)MathF.Floor(PlayerX / 16),
+        (int)MathF.Floor(PlayerY / 16)
+    );
     public bool InsideCottage =>
         PlayerLocationId == PlayerLocationIds.Cottage;
     public bool InsideArchive =>
@@ -568,7 +572,8 @@ public sealed class GameSession
             target,
             Clock.Day,
             Clock.MinuteOfDay,
-            PlayerLocationId
+            PlayerLocationId,
+            PlayerCell
         );
         if (villager is not null)
         {
@@ -1009,7 +1014,8 @@ public sealed class GameSession
             Clock.MinuteOfDay,
             PlayerLocationId,
             Inventory.Selected.ItemId,
-            Village
+            Village,
+            PlayerCell
         );
         var conversation = Village.Interact(
             target,
@@ -1018,7 +1024,8 @@ public sealed class GameSession
             PlayerLocationId,
             Inventory.Selected.ItemId,
             Inventory,
-            out result
+            out result,
+            PlayerCell
         );
         if (conversation is not null)
         {
@@ -1407,7 +1414,8 @@ public sealed class GameSession
             target,
             Clock.Day,
             Clock.MinuteOfDay,
-            PlayerLocationIds.MoonlitArchive
+            PlayerLocationIds.MoonlitArchive,
+            PlayerCell
         );
         if (villager is not null)
         {
@@ -1456,7 +1464,8 @@ public sealed class GameSession
             target,
             Clock.Day,
             Clock.MinuteOfDay,
-            PlayerLocationIds.MoonstoneWorkshop
+            PlayerLocationIds.MoonstoneWorkshop,
+            PlayerCell
         );
         if (villager is not null)
         {
@@ -1511,7 +1520,8 @@ public sealed class GameSession
             target,
             Clock.Day,
             Clock.MinuteOfDay,
-            PlayerLocationIds.StarweaverTeaHouse
+            PlayerLocationIds.StarweaverTeaHouse,
+            PlayerCell
         );
         if (villager is not null)
         {
@@ -1568,7 +1578,8 @@ public sealed class GameSession
             target,
             Clock.Day,
             Clock.MinuteOfDay,
-            PlayerLocationIds.TwilightEmporium
+            PlayerLocationIds.TwilightEmporium,
+            PlayerCell
         );
         if (villager is not null)
         {
@@ -1624,7 +1635,8 @@ public sealed class GameSession
             Clock.Day,
             Clock.MinuteOfDay,
             PlayerLocationId,
-            selectedItemId
+            selectedItemId,
+            PlayerCell
         );
         if (check.IsAvailable)
         {
