@@ -157,8 +157,9 @@ public static class VillageCatalog
         "starweaver_tea_house";
     public const string TwilightEmporiumLandmarkId =
         "twilight_emporium";
+    public const string StarlightPostLandmarkId = "starlight_post";
 
-    public static readonly GridArea VillageBounds = new(77, 30, 115, 63);
+    public static readonly GridArea VillageBounds = new(73, 30, 115, 63);
     public static readonly GridPosition VillageGateCell = new(97, 59);
     public static readonly GridPosition MoonlitArchiveDoorCell = new(86, 41);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
@@ -181,6 +182,12 @@ public static class VillageCatalog
         new(20, 19);
     public static readonly GridPosition TravelManifestCell =
         new(20, 8);
+    public static readonly GridPosition StarlightPostDoorCell =
+        new(77, 41);
+    public static readonly GridPosition StarlightPostExitCell =
+        new(20, 19);
+    public static readonly GridPosition RouteSortingCounterCell =
+        new(20, 8);
     public const int MoonlitArchiveOpenMinute = 8 * 60;
     public const int MoonlitArchiveCloseMinute = 20 * 60;
     public const int MoonstoneWorkshopOpenMinute = 8 * 60;
@@ -189,6 +196,8 @@ public static class VillageCatalog
     public const int StarweaverTeaHouseCloseMinute = 21 * 60;
     public const int TwilightEmporiumOpenMinute = 10 * 60;
     public const int TwilightEmporiumCloseMinute = 18 * 60;
+    public const int StarlightPostOpenMinute = 7 * 60;
+    public const int StarlightPostCloseMinute = 19 * 60;
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -257,6 +266,13 @@ public static class VillageCatalog
             8,
             "village.landmark.twilight_emporium",
             [new GridArea(107, 55, 113, 60)]
+        ),
+        new(
+            StarlightPostLandmarkId,
+            StarlightPostDoorCell,
+            9,
+            "village.landmark.starlight_post",
+            [new GridArea(73, 34, 81, 40)]
         )
     ];
 
@@ -434,12 +450,12 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         "village.npc.nemi.morning"
                     ),
-                    Slot(
+                    PostSlot(
                         9,
                         13,
-                        new GridPosition(93, 43),
-                        NpcFacing.Left,
-                        "village.npc.nemi.archive"
+                        new GridPosition(13, 12),
+                        NpcFacing.Right,
+                        "village.npc.nemi.starlight_post"
                     ),
                     Slot(
                         13,
@@ -811,6 +827,13 @@ public static class VillageCatalog
         minuteOfDay >= TwilightEmporiumOpenMinute &&
         minuteOfDay < TwilightEmporiumCloseMinute;
 
+    public static bool IsStarlightPostDoor(GridPosition cell) =>
+        cell == StarlightPostDoorCell;
+
+    public static bool IsStarlightPostOpen(int minuteOfDay) =>
+        minuteOfDay >= StarlightPostOpenMinute &&
+        minuteOfDay < StarlightPostCloseMinute;
+
     public static bool IsVillagePath(GridPosition cell)
     {
         if (!IsVillageCell(cell))
@@ -826,10 +849,12 @@ public static class VillageCatalog
             cell.X is >= 84 and <= 110;
         var emporiumLane = cell.Y is >= 61 and <= 62 &&
             cell.X is >= 97 and <= 110;
+        var postLane = cell.Y is >= 41 and <= 43 &&
+            cell.X is >= 77 and <= 84;
         var plaza = cell.X is >= 92 and <= 102 &&
             cell.Y is >= 44 and <= 54;
         return mainLane || archiveLane || workshopLane ||
-            emporiumLane || plaza;
+            emporiumLane || postLane || plaza;
     }
 
     public static bool IsBlocked(GridPosition cell) =>
@@ -959,6 +984,28 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.TwilightEmporium,
+        position,
+        facing,
+        dialogueKey,
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
+    );
+
+    private static NpcScheduleEntry PostSlot(
+        int startHour,
+        int endHour,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        params int[] weekdayIndices
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        PlayerLocationIds.StarlightPost,
         position,
         facing,
         dialogueKey,

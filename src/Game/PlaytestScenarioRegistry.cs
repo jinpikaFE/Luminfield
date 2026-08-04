@@ -23,6 +23,9 @@ public enum PlaytestScenarioId
     EmporiumOrin,
     Emporium,
     EmporiumDoor,
+    StarlightPostNemi,
+    StarlightPost,
+    StarlightPostDoor,
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
@@ -122,6 +125,18 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.EmporiumDoor,
             "--playtest-emporium-door"
+        ),
+        new(
+            PlaytestScenarioId.StarlightPostNemi,
+            "--playtest-starlight-post-nemi"
+        ),
+        new(
+            PlaytestScenarioId.StarlightPost,
+            "--playtest-starlight-post"
+        ),
+        new(
+            PlaytestScenarioId.StarlightPostDoor,
+            "--playtest-starlight-post-door"
         ),
         new(
             PlaytestScenarioId.VillageDialogue,

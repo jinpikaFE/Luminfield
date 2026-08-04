@@ -3261,18 +3261,239 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
+    public void NemiWorksInsideStarlightPostWhileConditionsKeepPriority()
+    {
+        var beforeWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            VillageCatalog.StarlightPostOpenMinute + 60
+        );
+        var atWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            9 * 60
+        );
+        var afterWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            13 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var rainyAfternoon = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            13 * 60,
+            DataCatalog.RainWeatherId
+        );
+        var lanternrest = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            CalendarSystem.DaysPerWeek,
+            9 * 60
+        );
+
+        Assert.NotNull(beforeWork);
+        Assert.Equal(PlayerLocationIds.World, beforeWork.LocationId);
+        Assert.NotNull(atWork);
+        Assert.Equal(PlayerLocationIds.StarlightPost, atWork.LocationId);
+        Assert.Equal(
+            "village.npc.nemi.starlight_post",
+            atWork.DialogueKey
+        );
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            atWork.LocationId,
+            atWork.Position
+        ));
+        Assert.NotEqual(VillageCatalog.StarlightPostExitCell, atWork.Position);
+        Assert.NotNull(afterWork);
+        Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
+        Assert.NotNull(rainyAfternoon);
+        Assert.Equal(
+            PlayerLocationIds.StarweaverTeaHouse,
+            rainyAfternoon.LocationId
+        );
+        Assert.NotNull(lanternrest);
+        Assert.Equal(PlayerLocationIds.World, lanternrest.LocationId);
+    }
+
+    [Fact]
+    public void StarlightPostDoorCounterAndExitShareReadOnlyHandRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var door = VillageCatalog.StarlightPostDoorCell;
+        session.Clock.Reset(
+            1,
+            VillageCatalog.StarlightPostOpenMinute - 1
+        );
+
+        Assert.False(VillageCatalog.IsStarlightPostOpen(6 * 60 + 59));
+        Assert.True(VillageCatalog.IsStarlightPostOpen(7 * 60));
+        Assert.True(VillageCatalog.IsStarlightPostOpen(18 * 60 + 59));
+        Assert.False(VillageCatalog.IsStarlightPostOpen(19 * 60));
+
+        var closed = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, closed.State);
+        Assert.Equal(
+            "target.status.starlight_post_closed",
+            closed.LabelKey
+        );
+        Assert.False(session.TryEnterStarlightPost().Succeeded);
+
+        session.Clock.Reset(1, VillageCatalog.StarlightPostOpenMinute);
+        var open = session.PreviewSelectedTarget(door);
+        Assert.True(open.IsAvailable);
+        Assert.Equal("target.action.enter_starlight_post", open.LabelKey);
+        Assert.True(session.TryEnterStarlightPost().Succeeded);
+
+        session.Inventory.Select(1);
+        var energy = session.Energy;
+        var coins = session.Coins;
+        var inventory = session.Inventory.Capture()
+            .Select(slot => (slot.ItemId, slot.Count))
+            .ToArray();
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterStarlightPost().Succeeded);
+        Assert.Equal(PlayerLocationIds.World, session.PlayerLocationId);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarlightPost
+        );
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(
+                VillageCatalog.RouteSortingCounterCell
+            ).State
+        );
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(
+                VillageCatalog.StarlightPostExitCell
+            ).State
+        );
+        Assert.False(session.InspectRouteSortingCounter().Succeeded);
+        Assert.False(session.TryExitStarlightPost().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.Inventory.Select(0);
+        var counter = session.PreviewSelectedTarget(
+            VillageCatalog.RouteSortingCounterCell
+        );
+        var exit = session.PreviewSelectedTarget(
+            VillageCatalog.StarlightPostExitCell
+        );
+        Assert.True(counter.IsAvailable);
+        Assert.Equal(
+            "target.action.inspect_sorting_counter",
+            counter.LabelKey
+        );
+        Assert.True(exit.IsAvailable);
+        var inspected = session.InspectRouteSortingCounter();
+        Assert.True(inspected.Succeeded);
+        Assert.Equal("starlight_post.counter.dialogue", inspected.MessageKey);
+        Assert.True(session.TryExitStarlightPost().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.SetPlayerLocation(
+            door.X * 16 + 8,
+            (door.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        session.Clock.Reset(1, VillageCatalog.StarlightPostCloseMinute);
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterStarlightPost().Succeeded);
+    }
+
+    [Fact]
+    public void StarlightPostUsesSharedCollisionAndSafeArrivalRules()
+    {
+        var exteriorArrival = NpcNavigationMap.SafeArrivalCell(
+            PlayerLocationIds.StarlightPost,
+            PlayerLocationIds.World
+        );
+        var interiorArrival = NpcNavigationMap.SafeArrivalCell(
+            PlayerLocationIds.World,
+            PlayerLocationIds.StarlightPost
+        );
+
+        Assert.Equal(new GridPosition(77, 42), exteriorArrival);
+        Assert.Equal(new GridPosition(19, 18), interiorArrival);
+        Assert.True(WorldDefinition.IsPath(
+            VillageCatalog.StarlightPostDoorCell
+        ));
+        Assert.False(WorldDefinition.IsBlocked(
+            VillageCatalog.StarlightPostDoorCell
+        ));
+        Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
+            PlayerLocationIds.World,
+            VillageCatalog.StarlightPostDoorCell
+        ));
+        Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
+            PlayerLocationIds.StarlightPost,
+            VillageCatalog.StarlightPostExitCell
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarlightPost,
+            new GridPosition(20, 10)
+        ));
+        Assert.True(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarlightPost,
+            new GridPosition(13, 12)
+        ));
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            PlayerLocationIds.World,
+            exteriorArrival!.Value
+        ));
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            PlayerLocationIds.StarlightPost,
+            interiorArrival!.Value
+        ));
+        Assert.NotEmpty(NpcPathfinder.FindPath(
+            PlayerLocationIds.World,
+            exteriorArrival.Value,
+            new GridPosition(84, 43)
+        ));
+        Assert.NotEmpty(NpcPathfinder.FindPath(
+            PlayerLocationIds.StarlightPost,
+            interiorArrival.Value,
+            new GridPosition(13, 12)
+        ));
+    }
+
+    [Fact]
     public void VillageLandmarksHaveStableIdsAndPassableEntrances()
     {
-        Assert.Equal(9, VillageCatalog.Landmarks.Count);
+        Assert.Equal(10, VillageCatalog.Landmarks.Count);
         Assert.Equal(
-            9,
+            10,
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.Id)
                 .Distinct(StringComparer.Ordinal)
                 .Count()
         );
         Assert.Equal(
-            Enumerable.Range(0, 9),
+            Enumerable.Range(0, 10),
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.AtlasIndex)
                 .Order()
@@ -3297,6 +3518,16 @@ public sealed class VillageSystemTests
         Assert.True(WorldDefinition.IsPath(new GridPosition(
             VillageCatalog.TwilightEmporiumDoorCell.X,
             VillageCatalog.TwilightEmporiumDoorCell.Y + 1
+        )));
+        Assert.False(WorldDefinition.IsBlocked(
+            VillageCatalog.StarlightPostDoorCell
+        ));
+        Assert.True(WorldDefinition.IsPath(
+            VillageCatalog.StarlightPostDoorCell
+        ));
+        Assert.True(WorldDefinition.IsPath(new GridPosition(
+            VillageCatalog.StarlightPostDoorCell.X,
+            VillageCatalog.StarlightPostDoorCell.Y + 1
         )));
         Assert.False(WorldDefinition.IsBlocked(new GridPosition(106, 58)));
         Assert.True(WorldDefinition.IsBlocked(new GridPosition(107, 58)));
@@ -5163,6 +5394,56 @@ public sealed class SaveServiceTests : IDisposable
                 "energy": 100,
                 "selectedSlot": 0,
                 "locationId": "retired_travel_shop"
+              }
+            }
+            """
+        );
+        var unknown = service.Load();
+        Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
+        Assert.NotNull(unknown.Save);
+        Assert.Equal(
+            PlayerLocationIds.World,
+            unknown.Save.Player.LocationId
+        );
+    }
+
+    [Fact]
+    public void StarlightPostLocationRoundTripsAndLegacyFallbacksStaySafe()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarlightPost
+        );
+        service.Save(session.Capture());
+
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(
+            PlayerLocationIds.StarlightPost,
+            result.Save.Player.LocationId
+        );
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.InsideStarlightPost);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 328,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "locationId": "retired_delivery_hall"
               }
             }
             """

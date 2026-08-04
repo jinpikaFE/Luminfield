@@ -62,6 +62,18 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.EmporiumDoor
         ),
         (
+            "--playtest-starlight-post-nemi",
+            PlaytestScenarioId.StarlightPostNemi
+        ),
+        (
+            "--playtest-starlight-post",
+            PlaytestScenarioId.StarlightPost
+        ),
+        (
+            "--playtest-starlight-post-door",
+            PlaytestScenarioId.StarlightPostDoor
+        ),
+        (
             "--playtest-village-dialogue",
             PlaytestScenarioId.VillageDialogue
         ),

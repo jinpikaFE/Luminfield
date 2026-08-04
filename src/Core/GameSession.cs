@@ -48,6 +48,8 @@ public sealed class GameSession
         PlayerLocationId == PlayerLocationIds.StarweaverTeaHouse;
     public bool InsideTwilightEmporium =>
         PlayerLocationId == PlayerLocationIds.TwilightEmporium;
+    public bool InsideStarlightPost =>
+        PlayerLocationId == PlayerLocationIds.StarlightPost;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -386,6 +388,11 @@ public sealed class GameSession
             return PreviewTwilightEmporiumTarget(target);
         }
 
+        if (InsideStarlightPost)
+        {
+            return PreviewStarlightPostTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -565,6 +572,35 @@ public sealed class GameSession
                 VillageCatalog.TwilightEmporiumDoorCell,
                 TargetPreviewKind.Door,
                 "target.status.emporium_closed"
+            );
+        }
+
+        if (VillageCatalog.IsStarlightPostDoor(target))
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    VillageCatalog.StarlightPostDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+            }
+
+            if (VillageCatalog.IsStarlightPostOpen(
+                    Clock.MinuteOfDay
+                ))
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarlightPostDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.action.enter_starlight_post"
+                );
+            }
+
+            return TargetPreview.Blocked(
+                VillageCatalog.StarlightPostDoorCell,
+                TargetPreviewKind.Door,
+                "target.status.starlight_post_closed"
             );
         }
 
@@ -1238,6 +1274,56 @@ public sealed class GameSession
             : ActionResult.Fail("notice.needs_hand");
     }
 
+    public ActionResult TryEnterStarlightPost()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.starlight_post_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return VillageCatalog.IsStarlightPostOpen(Clock.MinuteOfDay)
+            ? ActionResult.Success(
+                messageKey: "notice.enter_starlight_post"
+            )
+            : ActionResult.Fail("notice.starlight_post_closed");
+    }
+
+    public ActionResult InspectRouteSortingCounter()
+    {
+        if (!InsideStarlightPost)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return ActionResult.Success(
+            messageKey: "starlight_post.counter.dialogue"
+        );
+    }
+
+    public ActionResult TryExitStarlightPost()
+    {
+        if (!InsideStarlightPost)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(
+                messageKey: "notice.leave_starlight_post"
+            )
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         var item = DataCatalog.Item(itemId);
@@ -1617,6 +1703,64 @@ public sealed class GameSession
 
             return TargetPreview.NeedsTool(
                 VillageCatalog.TwilightEmporiumExitCell,
+                TargetPreviewKind.Door,
+                "target.need.hand"
+            );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewStarlightPostTarget(
+        GridPosition target
+    )
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationIds.StarlightPost,
+            PlayerCell
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        if (target == VillageCatalog.RouteSortingCounterCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.RouteSortingCounterCell,
+                    TargetPreviewKind.Station,
+                    "target.action.inspect_sorting_counter"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.RouteSortingCounterCell,
+                TargetPreviewKind.Station,
+                "target.need.hand"
+            );
+        }
+
+        if (target == VillageCatalog.StarlightPostExitCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarlightPostExitCell,
+                    TargetPreviewKind.Door,
+                    "target.action.exit_starlight_post"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.StarlightPostExitCell,
                 TargetPreviewKind.Door,
                 "target.need.hand"
             );

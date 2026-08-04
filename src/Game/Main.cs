@@ -18,6 +18,7 @@ public sealed partial class Main : Node
     private WorkshopView? _workshop;
     private TeaHouseView? _teaHouse;
     private TwilightEmporiumView? _twilightEmporium;
+    private StarlightPostView? _starlightPost;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -420,6 +421,12 @@ public sealed partial class Main : Node
                     StartEmporiumPlaytest,
                 [PlaytestScenarioId.EmporiumDoor] =
                     StartEmporiumDoorPlaytest,
+                [PlaytestScenarioId.StarlightPostNemi] =
+                    StartStarlightPostNemiPlaytest,
+                [PlaytestScenarioId.StarlightPost] =
+                    StartStarlightPostPlaytest,
+                [PlaytestScenarioId.StarlightPostDoor] =
+                    StartStarlightPostDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
                     StartVillageDialoguePlaytest,
                 [PlaytestScenarioId.SelaDialogue] =
@@ -1461,6 +1468,65 @@ public sealed partial class Main : Node
         }
     }
 
+    private void StartStarlightPostDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            9 * 60,
+            new GridPosition(
+                VillageCatalog.StarlightPostDoorCell.X,
+                VillageCatalog.StarlightPostDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartStarlightPostPlaytest()
+    {
+        StartStarlightPostPlaytest(false);
+    }
+
+    private void StartStarlightPostNemiPlaytest()
+    {
+        StartStarlightPostPlaytest(true);
+    }
+
+    private void StartStarlightPostPlaytest(bool openNemiDialogue)
+    {
+        const int day = 1;
+        const int minuteOfDay = 12 * 60;
+        var nemi = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            day,
+            minuteOfDay
+        );
+        if (nemi is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            14 * 16 + 8,
+            PlayerLocationIds.StarlightPost
+        );
+        _session.Inventory.Select(0);
+
+        _playing = true;
+        EnsureHud();
+        ShowStarlightPost(false);
+        if (openNemiDialogue)
+        {
+            Callable.From(
+                () => TalkToVillager(nemi.Position)
+            ).CallDeferred();
+        }
+    }
+
     private void StartVillageRestdayEnglishPlaytest()
     {
         _locale.SetLocale(LocaleService.English);
@@ -1810,6 +1876,10 @@ public sealed partial class Main : Node
         {
             ShowTwilightEmporium(false);
         }
+        else if (_session.InsideStarlightPost)
+        {
+            ShowStarlightPost(false);
+        }
         else
         {
             ShowFarm(false);
@@ -1832,7 +1902,8 @@ public sealed partial class Main : Node
         bool fromArchive = false,
         bool fromWorkshop = false,
         bool fromTeaHouse = false,
-        bool fromTwilightEmporium = false
+        bool fromTwilightEmporium = false,
+        bool fromStarlightPost = false
     )
     {
         ClearWorld();
@@ -1876,6 +1947,14 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromStarlightPost)
+        {
+            _session.SetPlayerLocation(
+                VillageCatalog.StarlightPostDoorCell.X * 16 + 8,
+                (VillageCatalog.StarlightPostDoorCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
@@ -1886,6 +1965,7 @@ public sealed partial class Main : Node
         _farm.EnterTeaHouseRequested += TryEnterStarweaverTeaHouse;
         _farm.EnterTwilightEmporiumRequested +=
             TryEnterTwilightEmporium;
+        _farm.EnterStarlightPostRequested += TryEnterStarlightPost;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -1919,6 +1999,10 @@ public sealed partial class Main : Node
         else if (fromTwilightEmporium)
         {
             _hud?.ShowNotice("notice.leave_emporium");
+        }
+        else if (fromStarlightPost)
+        {
+            _hud?.ShowNotice("notice.leave_starlight_post");
         }
     }
 
@@ -2045,6 +2129,37 @@ public sealed partial class Main : Node
         if (fromWorld)
         {
             _hud?.ShowNotice("notice.enter_emporium");
+        }
+    }
+
+    private void ShowStarlightPost(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                20 * 16 + 8,
+                18 * 16 + 8,
+                PlayerLocationIds.StarlightPost
+            );
+        }
+
+        _starlightPost = new StarlightPostView(
+            _session,
+            _locale
+        );
+        _starlightPost.ExitRequested += TryLeaveStarlightPost;
+        _starlightPost.SortingCounterRequested +=
+            InspectRouteSortingCounter;
+        _starlightPost.VillagerRequested += TalkToVillager;
+        _starlightPost.StepRequested +=
+            () => _audio.Play(PixelSound.Step);
+        _world = _starlightPost;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_starlight_post");
         }
     }
 
@@ -2339,6 +2454,51 @@ public sealed partial class Main : Node
         _audio.Play(PixelSound.Chime);
         ShowDialogue(
             "emporium.manifest.name",
+            result.MessageKey,
+            () => { },
+            GeneratedArt.RelationshipIcon(
+                RelationshipTier.NewAcquaintance
+            )
+        );
+    }
+
+    private void TryEnterStarlightPost()
+    {
+        var result = _session.TryEnterStarlightPost();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowStarlightPost(true);
+    }
+
+    private void TryLeaveStarlightPost()
+    {
+        var result = _session.TryExitStarlightPost();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, fromStarlightPost: true);
+    }
+
+    private void InspectRouteSortingCounter()
+    {
+        var result = _session.InspectRouteSortingCounter();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowDialogue(
+            "starlight_post.counter.name",
             result.MessageKey,
             () => { },
             GeneratedArt.RelationshipIcon(
@@ -2929,6 +3089,11 @@ public sealed partial class Main : Node
         {
             _twilightEmporium.ControlsEnabled = enabled;
         }
+
+        if (_starlightPost is not null)
+        {
+            _starlightPost.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -2944,6 +3109,7 @@ public sealed partial class Main : Node
         _workshop = null;
         _teaHouse = null;
         _twilightEmporium = null;
+        _starlightPost = null;
     }
 
     private static void FreeUi(CanvasItem? item)

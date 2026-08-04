@@ -10,7 +10,8 @@ public static class NpcNavigationMap
             [PlayerLocationIds.MoonlitArchive] = new(19, 17),
             [PlayerLocationIds.MoonstoneWorkshop] = new(19, 18),
             [PlayerLocationIds.StarweaverTeaHouse] = new(19, 18),
-            [PlayerLocationIds.TwilightEmporium] = new(19, 18)
+            [PlayerLocationIds.TwilightEmporium] = new(19, 18),
+            [PlayerLocationIds.StarlightPost] = new(19, 18)
         };
 
     private static readonly IReadOnlyDictionary<string, GridPosition>
@@ -21,7 +22,8 @@ public static class NpcNavigationMap
             [PlayerLocationIds.MoonlitArchive] = new(86, 42),
             [PlayerLocationIds.MoonstoneWorkshop] = new(85, 55),
             [PlayerLocationIds.StarweaverTeaHouse] = new(107, 43),
-            [PlayerLocationIds.TwilightEmporium] = new(110, 62)
+            [PlayerLocationIds.TwilightEmporium] = new(110, 62),
+            [PlayerLocationIds.StarlightPost] = new(77, 42)
         };
 
     public static bool IsWalkableGeometry(
@@ -60,6 +62,11 @@ public static class NpcNavigationMap
             return !IsEmporiumFurniture(cell);
         }
 
+        if (locationId == PlayerLocationIds.StarlightPost)
+        {
+            return !IsPostFurniture(cell);
+        }
+
         return false;
     }
 
@@ -80,6 +87,7 @@ public static class NpcNavigationMap
                 cell == VillageCatalog.MoonstoneWorkshopDoorCell ||
                 cell == VillageCatalog.StarweaverTeaHouseDoorCell ||
                 cell == VillageCatalog.TwilightEmporiumDoorCell ||
+                cell == VillageCatalog.StarlightPostDoorCell ||
                 cell == VillageCatalog.VillageGateCell;
         }
 
@@ -101,6 +109,11 @@ public static class NpcNavigationMap
         if (locationId == PlayerLocationIds.TwilightEmporium)
         {
             return cell == VillageCatalog.TwilightEmporiumExitCell;
+        }
+
+        if (locationId == PlayerLocationIds.StarlightPost)
+        {
+            return cell == VillageCatalog.StarlightPostExitCell;
         }
 
         return false;
@@ -169,6 +182,13 @@ public static class NpcNavigationMap
         (cell.X is >= 29 and <= 37 && cell.Y is >= 3 and <= 10) ||
         (cell.X is >= 2 and <= 8 && cell.Y is >= 14 and <= 20) ||
         (cell.X is >= 31 and <= 37 && cell.Y is >= 14 and <= 20);
+
+    private static bool IsPostFurniture(GridPosition cell) =>
+        (cell.X is >= 11 and <= 28 && cell.Y is >= 7 and <= 10) ||
+        (cell.X is >= 2 and <= 7 && cell.Y is >= 3 and <= 14) ||
+        (cell.X is >= 32 and <= 37 && cell.Y is >= 3 and <= 14) ||
+        (cell.X is >= 2 and <= 6 && cell.Y is >= 15 and <= 20) ||
+        (cell.X is >= 33 and <= 37 && cell.Y is >= 15 and <= 20);
 }
 
 public static class NpcPathfinder
