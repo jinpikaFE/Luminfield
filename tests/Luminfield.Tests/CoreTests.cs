@@ -36,6 +36,32 @@ public sealed class CalendarAndWeatherTests
         Assert.Equal("calendar.weekday.1", CalendarSystem.WeekdayKey(8));
     }
 
+    [Theory]
+    [InlineData(1, 1, CalendarSystem.GleamriseSeasonId, 1)]
+    [InlineData(14, 1, CalendarSystem.GleamriseSeasonId, 14)]
+    [InlineData(15, 1, CalendarSystem.RainveilSeasonId, 1)]
+    [InlineData(28, 1, CalendarSystem.RainveilSeasonId, 14)]
+    [InlineData(29, 1, CalendarSystem.StarharvestSeasonId, 1)]
+    [InlineData(42, 1, CalendarSystem.StarharvestSeasonId, 14)]
+    [InlineData(43, 1, CalendarSystem.LongnightSeasonId, 1)]
+    [InlineData(56, 1, CalendarSystem.LongnightSeasonId, 14)]
+    [InlineData(57, 2, CalendarSystem.GleamriseSeasonId, 1)]
+    public void CalendarDerivesFourteenDaySeasonsAndYears(
+        int day,
+        int year,
+        string seasonId,
+        int seasonDay
+    )
+    {
+        Assert.Equal(year, CalendarSystem.YearNumber(day));
+        Assert.Equal(seasonId, CalendarSystem.SeasonId(day));
+        Assert.Equal(seasonDay, CalendarSystem.SeasonDay(day));
+        Assert.Equal(
+            $"calendar.season.{seasonId}",
+            CalendarSystem.SeasonNameKey(day)
+        );
+    }
+
     [Fact]
     public void FirstWeekContainsClearRainAndStardustWindWithForecast()
     {
@@ -1698,6 +1724,13 @@ public sealed class StarlightSystemTests
 
 public sealed class VillageSystemTests
 {
+    private static readonly string[] ScheduleWeatherIds =
+    [
+        DataCatalog.ClearWeatherId,
+        DataCatalog.RainWeatherId,
+        DataCatalog.StardustWindWeatherId
+    ];
+
     [Fact]
     public void EightVillagersHaveCompleteDistinctDailySchedules()
     {
@@ -1762,6 +1795,287 @@ public sealed class VillageSystemTests
                 )
             )
         );
+    }
+
+    [Fact]
+    public void EveryVillagerHasBaseAndConditionalScheduleData()
+    {
+        Assert.All(VillageCatalog.Npcs.Values, definition =>
+        {
+            Assert.Contains(
+                definition.Schedule,
+                entry => entry.Priority ==
+                    VillageCatalog.BaseSchedulePriority
+            );
+            Assert.Contains(
+                definition.Schedule,
+                entry => entry.WeatherIds is { Count: > 0 } ||
+                    entry.SeasonIds is { Count: > 0 }
+            );
+            Assert.All(
+                definition.Schedule.Where(entry =>
+                    entry.LocationId == PlayerLocationIds.World &&
+                    (entry.WeatherIds is { Count: > 0 } ||
+                        entry.SeasonIds is { Count: > 0 })
+                ),
+                entry => Assert.True(
+                    VillageCatalog.IsVillagePath(entry.Position)
+                )
+            );
+        });
+    }
+
+    [Fact]
+    public void ConditionalSchedulesStayCompleteDistinctAndPassable()
+    {
+        var village = new VillageSystem();
+
+        for (var day = 1; day <= CalendarSystem.DaysPerYear; day++)
+        {
+            foreach (var weatherId in ScheduleWeatherIds)
+            {
+                for (var minute = GameClock.StartMinute;
+                     minute <= GameClock.EndMinute;
+                     minute += GameClock.MinutesPerTick)
+                {
+                    var current = village.AllCurrentNpcs(
+                        day,
+                        minute,
+                        weatherId
+                    );
+                    Assert.Equal(VillageCatalog.Npcs.Count, current.Count);
+                    Assert.Equal(
+                        current.Count,
+                        current
+                            .Select(npc =>
+                                (npc.LocationId, npc.Position)
+                            )
+                            .Distinct()
+                            .Count()
+                    );
+                    Assert.All(current, npc =>
+                        AssertScheduleAnchorPassable(npc)
+                    );
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void RestdayOverridesWeatherAndSeasonConditions()
+    {
+        var rainyRestday = VillageCatalog.CurrentNpc(
+            VillageCatalog.SelaId,
+            CalendarSystem.DaysPerWeek,
+            14 * 60,
+            DataCatalog.RainWeatherId
+        );
+        var windyRestday = VillageCatalog.CurrentNpc(
+            VillageCatalog.TaviId,
+            CalendarSystem.DaysPerWeek,
+            14 * 60,
+            DataCatalog.StardustWindWeatherId
+        );
+
+        Assert.NotNull(rainyRestday);
+        Assert.Equal(PlayerLocationIds.World, rainyRestday.LocationId);
+        Assert.Equal("village.npc.sela.restday", rainyRestday.DialogueKey);
+        Assert.NotNull(windyRestday);
+        Assert.Equal(PlayerLocationIds.World, windyRestday.LocationId);
+        Assert.Equal("village.npc.tavi.restday", windyRestday.DialogueKey);
+    }
+
+    [Fact]
+    public void WeatherConditionsOverrideSeasonWhileClearUsesAllFourSeasons()
+    {
+        var gleamrise = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var rainveil = VillageCatalog.CurrentNpc(
+            VillageCatalog.VessaId,
+            15,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var starharvest = VillageCatalog.CurrentNpc(
+            VillageCatalog.OrinId,
+            29,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var longnight = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            43,
+            14 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var rainOverridesGleamrise = VillageCatalog.CurrentNpc(
+            VillageCatalog.NemiId,
+            1,
+            14 * 60,
+            DataCatalog.RainWeatherId
+        );
+
+        Assert.Equal(
+            "village.npc.nemi.season_gleamrise",
+            gleamrise?.DialogueKey
+        );
+        Assert.Equal(
+            "village.npc.vessa.season_rainveil",
+            rainveil?.DialogueKey
+        );
+        Assert.Equal(
+            "village.npc.orin.season_starharvest",
+            starharvest?.DialogueKey
+        );
+        Assert.Equal(
+            "village.npc.liora.season_longnight",
+            longnight?.DialogueKey
+        );
+        Assert.Equal(
+            PlayerLocationIds.StarweaverTeaHouse,
+            rainOverridesGleamrise?.LocationId
+        );
+        Assert.Equal(
+            "village.npc.nemi.weather_rain",
+            rainOverridesGleamrise?.DialogueKey
+        );
+    }
+
+    [Fact]
+    public void RestoredCurrentWeatherDrivesProjectionPreviewAndEventEligibility()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = 1,
+            CurrentId = DataCatalog.StardustWindWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Village.MetNpcIds = [VillageCatalog.TaviId];
+        save.Village.Relationships =
+        [
+            new VillageRelationshipSave
+            {
+                NpcId = VillageCatalog.TaviId,
+                Points = 25
+            }
+        ];
+        session.Restore(save);
+
+        Assert.NotEqual(
+            WeatherSystem.WeatherForDay(session.Clock.Day),
+            session.Weather.CurrentId
+        );
+        var tavi = session.Village.AllCurrentNpcs(
+                session.Clock.Day,
+                session.Clock.MinuteOfDay
+            )
+            .Single(npc => npc.Definition.Id == VillageCatalog.TaviId);
+        Assert.Equal(PlayerLocationIds.MoonstoneWorkshop, tavi.LocationId);
+        Assert.Equal(
+            "village.npc.tavi.weather_stardust",
+            tavi.DialogueKey
+        );
+
+        var preview = session.PreviewSelectedTarget(tavi.Position);
+        Assert.True(preview.IsAvailable);
+        Assert.Equal(TargetPreviewKind.Character, preview.Kind);
+        var eligible = session.CharacterEvents.EligibleEvent(
+            tavi.Position,
+            session.Clock.Day,
+            session.Clock.MinuteOfDay,
+            session.PlayerLocationId,
+            DataCatalog.HandId,
+            session.Village
+        );
+        Assert.NotNull(eligible);
+        Assert.Equal(
+            CharacterEventCatalog.TaviCrackedMoonRuneId,
+            eligible.Id
+        );
+        var conversation = session.InteractWithVillager(
+            tavi.Position,
+            out var result
+        );
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.TaviCrackedMoonRuneId,
+            conversation.CharacterEvent.EventId
+        );
+    }
+
+    private static void AssertScheduleAnchorPassable(
+        VillageNpcState npc
+    )
+    {
+        Assert.True(PlayerLocationIds.IsValid(npc.LocationId));
+        if (npc.LocationId == PlayerLocationIds.World)
+        {
+            Assert.True(VillageCatalog.IsVillageCell(npc.Position));
+            Assert.False(VillageCatalog.IsBlocked(npc.Position));
+            Assert.DoesNotContain(
+                npc.Position,
+                new[]
+                {
+                    VillageCatalog.MoonlitArchiveDoorCell,
+                    VillageCatalog.MoonstoneWorkshopDoorCell,
+                    VillageCatalog.StarweaverTeaHouseDoorCell,
+                    VillageCatalog.TwilightEmporiumDoorCell,
+                    VillageCatalog.VillageGateCell
+                }
+            );
+            return;
+        }
+
+        Assert.True(npc.Position.X is >= 2 and <= 37);
+        Assert.True(npc.Position.Y is >= 3 and <= 20);
+        if (npc.LocationId == PlayerLocationIds.MoonlitArchive)
+        {
+            Assert.False(npc.Position.X is >= 16 and <= 23 &&
+                npc.Position.Y is >= 8 and <= 11);
+            Assert.NotEqual(
+                VillageCatalog.MoonlitArchiveExitCell,
+                npc.Position
+            );
+        }
+        else if (npc.LocationId == PlayerLocationIds.MoonstoneWorkshop)
+        {
+            Assert.False(npc.Position.X is >= 15 and <= 24 &&
+                npc.Position.Y is >= 4 and <= 9);
+            Assert.NotEqual(
+                VillageCatalog.MoonstoneWorkshopExitCell,
+                npc.Position
+            );
+        }
+        else if (npc.LocationId == PlayerLocationIds.StarweaverTeaHouse)
+        {
+            Assert.False(npc.Position.X is >= 12 and <= 27 &&
+                npc.Position.Y is >= 3 and <= 9);
+            Assert.NotEqual(
+                VillageCatalog.StarweaverTeaHouseExitCell,
+                npc.Position
+            );
+        }
+        else if (npc.LocationId == PlayerLocationIds.TwilightEmporium)
+        {
+            Assert.False(npc.Position.X is >= 14 and <= 25 &&
+                npc.Position.Y is >= 4 and <= 8);
+            Assert.NotEqual(
+                VillageCatalog.TwilightEmporiumExitCell,
+                npc.Position
+            );
+        }
     }
 
     [Theory]

@@ -27,6 +27,8 @@ public enum PlaytestScenarioId
     SelaDialogue,
     VillageExpansion,
     VillageRestdayEnglish,
+    VillageRainSchedule,
+    VillageRainveilSchedule,
     Village,
     World,
     Gate,
@@ -135,6 +137,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.VillageRestdayEnglish,
             "--playtest-village-restday-en"
+        ),
+        new(
+            PlaytestScenarioId.VillageRainSchedule,
+            "--playtest-village-rain-schedule"
+        ),
+        new(
+            PlaytestScenarioId.VillageRainveilSchedule,
+            "--playtest-village-rainveil-schedule"
         ),
         new(PlaytestScenarioId.Village, "--playtest-village"),
         new(PlaytestScenarioId.World, "--playtest-world"),

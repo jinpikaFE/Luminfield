@@ -428,6 +428,10 @@ public sealed partial class Main : Node
                     StartVillageExpansionPlaytest,
                 [PlaytestScenarioId.VillageRestdayEnglish] =
                     StartVillageRestdayEnglishPlaytest,
+                [PlaytestScenarioId.VillageRainSchedule] =
+                    StartVillageRainSchedulePlaytest,
+                [PlaytestScenarioId.VillageRainveilSchedule] =
+                    StartVillageRainveilSchedulePlaytest,
                 [PlaytestScenarioId.Village] = StartVillagePlaytest,
                 [PlaytestScenarioId.World] = StartWorldPlaytest,
                 [PlaytestScenarioId.Gate] = StartGatePlaytest,
@@ -1454,6 +1458,90 @@ public sealed partial class Main : Node
             14 * 60,
             new GridPosition(97, 50)
         );
+    }
+
+    private void StartVillageRainSchedulePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = save.Day,
+            CurrentId = DataCatalog.RainWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 27 * 16 + 8;
+        save.Player.Y = 13 * 16 + 8;
+        save.Village.MetNpcIds = [VillageCatalog.SelaId];
+        _session.Restore(save);
+        var sela = _session.Village.CurrentNpcs(
+                _session.Clock.Day,
+                _session.Clock.MinuteOfDay,
+                PlayerLocationIds.MoonstoneWorkshop
+            )
+            .SingleOrDefault(npc =>
+                npc.Definition.Id == VillageCatalog.SelaId
+            );
+
+        _playing = true;
+        EnsureHud();
+        ShowWorkshop(false);
+        if (sela is not null)
+        {
+            Callable.From(
+                () => TalkToVillager(sela.Position)
+            ).CallDeferred();
+        }
+    }
+
+    private void StartVillageRainveilSchedulePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = CalendarSystem.DaysPerSeason + 1;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = save.Day,
+            CurrentId = DataCatalog.ClearWeatherId,
+            ForecastId = DataCatalog.RainWeatherId
+        };
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Village.MetNpcIds = [VillageCatalog.VessaId];
+        _session.Restore(save);
+        var vessa = _session.Village.CurrentNpcs(
+                _session.Clock.Day,
+                _session.Clock.MinuteOfDay,
+                PlayerLocationIds.World
+            )
+            .SingleOrDefault(npc =>
+                npc.Definition.Id == VillageCatalog.VessaId
+            );
+        if (vessa is not null)
+        {
+            _session.SetPlayerLocation(
+                vessa.Position.X * 16 + 8,
+                (vessa.Position.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (vessa is not null)
+        {
+            Callable.From(
+                () => TalkToVillager(vessa.Position)
+            ).CallDeferred();
+        }
     }
 
     private void StartVillagePlaytestWorld(

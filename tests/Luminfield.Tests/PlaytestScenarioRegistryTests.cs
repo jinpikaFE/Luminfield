@@ -77,6 +77,14 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-village-restday-en",
             PlaytestScenarioId.VillageRestdayEnglish
         ),
+        (
+            "--playtest-village-rain-schedule",
+            PlaytestScenarioId.VillageRainSchedule
+        ),
+        (
+            "--playtest-village-rainveil-schedule",
+            PlaytestScenarioId.VillageRainveilSchedule
+        ),
         ("--playtest-village", PlaytestScenarioId.Village),
         ("--playtest-world", PlaytestScenarioId.World),
         ("--playtest-gate", PlaytestScenarioId.Gate),

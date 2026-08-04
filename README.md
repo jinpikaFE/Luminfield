@@ -48,6 +48,12 @@ exploration state in the regular save file.
   the game clock. Day 7, Lanternrest, gives each of them a separate rest-day
   route. Their schedule cells remain distinct, walkable, and clear of the
   village gate and archive entrance.
+- Schedules now select data-driven weather and season entries before the base
+  route while keeping Lanternrest at the highest priority. Rain moves Nemi,
+  Sela, and Orin into open interiors; stardust wind changes Tavi, Elowen, and
+  Kael's work positions; all four seasons have a distinct villager route and
+  bilingual dialogue. Restored `Weather.CurrentId` is the shared source for
+  drawing, collision, preview, conversation, and character-event eligibility.
 - The Moonlit Archive is open from 08:00 to 20:00. Its exterior door highlights
   as the actual target; inside, the central star-chart desk can be read. Liora
   works in the archive from 09:00 to 13:00 on weekdays.
@@ -93,8 +99,8 @@ exploration state in the regular save file.
   threshold, and prerequisite from each definition. Liora's and Tavi's chains
   normalize independently, so malformed ordering in one chain does not remove
   valid entries from the other.
-- Tile-level walking paths, weather/season schedule conditions, more character
-  event chains, and two more building interiors remain planned work.
+- Tile-level walking paths, more character event chains, and two more building
+  interiors remain planned work.
 
 ## Starlight Mail and relationship rewards
 
@@ -118,8 +124,9 @@ exploration state in the regular save file.
 
 ## Seven-day weather, shipping, and eight crops
 
-- Seven days form a week. The HUD shows the day, an original weekday name,
-  current weather, and the next-day forecast.
+- Seven days form a week. Four stable 14-day seasons form a 56-day year:
+  Gleamrise, Rainveil, Starharvest, and Longnight. The HUD shows the current
+  season day, original weekday name, current weather, and next-day forecast.
 - Clear, rain, and stardust wind are currently available. Rain automatically
   waters tilled soil, while rain and stardust wind have distinct world effects.
 - A Star Shipping Chest now stands on the west side of the homestead. Select
@@ -290,6 +297,12 @@ Use `--playtest-emporium-door`, `--playtest-emporium`, and
 interior manifest shelf, and Orin interaction. They also support deterministic
 capture.
 
+Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
+dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
+Rainveil-day route and the season HUD. Both scenarios restore an explicit
+current weather before resolving the NPC projection and support deterministic
+capture.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -340,6 +353,8 @@ Woodland Watch Starlight's partial offerings and permanent reward, and the
 24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's and
 Tavi's character-event completion IDs and dates use another additive projection
 in that same schema.
+Season, season day, and year are derived from the existing absolute day; they do
+not add a save field or change the `schemaVersion: 1` contract.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
 schema. Older saves receive safe defaults and tool-ID migration for the new
@@ -364,6 +379,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-04 12:02:43 CST — Added the four 14-day derived seasons, season HUD,
+  explicit weather/season NPC schedule priorities, bilingual conditional routes
+  for all eight villagers, restored-current-weather projection, deterministic
+  playtests, and regression coverage without changing the save schema.
 - 2026-08-03 13:46:36 CST — Added the enterable Twilight Emporium, 10:00–18:00
   door rules, read-only travel manifest, Orin's 10:00–13:00 indoor schedule,
   stable save location, bilingual interactions, focused playtests, and original

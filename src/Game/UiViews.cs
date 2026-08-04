@@ -339,7 +339,20 @@ public sealed partial class HudView : Control
     public void Refresh()
     {
         var weekday = _locale.Tr(CalendarSystem.WeekdayKey(_session.Clock.Day));
-        _day.Text = _locale.Tr("hud.day_weekday", _session.Clock.Day, weekday);
+        var seasonName = _locale.Tr(
+            CalendarSystem.SeasonNameKey(_session.Clock.Day)
+        );
+        _day.Text = _locale.Tr(
+            "hud.season_day_weekday",
+            seasonName,
+            CalendarSystem.SeasonDay(_session.Clock.Day),
+            weekday
+        );
+        _day.TooltipText = _locale.Tr(
+            "hud.calendar_tooltip",
+            CalendarSystem.YearNumber(_session.Clock.Day),
+            _session.Clock.Day
+        );
         _time.Text = _locale.Tr("hud.time", _session.Clock.DisplayTime);
         var weatherName = _locale.Tr(_session.Weather.Current.NameKey);
         var forecastName = _locale.Tr(_session.Weather.Forecast.NameKey);

@@ -52,18 +52,46 @@ public sealed record NpcScheduleEntry(
     GridPosition Position,
     NpcFacing Facing,
     string DialogueKey,
-    IReadOnlyList<int> WeekdayIndices
+    IReadOnlyList<int> WeekdayIndices,
+    IReadOnlyList<string>? WeatherIds = null,
+    IReadOnlyList<string>? SeasonIds = null,
+    int Priority = 0
 )
 {
-    public bool Matches(int day, int minuteOfDay)
+    public bool Matches(int day, int minuteOfDay) => Matches(
+        day,
+        minuteOfDay,
+        WeatherSystem.WeatherForDay(day)
+    );
+
+    public bool Matches(
+        int day,
+        int minuteOfDay,
+        string weatherId
+    )
     {
         if (minuteOfDay < StartMinute || minuteOfDay >= EndMinute)
         {
             return false;
         }
 
-        return WeekdayIndices.Count == 0 ||
-            WeekdayIndices.Contains(CalendarSystem.WeekdayIndex(day));
+        if (WeekdayIndices.Count > 0 &&
+            !WeekdayIndices.Contains(CalendarSystem.WeekdayIndex(day)))
+        {
+            return false;
+        }
+
+        if (WeatherIds is { Count: > 0 } &&
+            !WeatherIds.Contains(weatherId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        return SeasonIds is not { Count: > 0 } ||
+            SeasonIds.Contains(
+                CalendarSystem.SeasonId(day),
+                StringComparer.Ordinal
+            );
     }
 }
 
@@ -109,6 +137,10 @@ public sealed record VillageInteractionCheck(
 
 public static class VillageCatalog
 {
+    public const int BaseSchedulePriority = 0;
+    public const int SeasonSchedulePriority = 10;
+    public const int WeatherSchedulePriority = 20;
+    public const int RestdaySchedulePriority = 100;
     public const string LioraId = "liora";
     public const string TaviId = "tavi";
     public const string NemiId = "nemi";
@@ -247,6 +279,15 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Artisan],
                 [ItemKind.Fertilizer, ItemKind.Placeable],
                 [
+                    SeasonSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.World,
+                        new GridPosition(101, 48),
+                        NpcFacing.Up,
+                        "village.npc.liora.season_longnight",
+                        CalendarSystem.LongnightSeasonId
+                    ),
                     Slot(
                         9,
                         18,
@@ -299,6 +340,15 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Artisan],
                 [ItemKind.Seed, ItemKind.Fertilizer],
                 [
+                    WeatherSlot(
+                        13,
+                        16,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.tavi.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
+                    ),
                     Slot(
                         9,
                         18,
@@ -351,6 +401,24 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Seed],
                 [ItemKind.Resource, ItemKind.Placeable],
                 [
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(13, 13),
+                        NpcFacing.Right,
+                        "village.npc.nemi.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(106, 44),
+                        NpcFacing.Left,
+                        "village.npc.nemi.season_gleamrise",
+                        CalendarSystem.GleamriseSeasonId
+                    ),
                     Slot(
                         9,
                         18,
@@ -403,6 +471,15 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Placeable],
                 [ItemKind.Seed, ItemKind.Fertilizer],
                 [
+                    WeatherSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.sela.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
                     Slot(
                         9,
                         18,
@@ -455,6 +532,15 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Artisan],
                 [ItemKind.Placeable, ItemKind.Resource],
                 [
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(101, 44),
+                        NpcFacing.Down,
+                        "village.npc.elowen.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
+                    ),
                     Slot(
                         9,
                         18,
@@ -507,6 +593,15 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Seed],
                 [ItemKind.Placeable, ItemKind.Fertilizer],
                 [
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(91, 43),
+                        NpcFacing.Right,
+                        "village.npc.vessa.season_rainveil",
+                        CalendarSystem.RainveilSeasonId
+                    ),
                     Slot(
                         9,
                         18,
@@ -559,6 +654,24 @@ public static class VillageCatalog
                 [ItemKind.Artisan, ItemKind.Produce],
                 [ItemKind.Fertilizer, ItemKind.Resource],
                 [
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.TwilightEmporium,
+                        new GridPosition(14, 12),
+                        NpcFacing.Right,
+                        "village.npc.orin.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(109, 54),
+                        NpcFacing.Left,
+                        "village.npc.orin.season_starharvest",
+                        CalendarSystem.StarharvestSeasonId
+                    ),
                     Slot(
                         9,
                         18,
@@ -618,6 +731,15 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Placeable],
                 [ItemKind.Seed, ItemKind.Artisan],
                 [
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(93, 46),
+                        NpcFacing.Right,
+                        "village.npc.kael.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
+                    ),
                     Slot(
                         9,
                         18,
@@ -719,6 +841,18 @@ public static class VillageCatalog
         string npcId,
         int day,
         int minuteOfDay
+    ) => CurrentNpc(
+        npcId,
+        day,
+        minuteOfDay,
+        WeatherSystem.WeatherForDay(day)
+    );
+
+    public static VillageNpcState? CurrentNpc(
+        string npcId,
+        int day,
+        int minuteOfDay,
+        string weatherId
     )
     {
         if (!Npcs.TryGetValue(npcId, out var definition))
@@ -726,9 +860,19 @@ public static class VillageCatalog
             return null;
         }
 
-        var entry = definition.Schedule.FirstOrDefault(
-            value => value.Matches(day, minuteOfDay)
-        );
+        var normalizedWeatherId = DataCatalog.WeatherDefinitions.ContainsKey(
+            weatherId
+        )
+            ? weatherId
+            : WeatherSystem.WeatherForDay(day);
+        var entry = definition.Schedule
+            .Where(value => value.Matches(
+                day,
+                minuteOfDay,
+                normalizedWeatherId
+            ))
+            .OrderByDescending(value => value.Priority)
+            .FirstOrDefault();
         return entry is null
             ? null
             : new VillageNpcState(
@@ -754,7 +898,12 @@ public static class VillageCatalog
         position,
         facing,
         dialogueKey,
-        weekdayIndices
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
     );
 
     private static NpcScheduleEntry ArchiveSlot(
@@ -771,7 +920,12 @@ public static class VillageCatalog
         position,
         facing,
         dialogueKey,
-        weekdayIndices
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
     );
 
     private static NpcScheduleEntry WorkshopSlot(
@@ -788,7 +942,12 @@ public static class VillageCatalog
         position,
         facing,
         dialogueKey,
-        weekdayIndices
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
     );
 
     private static NpcScheduleEntry TeaHouseSlot(
@@ -805,7 +964,12 @@ public static class VillageCatalog
         position,
         facing,
         dialogueKey,
-        weekdayIndices
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
     );
 
     private static NpcScheduleEntry EmporiumSlot(
@@ -822,12 +986,60 @@ public static class VillageCatalog
         position,
         facing,
         dialogueKey,
-        weekdayIndices
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
+    );
+
+    private static NpcScheduleEntry WeatherSlot(
+        int startHour,
+        int endHour,
+        string locationId,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        string weatherId
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        locationId,
+        position,
+        facing,
+        dialogueKey,
+        [],
+        [weatherId],
+        [],
+        WeatherSchedulePriority
+    );
+
+    private static NpcScheduleEntry SeasonSlot(
+        int startHour,
+        int endHour,
+        string locationId,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        string seasonId
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        locationId,
+        position,
+        facing,
+        dialogueKey,
+        [],
+        [],
+        [seasonId],
+        SeasonSchedulePriority
     );
 }
 
 public sealed class VillageSystem
 {
+    private readonly WeatherSystem? _weather;
     private readonly HashSet<string> _metNpcIds =
         new(StringComparer.Ordinal);
     private readonly Dictionary<string, VillageRelationshipSave>
@@ -837,6 +1049,11 @@ public sealed class VillageSystem
     public const int MaximumRelationshipPoints = 100;
 
     public event Action? Changed;
+
+    public VillageSystem(WeatherSystem? weather = null)
+    {
+        _weather = weather;
+    }
 
     public void Reset()
     {
@@ -867,8 +1084,25 @@ public sealed class VillageSystem
         int day,
         int minuteOfDay,
         string locationId
+    ) => CurrentNpcs(
+        day,
+        minuteOfDay,
+        locationId,
+        CurrentWeatherId(day)
+    );
+
+    public IReadOnlyList<VillageNpcState> CurrentNpcs(
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string weatherId
     ) => VillageCatalog.Npcs.Keys
-        .Select(id => VillageCatalog.CurrentNpc(id, day, minuteOfDay))
+        .Select(id => VillageCatalog.CurrentNpc(
+            id,
+            day,
+            minuteOfDay,
+            weatherId
+        ))
         .Where(state =>
             state is not null &&
             state.LocationId == locationId
@@ -879,8 +1113,19 @@ public sealed class VillageSystem
     public IReadOnlyList<VillageNpcState> AllCurrentNpcs(
         int day,
         int minuteOfDay
+    ) => AllCurrentNpcs(day, minuteOfDay, CurrentWeatherId(day));
+
+    public IReadOnlyList<VillageNpcState> AllCurrentNpcs(
+        int day,
+        int minuteOfDay,
+        string weatherId
     ) => VillageCatalog.Npcs.Keys
-        .Select(id => VillageCatalog.CurrentNpc(id, day, minuteOfDay))
+        .Select(id => VillageCatalog.CurrentNpc(
+            id,
+            day,
+            minuteOfDay,
+            weatherId
+        ))
         .Where(state => state is not null)
         .Cast<VillageNpcState>()
         .ToList();
@@ -890,7 +1135,21 @@ public sealed class VillageSystem
         int day,
         int minuteOfDay,
         string locationId
-    ) => CurrentNpcs(day, minuteOfDay, locationId)
+    ) => NpcAt(
+        position,
+        day,
+        minuteOfDay,
+        locationId,
+        CurrentWeatherId(day)
+    );
+
+    public VillageNpcState? NpcAt(
+        GridPosition position,
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string weatherId
+    ) => CurrentNpcs(day, minuteOfDay, locationId, weatherId)
         .FirstOrDefault(state => state.Position == position);
 
     public VillageInteractionCheck CheckInteraction(
@@ -899,9 +1158,31 @@ public sealed class VillageSystem
         int minuteOfDay,
         string locationId,
         string selectedItemId
+    ) => CheckInteraction(
+        position,
+        day,
+        minuteOfDay,
+        locationId,
+        selectedItemId,
+        CurrentWeatherId(day)
+    );
+
+    public VillageInteractionCheck CheckInteraction(
+        GridPosition position,
+        int day,
+        int minuteOfDay,
+        string locationId,
+        string selectedItemId,
+        string weatherId
     )
     {
-        var state = NpcAt(position, day, minuteOfDay, locationId);
+        var state = NpcAt(
+            position,
+            day,
+            minuteOfDay,
+            locationId,
+            weatherId
+        );
         if (state is null)
         {
             return new VillageInteractionCheck(
@@ -959,6 +1240,9 @@ public sealed class VillageSystem
             string.Empty
         );
     }
+
+    private string CurrentWeatherId(int day) =>
+        _weather?.CurrentId ?? WeatherSystem.WeatherForDay(day);
 
     public VillageConversation? Interact(
         GridPosition position,

@@ -208,6 +208,7 @@ internal sealed partial class ArchiveNpcLayer : Node2D
         ZIndex = 8;
         TextureFilter = TextureFilterEnum.Nearest;
         session.Clock.TimeChanged += Refresh;
+        session.Weather.Changed += Refresh;
     }
 
     public override void _Draw()
@@ -247,6 +248,7 @@ internal sealed partial class ArchiveNpcLayer : Node2D
     public override void _ExitTree()
     {
         _session.Clock.TimeChanged -= Refresh;
+        _session.Weather.Changed -= Refresh;
     }
 
     private void Refresh()

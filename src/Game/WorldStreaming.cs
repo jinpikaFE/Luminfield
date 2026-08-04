@@ -371,6 +371,7 @@ internal sealed partial class WorldVillageChunk : Node2D
         ZIndex = 5;
         TextureFilter = TextureFilterEnum.Nearest;
         session.Clock.TimeChanged += OnTimeChanged;
+        session.Weather.Changed += OnTimeChanged;
     }
 
     public override void _Draw()
@@ -404,6 +405,7 @@ internal sealed partial class WorldVillageChunk : Node2D
     public override void _ExitTree()
     {
         _session.Clock.TimeChanged -= OnTimeChanged;
+        _session.Weather.Changed -= OnTimeChanged;
     }
 
     private void DrawLandmark(VillageLandmarkDefinition landmark)

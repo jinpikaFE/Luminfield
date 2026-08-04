@@ -22,7 +22,7 @@ public sealed class GameSession
     public FarmObjectSystem FarmObjects { get; } = new();
     public DailyCommissionSystem Commission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
-    public VillageSystem Village { get; } = new();
+    public VillageSystem Village { get; }
     public MailSystem Mail { get; } = new();
     public CharacterEventSystem CharacterEvents { get; } = new();
 
@@ -54,6 +54,7 @@ public sealed class GameSession
 
     public GameSession()
     {
+        Village = new VillageSystem(Weather);
         Clock.TimeChanged += NotifyChanged;
         Inventory.Changed += NotifyChanged;
         Farm.TileChanged += _ => NotifyChanged();
