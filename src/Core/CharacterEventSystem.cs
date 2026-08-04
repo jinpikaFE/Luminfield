@@ -24,6 +24,10 @@ public static class CharacterEventCatalog
         "tavi_cracked_moon_rune";
     public const string TaviMendedLightId =
         "tavi_mended_light";
+    public const string NemiUndeliverableLetterId =
+        "nemi_undeliverable_letter";
+    public const string NemiStarChartRouteId =
+        "nemi_star_chart_route";
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -73,6 +77,29 @@ public static class CharacterEventCatalog
                     "character_event.tavi.mended_light.3"
                 ],
                 TaviCrackedMoonRuneId
+            ),
+            new(
+                NemiUndeliverableLetterId,
+                VillageCatalog.NemiId,
+                25,
+                PlayerLocationIds.World,
+                [
+                    "character_event.nemi.undeliverable_letter.1",
+                    "character_event.nemi.undeliverable_letter.2",
+                    "character_event.nemi.undeliverable_letter.3"
+                ]
+            ),
+            new(
+                NemiStarChartRouteId,
+                VillageCatalog.NemiId,
+                60,
+                PlayerLocationIds.World,
+                [
+                    "character_event.nemi.star_chart_route.1",
+                    "character_event.nemi.star_chart_route.2",
+                    "character_event.nemi.star_chart_route.3"
+                ],
+                NemiUndeliverableLetterId
             )
         ];
 

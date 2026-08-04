@@ -4090,6 +4090,244 @@ public sealed class CharacterEventSystemTests
     }
 
     [Fact]
+    public void NemiFirstMeetingThresholdCrossingAndPreviewDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 25,
+            metNemi: false
+        );
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.NemiPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.nemi.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 23,
+            metNemi: true,
+            lastTalkDay: 0
+        );
+        var preview = thresholdCrossing.Session.PreviewSelectedTarget(
+            thresholdCrossing.NemiPosition
+        );
+
+        Assert.True(preview.IsAvailable);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.NemiPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+    }
+
+    [Fact]
+    public void NemiUndeliverableLetterCompletesOnlyAfterDialogueCallback()
+    {
+        var prepared = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 25,
+            metNemi: true
+        );
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.NemiPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.NemiUndeliverableLetterId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.Equal(
+            CharacterEventCatalog.NemiUndeliverableLetterId,
+            prepared.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.NemiUndeliverableLetterId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.NemiUndeliverableLetterId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            15,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.NemiUndeliverableLetterId
+            )
+        );
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            15,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.NemiUndeliverableLetterId
+            )
+        );
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.NemiUndeliverableLetterId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void NemiStarChartRouteRequiresAnEarlierCompletionDay()
+    {
+        var sameDay = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 60,
+            metNemi: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.NemiUndeliverableLetterId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.NemiPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var laterDay = PrepareNemiSession(
+            day: 17,
+            relationshipPoints: 60,
+            metNemi: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.NemiUndeliverableLetterId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.NemiPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.NemiStarChartRouteId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.Equal(3, laterTalk.CharacterEvent.DialogueKeys.Count);
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.NemiStarChartRouteId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void NemiGiftsWrongToolsAndWrongScenesNeverProgressEvents()
+    {
+        var wrongTool = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 25,
+            metNemi: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.NemiPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+
+        var gift = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 25,
+            metNemi: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.StarbudId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.StarbudId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.NemiPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareNemiSession(
+            day: 15,
+            relationshipPoints: 25,
+            metNemi: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            8,
+            8,
+            PlayerLocationIds.Cottage
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.NemiPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+    }
+
+    [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
         Assert.Empty(
@@ -4233,6 +4471,17 @@ public sealed class CharacterEventSystemTests
                     {
                         EventId = "unknown_tavi_event",
                         CompletedDay = 1
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.NemiUndeliverableLetterId,
+                        CompletedDay = 2
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId = CharacterEventCatalog.NemiStarChartRouteId,
+                        CompletedDay = 4
                     }
                 ]
             },
@@ -4256,7 +4505,15 @@ public sealed class CharacterEventSystemTests
                     third.EventId
                 );
                 Assert.Equal(3, third.CompletedDay);
-            }
+            },
+            fourth => Assert.Equal(
+                CharacterEventCatalog.NemiUndeliverableLetterId,
+                fourth.EventId
+            ),
+            fifth => Assert.Equal(
+                CharacterEventCatalog.NemiStarChartRouteId,
+                fifth.EventId
+            )
         );
 
         var independentTaviChain = CharacterEventSystem.NormalizeSave(
@@ -4280,6 +4537,11 @@ public sealed class CharacterEventSystemTests
                     new CharacterEventEntrySave
                     {
                         EventId = CharacterEventCatalog.TaviMendedLightId,
+                        CompletedDay = 4
+                    },
+                    new CharacterEventEntrySave
+                    {
+                        EventId = CharacterEventCatalog.NemiStarChartRouteId,
                         CompletedDay = 4
                     }
                 ]
@@ -4398,6 +4660,59 @@ public sealed class CharacterEventSystemTests
             tavi.LocationId
         );
         return (session, tavi.Position);
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition NemiPosition
+    ) PrepareNemiSession(
+        int day,
+        int relationshipPoints,
+        bool metNemi,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 14 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metNemi ? [VillageCatalog.NemiId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.NemiId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        Assert.Equal(DataCatalog.ClearWeatherId, session.Weather.CurrentId);
+        Assert.NotEqual(
+            CalendarSystem.LanternrestWeekdayIndex,
+            CalendarSystem.WeekdayIndex(day)
+        );
+        var nemi = session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            session.PlayerCell
+        ).Single(state => state.Definition.Id == VillageCatalog.NemiId);
+        Assert.Equal(PlayerLocationIds.World, nemi.LocationId);
+        Assert.Equal("village.npc.nemi.route", nemi.DialogueKey);
+        return (session, nemi.Position);
     }
 }
 

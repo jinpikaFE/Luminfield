@@ -35,6 +35,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.TaviEventTwo
         ),
         (
+            "--playtest-nemi-event-one",
+            PlaytestScenarioId.NemiEventOne
+        ),
+        (
+            "--playtest-nemi-event-two",
+            PlaytestScenarioId.NemiEventTwo
+        ),
+        (
             "--playtest-workshop-tavi",
             PlaytestScenarioId.WorkshopTavi
         ),

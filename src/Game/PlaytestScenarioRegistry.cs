@@ -14,6 +14,8 @@ public enum PlaytestScenarioId
     LioraEventTwo,
     TaviEventOne,
     TaviEventTwo,
+    NemiEventOne,
+    NemiEventTwo,
     WorkshopTavi,
     Workshop,
     WorkshopDoor,
@@ -98,6 +100,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.TaviEventTwo,
             "--playtest-tavi-event-two"
+        ),
+        new(
+            PlaytestScenarioId.NemiEventOne,
+            "--playtest-nemi-event-one"
+        ),
+        new(
+            PlaytestScenarioId.NemiEventTwo,
+            "--playtest-nemi-event-two"
         ),
         new(
             PlaytestScenarioId.WorkshopTavi,

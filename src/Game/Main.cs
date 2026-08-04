@@ -404,6 +404,10 @@ public sealed partial class Main : Node
                     StartTaviEventOnePlaytest,
                 [PlaytestScenarioId.TaviEventTwo] =
                     StartTaviEventTwoPlaytest,
+                [PlaytestScenarioId.NemiEventOne] =
+                    StartNemiEventOnePlaytest,
+                [PlaytestScenarioId.NemiEventTwo] =
+                    StartNemiEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1286,6 +1290,138 @@ public sealed partial class Main : Node
         ShowWorkshop(false);
         Callable.From(
             () => TalkToVillager(tavi.Position)
+        ).CallDeferred();
+    }
+
+    private void StartNemiEventOnePlaytest()
+    {
+        StartNemiEventPlaytest(15, 25, new CharacterEventSave());
+    }
+
+    private void StartNemiEventTwoPlaytest()
+    {
+        StartNemiEventPlaytest(
+            17,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.NemiUndeliverableLetterId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartNemiEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    )
+    {
+        const int minuteOfDay = 14 * 60;
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.NemiId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.NemiId,
+                    Points = relationshipPoints,
+                    LastTalkDay = day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents;
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+
+        var villageNpcs = _session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            _session.PlayerCell
+        );
+        var nemi = villageNpcs.FirstOrDefault(state =>
+            state.Definition.Id == VillageCatalog.NemiId
+        );
+        if (nemi is null ||
+            nemi.DialogueKey != "village.npc.nemi.route")
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        var occupied = villageNpcs
+            .Select(state => state.Position)
+            .ToHashSet();
+        GridPosition? approach = null;
+        foreach (var candidate in new[]
+                 {
+                     new GridPosition(
+                         nemi.Position.X,
+                         nemi.Position.Y + 1
+                     ),
+                     new GridPosition(
+                         nemi.Position.X - 1,
+                         nemi.Position.Y
+                     ),
+                     new GridPosition(
+                         nemi.Position.X + 1,
+                         nemi.Position.Y
+                     ),
+                     new GridPosition(
+                         nemi.Position.X,
+                         nemi.Position.Y - 1
+                     )
+                 })
+        {
+            if (NpcNavigationMap.IsWalkableGeometry(
+                    PlayerLocationIds.World,
+                    candidate
+                ) &&
+                !NpcNavigationMap.IsCriticalEntranceCell(
+                    PlayerLocationIds.World,
+                    candidate
+                ) &&
+                !occupied.Contains(candidate))
+            {
+                approach = candidate;
+                break;
+            }
+        }
+
+        if (approach is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        _session.SetPlayerLocation(
+            approach.Value.X * 16 + 8,
+            approach.Value.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(
+            () => TalkToVillager(nemi.Position)
         ).CallDeferred();
     }
 
