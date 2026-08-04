@@ -78,6 +78,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.StarlightPost
         ),
         (
+            "--playtest-starlight-post-wrong-tool",
+            PlaytestScenarioId.StarlightPostWrongTool
+        ),
+        (
             "--playtest-starlight-post-door",
             PlaytestScenarioId.StarlightPostDoor
         ),

@@ -3457,6 +3457,18 @@ public sealed class VillageSystemTests
             PlayerLocationIds.StarlightPost,
             new GridPosition(20, 10)
         ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarlightPost,
+            new GridPosition(20, 4)
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarlightPost,
+            new GridPosition(10, 4)
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarlightPost,
+            new GridPosition(30, 4)
+        ));
         Assert.True(NpcNavigationMap.IsWalkableGeometry(
             PlayerLocationIds.StarlightPost,
             new GridPosition(13, 12)

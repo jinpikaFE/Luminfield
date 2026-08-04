@@ -27,6 +27,7 @@ public enum PlaytestScenarioId
     EmporiumDoor,
     StarlightPostNemi,
     StarlightPost,
+    StarlightPostWrongTool,
     StarlightPostDoor,
     VillageDialogue,
     SelaDialogue,
@@ -143,6 +144,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarlightPost,
             "--playtest-starlight-post"
+        ),
+        new(
+            PlaytestScenarioId.StarlightPostWrongTool,
+            "--playtest-starlight-post-wrong-tool"
         ),
         new(
             PlaytestScenarioId.StarlightPostDoor,

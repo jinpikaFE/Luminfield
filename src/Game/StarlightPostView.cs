@@ -44,7 +44,8 @@ public sealed partial class StarlightPostView : Node2D
             () => ResolveNpcTarget(
                 _player.TargetCell,
                 _player.CurrentCell
-            )
+            ),
+            () => _session.PreviewSelectedTarget(SortingCounterCell)
         ));
 
         _cursor = new TargetCursor(ResolveTargetPreview, locale)
@@ -262,15 +263,18 @@ internal sealed partial class StarlightPostInteractionHints : Node2D
 
     private readonly Func<GridPosition> _playerCell;
     private readonly Func<VillageNpcState?> _npcTarget;
+    private readonly Func<TargetPreview> _counterPreview;
     private double _time;
 
     public StarlightPostInteractionHints(
         Func<GridPosition> playerCell,
-        Func<VillageNpcState?> npcTarget
+        Func<VillageNpcState?> npcTarget,
+        Func<TargetPreview> counterPreview
     )
     {
         _playerCell = playerCell;
         _npcTarget = npcTarget;
+        _counterPreview = counterPreview;
         ZIndex = 18;
     }
 
@@ -283,8 +287,10 @@ internal sealed partial class StarlightPostInteractionHints : Node2D
     public override void _Draw()
     {
         var player = _playerCell();
+        var counterPreview = _counterPreview();
         DrawSortingCounterHint(
-            Distance(player, StarlightPostView.SortingCounterCell) <= 4
+            Distance(player, StarlightPostView.SortingCounterCell) <= 4,
+            PreviewColor(counterPreview.State)
         );
         DrawCellHint(
             StarlightPostView.DoorCell,
@@ -299,20 +305,20 @@ internal sealed partial class StarlightPostInteractionHints : Node2D
         }
     }
 
-    private void DrawSortingCounterHint(bool nearby)
+    private void DrawSortingCounterHint(bool nearby, Color color)
     {
         var pulse = Pulse(SortingCounterBounds.GetCenter().X);
         var alpha = nearby ? pulse : pulse * 0.35f;
         DrawRect(
             SortingCounterBounds.Grow(2),
-            new Color(ThemeFactory.Mint, alpha),
+            new Color(color, alpha),
             false,
             nearby ? 2 : 1
         );
         DrawCircle(
             CellCenter(StarlightPostView.SortingCounterCell),
             nearby ? 4 : 2,
-            new Color(ThemeFactory.Mint, alpha * 0.24f)
+            new Color(color, alpha * 0.24f)
         );
     }
 
@@ -352,4 +358,12 @@ internal sealed partial class StarlightPostInteractionHints : Node2D
         GridPosition second
     ) => Math.Abs(first.X - second.X) +
         Math.Abs(first.Y - second.Y);
+
+    private static Color PreviewColor(TargetPreviewState state) => state switch
+    {
+        TargetPreviewState.Available => ThemeFactory.Mint,
+        TargetPreviewState.NeedsTool => ThemeFactory.Gold,
+        TargetPreviewState.Blocked => new Color("#e58a9f"),
+        _ => new Color("#8294b8")
+    };
 }

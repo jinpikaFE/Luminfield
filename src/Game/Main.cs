@@ -429,6 +429,8 @@ public sealed partial class Main : Node
                     StartStarlightPostNemiPlaytest,
                 [PlaytestScenarioId.StarlightPost] =
                     StartStarlightPostPlaytest,
+                [PlaytestScenarioId.StarlightPostWrongTool] =
+                    StartStarlightPostWrongToolPlaytest,
                 [PlaytestScenarioId.StarlightPostDoor] =
                     StartStarlightPostDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
@@ -1618,15 +1620,23 @@ public sealed partial class Main : Node
 
     private void StartStarlightPostPlaytest()
     {
-        StartStarlightPostPlaytest(false);
+        StartStarlightPostPlaytest(false, 0);
+    }
+
+    private void StartStarlightPostWrongToolPlaytest()
+    {
+        StartStarlightPostPlaytest(false, 1);
     }
 
     private void StartStarlightPostNemiPlaytest()
     {
-        StartStarlightPostPlaytest(true);
+        StartStarlightPostPlaytest(true, 0);
     }
 
-    private void StartStarlightPostPlaytest(bool openNemiDialogue)
+    private void StartStarlightPostPlaytest(
+        bool openNemiDialogue,
+        int selectedSlot
+    )
     {
         const int day = 1;
         const int minuteOfDay = 12 * 60;
@@ -1650,7 +1660,7 @@ public sealed partial class Main : Node
             14 * 16 + 8,
             PlayerLocationIds.StarlightPost
         );
-        _session.Inventory.Select(0);
+        _session.Inventory.Select(selectedSlot);
 
         _playing = true;
         EnsureHud();

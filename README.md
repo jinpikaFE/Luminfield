@@ -40,10 +40,10 @@ exploration state in the regular save file.
 ## Lumen Village and eight core villagers
 
 - Follow the southern homestead road east and the Crystal Road north to reach
-  the first Lumen Village area. It contains nine original exterior landmarks:
+  the first Lumen Village area. It contains ten original exterior landmarks:
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
   Well, village gate, sign, lantern bench, glowflower cart, and the Twilight
-  Emporium on a southeast lane.
+  Emporium on a southeast lane, plus the Starlight Post on a northwest lane.
 - Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael follow deterministic
   four-direction tile paths at each ten-minute clock tick. Day 7, Lanternrest,
   gives each of them a separate rest-day route. They avoid world/interior
@@ -71,6 +71,10 @@ exploration state in the regular save file.
   days. Its manifest shelf only describes routes and sealed cargo; it adds no
   purchasing, stock rotation, currency, recipes, energy costs, or economy
   contract.
+- The Starlight Post is the fifth enterable building and opens from 07:00 to
+  19:00. Nemi sorts village routes inside from 09:00 to 13:00 on ordinary days.
+  Its route-sorting counter is read-only and adds no sending, receiving,
+  delivery, fee, item, or economy contract.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -96,12 +100,15 @@ exploration state in the regular save file.
   60 points unlocks “The Mended Light.” The stable IDs are
   `tavi_cracked_moon_rune` and `tavi_mended_light`; both stages contain three
   bilingual pages and save their completion day only after the last page closes.
+- Nemi now has the third complete event chain on her ordinary afternoon village
+  route. At 25 points, “The Undeliverable Letter” begins; after it was completed
+  on an earlier day, 60 points unlocks “The Route Written in the Star Chart.”
+  The stable IDs are `nemi_undeliverable_letter` and `nemi_star_chart_route`.
 - Character-event eligibility now resolves the NPC, location, relationship
-  threshold, and prerequisite from each definition. Liora's and Tavi's chains
-  normalize independently, so malformed ordering in one chain does not remove
-  valid entries from the other.
-- More character event chains and two more building interiors remain planned
-  work.
+  threshold, and prerequisite from each definition. Liora's, Tavi's, and Nemi's
+  chains normalize independently, so malformed ordering in one chain does not
+  remove valid entries from another.
+- More character event chains and one more building interior remain planned.
 
 ## Starlight Mail and relationship rewards
 
@@ -157,9 +164,9 @@ placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B now includes the first village, eight NPC schedules, the
-first four enterable buildings, a data-driven relationship and daily-gifting
+first five enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and complete two-stage friendship event chains
-for both Liora and Tavi.
+for Liora, Tavi, and Nemi.
 
 ## Tools and backpack
 
@@ -293,6 +300,14 @@ event stages for Liora or Tavi directly in the Moonlit Archive or Moonstone
 Workshop. These flags preserve the existing registry priority and can be
 combined with `--capture-playtest=<path>` for deterministic visual QA.
 
+Use `--playtest-nemi-event-one` and `--playtest-nemi-event-two` to open Nemi's
+two friendship stages on her ordinary 14:00 village route. Use
+`--playtest-starlight-post-door`, `--playtest-starlight-post`, and
+`--playtest-starlight-post-nemi` to inspect the fifth building's exterior,
+read-only sorting counter, and Nemi's indoor work position. Use
+`--playtest-starlight-post-wrong-tool` to verify the full counter outline uses
+the warm-gold tool-mismatch state.
+
 Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
 interior manifest shelf, and Orin interaction. They also support deterministic
@@ -355,9 +370,9 @@ Glow coins, the active processing job, artisan goods, watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily commission state, the
 Woodland Watch Starlight's partial offerings and permanent reward, and the
-24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's and
-Tavi's character-event completion IDs and dates use another additive projection
-in that same schema.
+24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's,
+Tavi's, and Nemi's character-event completion IDs and dates use another additive
+projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
 not add a save field or change the `schemaVersion: 1` contract.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
@@ -384,6 +399,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-04 14:02:09 CST — Added the enterable Starlight Post, 07:00–19:00
+  door rules, read-only route-sorting counter, Nemi's 09:00–13:00 indoor work
+  route, furniture-aligned navigation and preview-state outlines, save
+  restoration, original generated art, and Nemi's independent two-stage
+  afternoon friendship event chain.
 - 2026-08-04 12:02:43 CST — Added the four 14-day derived seasons, season HUD,
   explicit weather/season NPC schedule priorities, bilingual conditional routes
   for all eight villagers, restored-current-weather projection, deterministic

@@ -184,9 +184,9 @@ public static class NpcNavigationMap
         (cell.X is >= 31 and <= 37 && cell.Y is >= 14 and <= 20);
 
     private static bool IsPostFurniture(GridPosition cell) =>
-        (cell.X is >= 11 and <= 28 && cell.Y is >= 7 and <= 10) ||
-        (cell.X is >= 2 and <= 7 && cell.Y is >= 3 and <= 14) ||
-        (cell.X is >= 32 and <= 37 && cell.Y is >= 3 and <= 14) ||
+        (cell.X is >= 11 and <= 28 && cell.Y is >= 3 and <= 10) ||
+        (cell.X is >= 2 and <= 10 && cell.Y is >= 3 and <= 14) ||
+        (cell.X is >= 29 and <= 37 && cell.Y is >= 3 and <= 14) ||
         (cell.X is >= 2 and <= 6 && cell.Y is >= 15 and <= 20) ||
         (cell.X is >= 33 and <= 37 && cell.Y is >= 15 and <= 20);
 }
