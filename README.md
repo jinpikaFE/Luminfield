@@ -40,10 +40,11 @@ exploration state in the regular save file.
 ## Lumen Village and eight core villagers
 
 - Follow the southern homestead road east and the Crystal Road north to reach
-  the first Lumen Village area. It contains ten original exterior landmarks:
+  the first Lumen Village area. It contains eleven original exterior landmarks:
   the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
   Well, village gate, sign, lantern bench, glowflower cart, and the Twilight
-  Emporium on a southeast lane, plus the Starlight Post on a northwest lane.
+  Emporium on a southeast lane, the Starlight Post on a northwest lane, plus
+  Starfall Watch on a southwest lane.
 - Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael follow deterministic
   four-direction tile paths at each ten-minute clock tick. Day 7, Lanternrest,
   gives each of them a separate rest-day route. They avoid world/interior
@@ -75,6 +76,10 @@ exploration state in the regular save file.
   19:00. Nemi sorts village routes inside from 09:00 to 13:00 on ordinary days.
   Its route-sorting counter is read-only and adds no sending, receiving,
   delivery, fee, item, or economy contract.
+- Starfall Watch is the sixth enterable building and opens from 06:00 to 20:00.
+  Kael records patrol routes inside from 09:00 to 13:00 on ordinary days. Its
+  seal route table is read-only and does not open ruins, issue tasks, provide
+  equipment, charge fees, or grant items.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -104,11 +109,16 @@ exploration state in the regular save file.
   route. At 25 points, “The Undeliverable Letter” begins; after it was completed
   on an earlier day, 60 points unlocks “The Route Written in the Star Chart.”
   The stable IDs are `nemi_undeliverable_letter` and `nemi_star_chart_route`.
+- Kael now has the fourth complete event chain on his ordinary afternoon village
+  route. At 25 points, “The Broken Blue Rune” begins; after it was completed on
+  an earlier day, 60 points unlocks “The Safe Return Route.” The stable IDs are
+  `kael_broken_blue_rune` and `kael_safe_return_route`.
 - Character-event eligibility now resolves the NPC, location, relationship
-  threshold, and prerequisite from each definition. Liora's, Tavi's, and Nemi's
-  chains normalize independently, so malformed ordering in one chain does not
-  remove valid entries from another.
-- More character event chains and one more building interior remain planned.
+  threshold, and prerequisite from each definition. Liora's, Tavi's, Nemi's,
+  and Kael's chains normalize independently, so malformed ordering in one chain
+  does not remove valid entries from another.
+- Phase B's six-building interior target is complete; more character events,
+  weekly commissions, and construction remain planned.
 
 ## Starlight Mail and relationship rewards
 
@@ -163,10 +173,10 @@ These systems complete all eight core phase-A gameplay increments in the
 placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
-implemented. Phase B now includes the first village, eight NPC schedules, the
-first five enterable buildings, a data-driven relationship and daily-gifting
+implemented. Phase B now includes the first village, eight NPC schedules, all
+six enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and complete two-stage friendship event chains
-for Liora, Tavi, and Nemi.
+for Liora, Tavi, Nemi, and Kael.
 
 ## Tools and backpack
 
@@ -308,6 +318,14 @@ read-only sorting counter, and Nemi's indoor work position. Use
 `--playtest-starlight-post-wrong-tool` to verify the full counter outline uses
 the warm-gold tool-mismatch state.
 
+Use `--playtest-kael-event-one` and `--playtest-kael-event-two` to open Kael's
+two friendship stages from his real ordinary-day 14:00 village projection. Use
+`--playtest-starfall-watch-door`, `--playtest-starfall-watch`, and
+`--playtest-starfall-watch-kael` to inspect the sixth building's exterior,
+read-only seal route table, and Kael's indoor work position. Use
+`--playtest-starfall-watch-wrong-tool` to verify the full table outline uses the
+warm-gold tool-mismatch state.
+
 Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
 interior manifest shelf, and Orin interaction. They also support deterministic
@@ -371,8 +389,8 @@ world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily commission state, the
 Woodland Watch Starlight's partial offerings and permanent reward, and the
 24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's,
-Tavi's, and Nemi's character-event completion IDs and dates use another additive
-projection in that same schema.
+Tavi's, Nemi's, and Kael's character-event completion IDs and dates use another
+additive projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
 not add a save field or change the `schemaVersion: 1` contract.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
@@ -399,6 +417,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-12 17:41:50 CST — Added the sixth enterable building, Starfall Watch,
+  its 06:00–20:00 door rules, read-only seal route table, Kael's ordinary
+  09:00–13:00 indoor route, shared pathfinding and save restoration, original
+  generated exterior/interior art, and Kael's independent two-stage afternoon
+  friendship chain; Phase B's six-building interior target is complete.
 - 2026-08-04 14:02:09 CST — Added the enterable Starlight Post, 07:00–19:00
   door rules, read-only route-sorting counter, Nemi's 09:00–13:00 indoor work
   route, furniture-aligned navigation and preview-state outlines, save
