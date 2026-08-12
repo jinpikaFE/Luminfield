@@ -16,6 +16,8 @@ public enum PlaytestScenarioId
     TaviEventTwo,
     NemiEventOne,
     NemiEventTwo,
+    KaelEventOne,
+    KaelEventTwo,
     WorkshopTavi,
     Workshop,
     WorkshopDoor,
@@ -109,6 +111,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.NemiEventTwo,
             "--playtest-nemi-event-two"
+        ),
+        new(
+            PlaytestScenarioId.KaelEventOne,
+            "--playtest-kael-event-one"
+        ),
+        new(
+            PlaytestScenarioId.KaelEventTwo,
+            "--playtest-kael-event-two"
         ),
         new(
             PlaytestScenarioId.WorkshopTavi,

@@ -408,6 +408,10 @@ public sealed partial class Main : Node
                     StartNemiEventOnePlaytest,
                 [PlaytestScenarioId.NemiEventTwo] =
                     StartNemiEventTwoPlaytest,
+                [PlaytestScenarioId.KaelEventOne] =
+                    StartKaelEventOnePlaytest,
+                [PlaytestScenarioId.KaelEventTwo] =
+                    StartKaelEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1324,6 +1328,57 @@ public sealed partial class Main : Node
         int day,
         int relationshipPoints,
         CharacterEventSave characterEvents
+    ) => StartWorldCharacterEventPlaytest(
+        day,
+        relationshipPoints,
+        characterEvents,
+        VillageCatalog.NemiId,
+        "village.npc.nemi.route"
+    );
+
+    private void StartKaelEventOnePlaytest()
+    {
+        StartKaelEventPlaytest(15, 25, new CharacterEventSave());
+    }
+
+    private void StartKaelEventTwoPlaytest()
+    {
+        StartKaelEventPlaytest(
+            17,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartKaelEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    ) => StartWorldCharacterEventPlaytest(
+        day,
+        relationshipPoints,
+        characterEvents,
+        VillageCatalog.KaelId,
+        "village.npc.kael.plaza"
+    );
+
+    private void StartWorldCharacterEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents,
+        string npcId,
+        string expectedDialogueKey
     )
     {
         const int minuteOfDay = 14 * 60;
@@ -1338,12 +1393,12 @@ public sealed partial class Main : Node
         save.Player.Y = 60 * 16 + 8;
         save.Village = new VillageSave
         {
-            MetNpcIds = [VillageCatalog.NemiId],
+            MetNpcIds = [npcId],
             Relationships =
             [
                 new VillageRelationshipSave
                 {
-                    NpcId = VillageCatalog.NemiId,
+                    NpcId = npcId,
                     Points = relationshipPoints,
                     LastTalkDay = day
                 }
@@ -1359,11 +1414,10 @@ public sealed partial class Main : Node
             PlayerLocationIds.World,
             _session.PlayerCell
         );
-        var nemi = villageNpcs.FirstOrDefault(state =>
-            state.Definition.Id == VillageCatalog.NemiId
+        var npc = villageNpcs.FirstOrDefault(state =>
+            state.Definition.Id == npcId
         );
-        if (nemi is null ||
-            nemi.DialogueKey != "village.npc.nemi.route")
+        if (npc is null || npc.DialogueKey != expectedDialogueKey)
         {
             StartVillagePlaytest();
             return;
@@ -1376,20 +1430,20 @@ public sealed partial class Main : Node
         foreach (var candidate in new[]
                  {
                      new GridPosition(
-                         nemi.Position.X,
-                         nemi.Position.Y + 1
+                         npc.Position.X,
+                         npc.Position.Y + 1
                      ),
                      new GridPosition(
-                         nemi.Position.X - 1,
-                         nemi.Position.Y
+                         npc.Position.X - 1,
+                         npc.Position.Y
                      ),
                      new GridPosition(
-                         nemi.Position.X + 1,
-                         nemi.Position.Y
+                         npc.Position.X + 1,
+                         npc.Position.Y
                      ),
                      new GridPosition(
-                         nemi.Position.X,
-                         nemi.Position.Y - 1
+                         npc.Position.X,
+                         npc.Position.Y - 1
                      )
                  })
         {
@@ -1423,7 +1477,7 @@ public sealed partial class Main : Node
         EnsureHud();
         ShowFarm(false);
         Callable.From(
-            () => TalkToVillager(nemi.Position)
+            () => TalkToVillager(npc.Position)
         ).CallDeferred();
     }
 

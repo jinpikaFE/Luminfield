@@ -28,6 +28,10 @@ public static class CharacterEventCatalog
         "nemi_undeliverable_letter";
     public const string NemiStarChartRouteId =
         "nemi_star_chart_route";
+    public const string KaelBrokenBlueRuneId =
+        "kael_broken_blue_rune";
+    public const string KaelSafeReturnRouteId =
+        "kael_safe_return_route";
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -100,6 +104,29 @@ public static class CharacterEventCatalog
                     "character_event.nemi.star_chart_route.3"
                 ],
                 NemiUndeliverableLetterId
+            ),
+            new(
+                KaelBrokenBlueRuneId,
+                VillageCatalog.KaelId,
+                25,
+                PlayerLocationIds.World,
+                [
+                    "character_event.kael.broken_blue_rune.1",
+                    "character_event.kael.broken_blue_rune.2",
+                    "character_event.kael.broken_blue_rune.3"
+                ]
+            ),
+            new(
+                KaelSafeReturnRouteId,
+                VillageCatalog.KaelId,
+                60,
+                PlayerLocationIds.World,
+                [
+                    "character_event.kael.safe_return_route.1",
+                    "character_event.kael.safe_return_route.2",
+                    "character_event.kael.safe_return_route.3"
+                ],
+                KaelBrokenBlueRuneId
             )
         ];
 

@@ -4340,6 +4340,309 @@ public sealed class CharacterEventSystemTests
     }
 
     [Fact]
+    public void KaelFirstMeetingThresholdCrossingAndPreviewDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 25,
+            metKael: false
+        );
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.KaelPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.kael.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 23,
+            metKael: true,
+            lastTalkDay: 0
+        );
+        var preview = thresholdCrossing.Session.PreviewSelectedTarget(
+            thresholdCrossing.KaelPosition
+        );
+
+        Assert.True(preview.IsAvailable);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.KaelPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+
+        var secondThresholdCrossing = PrepareKaelSession(
+            day: 17,
+            relationshipPoints: 58,
+            metKael: true,
+            lastTalkDay: 0,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var secondTalk =
+            secondThresholdCrossing.Session.InteractWithVillager(
+                secondThresholdCrossing.KaelPosition,
+                out var secondResult
+            );
+
+        Assert.True(secondResult.Succeeded);
+        Assert.NotNull(secondTalk);
+        Assert.Equal(60, secondTalk.RelationshipPoints);
+        Assert.Null(secondTalk.CharacterEvent);
+        Assert.Null(
+            secondThresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(secondThresholdCrossing.Session.CharacterEvents
+            .IsCompleted(CharacterEventCatalog.KaelSafeReturnRouteId));
+    }
+
+    [Fact]
+    public void KaelBrokenBlueRuneCompletesOnlyAfterDialogueCallback()
+    {
+        var prepared = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 25,
+            metKael: true
+        );
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.KaelPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.KaelBrokenBlueRuneId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.Equal(
+            CharacterEventCatalog.KaelBrokenBlueRuneId,
+            prepared.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.KaelBrokenBlueRuneId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.KaelBrokenBlueRuneId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            15,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.KaelBrokenBlueRuneId
+            )
+        );
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            15,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.KaelBrokenBlueRuneId
+            )
+        );
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.KaelBrokenBlueRuneId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void KaelSafeReturnRouteRequiresThresholdAndEarlierCompletionDay()
+    {
+        var sameDay = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 60,
+            metKael: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.KaelPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var belowThreshold = PrepareKaelSession(
+            day: 17,
+            relationshipPoints: 59,
+            metKael: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var belowThresholdTalk =
+            belowThreshold.Session.InteractWithVillager(
+                belowThreshold.KaelPosition,
+                out var belowThresholdResult
+            );
+
+        Assert.True(belowThresholdResult.Succeeded);
+        Assert.NotNull(belowThresholdTalk);
+        Assert.Null(belowThresholdTalk.CharacterEvent);
+
+        var laterDay = PrepareKaelSession(
+            day: 17,
+            relationshipPoints: 60,
+            metKael: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.KaelPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.KaelSafeReturnRouteId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.Equal(3, laterTalk.CharacterEvent.DialogueKeys.Count);
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.KaelSafeReturnRouteId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void KaelGiftsWrongToolsAndWrongScenesNeverProgressEvents()
+    {
+        var wrongTool = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 25,
+            metKael: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.KaelPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+        Assert.False(wrongTool.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.KaelBrokenBlueRuneId
+        ).Succeeded);
+
+        var gift = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 25,
+            metKael: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.CrystalShardId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.CrystalShardId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.KaelPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareKaelSession(
+            day: 15,
+            relationshipPoints: 25,
+            metKael: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            8,
+            8,
+            PlayerLocationIds.Cottage
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.KaelPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongScene.Session.CharacterEvents.Capture().Entries);
+    }
+
+    [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
         Assert.Empty(
@@ -4574,6 +4877,127 @@ public sealed class CharacterEventSystemTests
         );
     }
 
+    [Fact]
+    public void KaelSaveNormalizationPreservesIndependentNpcChains()
+    {
+        var normalized = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.LioraFadedReturnRouteId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.LioraRememberedWayHomeId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviMendedLightId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiUndeliverableLetterId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiStarChartRouteId,
+                        4
+                    ),
+                    EventEntry("unknown_kael_event", 1),
+                    EventEntry(
+                        CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        5
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        3
+                    )
+                ]
+            },
+            8
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.LioraFadedReturnRouteId,
+                CharacterEventCatalog.LioraRememberedWayHomeId,
+                CharacterEventCatalog.TaviCrackedMoonRuneId,
+                CharacterEventCatalog.TaviMendedLightId,
+                CharacterEventCatalog.NemiUndeliverableLetterId,
+                CharacterEventCatalog.NemiStarChartRouteId,
+                CharacterEventCatalog.KaelBrokenBlueRuneId
+            },
+            normalized.Entries.Select(entry => entry.EventId)
+        );
+        Assert.Equal(
+            3,
+            normalized.Entries.Single(entry =>
+                entry.EventId ==
+                    CharacterEventCatalog.KaelBrokenBlueRuneId
+            ).CompletedDay
+        );
+        Assert.DoesNotContain(
+            normalized.Entries,
+            entry => entry.EventId ==
+                CharacterEventCatalog.KaelSafeReturnRouteId
+        );
+
+        var orphan = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.LioraFadedReturnRouteId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.LioraRememberedWayHomeId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        4
+                    )
+                ]
+            },
+            5
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.LioraFadedReturnRouteId,
+                CharacterEventCatalog.LioraRememberedWayHomeId
+            },
+            orphan.Entries.Select(entry => entry.EventId)
+        );
+    }
+
+    private static CharacterEventEntrySave EventEntry(
+        string eventId,
+        int completedDay
+    ) => new()
+    {
+        EventId = eventId,
+        CompletedDay = completedDay
+    };
+
     private static (
         GameSession Session,
         GridPosition LioraPosition
@@ -4725,6 +5149,59 @@ public sealed class CharacterEventSystemTests
         Assert.Equal(PlayerLocationIds.World, nemi.LocationId);
         Assert.Equal("village.npc.nemi.route", nemi.DialogueKey);
         return (session, nemi.Position);
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition KaelPosition
+    ) PrepareKaelSession(
+        int day,
+        int relationshipPoints,
+        bool metKael,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 14 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metKael ? [VillageCatalog.KaelId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.KaelId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        Assert.Equal(DataCatalog.ClearWeatherId, session.Weather.CurrentId);
+        Assert.NotEqual(
+            CalendarSystem.LanternrestWeekdayIndex,
+            CalendarSystem.WeekdayIndex(day)
+        );
+        var kael = session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            session.PlayerCell
+        ).Single(state => state.Definition.Id == VillageCatalog.KaelId);
+        Assert.Equal(PlayerLocationIds.World, kael.LocationId);
+        Assert.Equal("village.npc.kael.plaza", kael.DialogueKey);
+        return (session, kael.Position);
     }
 }
 
