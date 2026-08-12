@@ -158,6 +158,7 @@ public static class VillageCatalog
     public const string TwilightEmporiumLandmarkId =
         "twilight_emporium";
     public const string StarlightPostLandmarkId = "starlight_post";
+    public const string StarfallWatchLandmarkId = "starfall_watch";
 
     public static readonly GridArea VillageBounds = new(73, 30, 115, 63);
     public static readonly GridPosition VillageGateCell = new(97, 59);
@@ -188,6 +189,12 @@ public static class VillageCatalog
         new(20, 19);
     public static readonly GridPosition RouteSortingCounterCell =
         new(20, 8);
+    public static readonly GridPosition StarfallWatchDoorCell =
+        new(77, 54);
+    public static readonly GridPosition StarfallWatchExitCell =
+        new(20, 19);
+    public static readonly GridPosition SealRouteTableCell =
+        new(20, 8);
     public const int MoonlitArchiveOpenMinute = 8 * 60;
     public const int MoonlitArchiveCloseMinute = 20 * 60;
     public const int MoonstoneWorkshopOpenMinute = 8 * 60;
@@ -198,6 +205,8 @@ public static class VillageCatalog
     public const int TwilightEmporiumCloseMinute = 18 * 60;
     public const int StarlightPostOpenMinute = 7 * 60;
     public const int StarlightPostCloseMinute = 19 * 60;
+    public const int StarfallWatchOpenMinute = 6 * 60;
+    public const int StarfallWatchCloseMinute = 20 * 60;
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -273,6 +282,13 @@ public static class VillageCatalog
             9,
             "village.landmark.starlight_post",
             [new GridArea(73, 34, 81, 40)]
+        ),
+        new(
+            StarfallWatchLandmarkId,
+            StarfallWatchDoorCell,
+            10,
+            "village.landmark.starfall_watch",
+            [new GridArea(73, 47, 81, 53)]
         )
     ];
 
@@ -771,12 +787,12 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         "village.npc.kael.morning"
                     ),
-                    Slot(
+                    WatchSlot(
                         9,
                         13,
-                        new GridPosition(96, 54),
-                        NpcFacing.Up,
-                        "village.npc.kael.gate"
+                        new GridPosition(13, 12),
+                        NpcFacing.Right,
+                        "village.npc.kael.starfall_watch"
                     ),
                     Slot(
                         13,
@@ -834,6 +850,13 @@ public static class VillageCatalog
         minuteOfDay >= StarlightPostOpenMinute &&
         minuteOfDay < StarlightPostCloseMinute;
 
+    public static bool IsStarfallWatchDoor(GridPosition cell) =>
+        cell == StarfallWatchDoorCell;
+
+    public static bool IsStarfallWatchOpen(int minuteOfDay) =>
+        minuteOfDay >= StarfallWatchOpenMinute &&
+        minuteOfDay < StarfallWatchCloseMinute;
+
     public static bool IsVillagePath(GridPosition cell)
     {
         if (!IsVillageCell(cell))
@@ -851,10 +874,12 @@ public static class VillageCatalog
             cell.X is >= 97 and <= 110;
         var postLane = cell.Y is >= 41 and <= 43 &&
             cell.X is >= 77 and <= 84;
+        var watchLane = cell.Y is >= 52 and <= 54 &&
+            cell.X is >= 77 and <= 84;
         var plaza = cell.X is >= 92 and <= 102 &&
             cell.Y is >= 44 and <= 54;
         return mainLane || archiveLane || workshopLane ||
-            emporiumLane || postLane || plaza;
+            emporiumLane || postLane || watchLane || plaza;
     }
 
     public static bool IsBlocked(GridPosition cell) =>
@@ -1006,6 +1031,28 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.StarlightPost,
+        position,
+        facing,
+        dialogueKey,
+        weekdayIndices,
+        Priority: weekdayIndices.Contains(
+            CalendarSystem.LanternrestWeekdayIndex
+        )
+            ? RestdaySchedulePriority
+            : BaseSchedulePriority
+    );
+
+    private static NpcScheduleEntry WatchSlot(
+        int startHour,
+        int endHour,
+        GridPosition position,
+        NpcFacing facing,
+        string dialogueKey,
+        params int[] weekdayIndices
+    ) => new(
+        startHour * 60,
+        endHour * 60,
+        PlayerLocationIds.StarfallWatch,
         position,
         facing,
         dialogueKey,

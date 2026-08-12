@@ -3494,18 +3494,249 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
+    public void KaelWorksInsideStarfallWatchWhileConditionsKeepPriority()
+    {
+        var beforeWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            1,
+            VillageCatalog.StarfallWatchOpenMinute + 60
+        );
+        var atWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            1,
+            9 * 60
+        );
+        var afterWork = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            1,
+            13 * 60,
+            DataCatalog.ClearWeatherId
+        );
+        var stardustAfternoon = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            1,
+            13 * 60,
+            DataCatalog.StardustWindWeatherId
+        );
+        var lanternrest = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            CalendarSystem.DaysPerWeek,
+            9 * 60
+        );
+
+        Assert.NotNull(beforeWork);
+        Assert.Equal(PlayerLocationIds.World, beforeWork.LocationId);
+        Assert.NotNull(atWork);
+        Assert.Equal(PlayerLocationIds.StarfallWatch, atWork.LocationId);
+        Assert.Equal(
+            "village.npc.kael.starfall_watch",
+            atWork.DialogueKey
+        );
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            atWork.LocationId,
+            atWork.Position
+        ));
+        Assert.NotEqual(VillageCatalog.StarfallWatchExitCell, atWork.Position);
+        Assert.NotNull(afterWork);
+        Assert.Equal(PlayerLocationIds.World, afterWork.LocationId);
+        Assert.NotNull(stardustAfternoon);
+        Assert.Equal(PlayerLocationIds.World, stardustAfternoon.LocationId);
+        Assert.Equal(
+            "village.npc.kael.weather_stardust",
+            stardustAfternoon.DialogueKey
+        );
+        Assert.NotNull(lanternrest);
+        Assert.Equal(PlayerLocationIds.World, lanternrest.LocationId);
+    }
+
+    [Fact]
+    public void StarfallWatchDoorTableAndExitShareReadOnlyHandRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var door = VillageCatalog.StarfallWatchDoorCell;
+        session.Clock.Reset(
+            1,
+            VillageCatalog.StarfallWatchCloseMinute
+        );
+
+        Assert.False(VillageCatalog.IsStarfallWatchOpen(5 * 60 + 59));
+        Assert.True(VillageCatalog.IsStarfallWatchOpen(6 * 60));
+        Assert.True(VillageCatalog.IsStarfallWatchOpen(19 * 60 + 59));
+        Assert.False(VillageCatalog.IsStarfallWatchOpen(20 * 60));
+
+        var closed = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, closed.State);
+        Assert.Equal(
+            "target.status.starfall_watch_closed",
+            closed.LabelKey
+        );
+        Assert.False(session.TryEnterStarfallWatch().Succeeded);
+
+        session.Clock.Reset(1, VillageCatalog.StarfallWatchOpenMinute);
+        var open = session.PreviewSelectedTarget(door);
+        Assert.True(open.IsAvailable);
+        Assert.Equal("target.action.enter_starfall_watch", open.LabelKey);
+        Assert.True(session.TryEnterStarfallWatch().Succeeded);
+
+        session.Inventory.Select(1);
+        var energy = session.Energy;
+        var coins = session.Coins;
+        var inventory = session.Inventory.Capture()
+            .Select(slot => (slot.ItemId, slot.Count))
+            .ToArray();
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterStarfallWatch().Succeeded);
+        Assert.Equal(PlayerLocationIds.World, session.PlayerLocationId);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            14 * 16 + 8,
+            PlayerLocationIds.StarfallWatch
+        );
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(
+                VillageCatalog.SealRouteTableCell
+            ).State
+        );
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewSelectedTarget(
+                VillageCatalog.StarfallWatchExitCell
+            ).State
+        );
+        Assert.False(session.InspectSealRouteTable().Succeeded);
+        Assert.False(session.TryExitStarfallWatch().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.Inventory.Select(0);
+        var table = session.PreviewSelectedTarget(
+            VillageCatalog.SealRouteTableCell
+        );
+        var exit = session.PreviewSelectedTarget(
+            VillageCatalog.StarfallWatchExitCell
+        );
+        Assert.True(table.IsAvailable);
+        Assert.Equal(
+            "target.action.inspect_seal_route_table",
+            table.LabelKey
+        );
+        Assert.True(exit.IsAvailable);
+        var inspected = session.InspectSealRouteTable();
+        Assert.True(inspected.Succeeded);
+        Assert.Equal("starfall_watch.table.dialogue", inspected.MessageKey);
+        Assert.True(session.TryExitStarfallWatch().Succeeded);
+        Assert.Equal(energy, session.Energy);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            inventory,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+
+        session.SetPlayerLocation(
+            door.X * 16 + 8,
+            (door.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        session.Clock.Reset(1, VillageCatalog.StarfallWatchCloseMinute);
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewSelectedTarget(door).State
+        );
+        Assert.False(session.TryEnterStarfallWatch().Succeeded);
+    }
+
+    [Fact]
+    public void StarfallWatchUsesSharedCollisionAndSafeArrivalRules()
+    {
+        var exteriorArrival = NpcNavigationMap.SafeArrivalCell(
+            PlayerLocationIds.StarfallWatch,
+            PlayerLocationIds.World
+        );
+        var interiorArrival = NpcNavigationMap.SafeArrivalCell(
+            PlayerLocationIds.World,
+            PlayerLocationIds.StarfallWatch
+        );
+
+        Assert.Equal(new GridPosition(77, 55), exteriorArrival);
+        Assert.Equal(new GridPosition(19, 18), interiorArrival);
+        Assert.True(WorldDefinition.IsPath(
+            VillageCatalog.StarfallWatchDoorCell
+        ));
+        Assert.False(WorldDefinition.IsBlocked(
+            VillageCatalog.StarfallWatchDoorCell
+        ));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(77, 53)));
+        Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
+            PlayerLocationIds.World,
+            VillageCatalog.StarfallWatchDoorCell
+        ));
+        Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
+            PlayerLocationIds.StarfallWatch,
+            VillageCatalog.StarfallWatchExitCell
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarfallWatch,
+            new GridPosition(20, 8)
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarfallWatch,
+            new GridPosition(5, 7)
+        ));
+        Assert.False(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarfallWatch,
+            new GridPosition(34, 7)
+        ));
+        Assert.True(NpcNavigationMap.IsWalkableGeometry(
+            PlayerLocationIds.StarfallWatch,
+            new GridPosition(13, 12)
+        ));
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            PlayerLocationIds.World,
+            exteriorArrival!.Value
+        ));
+        Assert.True(NpcNavigationMap.IsNpcPassable(
+            PlayerLocationIds.StarfallWatch,
+            interiorArrival!.Value
+        ));
+        Assert.NotEmpty(NpcPathfinder.FindPath(
+            PlayerLocationIds.World,
+            exteriorArrival.Value,
+            new GridPosition(84, 54)
+        ));
+        Assert.NotEmpty(NpcPathfinder.FindPath(
+            PlayerLocationIds.StarfallWatch,
+            interiorArrival.Value,
+            new GridPosition(13, 12)
+        ));
+    }
+
+    [Fact]
     public void VillageLandmarksHaveStableIdsAndPassableEntrances()
     {
-        Assert.Equal(10, VillageCatalog.Landmarks.Count);
+        Assert.Equal(11, VillageCatalog.Landmarks.Count);
         Assert.Equal(
-            10,
+            11,
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.Id)
                 .Distinct(StringComparer.Ordinal)
                 .Count()
         );
         Assert.Equal(
-            Enumerable.Range(0, 10),
+            Enumerable.Range(0, 11),
             VillageCatalog.Landmarks
                 .Select(landmark => landmark.AtlasIndex)
                 .Order()
@@ -3541,6 +3772,13 @@ public sealed class VillageSystemTests
             VillageCatalog.StarlightPostDoorCell.X,
             VillageCatalog.StarlightPostDoorCell.Y + 1
         )));
+        Assert.False(WorldDefinition.IsBlocked(
+            VillageCatalog.StarfallWatchDoorCell
+        ));
+        Assert.True(WorldDefinition.IsPath(
+            VillageCatalog.StarfallWatchDoorCell
+        ));
+        Assert.True(WorldDefinition.IsPath(new GridPosition(84, 54)));
         Assert.False(WorldDefinition.IsBlocked(new GridPosition(106, 58)));
         Assert.True(WorldDefinition.IsBlocked(new GridPosition(107, 58)));
         Assert.Equal(
@@ -5297,6 +5535,45 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void StarfallWatchInteractionKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = new[]
+        {
+            "target.action.enter_starfall_watch",
+            "target.action.exit_starfall_watch",
+            "target.action.inspect_seal_route_table",
+            "target.status.starfall_watch_closed",
+            "notice.enter_starfall_watch",
+            "notice.leave_starfall_watch",
+            "notice.starfall_watch_closed",
+            "notice.starfall_watch_world_only",
+            "starfall_watch.table.name",
+            "starfall_watch.table.dialogue",
+            "village.landmark.starfall_watch",
+            "village.npc.kael.starfall_watch"
+        };
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void EveryVillagerDefinitionHasBilingualDialogueAndGiftFeedback()
     {
         var locale = new LocaleService();
@@ -6248,6 +6525,56 @@ public sealed class SaveServiceTests : IDisposable
                 "energy": 100,
                 "selectedSlot": 0,
                 "locationId": "retired_delivery_hall"
+              }
+            }
+            """
+        );
+        var unknown = service.Load();
+        Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
+        Assert.NotNull(unknown.Save);
+        Assert.Equal(
+            PlayerLocationIds.World,
+            unknown.Save.Player.LocationId
+        );
+    }
+
+    [Fact]
+    public void StarfallWatchLocationRoundTripsAndLegacyFallbacksStaySafe()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.SetPlayerLocation(
+            19 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.StarfallWatch
+        );
+        service.Save(session.Capture());
+
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(
+            PlayerLocationIds.StarfallWatch,
+            result.Save.Player.LocationId
+        );
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.InsideStarfallWatch);
+
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "player": {
+                "x": 312,
+                "y": 296,
+                "energy": 100,
+                "selectedSlot": 0,
+                "locationId": "retired_ruins_barracks"
               }
             }
             """

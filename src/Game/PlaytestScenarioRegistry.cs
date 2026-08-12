@@ -31,6 +31,10 @@ public enum PlaytestScenarioId
     StarlightPost,
     StarlightPostWrongTool,
     StarlightPostDoor,
+    StarfallWatchKael,
+    StarfallWatch,
+    StarfallWatchWrongTool,
+    StarfallWatchDoor,
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
@@ -162,6 +166,22 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarlightPostDoor,
             "--playtest-starlight-post-door"
+        ),
+        new(
+            PlaytestScenarioId.StarfallWatchKael,
+            "--playtest-starfall-watch-kael"
+        ),
+        new(
+            PlaytestScenarioId.StarfallWatch,
+            "--playtest-starfall-watch"
+        ),
+        new(
+            PlaytestScenarioId.StarfallWatchWrongTool,
+            "--playtest-starfall-watch-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.StarfallWatchDoor,
+            "--playtest-starfall-watch-door"
         ),
         new(
             PlaytestScenarioId.VillageDialogue,

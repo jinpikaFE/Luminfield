@@ -50,6 +50,8 @@ public sealed class GameSession
         PlayerLocationId == PlayerLocationIds.TwilightEmporium;
     public bool InsideStarlightPost =>
         PlayerLocationId == PlayerLocationIds.StarlightPost;
+    public bool InsideStarfallWatch =>
+        PlayerLocationId == PlayerLocationIds.StarfallWatch;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -393,6 +395,11 @@ public sealed class GameSession
             return PreviewStarlightPostTarget(target);
         }
 
+        if (InsideStarfallWatch)
+        {
+            return PreviewStarfallWatchTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -601,6 +608,35 @@ public sealed class GameSession
                 VillageCatalog.StarlightPostDoorCell,
                 TargetPreviewKind.Door,
                 "target.status.starlight_post_closed"
+            );
+        }
+
+        if (VillageCatalog.IsStarfallWatchDoor(target))
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    VillageCatalog.StarfallWatchDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.need.hand"
+                );
+            }
+
+            if (VillageCatalog.IsStarfallWatchOpen(
+                    Clock.MinuteOfDay
+                ))
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarfallWatchDoorCell,
+                    TargetPreviewKind.Door,
+                    "target.action.enter_starfall_watch"
+                );
+            }
+
+            return TargetPreview.Blocked(
+                VillageCatalog.StarfallWatchDoorCell,
+                TargetPreviewKind.Door,
+                "target.status.starfall_watch_closed"
             );
         }
 
@@ -1324,6 +1360,56 @@ public sealed class GameSession
             : ActionResult.Fail("notice.needs_hand");
     }
 
+    public ActionResult TryEnterStarfallWatch()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.starfall_watch_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return VillageCatalog.IsStarfallWatchOpen(Clock.MinuteOfDay)
+            ? ActionResult.Success(
+                messageKey: "notice.enter_starfall_watch"
+            )
+            : ActionResult.Fail("notice.starfall_watch_closed");
+    }
+
+    public ActionResult InspectSealRouteTable()
+    {
+        if (!InsideStarfallWatch)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return ActionResult.Success(
+            messageKey: "starfall_watch.table.dialogue"
+        );
+    }
+
+    public ActionResult TryExitStarfallWatch()
+    {
+        if (!InsideStarfallWatch)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(
+                messageKey: "notice.leave_starfall_watch"
+            )
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         var item = DataCatalog.Item(itemId);
@@ -1761,6 +1847,64 @@ public sealed class GameSession
 
             return TargetPreview.NeedsTool(
                 VillageCatalog.StarlightPostExitCell,
+                TargetPreviewKind.Door,
+                "target.need.hand"
+            );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewStarfallWatchTarget(
+        GridPosition target
+    )
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var villager = Village.NpcAt(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationIds.StarfallWatch,
+            PlayerCell
+        );
+        if (villager is not null)
+        {
+            return PreviewVillagerInteraction(villager, selectedId);
+        }
+
+        if (target == VillageCatalog.SealRouteTableCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.SealRouteTableCell,
+                    TargetPreviewKind.Station,
+                    "target.action.inspect_seal_route_table"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.SealRouteTableCell,
+                TargetPreviewKind.Station,
+                "target.need.hand"
+            );
+        }
+
+        if (target == VillageCatalog.StarfallWatchExitCell)
+        {
+            if (selectedId == DataCatalog.HandId)
+            {
+                return TargetPreview.Available(
+                    VillageCatalog.StarfallWatchExitCell,
+                    TargetPreviewKind.Door,
+                    "target.action.exit_starfall_watch"
+                );
+            }
+
+            return TargetPreview.NeedsTool(
+                VillageCatalog.StarfallWatchExitCell,
                 TargetPreviewKind.Door,
                 "target.need.hand"
             );

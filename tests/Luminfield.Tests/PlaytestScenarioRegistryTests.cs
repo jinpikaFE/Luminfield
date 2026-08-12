@@ -94,6 +94,22 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.StarlightPostDoor
         ),
         (
+            "--playtest-starfall-watch-kael",
+            PlaytestScenarioId.StarfallWatchKael
+        ),
+        (
+            "--playtest-starfall-watch",
+            PlaytestScenarioId.StarfallWatch
+        ),
+        (
+            "--playtest-starfall-watch-wrong-tool",
+            PlaytestScenarioId.StarfallWatchWrongTool
+        ),
+        (
+            "--playtest-starfall-watch-door",
+            PlaytestScenarioId.StarfallWatchDoor
+        ),
+        (
             "--playtest-village-dialogue",
             PlaytestScenarioId.VillageDialogue
         ),

@@ -423,6 +423,12 @@ internal sealed partial class WorldVillageChunk : Node2D
             return;
         }
 
+        if (landmark.Id == VillageCatalog.StarfallWatchLandmarkId)
+        {
+            DrawStarfallWatch(landmark.Anchor);
+            return;
+        }
+
         var source = GeneratedArt.VillageLandmarkRegion(
             landmark.AtlasIndex
         );
@@ -463,6 +469,22 @@ internal sealed partial class WorldVillageChunk : Node2D
         var anchor = LocalAnchor(cell);
         DrawTextureRectRegion(
             GeneratedArt.StarlightPostExteriorTexture,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawStarfallWatch(GridPosition cell)
+    {
+        var source = GeneratedArt.StarfallWatchExteriorTextureRegion;
+        const float height = 100;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = LocalAnchor(cell);
+        DrawTextureRectRegion(
+            GeneratedArt.StarfallWatchExteriorTexture,
             new Rect2(
                 anchor - new Vector2(width / 2, height),
                 new Vector2(width, height)
@@ -512,6 +534,7 @@ internal sealed partial class WorldVillageChunk : Node2D
         7 => 46,
         8 => 100,
         9 => 100,
+        10 => 100,
         _ => 48
     };
 

@@ -46,6 +46,11 @@ internal static class GeneratedArt
             "res://assets/generated/starlight_post_exterior.png"
         );
 
+    private static readonly Texture2D StarfallWatchExterior =
+        GD.Load<Texture2D>(
+            "res://assets/generated/starfall_watch_exterior.png"
+        );
+
     private static readonly Texture2D VillageNpcs =
         GD.Load<Texture2D>(
             "res://assets/generated/village_npcs.png"
@@ -177,6 +182,8 @@ internal static class GeneratedArt
         new(178, 94, 881, 975);
     private static readonly Rect2 StarlightPostExteriorRegion =
         new(158, 79, 952, 1033);
+    private static readonly Rect2 StarfallWatchExteriorRegion =
+        new(194, 49, 866, 1119);
     private static readonly Rect2[][] VillageNpcRegions =
     [
         [
@@ -464,6 +471,12 @@ internal static class GeneratedArt
 
     public static Rect2 StarlightPostExteriorTextureRegion =>
         StarlightPostExteriorRegion;
+
+    public static Texture2D StarfallWatchExteriorTexture =>
+        StarfallWatchExterior;
+
+    public static Rect2 StarfallWatchExteriorTextureRegion =>
+        StarfallWatchExteriorRegion;
 
     public static Rect2 VillageLandmarkRegion(int atlasIndex) =>
         VillageLandmarkRegions[Math.Clamp(
@@ -959,6 +972,29 @@ internal sealed partial class StarlightPostBackdrop : Node2D
         );
 
     public StarlightPostBackdrop()
+    {
+        ZIndex = -100;
+        TextureFilter = TextureFilterEnum.Nearest;
+    }
+
+    public override void _Draw()
+    {
+        DrawTextureRectRegion(
+            Background,
+            new Rect2(0, 0, 640, 360),
+            new Rect2(0, 80, 1536, 864)
+        );
+    }
+}
+
+internal sealed partial class StarfallWatchBackdrop : Node2D
+{
+    private static readonly Texture2D Background =
+        GD.Load<Texture2D>(
+            "res://assets/generated/starfall_watch_interior.png"
+        );
+
+    public StarfallWatchBackdrop()
     {
         ZIndex = -100;
         TextureFilter = TextureFilterEnum.Nearest;

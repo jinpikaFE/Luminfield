@@ -19,6 +19,7 @@ public sealed partial class Main : Node
     private TeaHouseView? _teaHouse;
     private TwilightEmporiumView? _twilightEmporium;
     private StarlightPostView? _starlightPost;
+    private StarfallWatchView? _starfallWatch;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -437,6 +438,14 @@ public sealed partial class Main : Node
                     StartStarlightPostWrongToolPlaytest,
                 [PlaytestScenarioId.StarlightPostDoor] =
                     StartStarlightPostDoorPlaytest,
+                [PlaytestScenarioId.StarfallWatchKael] =
+                    StartStarfallWatchKaelPlaytest,
+                [PlaytestScenarioId.StarfallWatch] =
+                    StartStarfallWatchPlaytest,
+                [PlaytestScenarioId.StarfallWatchWrongTool] =
+                    StartStarfallWatchWrongToolPlaytest,
+                [PlaytestScenarioId.StarfallWatchDoor] =
+                    StartStarfallWatchDoorPlaytest,
                 [PlaytestScenarioId.VillageDialogue] =
                     StartVillageDialoguePlaytest,
                 [PlaytestScenarioId.SelaDialogue] =
@@ -1727,6 +1736,73 @@ public sealed partial class Main : Node
         }
     }
 
+    private void StartStarfallWatchDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            9 * 60,
+            new GridPosition(
+                VillageCatalog.StarfallWatchDoorCell.X,
+                VillageCatalog.StarfallWatchDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartStarfallWatchPlaytest()
+    {
+        StartStarfallWatchPlaytest(false, 0);
+    }
+
+    private void StartStarfallWatchWrongToolPlaytest()
+    {
+        StartStarfallWatchPlaytest(false, 1);
+    }
+
+    private void StartStarfallWatchKaelPlaytest()
+    {
+        StartStarfallWatchPlaytest(true, 0);
+    }
+
+    private void StartStarfallWatchPlaytest(
+        bool openKaelDialogue,
+        int selectedSlot
+    )
+    {
+        const int day = 1;
+        const int minuteOfDay = 12 * 60;
+        var kael = VillageCatalog.CurrentNpc(
+            VillageCatalog.KaelId,
+            day,
+            minuteOfDay
+        );
+        if (kael is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            14 * 16 + 8,
+            PlayerLocationIds.StarfallWatch
+        );
+        _session.Inventory.Select(selectedSlot);
+
+        _playing = true;
+        EnsureHud();
+        ShowStarfallWatch(false);
+        if (openKaelDialogue)
+        {
+            Callable.From(
+                () => TalkToVillager(kael.Position)
+            ).CallDeferred();
+        }
+    }
+
     private void StartVillageRestdayEnglishPlaytest()
     {
         _locale.SetLocale(LocaleService.English);
@@ -2080,6 +2156,10 @@ public sealed partial class Main : Node
         {
             ShowStarlightPost(false);
         }
+        else if (_session.InsideStarfallWatch)
+        {
+            ShowStarfallWatch(false);
+        }
         else
         {
             ShowFarm(false);
@@ -2103,7 +2183,8 @@ public sealed partial class Main : Node
         bool fromWorkshop = false,
         bool fromTeaHouse = false,
         bool fromTwilightEmporium = false,
-        bool fromStarlightPost = false
+        bool fromStarlightPost = false,
+        bool fromStarfallWatch = false
     )
     {
         ClearWorld();
@@ -2155,6 +2236,14 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromStarfallWatch)
+        {
+            _session.SetPlayerLocation(
+                VillageCatalog.StarfallWatchDoorCell.X * 16 + 8,
+                (VillageCatalog.StarfallWatchDoorCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
@@ -2166,6 +2255,7 @@ public sealed partial class Main : Node
         _farm.EnterTwilightEmporiumRequested +=
             TryEnterTwilightEmporium;
         _farm.EnterStarlightPostRequested += TryEnterStarlightPost;
+        _farm.EnterStarfallWatchRequested += TryEnterStarfallWatch;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -2203,6 +2293,10 @@ public sealed partial class Main : Node
         else if (fromStarlightPost)
         {
             _hud?.ShowNotice("notice.leave_starlight_post");
+        }
+        else if (fromStarfallWatch)
+        {
+            _hud?.ShowNotice("notice.leave_starfall_watch");
         }
     }
 
@@ -2360,6 +2454,37 @@ public sealed partial class Main : Node
         if (fromWorld)
         {
             _hud?.ShowNotice("notice.enter_starlight_post");
+        }
+    }
+
+    private void ShowStarfallWatch(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                19 * 16 + 8,
+                18 * 16 + 8,
+                PlayerLocationIds.StarfallWatch
+            );
+        }
+
+        _starfallWatch = new StarfallWatchView(
+            _session,
+            _locale
+        );
+        _starfallWatch.ExitRequested += TryLeaveStarfallWatch;
+        _starfallWatch.SealRouteTableRequested +=
+            InspectSealRouteTable;
+        _starfallWatch.VillagerRequested += TalkToVillager;
+        _starfallWatch.StepRequested +=
+            () => _audio.Play(PixelSound.Step);
+        _world = _starfallWatch;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_starfall_watch");
         }
     }
 
@@ -2699,6 +2824,51 @@ public sealed partial class Main : Node
         _audio.Play(PixelSound.Chime);
         ShowDialogue(
             "starlight_post.counter.name",
+            result.MessageKey,
+            () => { },
+            GeneratedArt.RelationshipIcon(
+                RelationshipTier.NewAcquaintance
+            )
+        );
+    }
+
+    private void TryEnterStarfallWatch()
+    {
+        var result = _session.TryEnterStarfallWatch();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowStarfallWatch(true);
+    }
+
+    private void TryLeaveStarfallWatch()
+    {
+        var result = _session.TryExitStarfallWatch();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, fromStarfallWatch: true);
+    }
+
+    private void InspectSealRouteTable()
+    {
+        var result = _session.InspectSealRouteTable();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowDialogue(
+            "starfall_watch.table.name",
             result.MessageKey,
             () => { },
             GeneratedArt.RelationshipIcon(
@@ -3294,6 +3464,11 @@ public sealed partial class Main : Node
         {
             _starlightPost.ControlsEnabled = enabled;
         }
+
+        if (_starfallWatch is not null)
+        {
+            _starfallWatch.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -3310,6 +3485,7 @@ public sealed partial class Main : Node
         _teaHouse = null;
         _twilightEmporium = null;
         _starlightPost = null;
+        _starfallWatch = null;
     }
 
     private static void FreeUi(CanvasItem? item)
