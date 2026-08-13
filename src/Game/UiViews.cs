@@ -1329,12 +1329,22 @@ public sealed partial class NightlySummaryOverlay : FullScreenUi
     };
 }
 
+public enum ShopOverlayMode
+{
+    FarmStall,
+    TwilightEmporium
+}
+
 public sealed partial class ShopOverlay : FullScreenUi
 {
     private readonly GameSession _session;
     private readonly LocaleService _locale;
+    private readonly ShopOverlayMode _mode;
+    private readonly IReadOnlyList<string> _buyItemIds;
     private readonly Label _title;
     private readonly Label _coins;
+    private readonly Label _rotation;
+    private readonly Label _description;
     private readonly Label _buyHeader;
     private readonly Label _sellHeader;
     private readonly Label _status;
@@ -1345,18 +1355,28 @@ public sealed partial class ShopOverlay : FullScreenUi
     public ShopOverlay(
         Theme theme,
         GameSession session,
-        LocaleService locale
+        LocaleService locale,
+        ShopOverlayMode mode = ShopOverlayMode.FarmStall
     ) : base(theme)
     {
         _session = session;
         _locale = locale;
+        _mode = mode;
+        _buyItemIds = mode == ShopOverlayMode.TwilightEmporium
+            ? TwilightEmporiumSystem.StockForDay(session.Clock.Day)
+            : DataCatalog.SeedItemIds;
         AddChild(Dim(new Color(0.02f, 0.03f, 0.1f, 0.72f)));
 
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(548, 332) };
+        var panelSize = new Vector2(548, 332);
+        if (mode == ShopOverlayMode.TwilightEmporium)
+        {
+            panelSize = new Vector2(440, 322);
+        }
+        var panel = new PanelContainer { CustomMinimumSize = panelSize };
         panel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.Box(new Color("#101a3af8"), ThemeFactory.Gold, 2, 9)
@@ -1375,6 +1395,18 @@ public sealed partial class ShopOverlay : FullScreenUi
         header.AddChild(_coins);
         column.AddChild(header);
 
+        _rotation = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
+        _rotation.HorizontalAlignment = HorizontalAlignment.Center;
+        _rotation.Visible = mode == ShopOverlayMode.TwilightEmporium;
+        column.AddChild(_rotation);
+
+        _description = ThemeFactory.Label(size: 9, color: ThemeFactory.MutedInk);
+        _description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _description.HorizontalAlignment = HorizontalAlignment.Center;
+        _description.CustomMinimumSize = new Vector2(400, 28);
+        _description.Visible = mode == ShopOverlayMode.TwilightEmporium;
+        column.AddChild(_description);
+
         var tradeColumns = new HBoxContainer();
         tradeColumns.AddThemeConstantOverride("separation", 10);
         column.AddChild(tradeColumns);
@@ -1384,16 +1416,26 @@ public sealed partial class ShopOverlay : FullScreenUi
         buyPanel.AddThemeConstantOverride("separation", 4);
         sellPanel.AddThemeConstantOverride("separation", 4);
         tradeColumns.AddChild(buyPanel);
-        tradeColumns.AddChild(sellPanel);
+        if (mode == ShopOverlayMode.FarmStall)
+        {
+            tradeColumns.AddChild(sellPanel);
+        }
 
         _buyHeader = ThemeFactory.Label(size: 12, color: ThemeFactory.Gold);
         _sellHeader = ThemeFactory.Label(size: 12, color: ThemeFactory.Gold);
         buyPanel.AddChild(_buyHeader);
         sellPanel.AddChild(_sellHeader);
 
+        var buyScrollSize = new Vector2(252, 190);
+        var buyColumnSize = new Vector2(238, 0);
+        if (mode == ShopOverlayMode.TwilightEmporium)
+        {
+            buyScrollSize = new Vector2(402, 126);
+            buyColumnSize = new Vector2(386, 0);
+        }
         var buyScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(252, 190),
+            CustomMinimumSize = buyScrollSize,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         var sellScroll = new ScrollContainer
@@ -1401,7 +1443,10 @@ public sealed partial class ShopOverlay : FullScreenUi
             CustomMinimumSize = new Vector2(252, 190),
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        var buyColumn = new VBoxContainer { CustomMinimumSize = new Vector2(238, 0) };
+        var buyColumn = new VBoxContainer
+        {
+            CustomMinimumSize = buyColumnSize
+        };
         var sellColumn = new VBoxContainer { CustomMinimumSize = new Vector2(238, 0) };
         buyColumn.AddThemeConstantOverride("separation", 4);
         sellColumn.AddThemeConstantOverride("separation", 4);
@@ -1410,29 +1455,44 @@ public sealed partial class ShopOverlay : FullScreenUi
         buyPanel.AddChild(buyScroll);
         sellPanel.AddChild(sellScroll);
 
-        foreach (var itemId in DataCatalog.SeedItemIds)
+        foreach (var itemId in _buyItemIds)
         {
+            Func<ActionResult> buyAction = () =>
+                _session.BuyItem(itemId);
+            if (mode == ShopOverlayMode.TwilightEmporium)
+            {
+                buyAction = () =>
+                    _session.BuyTwilightEmporiumItem(itemId);
+            }
             AddTradeButton(
                 buyColumn,
                 _buyButtons,
                 itemId,
-                () => _session.BuyItem(itemId)
+                buyAction
             );
         }
 
-        foreach (var itemId in DataCatalog.SellableItemIds)
+        if (mode == ShopOverlayMode.FarmStall)
         {
-            AddTradeButton(
-                sellColumn,
-                _sellButtons,
-                itemId,
-                () => _session.SellItem(itemId)
-            );
+            foreach (var itemId in DataCatalog.SellableItemIds)
+            {
+                AddTradeButton(
+                    sellColumn,
+                    _sellButtons,
+                    itemId,
+                    () => _session.SellItem(itemId)
+                );
+            }
         }
 
         _status = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
         _status.HorizontalAlignment = HorizontalAlignment.Center;
-        _status.CustomMinimumSize = new Vector2(480, 24);
+        var statusWidth = 480f;
+        if (mode == ShopOverlayMode.TwilightEmporium)
+        {
+            statusWidth = 400f;
+        }
+        _status.CustomMinimumSize = new Vector2(statusWidth, 24);
         column.AddChild(_status);
 
         _close = ThemeFactory.Button("");
@@ -1444,7 +1504,9 @@ public sealed partial class ShopOverlay : FullScreenUi
         session.Changed += RefreshText;
         locale.LocaleChanged += RefreshText;
         RefreshText();
-        _buyButtons[DataCatalog.SeedItemIds[0]].CallDeferred(Control.MethodName.GrabFocus);
+        _buyButtons[_buyItemIds[0]].CallDeferred(
+            Control.MethodName.GrabFocus
+        );
     }
 
     public event Action? CloseRequested;
@@ -1452,9 +1514,23 @@ public sealed partial class ShopOverlay : FullScreenUi
 
     public void RefreshText()
     {
-        _title.Text = _locale.Tr("shop.title");
+        if (_mode == ShopOverlayMode.TwilightEmporium)
+        {
+            _title.Text = _locale.Tr("emporium.shop.title");
+            _rotation.Text = _locale.Tr(
+                "emporium.shop.rotation",
+                _locale.Tr(CalendarSystem.SeasonNameKey(_session.Clock.Day)),
+                CalendarSystem.WeekNumber(_session.Clock.Day)
+            );
+            _description.Text = _locale.Tr("emporium.manifest.dialogue");
+            _buyHeader.Text = _locale.Tr("emporium.shop.buy_header");
+        }
+        else
+        {
+            _title.Text = _locale.Tr("shop.title");
+            _buyHeader.Text = _locale.Tr("shop.buy_header");
+        }
         _coins.Text = _locale.Tr("shop.wallet", _session.Coins);
-        _buyHeader.Text = _locale.Tr("shop.buy_header");
         _sellHeader.Text = _locale.Tr("shop.sell_header");
         _close.Text = _locale.Tr("menu.back");
 
@@ -1498,7 +1574,12 @@ public sealed partial class ShopOverlay : FullScreenUi
     )
     {
         var button = ThemeFactory.Button("");
-        button.CustomMinimumSize = new Vector2(238, 30);
+        var buttonWidth = 238f;
+        if (_mode == ShopOverlayMode.TwilightEmporium)
+        {
+            buttonWidth = 386f;
+        }
+        button.CustomMinimumSize = new Vector2(buttonWidth, 30);
         button.AddThemeFontSizeOverride("font_size", 10);
         button.Pressed += () =>
         {

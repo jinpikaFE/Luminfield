@@ -94,6 +94,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.EmporiumDoor
         ),
         (
+            "--playtest-emporium-rotation",
+            PlaytestScenarioId.EmporiumRotation
+        ),
+        (
+            "--playtest-emporium-restday-door",
+            PlaytestScenarioId.EmporiumRestdayDoor
+        ),
+        (
             "--playtest-starlight-post-nemi",
             PlaytestScenarioId.StarlightPostNemi
         ),

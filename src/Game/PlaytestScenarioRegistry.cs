@@ -31,6 +31,8 @@ public enum PlaytestScenarioId
     EmporiumOrin,
     Emporium,
     EmporiumDoor,
+    EmporiumRotation,
+    EmporiumRestdayDoor,
     StarlightPostNemi,
     StarlightPost,
     StarlightPostWrongTool,
@@ -174,6 +176,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.EmporiumDoor,
             "--playtest-emporium-door"
+        ),
+        new(
+            PlaytestScenarioId.EmporiumRotation,
+            "--playtest-emporium-rotation"
+        ),
+        new(
+            PlaytestScenarioId.EmporiumRestdayDoor,
+            "--playtest-emporium-restday-door"
         ),
         new(
             PlaytestScenarioId.StarlightPostNemi,

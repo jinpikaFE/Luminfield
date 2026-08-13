@@ -573,9 +573,11 @@ public sealed class GameSession
                 );
             }
 
-            if (VillageCatalog.IsTwilightEmporiumOpen(
-                    Clock.MinuteOfDay
-                ))
+            var access = VillageCatalog.TwilightEmporiumAccess(
+                Clock.Day,
+                Clock.MinuteOfDay
+            );
+            if (access.IsOpen)
             {
                 return TargetPreview.Available(
                     VillageCatalog.TwilightEmporiumDoorCell,
@@ -587,7 +589,7 @@ public sealed class GameSession
             return TargetPreview.Blocked(
                 VillageCatalog.TwilightEmporiumDoorCell,
                 TargetPreviewKind.Door,
-                "target.status.emporium_closed"
+                access.TargetStatusKey
             );
         }
 
@@ -1283,11 +1285,13 @@ public sealed class GameSession
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return VillageCatalog.IsTwilightEmporiumOpen(
-                Clock.MinuteOfDay
-            )
+        var access = VillageCatalog.TwilightEmporiumAccess(
+            Clock.Day,
+            Clock.MinuteOfDay
+        );
+        return access.IsOpen
             ? ActionResult.Success(messageKey: "notice.enter_emporium")
-            : ActionResult.Fail("notice.emporium_closed");
+            : ActionResult.Fail(access.NoticeKey);
     }
 
     public ActionResult InspectTravelManifest()
@@ -1302,9 +1306,16 @@ public sealed class GameSession
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return ActionResult.Success(
-            messageKey: "emporium.manifest.dialogue"
+        var access = VillageCatalog.TwilightEmporiumAccess(
+            Clock.Day,
+            Clock.MinuteOfDay
         );
+        if (!access.IsOpen)
+        {
+            return ActionResult.Fail(access.NoticeKey);
+        }
+
+        return ActionResult.Success(messageKey: "emporium.manifest.opened");
     }
 
     public ActionResult TryExitTwilightEmporium()
@@ -1421,6 +1432,38 @@ public sealed class GameSession
 
     public ActionResult BuyItem(string itemId)
     {
+        return PurchaseItem(itemId, "shop.bought");
+    }
+
+    public ActionResult BuyTwilightEmporiumItem(string itemId)
+    {
+        if (!InsideTwilightEmporium)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        var access = VillageCatalog.TwilightEmporiumAccess(
+            Clock.Day,
+            Clock.MinuteOfDay
+        );
+        if (!access.IsOpen)
+        {
+            return ActionResult.Fail(access.NoticeKey);
+        }
+
+        if (!TwilightEmporiumSystem.IsStocked(Clock.Day, itemId))
+        {
+            return ActionResult.Fail("emporium.shop.unavailable");
+        }
+
+        return PurchaseItem(itemId, "emporium.shop.bought");
+    }
+
+    private ActionResult PurchaseItem(
+        string itemId,
+        string successKey
+    )
+    {
         var item = DataCatalog.Item(itemId);
         if (item.BuyPrice <= 0)
         {
@@ -1439,7 +1482,7 @@ public sealed class GameSession
 
         Coins -= item.BuyPrice;
         Changed?.Invoke();
-        return ActionResult.Success(messageKey: "shop.bought");
+        return ActionResult.Success(messageKey: successKey);
     }
 
     public ActionResult SellItem(string itemId)
@@ -1792,6 +1835,19 @@ public sealed class GameSession
         {
             if (selectedId == DataCatalog.HandId)
             {
+                var access = VillageCatalog.TwilightEmporiumAccess(
+                    Clock.Day,
+                    Clock.MinuteOfDay
+                );
+                if (!access.IsOpen)
+                {
+                    return TargetPreview.Blocked(
+                        VillageCatalog.TravelManifestCell,
+                        TargetPreviewKind.Station,
+                        access.TargetStatusKey
+                    );
+                }
+
                 return TargetPreview.Available(
                     VillageCatalog.TravelManifestCell,
                     TargetPreviewKind.Station,

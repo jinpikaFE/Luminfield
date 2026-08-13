@@ -839,9 +839,15 @@ public static class VillageCatalog
     public static bool IsTwilightEmporiumDoor(GridPosition cell) =>
         cell == TwilightEmporiumDoorCell;
 
-    public static bool IsTwilightEmporiumOpen(int minuteOfDay) =>
-        minuteOfDay >= TwilightEmporiumOpenMinute &&
-        minuteOfDay < TwilightEmporiumCloseMinute;
+    public static TwilightEmporiumAccessCheck TwilightEmporiumAccess(
+        int day,
+        int minuteOfDay
+    ) => TwilightEmporiumSystem.CheckAccess(day, minuteOfDay);
+
+    public static bool IsTwilightEmporiumOpen(
+        int day,
+        int minuteOfDay
+    ) => TwilightEmporiumAccess(day, minuteOfDay).IsOpen;
 
     public static bool IsStarlightPostDoor(GridPosition cell) =>
         cell == StarlightPostDoorCell;

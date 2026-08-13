@@ -863,6 +863,193 @@ public sealed class CraftingAndStorageTests
     }
 }
 
+public sealed class TwilightEmporiumRotationTests
+{
+    [Fact]
+    public void AccessRuleSharesHoursAndLanternrestBoundaries()
+    {
+        var beforeOpen = TwilightEmporiumSystem.CheckAccess(
+            1,
+            VillageCatalog.TwilightEmporiumOpenMinute - 1
+        );
+        var atOpen = TwilightEmporiumSystem.CheckAccess(
+            1,
+            VillageCatalog.TwilightEmporiumOpenMinute
+        );
+        var beforeClose = TwilightEmporiumSystem.CheckAccess(
+            1,
+            VillageCatalog.TwilightEmporiumCloseMinute - 1
+        );
+        var atClose = TwilightEmporiumSystem.CheckAccess(
+            1,
+            VillageCatalog.TwilightEmporiumCloseMinute
+        );
+        var lanternrest = TwilightEmporiumSystem.CheckAccess(
+            CalendarSystem.DaysPerWeek,
+            VillageCatalog.TwilightEmporiumOpenMinute
+        );
+
+        Assert.False(beforeOpen.IsOpen);
+        Assert.Equal("notice.emporium_closed", beforeOpen.NoticeKey);
+        Assert.True(atOpen.IsOpen);
+        Assert.True(beforeClose.IsOpen);
+        Assert.False(atClose.IsOpen);
+        Assert.Equal("notice.emporium_closed", atClose.NoticeKey);
+        Assert.False(lanternrest.IsOpen);
+        Assert.Equal("notice.emporium_restday", lanternrest.NoticeKey);
+        Assert.Equal(
+            "target.status.emporium_restday",
+            lanternrest.TargetStatusKey
+        );
+    }
+
+    [Fact]
+    public void StockIsDeterministicAndRotatesByWeekAndSeason()
+    {
+        var firstWeek = TwilightEmporiumSystem.StockForDay(1).ToArray();
+        var firstWeekAgain = TwilightEmporiumSystem
+            .StockForDay(1)
+            .ToArray();
+        var secondWeek = TwilightEmporiumSystem.StockForDay(8).ToArray();
+        var nextSeason = TwilightEmporiumSystem.StockForDay(15).ToArray();
+
+        Assert.Equal(firstWeek, firstWeekAgain);
+        Assert.Equal(TwilightEmporiumSystem.StockSize, firstWeek.Length);
+        Assert.Equal(firstWeek.Length, firstWeek.Distinct().Count());
+        Assert.False(firstWeek.SequenceEqual(secondWeek));
+        Assert.False(secondWeek.SequenceEqual(nextSeason));
+        Assert.All(firstWeek.Concat(secondWeek).Concat(nextSeason), itemId =>
+        {
+            Assert.Contains(itemId, DataCatalog.SeedItemIds);
+            Assert.True(DataCatalog.Item(itemId).BuyPrice > 0);
+        });
+    }
+
+    [Fact]
+    public void PurchaseChecksLocationStockAndCommitsCoinsWithItem()
+    {
+        var session = OpenEmporiumSession(1);
+        var stock = TwilightEmporiumSystem.StockForDay(1);
+        var itemId = stock[0];
+        var price = DataCatalog.Item(itemId).BuyPrice;
+
+        var bought = session.BuyTwilightEmporiumItem(itemId);
+
+        Assert.True(bought.Succeeded);
+        Assert.Equal(GameSession.NewGameCoins - price, session.Coins);
+        Assert.Equal(1, session.Inventory.Count(itemId));
+
+        var unavailableItemId = DataCatalog.SeedItemIds
+            .First(candidate => !stock.Contains(candidate));
+        var beforeCoins = session.Coins;
+        var beforeInventory = session.Inventory.Capture();
+        var unavailable = session.BuyTwilightEmporiumItem(
+            unavailableItemId
+        );
+
+        Assert.False(unavailable.Succeeded);
+        Assert.Equal("emporium.shop.unavailable", unavailable.MessageKey);
+        Assert.Equal(beforeCoins, session.Coins);
+        Assert.Equal(
+            beforeInventory.Select(slot => (slot.ItemId, slot.Count)),
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+        );
+
+        session.SetPlayerLocation(
+            VillageCatalog.TwilightEmporiumDoorCell.X * 16 + 8,
+            (VillageCatalog.TwilightEmporiumDoorCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        Assert.False(session.BuyTwilightEmporiumItem(stock[1]).Succeeded);
+    }
+
+    [Fact]
+    public void FailedPurchaseKeepsCoinsAndInventoryUnchanged()
+    {
+        var insufficient = OpenEmporiumSession(1);
+        var itemId = TwilightEmporiumSystem.StockForDay(1)[0];
+        var save = insufficient.Capture();
+        save.Coins = DataCatalog.Item(itemId).BuyPrice - 1;
+        insufficient.Restore(save);
+        insufficient.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        var beforeCoins = insufficient.Coins;
+
+        Assert.False(
+            insufficient.BuyTwilightEmporiumItem(itemId).Succeeded
+        );
+        Assert.Equal(beforeCoins, insufficient.Coins);
+        Assert.Equal(0, insufficient.Inventory.Count(itemId));
+
+        var full = OpenEmporiumSession(1);
+        var filler = DataCatalog.SeedItemIds
+            .First(candidate => candidate != itemId);
+        Assert.True(full.Inventory.Add(
+            filler,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount)
+        ));
+        var fullCoins = full.Coins;
+        var fullInventory = full.Inventory.Capture();
+
+        Assert.False(full.BuyTwilightEmporiumItem(itemId).Succeeded);
+        Assert.Equal(fullCoins, full.Coins);
+        Assert.Equal(
+            fullInventory.Select(slot => (slot.ItemId, slot.Count)),
+            full.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+        );
+
+        var restday = OpenEmporiumSession(CalendarSystem.DaysPerWeek);
+        var restdayItem = TwilightEmporiumSystem.StockForDay(
+            CalendarSystem.DaysPerWeek
+        )[0];
+        var restdayCoins = restday.Coins;
+        var restdayResult = restday.BuyTwilightEmporiumItem(restdayItem);
+        Assert.False(restdayResult.Succeeded);
+        Assert.Equal("notice.emporium_restday", restdayResult.MessageKey);
+        Assert.Equal(restdayCoins, restday.Coins);
+        Assert.Equal(0, restday.Inventory.Count(restdayItem));
+    }
+
+    [Fact]
+    public void FarmStallPurchaseRemainsAvailableIndependently()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(CalendarSystem.DaysPerWeek, 3 * 60);
+
+        var result = session.BuyItem(DataCatalog.StarbudSeedId);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.StarbudSeedId));
+        Assert.Equal(
+            GameSession.NewGameCoins -
+                DataCatalog.Item(DataCatalog.StarbudSeedId).BuyPrice,
+            session.Coins
+        );
+    }
+
+    private static GameSession OpenEmporiumSession(int day)
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(
+            day,
+            VillageCatalog.TwilightEmporiumOpenMinute
+        );
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        return session;
+    }
+}
+
 public sealed class EconomyAndProcessorTests
 {
     [Fact]
@@ -3525,7 +3712,7 @@ public sealed class VillageSystemTests
         Assert.True(exit.IsAvailable);
         var inspected = session.InspectTravelManifest();
         Assert.True(inspected.Succeeded);
-        Assert.Equal("emporium.manifest.dialogue", inspected.MessageKey);
+        Assert.Equal("emporium.manifest.opened", inspected.MessageKey);
         Assert.True(session.TryExitTwilightEmporium().Succeeded);
         Assert.Equal(energy, session.Energy);
         Assert.Equal(coins, session.Coins);
@@ -3550,6 +3737,40 @@ public sealed class VillageSystemTests
             session.PreviewSelectedTarget(door).State
         );
         Assert.False(session.TryEnterTwilightEmporium().Succeeded);
+
+        session.Clock.Reset(
+            CalendarSystem.DaysPerWeek,
+            VillageCatalog.TwilightEmporiumOpenMinute
+        );
+        var restday = session.PreviewSelectedTarget(door);
+        Assert.Equal(TargetPreviewState.Blocked, restday.State);
+        Assert.Equal(
+            "target.status.emporium_restday",
+            restday.LabelKey
+        );
+        var restdayEntry = session.TryEnterTwilightEmporium();
+        Assert.False(restdayEntry.Succeeded);
+        Assert.Equal("notice.emporium_restday", restdayEntry.MessageKey);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        var restdayManifest = session.PreviewSelectedTarget(
+            VillageCatalog.TravelManifestCell
+        );
+        Assert.Equal(TargetPreviewState.Blocked, restdayManifest.State);
+        Assert.Equal(
+            "target.status.emporium_restday",
+            restdayManifest.LabelKey
+        );
+        var inspectOnRestday = session.InspectTravelManifest();
+        Assert.False(inspectOnRestday.Succeeded);
+        Assert.Equal(
+            "notice.emporium_restday",
+            inspectOnRestday.MessageKey
+        );
     }
 
     [Fact]

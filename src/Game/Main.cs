@@ -438,6 +438,10 @@ public sealed partial class Main : Node
                     StartEmporiumPlaytest,
                 [PlaytestScenarioId.EmporiumDoor] =
                     StartEmporiumDoorPlaytest,
+                [PlaytestScenarioId.EmporiumRotation] =
+                    StartEmporiumRotationPlaytest,
+                [PlaytestScenarioId.EmporiumRestdayDoor] =
+                    StartEmporiumRestdayDoorPlaytest,
                 [PlaytestScenarioId.StarlightPostNemi] =
                     StartStarlightPostNemiPlaytest,
                 [PlaytestScenarioId.StarlightPost] =
@@ -1771,6 +1775,24 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartEmporiumRestdayDoorPlaytest()
+    {
+        StartVillagePlaytestWorld(
+            CalendarSystem.DaysPerWeek,
+            10 * 60,
+            new GridPosition(
+                VillageCatalog.TwilightEmporiumDoorCell.X,
+                VillageCatalog.TwilightEmporiumDoorCell.Y + 1
+            )
+        );
+    }
+
+    private void StartEmporiumRotationPlaytest()
+    {
+        StartEmporiumPlaytest(false);
+        Callable.From(InspectTravelManifest).CallDeferred();
+    }
+
     private void StartEmporiumPlaytest()
     {
         StartEmporiumPlaytest(false);
@@ -2926,14 +2948,7 @@ public sealed partial class Main : Node
         }
 
         _audio.Play(PixelSound.Chime);
-        ShowDialogue(
-            "emporium.manifest.name",
-            result.MessageKey,
-            () => { },
-            GeneratedArt.RelationshipIcon(
-                RelationshipTier.NewAcquaintance
-            )
-        );
+        OpenShop(ShopOverlayMode.TwilightEmporium);
     }
 
     private void TryEnterStarlightPost()
@@ -3028,13 +3043,23 @@ public sealed partial class Main : Node
 
     private void OpenShop()
     {
+        OpenShop(ShopOverlayMode.FarmStall);
+    }
+
+    private void OpenShop(ShopOverlayMode mode)
+    {
         if (_shopOverlay is not null)
         {
             return;
         }
 
         SetWorldControls(false);
-        _shopOverlay = new ShopOverlay(_theme, _session, _locale);
+        _shopOverlay = new ShopOverlay(
+            _theme,
+            _session,
+            _locale,
+            mode
+        );
         _shopOverlay.CloseRequested += CloseShop;
         _shopOverlay.TransactionSucceeded += () =>
         {
