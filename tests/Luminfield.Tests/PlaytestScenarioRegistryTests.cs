@@ -197,6 +197,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.WeeklyCommissionRewardReady
         ),
         (
+            "--playtest-weekly-commission-map",
+            PlaytestScenarioId.WeeklyCommissionMap
+        ),
+        (
             "--playtest-mailbox-unread",
             PlaytestScenarioId.MailboxUnread
         ),

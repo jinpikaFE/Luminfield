@@ -65,6 +65,7 @@ public enum PlaytestScenarioId
     WeeklyCommissionOffer,
     WeeklyCommissionStageReady,
     WeeklyCommissionRewardReady,
+    WeeklyCommissionMap,
     MailboxUnread,
     MailPanel,
     MailReward,
@@ -277,6 +278,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.WeeklyCommissionRewardReady,
             "--playtest-weekly-commission-reward-ready"
+        ),
+        new(
+            PlaytestScenarioId.WeeklyCommissionMap,
+            "--playtest-weekly-commission-map"
         ),
         new(
             PlaytestScenarioId.MailboxUnread,

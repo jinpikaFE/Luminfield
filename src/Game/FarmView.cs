@@ -112,7 +112,7 @@ public sealed partial class FarmView : Node2D
         AddChild(_shippingBin);
 
         _commissionBoard = GeneratedArt.CreateCommissionBoardSprite(
-            session.Commission.Accepted && !session.Commission.Claimed
+            HasActiveCommission(session)
         );
         _commissionBoard.Name = "DailyCommissionBoard";
         _commissionBoard.Position =
@@ -240,6 +240,7 @@ public sealed partial class FarmView : Node2D
         session.Storage.Changed += RefreshStorageChests;
         session.FarmObjects.Changed += RefreshFarmObjects;
         session.Commission.Changed += RefreshCommissionBoard;
+        session.WeeklyCommission.Changed += RefreshCommissionBoard;
         session.Mail.Changed += RefreshStarlightMailbox;
         UpdateLighting();
     }
@@ -630,6 +631,7 @@ public sealed partial class FarmView : Node2D
         _session.Storage.Changed -= RefreshStorageChests;
         _session.FarmObjects.Changed -= RefreshFarmObjects;
         _session.Commission.Changed -= RefreshCommissionBoard;
+        _session.WeeklyCommission.Changed -= RefreshCommissionBoard;
         _session.Mail.Changed -= RefreshStarlightMailbox;
     }
 
@@ -772,10 +774,14 @@ public sealed partial class FarmView : Node2D
     private void RefreshCommissionBoard()
     {
         var active = _commissionBoardOpen ||
-            (_session.Commission.Accepted && !_session.Commission.Claimed) ||
-            _session.Commission.IsReady(_session.Inventory);
+            HasActiveCommission(_session);
         GeneratedArt.SetCommissionBoardState(_commissionBoard, active);
     }
+
+    private static bool HasActiveCommission(GameSession session) =>
+        (session.Commission.Accepted && !session.Commission.Claimed) ||
+        (session.WeeklyCommission.Accepted &&
+            !session.WeeklyCommission.Claimed);
 
     private void RequestCommissionBoard()
     {

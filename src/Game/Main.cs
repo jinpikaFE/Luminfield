@@ -497,6 +497,8 @@ public sealed partial class Main : Node
                     StartWeeklyCommissionStageReadyPlaytest,
                 [PlaytestScenarioId.WeeklyCommissionRewardReady] =
                     StartWeeklyCommissionRewardReadyPlaytest,
+                [PlaytestScenarioId.WeeklyCommissionMap] =
+                    StartWeeklyCommissionMapPlaytest,
                 [PlaytestScenarioId.MailboxUnread] =
                     StartMailboxUnreadPlaytest,
                 [PlaytestScenarioId.MailPanel] =
@@ -846,6 +848,15 @@ public sealed partial class Main : Node
         _session.AdvanceWeeklyCommissionStage();
         _session.Inventory.Add(DataCatalog.CrystalShardId, 3);
         StartWeeklyCommissionPlaytestWorld();
+    }
+
+    private void StartWeeklyCommissionMapPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.AcceptWeeklyCommission();
+        StartCommissionPlaytestWorld(false);
     }
 
     private void PrepareWeeklyCommissionPlaytest()

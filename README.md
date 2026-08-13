@@ -348,8 +348,10 @@ two friendship stages from her real ordinary-day 14:00 village projection.
 Use `--playtest-weekly-commission-offer`,
 `--playtest-weekly-commission-stage-ready`, and
 `--playtest-weekly-commission-reward-ready` to inspect the Weekly tab's offer,
-stage-confirmation, and atomic final-delivery states. The existing
-`--playtest-commission-offer` remains the Daily-tab regression entry.
+stage-confirmation, and atomic final-delivery states. Use
+`--playtest-weekly-commission-map` to verify that weekly-only tracked work keeps
+the closed board's active glow. The existing `--playtest-commission-offer`
+remains the Daily-tab regression entry.
 
 Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
@@ -444,8 +446,9 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 - 2026-08-13 09:39:42 CST — Added the independent three-stage weekly “Starlit
   Route Restoration” commission with same-week persistence, atomic material
-  reward settlement, Daily/Weekly board tabs and HUD tracking, plus Sela's
-  independent two-stage afternoon friendship chain and deterministic playtests.
+  reward settlement, Daily/Weekly board tabs, HUD tracking, and weekly-only
+  closed-board active glow, plus Sela's independent two-stage afternoon
+  friendship chain and deterministic playtests.
 - 2026-08-12 17:41:50 CST — Added the sixth enterable building, Starfall Watch,
   its 06:00–20:00 door rules, read-only seal route table, Kael's ordinary
   09:00–13:00 indoor route, shared pathfinding and save restoration, original
