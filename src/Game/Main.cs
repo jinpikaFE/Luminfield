@@ -413,6 +413,10 @@ public sealed partial class Main : Node
                     StartKaelEventOnePlaytest,
                 [PlaytestScenarioId.KaelEventTwo] =
                     StartKaelEventTwoPlaytest,
+                [PlaytestScenarioId.SelaEventOne] =
+                    StartSelaEventOnePlaytest,
+                [PlaytestScenarioId.SelaEventTwo] =
+                    StartSelaEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1380,6 +1384,43 @@ public sealed partial class Main : Node
         characterEvents,
         VillageCatalog.KaelId,
         "village.npc.kael.plaza"
+    );
+
+    private void StartSelaEventOnePlaytest()
+    {
+        StartSelaEventPlaytest(15, 25, new CharacterEventSave());
+    }
+
+    private void StartSelaEventTwoPlaytest()
+    {
+        StartSelaEventPlaytest(
+            17,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.SelaTemperedStarlightId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartSelaEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    ) => StartWorldCharacterEventPlaytest(
+        day,
+        relationshipPoints,
+        characterEvents,
+        VillageCatalog.SelaId,
+        "village.npc.sela.plaza"
     );
 
     private void StartWorldCharacterEventPlaytest(

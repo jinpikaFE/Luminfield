@@ -4881,6 +4881,285 @@ public sealed class CharacterEventSystemTests
     }
 
     [Fact]
+    public void SelaFirstMeetingThresholdCrossingAndPreviewDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 25,
+            metSela: false
+        );
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.SelaPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.sela.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 23,
+            metSela: true,
+            lastTalkDay: 0
+        );
+        var preview = thresholdCrossing.Session.PreviewSelectedTarget(
+            thresholdCrossing.SelaPosition
+        );
+
+        Assert.True(preview.IsAvailable);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.SelaPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+    }
+
+    [Fact]
+    public void SelaTemperedStarlightCompletesOnlyAfterDialogueCallback()
+    {
+        var prepared = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 25,
+            metSela: true
+        );
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.SelaPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.SelaTemperedStarlightId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.Equal(
+            CharacterEventCatalog.SelaTemperedStarlightId,
+            prepared.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.SelaTemperedStarlightId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.SelaTemperedStarlightId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            15,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.SelaTemperedStarlightId
+            )
+        );
+        var saved = Assert.Single(
+            prepared.Session.Capture().CharacterEvents.Entries
+        );
+        Assert.Equal(
+            CharacterEventCatalog.SelaTemperedStarlightId,
+            saved.EventId
+        );
+        Assert.Equal(15, saved.CompletedDay);
+
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            15,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.SelaTemperedStarlightId
+            )
+        );
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.SelaTemperedStarlightId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void SelaSharedForgeRhythmRequiresThresholdAndEarlierCompletionDay()
+    {
+        var sameDay = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 60,
+            metSela: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        15
+                    )
+                ]
+            }
+        );
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.SelaPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var belowThreshold = PrepareSelaSession(
+            day: 17,
+            relationshipPoints: 59,
+            metSela: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        15
+                    )
+                ]
+            }
+        );
+        var belowThresholdTalk =
+            belowThreshold.Session.InteractWithVillager(
+                belowThreshold.SelaPosition,
+                out var belowThresholdResult
+            );
+
+        Assert.True(belowThresholdResult.Succeeded);
+        Assert.NotNull(belowThresholdTalk);
+        Assert.Null(belowThresholdTalk.CharacterEvent);
+
+        var laterDay = PrepareSelaSession(
+            day: 17,
+            relationshipPoints: 60,
+            metSela: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        15
+                    )
+                ]
+            }
+        );
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.SelaPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.SelaSharedForgeRhythmId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.Equal(3, laterTalk.CharacterEvent.DialogueKeys.Count);
+        Assert.False(laterDay.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.SelaSharedForgeRhythmId
+        ));
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.SelaSharedForgeRhythmId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void SelaInvalidInteractionsNeverProgressEvents()
+    {
+        var wrongTool = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 25,
+            metSela: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.SelaPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongTool.Session.CharacterEvents.Capture().Entries);
+        Assert.False(wrongTool.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.SelaTemperedStarlightId
+        ).Succeeded);
+
+        var gift = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 25,
+            metSela: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.CrystalShardId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.CrystalShardId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.SelaPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareSelaSession(
+            day: 15,
+            relationshipPoints: 25,
+            metSela: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            8,
+            8,
+            PlayerLocationIds.Cottage
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.SelaPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongScene.Session.CharacterEvents.Capture().Entries);
+    }
+
+    [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
         Assert.Empty(
@@ -5227,6 +5506,128 @@ public sealed class CharacterEventSystemTests
         );
     }
 
+    [Fact]
+    public void SelaSaveNormalizationFiltersCorruptionWithoutDroppingOtherChains()
+    {
+        var normalized = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.LioraFadedReturnRouteId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.LioraRememberedWayHomeId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviMendedLightId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiUndeliverableLetterId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiStarChartRouteId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        5
+                    ),
+                    EventEntry("unknown_sela_event", 1),
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaSharedForgeRhythmId,
+                        6
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaSharedForgeRhythmId,
+                        3
+                    )
+                ]
+            },
+            8
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.LioraFadedReturnRouteId,
+                CharacterEventCatalog.LioraRememberedWayHomeId,
+                CharacterEventCatalog.TaviCrackedMoonRuneId,
+                CharacterEventCatalog.TaviMendedLightId,
+                CharacterEventCatalog.NemiUndeliverableLetterId,
+                CharacterEventCatalog.NemiStarChartRouteId,
+                CharacterEventCatalog.KaelBrokenBlueRuneId,
+                CharacterEventCatalog.KaelSafeReturnRouteId,
+                CharacterEventCatalog.SelaTemperedStarlightId
+            },
+            normalized.Entries.Select(entry => entry.EventId)
+        );
+        Assert.Equal(
+            3,
+            normalized.Entries.Single(entry =>
+                entry.EventId ==
+                    CharacterEventCatalog.SelaTemperedStarlightId
+            ).CompletedDay
+        );
+        Assert.DoesNotContain(
+            normalized.Entries,
+            entry => entry.EventId ==
+                CharacterEventCatalog.SelaSharedForgeRhythmId
+        );
+
+        var orphan = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaSharedForgeRhythmId,
+                        5
+                    )
+                ]
+            },
+            6
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.KaelBrokenBlueRuneId,
+                CharacterEventCatalog.KaelSafeReturnRouteId
+            },
+            orphan.Entries.Select(entry => entry.EventId)
+        );
+    }
+
     private static CharacterEventEntrySave EventEntry(
         string eventId,
         int completedDay
@@ -5440,6 +5841,59 @@ public sealed class CharacterEventSystemTests
         Assert.Equal(PlayerLocationIds.World, kael.LocationId);
         Assert.Equal("village.npc.kael.plaza", kael.DialogueKey);
         return (session, kael.Position);
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition SelaPosition
+    ) PrepareSelaSession(
+        int day,
+        int relationshipPoints,
+        bool metSela,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 14 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metSela ? [VillageCatalog.SelaId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.SelaId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        Assert.Equal(DataCatalog.ClearWeatherId, session.Weather.CurrentId);
+        Assert.NotEqual(
+            CalendarSystem.LanternrestWeekdayIndex,
+            CalendarSystem.WeekdayIndex(day)
+        );
+        var sela = session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            session.PlayerCell
+        ).Single(state => state.Definition.Id == VillageCatalog.SelaId);
+        Assert.Equal(PlayerLocationIds.World, sela.LocationId);
+        Assert.Equal("village.npc.sela.plaza", sela.DialogueKey);
+        return (session, sela.Position);
     }
 }
 

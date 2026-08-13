@@ -32,6 +32,10 @@ public static class CharacterEventCatalog
         "kael_broken_blue_rune";
     public const string KaelSafeReturnRouteId =
         "kael_safe_return_route";
+    public const string SelaTemperedStarlightId =
+        "sela_tempered_starlight";
+    public const string SelaSharedForgeRhythmId =
+        "sela_shared_forge_rhythm";
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -127,6 +131,29 @@ public static class CharacterEventCatalog
                     "character_event.kael.safe_return_route.3"
                 ],
                 KaelBrokenBlueRuneId
+            ),
+            new(
+                SelaTemperedStarlightId,
+                VillageCatalog.SelaId,
+                25,
+                PlayerLocationIds.World,
+                [
+                    "character_event.sela.tempered_starlight.1",
+                    "character_event.sela.tempered_starlight.2",
+                    "character_event.sela.tempered_starlight.3"
+                ]
+            ),
+            new(
+                SelaSharedForgeRhythmId,
+                VillageCatalog.SelaId,
+                60,
+                PlayerLocationIds.World,
+                [
+                    "character_event.sela.shared_forge_rhythm.1",
+                    "character_event.sela.shared_forge_rhythm.2",
+                    "character_event.sela.shared_forge_rhythm.3"
+                ],
+                SelaTemperedStarlightId
             )
         ];
 

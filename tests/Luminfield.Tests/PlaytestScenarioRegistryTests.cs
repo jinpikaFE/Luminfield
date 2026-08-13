@@ -51,6 +51,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.KaelEventTwo
         ),
         (
+            "--playtest-sela-event-one",
+            PlaytestScenarioId.SelaEventOne
+        ),
+        (
+            "--playtest-sela-event-two",
+            PlaytestScenarioId.SelaEventTwo
+        ),
+        (
             "--playtest-workshop-tavi",
             PlaytestScenarioId.WorkshopTavi
         ),
