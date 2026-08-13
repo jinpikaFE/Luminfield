@@ -113,12 +113,16 @@ exploration state in the regular save file.
   route. At 25 points, “The Broken Blue Rune” begins; after it was completed on
   an earlier day, 60 points unlocks “The Safe Return Route.” The stable IDs are
   `kael_broken_blue_rune` and `kael_safe_return_route`.
+- Sela now has the fifth complete event chain on her ordinary afternoon village
+  route. At 25 points, “Tempered Starlight” begins; after it was completed on an
+  earlier day, 60 points unlocks “The Shared Forge Rhythm.” The stable IDs are
+  `sela_tempered_starlight` and `sela_shared_forge_rhythm`.
 - Character-event eligibility now resolves the NPC, location, relationship
   threshold, and prerequisite from each definition. Liora's, Tavi's, Nemi's,
-  and Kael's chains normalize independently, so malformed ordering in one chain
-  does not remove valid entries from another.
+  Kael's, and Sela's chains normalize independently, so malformed ordering in
+  one chain does not remove valid entries from another.
 - Phase B's six-building interior target is complete; more character events,
-  weekly commissions, and construction remain planned.
+  shop stock rotation, and construction remain planned.
 
 ## Starlight Mail and relationship rewards
 
@@ -243,7 +247,7 @@ fixed tool order without dropping seeds or harvests.
   processing, and Starlight offerings accept all three qualities as the same
   crop family and consume lower-value quality first.
 
-## Daily commission board
+## Daily and weekly commission board
 
 - A Starlamp Commission Board stands between the cottage and greenhouse.
   Select the Hand, approach its mint outline, and press `E`; other tools explain
@@ -257,6 +261,18 @@ fixed tool order without dropping seeds or harvests.
 - The day, stable definition ID, acceptance, progress, and claim state are
   saved. Older saves and unknown commission IDs safely receive the current
   day's offer without losing unrelated progress.
+- The Weekly tab offers the three-stage “Starlit Route Restoration” chain:
+  successfully plant 3 Starbud crops, gather 4 Lumenwood, then bring 3 Crystal
+  shards. Only the active stage counts, and completed stages advance only after
+  confirmation at the board.
+- Weekly progress survives sleep inside the same seven-day week and refreshes
+  at day 8, 15, and later week boundaries without changing the daily offer.
+  Final confirmation atomically exchanges the 3 Crystal shards for 4 Moonstone
+  Paths and awards 120 glow coins; insufficient items or backpack space changes
+  neither inventory nor completion state.
+- Week, stable commission and stage IDs, acceptance, progress, and claim state
+  are additive `schemaVersion: 1` fields. Old, mismatched-week, and malformed
+  saves safely receive the current week's first-stage offer.
 
 ## Woodland Watch Starlight
 
@@ -326,6 +342,15 @@ read-only seal route table, and Kael's indoor work position. Use
 `--playtest-starfall-watch-wrong-tool` to verify the full table outline uses the
 warm-gold tool-mismatch state.
 
+Use `--playtest-sela-event-one` and `--playtest-sela-event-two` to open Sela's
+two friendship stages from her real ordinary-day 14:00 village projection.
+
+Use `--playtest-weekly-commission-offer`,
+`--playtest-weekly-commission-stage-ready`, and
+`--playtest-weekly-commission-reward-ready` to inspect the Weekly tab's offer,
+stage-confirmation, and atomic final-delivery states. The existing
+`--playtest-commission-offer` remains the Daily-tab regression entry.
+
 Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
 interior manifest shelf, and Orin interaction. They also support deterministic
@@ -386,11 +411,11 @@ The save file is written atomically to `user://saves/slot_1.json`. Corrupt saves
 are preserved with a `.broken-<timestamp>` suffix.
 Glow coins, the active processing job, artisan goods, watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
-Starwoven Chests with their 16-slot contents, the daily commission state, the
-Woodland Watch Starlight's partial offerings and permanent reward, and the
-24-slot backpack are stored in the existing `schemaVersion: 1` save. Liora's,
-Tavi's, Nemi's, and Kael's character-event completion IDs and dates use another
-additive projection in that same schema.
+Starwoven Chests with their 16-slot contents, the daily and weekly commission
+states, the Woodland Watch Starlight's partial offerings and permanent reward,
+and the 24-slot backpack are stored in the existing `schemaVersion: 1` save.
+Liora's, Tavi's, Nemi's, Kael's, and Sela's character-event completion IDs and
+dates use another additive projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
 not add a save field or change the `schemaVersion: 1` contract.
 Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
@@ -417,6 +442,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-13 09:39:42 CST — Added the independent three-stage weekly “Starlit
+  Route Restoration” commission with same-week persistence, atomic material
+  reward settlement, Daily/Weekly board tabs and HUD tracking, plus Sela's
+  independent two-stage afternoon friendship chain and deterministic playtests.
 - 2026-08-12 17:41:50 CST — Added the sixth enterable building, Starfall Watch,
   its 06:00–20:00 door rules, read-only seal route table, Kael's ordinary
   09:00–13:00 indoor route, shared pathfinding and save restoration, original
