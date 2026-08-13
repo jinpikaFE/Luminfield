@@ -1204,6 +1204,24 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), line, false, 1.5f);
                 break;
+            case TargetPreviewKind.KitchenReserve:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-10, -66),
+                        new Vector2(144, 128)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-10, -66),
+                        new Vector2(144, 128)
+                    ),
+                    line,
+                    false,
+                    1.5f
+                );
+                break;
             case TargetPreviewKind.CommissionBoard:
                 DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), line, false, 1.7f);
@@ -1331,6 +1349,7 @@ internal sealed partial class TargetCursor : Node2D
     {
         TargetPreviewKind.Tree => -72,
         TargetPreviewKind.Station => -68,
+        TargetPreviewKind.KitchenReserve => -72,
         TargetPreviewKind.CommissionBoard => -58,
         TargetPreviewKind.Mailbox => -67,
         TargetPreviewKind.StorageChest => -48,

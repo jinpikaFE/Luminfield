@@ -29,6 +29,7 @@ public sealed partial class Main : Node
     private ProcessorOverlay? _processorOverlay;
     private ShippingOverlay? _shippingOverlay;
     private CommissionBoardOverlay? _commissionOverlay;
+    private ConstructionOverlay? _constructionOverlay;
     private StarlightMailOverlay? _mailOverlay;
     private StarlightPedestalOverlay? _starlightOverlay;
     private CraftingOverlay? _craftingOverlay;
@@ -173,6 +174,14 @@ public sealed partial class Main : Node
         }
 
         if (@event.IsActionPressed(InputSetup.Pause) &&
+            _constructionOverlay is not null)
+        {
+            CloseConstructionPanel();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
             _mailOverlay is not null)
         {
             CloseStarlightMail();
@@ -241,6 +250,7 @@ public sealed partial class Main : Node
             _processorOverlay is null &&
             _shippingOverlay is null &&
             _commissionOverlay is null &&
+            _constructionOverlay is null &&
             _mailOverlay is null &&
             _starlightOverlay is null &&
             _craftingOverlay is null &&
@@ -315,6 +325,7 @@ public sealed partial class Main : Node
         _processorOverlay is not null ||
         _shippingOverlay is not null ||
         _commissionOverlay is not null ||
+        _constructionOverlay is not null ||
         _mailOverlay is not null ||
         _starlightOverlay is not null ||
         _craftingOverlay is not null ||
@@ -322,6 +333,23 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
         _fadeTransition is not null;
+
+    private bool CanRestoreWorldControls =>
+        !_paused &&
+        _dialogueOverlay is null &&
+        _completionOverlay is null &&
+        _shopOverlay is null &&
+        _processorOverlay is null &&
+        _shippingOverlay is null &&
+        _commissionOverlay is null &&
+        _constructionOverlay is null &&
+        _mailOverlay is null &&
+        _starlightOverlay is null &&
+        _craftingOverlay is null &&
+        _storageOverlay is null &&
+        _nightlySummaryOverlay is null &&
+        _backpackOverlay is null &&
+        _fadeTransition is null;
 
     private void ShowTitle(string? noticeKey = null)
     {
@@ -346,6 +374,8 @@ public sealed partial class Main : Node
         _shippingOverlay = null;
         FreeUi(_commissionOverlay);
         _commissionOverlay = null;
+        FreeUi(_constructionOverlay);
+        _constructionOverlay = null;
         FreeUi(_mailOverlay);
         _mailOverlay = null;
         FreeUi(_starlightOverlay);
@@ -391,6 +421,12 @@ public sealed partial class Main : Node
             {
                 [PlaytestScenarioId.Door] = StartDoorPlaytest,
                 [PlaytestScenarioId.Cottage] = StartCottagePlaytest,
+                [PlaytestScenarioId.CottageUpgradeReady] =
+                    StartCottageUpgradeReadyPlaytest,
+                [PlaytestScenarioId.CottageUpgradeInProgress] =
+                    StartCottageUpgradeInProgressPlaytest,
+                [PlaytestScenarioId.CottageUpgradeCompleted] =
+                    StartCottageUpgradeCompletedPlaytest,
                 [PlaytestScenarioId.Crops] = StartCropPlaytest,
                 [PlaytestScenarioId.Economy] = StartEconomyPlaytest,
                 [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
@@ -556,6 +592,51 @@ public sealed partial class Main : Node
     {
         StartNewGame();
         ShowCottage(true);
+    }
+
+    private void StartCottageUpgradeReadyPlaytest()
+    {
+        PrepareCottageConstructionPlaytest();
+        Callable.From(OpenConstructionPanel).CallDeferred();
+    }
+
+    private void StartCottageUpgradeInProgressPlaytest()
+    {
+        PrepareCottageConstructionPlaytest();
+        _ = _session.StartCottageFirstUpgrade();
+        Callable.From(OpenConstructionPanel).CallDeferred();
+    }
+
+    private void StartCottageUpgradeCompletedPlaytest()
+    {
+        PrepareCottageConstructionPlaytest();
+        _ = _session.StartCottageFirstUpgrade();
+        _session.EndDay();
+        _session.EndDay();
+        _session.SetPlayerLocation(
+            26 * 16 + 8,
+            14 * 16 + 8,
+            PlayerLocationIds.Cottage
+        );
+        ShowCottage(false);
+    }
+
+    private void PrepareCottageConstructionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 12);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 4);
+        var save = _session.Capture();
+        save.Coins = 240;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 11 * 16 + 8;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowWorkshop(false);
     }
 
     private void StartDoorPlaytest()
@@ -2482,6 +2563,7 @@ public sealed partial class Main : Node
         _cottage = new CottageView(_session, _locale);
         _cottage.SleepRequested += EndDay;
         _cottage.ExitRequested += () => ShowFarm(true);
+        _cottage.KitchenReserveRequested += InspectKitchenReserve;
         _cottage.StepRequested += () => _audio.Play(PixelSound.Step);
         _world = _cottage;
         AddChild(_world);
@@ -2529,7 +2611,7 @@ public sealed partial class Main : Node
 
         _workshop = new WorkshopView(_session, _locale);
         _workshop.ExitRequested += TryLeaveMoonstoneWorkshop;
-        _workshop.WorkbenchRequested += InspectMoonRuneWorkbench;
+        _workshop.WorkbenchRequested += OpenConstructionPanel;
         _workshop.VillagerRequested += TalkToVillager;
         _workshop.StepRequested += () => _audio.Play(PixelSound.Step);
         _world = _workshop;
@@ -2848,9 +2930,49 @@ public sealed partial class Main : Node
         ShowFarm(false, fromWorkshop: true);
     }
 
-    private void InspectMoonRuneWorkbench()
+    private void OpenConstructionPanel()
     {
-        var result = _session.InspectMoonRuneWorkbench();
+        var result = _session.OpenConstructionPanel();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        if (_constructionOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _constructionOverlay = new ConstructionOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _constructionOverlay.CloseRequested += CloseConstructionPanel;
+        _constructionOverlay.ConstructionChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_constructionOverlay);
+    }
+
+    private void CloseConstructionPanel()
+    {
+        FreeUi(_constructionOverlay);
+        _constructionOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void InspectKitchenReserve()
+    {
+        var result = _session.InspectKitchenReserve();
         if (!result.Succeeded)
         {
             _hud?.ShowNotice(result.MessageKey);
@@ -2859,12 +2981,9 @@ public sealed partial class Main : Node
 
         _audio.Play(PixelSound.Chime);
         ShowDialogue(
-            "workshop.workbench.name",
+            "construction.kitchen_reserve.name",
             result.MessageKey,
-            () => { },
-            GeneratedArt.RelationshipIcon(
-                RelationshipTier.TrustedFriend
-            )
+            () => { }
         );
     }
 
@@ -3073,15 +3192,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_shopOverlay);
         _shopOverlay = null;
-        if (!_paused &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3109,15 +3220,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_processorOverlay);
         _processorOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3145,15 +3248,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_shippingOverlay);
         _shippingOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3198,16 +3293,7 @@ public sealed partial class Main : Node
         FreeUi(_commissionOverlay);
         _commissionOverlay = null;
         _farm?.SetCommissionBoardOpen(false);
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _mailOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _backpackOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3242,17 +3328,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_mailOverlay);
         _mailOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _backpackOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3285,17 +3361,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_starlightOverlay);
         _starlightOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _backpackOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3323,16 +3389,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_backpackOverlay);
         _backpackOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3360,16 +3417,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_craftingOverlay);
         _craftingOverlay = null;
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _storageOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _backpackOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3400,16 +3448,7 @@ public sealed partial class Main : Node
         FreeUi(_storageOverlay);
         _storageOverlay = null;
         _farm?.SetStorageChestOpen(null);
-        if (!_paused &&
-            _shopOverlay is null &&
-            _processorOverlay is null &&
-            _shippingOverlay is null &&
-            _commissionOverlay is null &&
-            _starlightOverlay is null &&
-            _craftingOverlay is null &&
-            _nightlySummaryOverlay is null &&
-            _backpackOverlay is null &&
-            _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3446,7 +3485,7 @@ public sealed partial class Main : Node
             {
                 _dialogueOverlay = null;
                 closed();
-                if (_completionOverlay is null && !_paused)
+                if (CanRestoreWorldControls)
                 {
                     SetWorldControls(true);
                 }
@@ -3510,7 +3549,7 @@ public sealed partial class Main : Node
     {
         FreeUi(_nightlySummaryOverlay);
         _nightlySummaryOverlay = null;
-        if (!_paused && _fadeTransition is null)
+        if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -3550,7 +3589,10 @@ public sealed partial class Main : Node
         _paused = false;
         FreeUi(_pauseOverlay);
         _pauseOverlay = null;
-        SetWorldControls(true);
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void ShowCompletion()
@@ -3561,7 +3603,10 @@ public sealed partial class Main : Node
         {
             FreeUi(_completionOverlay);
             _completionOverlay = null;
-            SetWorldControls(true);
+            if (CanRestoreWorldControls)
+            {
+                SetWorldControls(true);
+            }
         };
         _completionOverlay.MenuRequested += () =>
         {

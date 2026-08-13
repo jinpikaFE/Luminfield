@@ -853,22 +853,36 @@ internal static class GeneratedArt
 
 internal sealed partial class CottageBackdrop : Node2D
 {
-    private static readonly Texture2D Background =
+    private static readonly Texture2D BaseBackground =
         GD.Load<Texture2D>("res://assets/generated/cottage_twilight_interior.png");
+    private static readonly Texture2D UpgradedBackground =
+        GD.Load<Texture2D>(
+            "res://assets/generated/cottage_first_upgrade_interior.png"
+        );
+    private readonly GameSession _session;
 
-    public CottageBackdrop()
+    public CottageBackdrop(GameSession session)
     {
+        _session = session;
         ZIndex = -100;
         TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+        session.Construction.Changed += QueueRedraw;
     }
 
     public override void _Draw()
     {
         DrawTextureRectRegion(
-            Background,
+            _session.Construction.IsCompleted
+                ? UpgradedBackground
+                : BaseBackground,
             new Rect2(0, 0, 640, 360),
             new Rect2(0, 80, 1536, 864)
         );
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Construction.Changed -= QueueRedraw;
     }
 }
 

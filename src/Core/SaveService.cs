@@ -363,6 +363,9 @@ public sealed class SaveService
             save.CharacterEvents,
             save.Day
         );
+        save.Construction = ConstructionSystem.NormalizeSave(
+            save.Construction
+        );
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

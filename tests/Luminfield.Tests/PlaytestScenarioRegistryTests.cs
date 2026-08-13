@@ -12,6 +12,18 @@ public sealed class PlaytestScenarioRegistryTests
     [
         ("--playtest-door", PlaytestScenarioId.Door),
         ("--playtest-cottage", PlaytestScenarioId.Cottage),
+        (
+            "--playtest-cottage-upgrade-ready",
+            PlaytestScenarioId.CottageUpgradeReady
+        ),
+        (
+            "--playtest-cottage-upgrade-in-progress",
+            PlaytestScenarioId.CottageUpgradeInProgress
+        ),
+        (
+            "--playtest-cottage-upgrade-completed",
+            PlaytestScenarioId.CottageUpgradeCompleted
+        ),
         ("--playtest-crops", PlaytestScenarioId.Crops),
         ("--playtest-economy", PlaytestScenarioId.Economy),
         ("--playtest-processor", PlaytestScenarioId.Processor),

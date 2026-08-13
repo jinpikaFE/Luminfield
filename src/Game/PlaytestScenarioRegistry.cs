@@ -4,6 +4,9 @@ public enum PlaytestScenarioId
 {
     Door,
     Cottage,
+    CottageUpgradeReady,
+    CottageUpgradeInProgress,
+    CottageUpgradeCompleted,
     Crops,
     Economy,
     Processor,
@@ -96,6 +99,18 @@ public sealed class PlaytestScenarioRegistry
     [
         new(PlaytestScenarioId.Door, "--playtest-door"),
         new(PlaytestScenarioId.Cottage, "--playtest-cottage"),
+        new(
+            PlaytestScenarioId.CottageUpgradeReady,
+            "--playtest-cottage-upgrade-ready"
+        ),
+        new(
+            PlaytestScenarioId.CottageUpgradeInProgress,
+            "--playtest-cottage-upgrade-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.CottageUpgradeCompleted,
+            "--playtest-cottage-upgrade-completed"
+        ),
         new(PlaytestScenarioId.Crops, "--playtest-crops"),
         new(PlaytestScenarioId.Economy, "--playtest-economy"),
         new(PlaytestScenarioId.Processor, "--playtest-processor"),

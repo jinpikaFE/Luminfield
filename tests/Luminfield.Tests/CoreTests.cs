@@ -1989,6 +1989,159 @@ public sealed class WeeklyCommissionTests
     }
 }
 
+public sealed class ConstructionSystemTests
+{
+    [Fact]
+    public void CottageUpgradeStartsAtomicallyAndAdvancesAcrossTwoSleeps()
+    {
+        var session = PreparedSession();
+        var changedSnapshots = new List<ConstructionTransactionSnapshot>();
+        session.Changed += () => changedSnapshots.Add(new(
+            session.Coins,
+            session.Inventory.Count(DataCatalog.LumenwoodId),
+            session.Inventory.Count(DataCatalog.CrystalShardId),
+            session.Construction.Phase
+        ));
+
+        var result = session.StartCottageFirstUpgrade();
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(0, session.Coins);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.LumenwoodId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.True(session.Construction.IsInProgress);
+        Assert.Equal(2, session.Construction.RemainingNights);
+        var transaction = Assert.Single(changedSnapshots);
+        Assert.Equal(ConstructionPhase.InProgress, transaction.Phase);
+        Assert.Equal(0, transaction.Coins);
+        Assert.Equal(0, transaction.Lumenwood);
+        Assert.Equal(0, transaction.CrystalShards);
+
+        session.EndDay();
+        Assert.True(session.Construction.IsInProgress);
+        Assert.Equal(1, session.Construction.RemainingNights);
+
+        session.EndDay();
+        Assert.True(session.Construction.IsCompleted);
+        Assert.Equal(0, session.Construction.RemainingNights);
+        Assert.Equal(ConstructionPhase.Completed, session.Construction.Phase);
+    }
+
+    [Theory]
+    [InlineData(239, 12, 4, "construction.insufficient_coins")]
+    [InlineData(240, 11, 4, "construction.insufficient_lumenwood")]
+    [InlineData(240, 12, 3, "construction.insufficient_crystal")]
+    public void FailedStartLeavesCoinsMaterialsAndStateUnchanged(
+        int coins,
+        int lumenwood,
+        int crystal,
+        string expectedMessageKey
+    )
+    {
+        var session = PreparedSession(coins, lumenwood, crystal);
+
+        var result = session.StartCottageFirstUpgrade();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(expectedMessageKey, result.MessageKey);
+        Assert.Equal(coins, session.Coins);
+        Assert.Equal(
+            lumenwood,
+            session.Inventory.Count(DataCatalog.LumenwoodId)
+        );
+        Assert.Equal(
+            crystal,
+            session.Inventory.Count(DataCatalog.CrystalShardId)
+        );
+        Assert.Equal(ConstructionPhase.NotStarted, session.Construction.Phase);
+    }
+
+    [Fact]
+    public void ConstructionCanOnlyStartFromTheWorkshop()
+    {
+        var session = PreparedSession();
+        session.SetPlayerLocation(328, 280, PlayerLocationIds.World);
+
+        var result = session.StartCottageFirstUpgrade();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("construction.workshop_only", result.MessageKey);
+        Assert.Equal(240, session.Coins);
+        Assert.Equal(12, session.Inventory.Count(DataCatalog.LumenwoodId));
+        Assert.Equal(4, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.Equal(ConstructionPhase.NotStarted, session.Construction.Phase);
+    }
+
+    [Fact]
+    public void CompletedKitchenReserveUsesTheHandAndSharedPreviewRule()
+    {
+        var session = PreparedSession();
+        Assert.True(session.StartCottageFirstUpgrade().Succeeded);
+        session.EndDay();
+        session.EndDay();
+        session.SetPlayerLocation(26 * 16 + 8, 14 * 16 + 8, PlayerLocationIds.Cottage);
+
+        var available = session.PreviewSelectedTarget(
+            CottageLayout.KitchenReserveCell
+        );
+        Assert.True(available.IsAvailable);
+        Assert.Equal(TargetPreviewKind.KitchenReserve, available.Kind);
+        Assert.Equal(
+            "target.action.inspect_kitchen_reserve",
+            available.LabelKey
+        );
+        Assert.True(session.InspectKitchenReserve().Succeeded);
+
+        session.Inventory.Select(1);
+        var wrongTool = session.PreviewSelectedTarget(
+            CottageLayout.KitchenReserveCell
+        );
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongTool.State);
+        Assert.False(session.InspectKitchenReserve().Succeeded);
+    }
+
+    [Fact]
+    public void SharedCottageLayoutKeepsDoorAndBedRoutesOpen()
+    {
+        Assert.True(CottageLayout.IsWalkable(CottageLayout.SafeArrivalCell));
+        Assert.True(CottageLayout.IsWalkable(new GridPosition(20, 10)));
+        Assert.False(CottageLayout.IsWalkable(CottageLayout.BedCell));
+        Assert.False(CottageLayout.IsWalkable(
+            CottageLayout.KitchenReserveCell
+        ));
+        Assert.True(CottageLayout.IsWalkable(new GridPosition(26, 14)));
+        Assert.Equal(
+            1,
+            Math.Abs(CottageLayout.KitchenReserveCell.X - 26) +
+                Math.Abs(CottageLayout.KitchenReserveCell.Y - 14)
+        );
+    }
+
+    private static GameSession PreparedSession(
+        int coins = 240,
+        int lumenwood = 12,
+        int crystal = 4
+    )
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Inventory.Add(DataCatalog.LumenwoodId, lumenwood);
+        session.Inventory.Add(DataCatalog.CrystalShardId, crystal);
+        var save = session.Capture();
+        save.Coins = coins;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        session.Restore(save);
+        return session;
+    }
+
+    private sealed record ConstructionTransactionSnapshot(
+        int Coins,
+        int Lumenwood,
+        int CrystalShards,
+        ConstructionPhase Phase
+    );
+}
+
 public sealed class StarlightSystemTests
 {
     [Fact]
@@ -3520,7 +3673,7 @@ public sealed class VillageSystemTests
             workbenchWithTool.State
         );
         Assert.Equal(TargetPreviewState.NeedsTool, exitWithTool.State);
-        Assert.False(session.InspectMoonRuneWorkbench().Succeeded);
+        Assert.False(session.OpenConstructionPanel().Succeeded);
         Assert.False(session.TryExitMoonstoneWorkshop().Succeeded);
         Assert.Equal(energy, session.Energy);
 
@@ -3533,11 +3686,11 @@ public sealed class VillageSystemTests
         );
         Assert.True(workbench.IsAvailable);
         Assert.Equal(
-            "target.action.inspect_workbench",
+            "target.action.open_construction",
             workbench.LabelKey
         );
         Assert.True(exit.IsAvailable);
-        Assert.True(session.InspectMoonRuneWorkbench().Succeeded);
+        Assert.True(session.OpenConstructionPanel().Succeeded);
         Assert.True(session.TryExitMoonstoneWorkshop().Succeeded);
 
         session.SetPlayerLocation(
@@ -7346,6 +7499,8 @@ public sealed class SaveServiceTests : IDisposable
         );
         Assert.Equal(2, result.Save.WeeklyCommission.Progress);
         Assert.False(result.Save.WeeklyCommission.Claimed);
+        Assert.Empty(result.Save.Construction.ProjectId);
+        Assert.False(result.Save.Construction.Completed);
         Assert.True(result.Save.Starlight.Discovered);
         Assert.False(result.Save.Starlight.RewardUnlocked);
         Assert.Equal(
@@ -7415,6 +7570,149 @@ public sealed class SaveServiceTests : IDisposable
     }
 
     [Fact]
+    public void ConstructionStateRoundTripsAndCompletesAfterTheSecondSleep()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        session.Inventory.Add(DataCatalog.LumenwoodId, 12);
+        session.Inventory.Add(DataCatalog.CrystalShardId, 4);
+        var prepared = session.Capture();
+        prepared.Coins = 240;
+        prepared.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        session.Restore(prepared);
+        Assert.True(session.StartCottageFirstUpgrade().Succeeded);
+        session.EndDay();
+
+        service.Save(session.Capture());
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(1, result.Save.SchemaVersion);
+        Assert.Equal(
+            ConstructionCatalog.CottageFirstUpgradeId,
+            result.Save.Construction.ProjectId
+        );
+        Assert.Equal(1, result.Save.Construction.RemainingNights);
+        Assert.False(result.Save.Construction.Completed);
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        restored.EndDay();
+        Assert.True(restored.Construction.IsCompleted);
+        Assert.True(restored.Capture().Construction.Completed);
+    }
+
+    [Fact]
+    public void UnknownAndDamagedConstructionStateNormalizesSafely()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            """
+            {
+              "schemaVersion": 1,
+              "construction": {
+                "projectId": "removed_construction",
+                "remainingNights": -7,
+                "completed": true
+              }
+            }
+            """
+        );
+
+        var unknown = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, unknown.Status);
+        Assert.NotNull(unknown.Save);
+        Assert.Empty(unknown.Save.Construction.ProjectId);
+        Assert.Equal(0, unknown.Save.Construction.RemainingNights);
+        Assert.False(unknown.Save.Construction.Completed);
+
+        File.WriteAllText(
+            path,
+            $$"""
+            {
+              "schemaVersion": 1,
+              "construction": {
+                "projectId": "{{ConstructionCatalog.CottageFirstUpgradeId}}",
+                "remainingNights": 99,
+                "completed": false
+              }
+            }
+            """
+        );
+
+        var clamped = new SaveService(path).Load();
+        Assert.Equal(SaveLoadStatus.Loaded, clamped.Status);
+        Assert.NotNull(clamped.Save);
+        Assert.Equal(2, clamped.Save.Construction.RemainingNights);
+        Assert.False(clamped.Save.Construction.Completed);
+    }
+
+    [Fact]
+    public void CompletedConstructionRoundTripsAsPermanentUpgrade()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var save = new GameSaveV1
+        {
+            Construction = new ConstructionSave
+            {
+                ProjectId = ConstructionCatalog.CottageFirstUpgradeId,
+                RemainingNights = 99,
+                Completed = true
+            }
+        };
+
+        service.Save(save);
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(
+            ConstructionCatalog.CottageFirstUpgradeId,
+            result.Save.Construction.ProjectId
+        );
+        Assert.Equal(0, result.Save.Construction.RemainingNights);
+        Assert.True(result.Save.Construction.Completed);
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        restored.EndDay();
+        Assert.True(restored.Construction.IsCompleted);
+    }
+
+    [Fact]
+    public void KnownConstructionWithNonPositiveRemainingNightsDoesNotUnlock()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            $$"""
+            {
+              "schemaVersion": 1,
+              "construction": {
+                "projectId": "{{ConstructionCatalog.CottageFirstUpgradeId}}",
+                "remainingNights": 0,
+                "completed": false
+              }
+            }
+            """
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Empty(result.Save.Construction.ProjectId);
+        Assert.Equal(0, result.Save.Construction.RemainingNights);
+        Assert.False(result.Save.Construction.Completed);
+    }
+
+    [Fact]
     public void MissingFieldsReceiveSafeDefaults()
     {
         var path = Path.Combine(_directory, "slot_1.json");
@@ -7458,6 +7756,8 @@ public sealed class SaveServiceTests : IDisposable
             DataCatalog.StarlitRoutePlantStageId,
             result.Save.WeeklyCommission.StageId
         );
+        Assert.Empty(result.Save.Construction.ProjectId);
+        Assert.False(result.Save.Construction.Completed);
         Assert.False(result.Save.WeeklyCommission.Accepted);
         Assert.False(result.Save.WeeklyCommission.Claimed);
         Assert.Equal(

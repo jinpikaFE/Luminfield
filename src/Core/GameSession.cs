@@ -26,6 +26,10 @@ public sealed class GameSession
     public VillageSystem Village { get; }
     public MailSystem Mail { get; } = new();
     public CharacterEventSystem CharacterEvents { get; } = new();
+    public ConstructionSystem Construction { get; } = new();
+
+    private bool _suppressChanged;
+    private bool _changedWhileSuppressed;
 
     public int Energy { get; private set; } = MaxEnergy;
     public int WateringCanWater { get; private set; } = MaxWateringCanWater;
@@ -81,6 +85,7 @@ public sealed class GameSession
         Village.Changed += NotifyChanged;
         Mail.Changed += NotifyChanged;
         CharacterEvents.Changed += NotifyChanged;
+        Construction.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -102,6 +107,7 @@ public sealed class GameSession
         Village.Reset();
         Mail.Reset();
         CharacterEvents.Reset();
+        Construction.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -129,6 +135,7 @@ public sealed class GameSession
         Village.Restore(save.Village);
         Mail.Restore(save.Mail);
         CharacterEvents.Restore(save.CharacterEvents, save.Day);
+        Construction.Restore(save.Construction);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -382,6 +389,11 @@ public sealed class GameSession
         if (InsideArchive)
         {
             return PreviewArchiveTarget(target);
+        }
+
+        if (InsideCottage)
+        {
+            return PreviewCottageTarget(target);
         }
 
         if (InsideWorkshop)
@@ -1196,7 +1208,7 @@ public sealed class GameSession
             : ActionResult.Fail("notice.workshop_closed");
     }
 
-    public ActionResult InspectMoonRuneWorkbench()
+    public ActionResult OpenConstructionPanel()
     {
         if (!InsideWorkshop)
         {
@@ -1208,9 +1220,69 @@ public sealed class GameSession
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return ActionResult.Success(
-            messageKey: "workshop.workbench.dialogue"
-        );
+        return ActionResult.Success(messageKey: "construction.panel.opened");
+    }
+
+    public ActionResult StartCottageFirstUpgrade()
+    {
+        if (!InsideWorkshop)
+        {
+            return ActionResult.Fail("construction.workshop_only");
+        }
+
+        var check = Construction.CheckStart(Inventory, Coins);
+        if (!check.Succeeded)
+        {
+            return check;
+        }
+
+        BeginChangedBatch();
+        try
+        {
+            if (!Inventory.TryRemoveMany(Construction.Project.Materials))
+            {
+                return ActionResult.Fail("construction.materials_changed");
+            }
+
+            Coins -= Construction.Project.CoinCost;
+            Construction.BeginChecked();
+        }
+        finally
+        {
+            EndChangedBatch();
+        }
+
+        return ActionResult.Success(messageKey: "construction.started");
+    }
+
+    public ActionResult InspectKitchenReserve()
+    {
+        var check = CheckKitchenReserve();
+        return check.Succeeded
+            ? ActionResult.Success(
+                messageKey: "construction.kitchen_reserve.dialogue"
+            )
+            : check;
+    }
+
+    public ActionResult RestInCottage()
+    {
+        if (!InsideCottage)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return ActionResult.Success(messageKey: "target.action.rest");
+    }
+
+    public ActionResult ExitCottage()
+    {
+        if (!InsideCottage)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return ActionResult.Success(messageKey: "target.action.exit");
     }
 
     public ActionResult TryExitMoonstoneWorkshop()
@@ -1592,6 +1664,7 @@ public sealed class GameSession
         FarmObjects.ApplySprinklers(Farm);
         Farm.EndDay();
         Processor.ResolveNight();
+        Construction.ResolveNight();
         Quest.OnNightResolved(Farm.CountMatureCrop(DataCatalog.StarbudId));
         var settlement = Shipping.Settle(endedDay);
         Coins += settlement.TotalCoins;
@@ -1647,8 +1720,66 @@ public sealed class GameSession
         Starlight = Starlight.Capture(),
         Village = Village.Capture(),
         Mail = Mail.Capture(),
-        CharacterEvents = CharacterEvents.Capture()
+        CharacterEvents = CharacterEvents.Capture(),
+        Construction = Construction.Capture()
     };
+
+    private TargetPreview PreviewCottageTarget(GridPosition target)
+    {
+        if (CottageLayout.IsBedArea(target))
+        {
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.Bed,
+                "target.action.rest"
+            );
+        }
+
+        if (target == CottageLayout.DoorCell)
+        {
+            return TargetPreview.Available(
+                CottageLayout.DoorCell,
+                TargetPreviewKind.Door,
+                "target.action.exit"
+            );
+        }
+
+        if (!Construction.IsCompleted ||
+            target != CottageLayout.KitchenReserveCell)
+        {
+            return TargetPreview.Neutral(target);
+        }
+
+        var result = CheckKitchenReserve();
+        if (result.Succeeded)
+        {
+            return TargetPreview.Available(
+                CottageLayout.KitchenReserveCell,
+                TargetPreviewKind.KitchenReserve,
+                "target.action.inspect_kitchen_reserve"
+            );
+        }
+
+        return TargetPreview.NeedsTool(
+            CottageLayout.KitchenReserveCell,
+            TargetPreviewKind.KitchenReserve,
+            "target.need.hand"
+        );
+    }
+
+    private ActionResult CheckKitchenReserve()
+    {
+        if (!InsideCottage || !Construction.IsCompleted)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(
+                messageKey: "construction.kitchen_reserve.dialogue"
+            )
+            : ActionResult.Fail("notice.needs_hand");
+    }
 
     private TargetPreview PreviewArchiveTarget(GridPosition target)
     {
@@ -1724,7 +1855,7 @@ public sealed class GameSession
                 return TargetPreview.Available(
                     VillageCatalog.MoonRuneWorkbenchCell,
                     TargetPreviewKind.Station,
-                    "target.action.inspect_workbench"
+                    "target.action.open_construction"
                 );
             }
 
@@ -2111,5 +2242,30 @@ public sealed class GameSession
             _ => "target.action.place"
         };
 
-    private void NotifyChanged() => Changed?.Invoke();
+    private void BeginChangedBatch()
+    {
+        _suppressChanged = true;
+        _changedWhileSuppressed = false;
+    }
+
+    private void EndChangedBatch()
+    {
+        _suppressChanged = false;
+        if (_changedWhileSuppressed)
+        {
+            _changedWhileSuppressed = false;
+            Changed?.Invoke();
+        }
+    }
+
+    private void NotifyChanged()
+    {
+        if (_suppressChanged)
+        {
+            _changedWhileSuppressed = true;
+            return;
+        }
+
+        Changed?.Invoke();
+    }
 }

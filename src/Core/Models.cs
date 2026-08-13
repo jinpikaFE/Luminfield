@@ -254,6 +254,13 @@ public sealed class CharacterEventSave
     public List<CharacterEventEntrySave> Entries { get; set; } = [];
 }
 
+public sealed class ConstructionSave
+{
+    public string ProjectId { get; set; } = string.Empty;
+    public int RemainingNights { get; set; }
+    public bool Completed { get; set; }
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -278,6 +285,7 @@ public sealed class GameSaveV1
     public VillageSave Village { get; set; } = new();
     public MailSave Mail { get; set; } = new();
     public CharacterEventSave CharacterEvents { get; set; } = new();
+    public ConstructionSave Construction { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -329,7 +337,8 @@ public enum TargetPreviewKind
     Fence,
     Torch,
     Sprinkler,
-    Bed
+    Bed,
+    KitchenReserve
 }
 
 public sealed record TargetPreview(
