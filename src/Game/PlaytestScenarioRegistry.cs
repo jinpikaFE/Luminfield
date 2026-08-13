@@ -20,6 +20,8 @@ public enum PlaytestScenarioId
     KaelEventTwo,
     SelaEventOne,
     SelaEventTwo,
+    OrinEventOne,
+    OrinEventTwo,
     WorkshopTavi,
     Workshop,
     WorkshopDoor,
@@ -137,6 +139,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.SelaEventTwo,
             "--playtest-sela-event-two"
+        ),
+        new(
+            PlaytestScenarioId.OrinEventOne,
+            "--playtest-orin-event-one"
+        ),
+        new(
+            PlaytestScenarioId.OrinEventTwo,
+            "--playtest-orin-event-two"
         ),
         new(
             PlaytestScenarioId.WorkshopTavi,

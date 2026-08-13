@@ -5452,6 +5452,335 @@ public sealed class CharacterEventSystemTests
     }
 
     [Fact]
+    public void OrinFirstMeetingThresholdCrossingAndPreviewDoNotTriggerEarly()
+    {
+        var firstMeeting = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: false
+        );
+        var introduction = firstMeeting.Session.InteractWithVillager(
+            firstMeeting.OrinPosition,
+            out var introductionResult
+        );
+
+        Assert.True(introductionResult.Succeeded);
+        Assert.NotNull(introduction);
+        Assert.True(introduction.FirstMeeting);
+        Assert.Equal(
+            "village.npc.orin.intro",
+            introduction.DialogueKey
+        );
+        Assert.Null(introduction.CharacterEvent);
+        Assert.Null(firstMeeting.Session.CharacterEvents.ActiveEventId);
+
+        var thresholdCrossing = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 23,
+            metOrin: true,
+            lastTalkDay: 0
+        );
+        var preview = thresholdCrossing.Session.PreviewSelectedTarget(
+            thresholdCrossing.OrinPosition
+        );
+
+        Assert.True(preview.IsAvailable);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var normalTalk = thresholdCrossing.Session.InteractWithVillager(
+            thresholdCrossing.OrinPosition,
+            out var talkResult
+        );
+
+        Assert.True(talkResult.Succeeded);
+        Assert.NotNull(normalTalk);
+        Assert.Equal(25, normalTalk.RelationshipPoints);
+        Assert.Null(normalTalk.CharacterEvent);
+        Assert.Null(
+            thresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Empty(
+            thresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+
+        var secondThresholdCrossing = PrepareOrinSession(
+            day: 17,
+            relationshipPoints: 58,
+            metOrin: true,
+            lastTalkDay: 0,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        15
+                    )
+                ]
+            }
+        );
+        var secondNormalTalk =
+            secondThresholdCrossing.Session.InteractWithVillager(
+                secondThresholdCrossing.OrinPosition,
+                out var secondTalkResult
+            );
+
+        Assert.True(secondTalkResult.Succeeded);
+        Assert.NotNull(secondNormalTalk);
+        Assert.Equal(60, secondNormalTalk.RelationshipPoints);
+        Assert.Null(secondNormalTalk.CharacterEvent);
+        Assert.Null(
+            secondThresholdCrossing.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.Single(
+            secondThresholdCrossing.Session.Capture().CharacterEvents.Entries
+        );
+    }
+
+    [Fact]
+    public void OrinUnpricedWaybillCompletesOnlyAfterDialogueCallback()
+    {
+        var prepared = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: true
+        );
+        var conversation = prepared.Session.InteractWithVillager(
+            prepared.OrinPosition,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.NotNull(conversation.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.OrinUnpricedWaybillId,
+            conversation.CharacterEvent.EventId
+        );
+        Assert.Equal(3, conversation.CharacterEvent.DialogueKeys.Count);
+        Assert.Equal(
+            CharacterEventCatalog.OrinUnpricedWaybillId,
+            prepared.Session.CharacterEvents.ActiveEventId
+        );
+        Assert.False(prepared.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.OrinUnpricedWaybillId
+        ));
+        Assert.Empty(prepared.Session.Capture().CharacterEvents.Entries);
+
+        var completed = prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.OrinUnpricedWaybillId
+        );
+
+        Assert.True(completed.Succeeded);
+        Assert.Equal(
+            15,
+            prepared.Session.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.OrinUnpricedWaybillId
+            )
+        );
+        var saved = Assert.Single(
+            prepared.Session.Capture().CharacterEvents.Entries
+        );
+        Assert.Equal(
+            CharacterEventCatalog.OrinUnpricedWaybillId,
+            saved.EventId
+        );
+        Assert.Equal(15, saved.CompletedDay);
+
+        var restored = new GameSession();
+        restored.Restore(prepared.Session.Capture());
+        Assert.Equal(
+            15,
+            restored.CharacterEvents.CompletedDay(
+                CharacterEventCatalog.OrinUnpricedWaybillId
+            )
+        );
+        Assert.False(prepared.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.OrinUnpricedWaybillId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void OrinSharedLanternRouteRequiresThresholdAndEarlierCompletionDay()
+    {
+        var sameDay = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 60,
+            metOrin: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        15
+                    )
+                ]
+            }
+        );
+        var sameDayTalk = sameDay.Session.InteractWithVillager(
+            sameDay.OrinPosition,
+            out var sameDayResult
+        );
+
+        Assert.True(sameDayResult.Succeeded);
+        Assert.NotNull(sameDayTalk);
+        Assert.Null(sameDayTalk.CharacterEvent);
+
+        var belowThreshold = PrepareOrinSession(
+            day: 17,
+            relationshipPoints: 59,
+            metOrin: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        15
+                    )
+                ]
+            }
+        );
+        var belowThresholdTalk =
+            belowThreshold.Session.InteractWithVillager(
+                belowThreshold.OrinPosition,
+                out var belowThresholdResult
+            );
+
+        Assert.True(belowThresholdResult.Succeeded);
+        Assert.NotNull(belowThresholdTalk);
+        Assert.Null(belowThresholdTalk.CharacterEvent);
+
+        var laterDay = PrepareOrinSession(
+            day: 17,
+            relationshipPoints: 60,
+            metOrin: true,
+            characterEvents: new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        15
+                    )
+                ]
+            }
+        );
+        var laterTalk = laterDay.Session.InteractWithVillager(
+            laterDay.OrinPosition,
+            out var laterResult
+        );
+
+        Assert.True(laterResult.Succeeded);
+        Assert.NotNull(laterTalk);
+        Assert.NotNull(laterTalk.CharacterEvent);
+        Assert.Equal(
+            CharacterEventCatalog.OrinSharedLanternRouteId,
+            laterTalk.CharacterEvent.EventId
+        );
+        Assert.Equal(3, laterTalk.CharacterEvent.DialogueKeys.Count);
+        Assert.False(laterDay.Session.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.OrinSharedLanternRouteId
+        ));
+        Assert.True(laterDay.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.OrinSharedLanternRouteId
+        ).Succeeded);
+    }
+
+    [Fact]
+    public void OrinInvalidInteractionsNeverProgressEvents()
+    {
+        var wrongTool = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: true
+        );
+        wrongTool.Session.Inventory.Select(1);
+
+        var blocked = wrongTool.Session.InteractWithVillager(
+            wrongTool.OrinPosition,
+            out var blockedResult
+        );
+
+        Assert.Null(blocked);
+        Assert.False(blockedResult.Succeeded);
+        Assert.Null(wrongTool.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongTool.Session.CharacterEvents.Capture().Entries);
+        Assert.False(wrongTool.Session.CompleteCharacterEvent(
+            CharacterEventCatalog.OrinUnpricedWaybillId
+        ).Succeeded);
+
+        var gift = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: true
+        );
+        Assert.True(gift.Session.Inventory.Add(
+            DataCatalog.StarbudPreserveId,
+            1
+        ));
+        Assert.True(gift.Session.Inventory.PromoteToHotbar(
+            DataCatalog.StarbudPreserveId
+        ));
+
+        var giftConversation = gift.Session.InteractWithVillager(
+            gift.OrinPosition,
+            out var giftResult
+        );
+
+        Assert.True(giftResult.Succeeded);
+        Assert.NotNull(giftConversation);
+        Assert.Equal(GiftReaction.Loved, giftConversation.GiftReaction);
+        Assert.Null(giftConversation.CharacterEvent);
+        Assert.Null(gift.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(gift.Session.CharacterEvents.Capture().Entries);
+
+        var wrongScene = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: true
+        );
+        wrongScene.Session.SetPlayerLocation(
+            8,
+            8,
+            PlayerLocationIds.Cottage
+        );
+
+        var absent = wrongScene.Session.InteractWithVillager(
+            wrongScene.OrinPosition,
+            out var wrongSceneResult
+        );
+
+        Assert.Null(absent);
+        Assert.False(wrongSceneResult.Succeeded);
+        Assert.Null(wrongScene.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongScene.Session.CharacterEvents.Capture().Entries);
+
+        var wrongTime = PrepareOrinSession(
+            day: 15,
+            relationshipPoints: 25,
+            metOrin: true
+        );
+        wrongTime.Session.Clock.Reset(15, 10 * 60);
+
+        var offRoute = wrongTime.Session.InteractWithVillager(
+            wrongTime.OrinPosition,
+            out var wrongTimeResult
+        );
+
+        Assert.Null(offRoute);
+        Assert.False(wrongTimeResult.Succeeded);
+        Assert.Null(wrongTime.Session.CharacterEvents.ActiveEventId);
+        Assert.Empty(wrongTime.Session.CharacterEvents.Capture().Entries);
+    }
+
+    [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
         Assert.Empty(
@@ -5920,6 +6249,138 @@ public sealed class CharacterEventSystemTests
         );
     }
 
+    [Fact]
+    public void OrinSaveNormalizationPreservesFiveIndependentNpcChains()
+    {
+        var normalized = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.LioraFadedReturnRouteId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.LioraRememberedWayHomeId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviCrackedMoonRuneId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.TaviMendedLightId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiUndeliverableLetterId,
+                        1
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.NemiStarChartRouteId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelBrokenBlueRuneId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.KaelSafeReturnRouteId,
+                        5
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaSharedForgeRhythmId,
+                        6
+                    ),
+                    EventEntry("unknown_orin_event", 1),
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.OrinUnpricedWaybillId,
+                        3
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.OrinSharedLanternRouteId,
+                        6
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.OrinSharedLanternRouteId,
+                        3
+                    )
+                ]
+            },
+            8
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.LioraFadedReturnRouteId,
+                CharacterEventCatalog.LioraRememberedWayHomeId,
+                CharacterEventCatalog.TaviCrackedMoonRuneId,
+                CharacterEventCatalog.TaviMendedLightId,
+                CharacterEventCatalog.NemiUndeliverableLetterId,
+                CharacterEventCatalog.NemiStarChartRouteId,
+                CharacterEventCatalog.KaelBrokenBlueRuneId,
+                CharacterEventCatalog.KaelSafeReturnRouteId,
+                CharacterEventCatalog.SelaTemperedStarlightId,
+                CharacterEventCatalog.SelaSharedForgeRhythmId,
+                CharacterEventCatalog.OrinUnpricedWaybillId
+            },
+            normalized.Entries.Select(entry => entry.EventId)
+        );
+        Assert.Equal(
+            3,
+            normalized.Entries.Single(entry =>
+                entry.EventId ==
+                    CharacterEventCatalog.OrinUnpricedWaybillId
+            ).CompletedDay
+        );
+        Assert.DoesNotContain(
+            normalized.Entries,
+            entry => entry.EventId ==
+                CharacterEventCatalog.OrinSharedLanternRouteId
+        );
+
+        var orphan = CharacterEventSystem.NormalizeSave(
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    EventEntry(
+                        CharacterEventCatalog.SelaTemperedStarlightId,
+                        2
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.SelaSharedForgeRhythmId,
+                        4
+                    ),
+                    EventEntry(
+                        CharacterEventCatalog.OrinSharedLanternRouteId,
+                        5
+                    )
+                ]
+            },
+            6
+        );
+
+        Assert.Equal(
+            new[]
+            {
+                CharacterEventCatalog.SelaTemperedStarlightId,
+                CharacterEventCatalog.SelaSharedForgeRhythmId
+            },
+            orphan.Entries.Select(entry => entry.EventId)
+        );
+    }
+
     private static CharacterEventEntrySave EventEntry(
         string eventId,
         int completedDay
@@ -6186,6 +6647,59 @@ public sealed class CharacterEventSystemTests
         Assert.Equal(PlayerLocationIds.World, sela.LocationId);
         Assert.Equal("village.npc.sela.plaza", sela.DialogueKey);
         return (session, sela.Position);
+    }
+
+    private static (
+        GameSession Session,
+        GridPosition OrinPosition
+    ) PrepareOrinSession(
+        int day,
+        int relationshipPoints,
+        bool metOrin,
+        int? lastTalkDay = null,
+        CharacterEventSave? characterEvents = null
+    )
+    {
+        const int minuteOfDay = 14 * 60;
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = metOrin ? [VillageCatalog.OrinId] : [],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.OrinId,
+                    Points = relationshipPoints,
+                    LastTalkDay = lastTalkDay ?? day
+                }
+            ]
+        };
+        save.CharacterEvents = characterEvents ?? new CharacterEventSave();
+        session.Restore(save);
+        session.Inventory.Select(0);
+
+        Assert.Equal(DataCatalog.ClearWeatherId, session.Weather.CurrentId);
+        Assert.NotEqual(
+            CalendarSystem.LanternrestWeekdayIndex,
+            CalendarSystem.WeekdayIndex(day)
+        );
+        var orin = session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            session.PlayerCell
+        ).Single(state => state.Definition.Id == VillageCatalog.OrinId);
+        Assert.Equal(PlayerLocationIds.World, orin.LocationId);
+        Assert.Equal("village.npc.orin.plaza", orin.DialogueKey);
+        return (session, orin.Position);
     }
 }
 

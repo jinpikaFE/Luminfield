@@ -417,6 +417,10 @@ public sealed partial class Main : Node
                     StartSelaEventOnePlaytest,
                 [PlaytestScenarioId.SelaEventTwo] =
                     StartSelaEventTwoPlaytest,
+                [PlaytestScenarioId.OrinEventOne] =
+                    StartOrinEventOnePlaytest,
+                [PlaytestScenarioId.OrinEventTwo] =
+                    StartOrinEventTwoPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -1488,6 +1492,43 @@ public sealed partial class Main : Node
         characterEvents,
         VillageCatalog.SelaId,
         "village.npc.sela.plaza"
+    );
+
+    private void StartOrinEventOnePlaytest()
+    {
+        StartOrinEventPlaytest(15, 25, new CharacterEventSave());
+    }
+
+    private void StartOrinEventTwoPlaytest()
+    {
+        StartOrinEventPlaytest(
+            17,
+            60,
+            new CharacterEventSave
+            {
+                Entries =
+                [
+                    new CharacterEventEntrySave
+                    {
+                        EventId =
+                            CharacterEventCatalog.OrinUnpricedWaybillId,
+                        CompletedDay = 15
+                    }
+                ]
+            }
+        );
+    }
+
+    private void StartOrinEventPlaytest(
+        int day,
+        int relationshipPoints,
+        CharacterEventSave characterEvents
+    ) => StartWorldCharacterEventPlaytest(
+        day,
+        relationshipPoints,
+        characterEvents,
+        VillageCatalog.OrinId,
+        "village.npc.orin.plaza"
     );
 
     private void StartWorldCharacterEventPlaytest(

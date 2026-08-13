@@ -36,6 +36,10 @@ public static class CharacterEventCatalog
         "sela_tempered_starlight";
     public const string SelaSharedForgeRhythmId =
         "sela_shared_forge_rhythm";
+    public const string OrinUnpricedWaybillId =
+        "orin_unpriced_waybill";
+    public const string OrinSharedLanternRouteId =
+        "orin_shared_lantern_route";
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -154,6 +158,29 @@ public static class CharacterEventCatalog
                     "character_event.sela.shared_forge_rhythm.3"
                 ],
                 SelaTemperedStarlightId
+            ),
+            new(
+                OrinUnpricedWaybillId,
+                VillageCatalog.OrinId,
+                25,
+                PlayerLocationIds.World,
+                [
+                    "character_event.orin.unpriced_waybill.1",
+                    "character_event.orin.unpriced_waybill.2",
+                    "character_event.orin.unpriced_waybill.3"
+                ]
+            ),
+            new(
+                OrinSharedLanternRouteId,
+                VillageCatalog.OrinId,
+                60,
+                PlayerLocationIds.World,
+                [
+                    "character_event.orin.shared_lantern_route.1",
+                    "character_event.orin.shared_lantern_route.2",
+                    "character_event.orin.shared_lantern_route.3"
+                ],
+                OrinUnpricedWaybillId
             )
         ];
 
