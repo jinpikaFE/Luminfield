@@ -2090,31 +2090,111 @@ public sealed class ConstructionSystemTests
             "target.action.inspect_kitchen_reserve",
             available.LabelKey
         );
-        Assert.True(session.InspectKitchenReserve().Succeeded);
+        Assert.True(session.InspectKitchenReserve(
+            CottageLayout.KitchenReserveCell
+        ).Succeeded);
+        session.SetPlayerLocation(
+            35 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.Cottage
+        );
+        var farEdge = session.PreviewSelectedTarget(
+            new GridPosition(35, 17)
+        );
+        Assert.True(farEdge.IsAvailable);
+        Assert.Equal(
+            CottageLayout.KitchenReserveCell,
+            farEdge.Target
+        );
+        Assert.False(session.InspectKitchenReserve(
+            new GridPosition(27, 10)
+        ).Succeeded);
 
         session.Inventory.Select(1);
         var wrongTool = session.PreviewSelectedTarget(
-            CottageLayout.KitchenReserveCell
+            new GridPosition(35, 17)
         );
         Assert.Equal(TargetPreviewState.NeedsTool, wrongTool.State);
-        Assert.False(session.InspectKitchenReserve().Succeeded);
+        Assert.False(session.InspectKitchenReserve(
+            new GridPosition(35, 17)
+        ).Succeeded);
     }
 
     [Fact]
     public void SharedCottageLayoutKeepsDoorAndBedRoutesOpen()
     {
-        Assert.True(CottageLayout.IsWalkable(CottageLayout.SafeArrivalCell));
-        Assert.True(CottageLayout.IsWalkable(new GridPosition(20, 10)));
-        Assert.False(CottageLayout.IsWalkable(CottageLayout.BedCell));
-        Assert.False(CottageLayout.IsWalkable(
-            CottageLayout.KitchenReserveCell
+        Assert.True(CottageLayout.IsWalkable(
+            CottageLayout.SafeArrivalCell,
+            upgraded: true
         ));
-        Assert.True(CottageLayout.IsWalkable(new GridPosition(26, 14)));
-        Assert.Equal(
-            1,
-            Math.Abs(CottageLayout.KitchenReserveCell.X - 26) +
-                Math.Abs(CottageLayout.KitchenReserveCell.Y - 14)
-        );
+        Assert.True(CottageLayout.IsWalkable(
+            new GridPosition(20, 10),
+            upgraded: true
+        ));
+        Assert.False(CottageLayout.IsWalkable(
+            CottageLayout.BedCell,
+            upgraded: true
+        ));
+        Assert.True(CottageLayout.IsWalkable(
+            new GridPosition(27, 14),
+            upgraded: false
+        ));
+        Assert.False(CottageLayout.IsWalkable(
+            new GridPosition(27, 14),
+            upgraded: true
+        ));
+        Assert.True(CottageLayout.IsAdjacentToKitchenReserve(
+            new GridPosition(26, 10)
+        ));
+        Assert.True(CottageLayout.IsAdjacentToKitchenReserve(
+            new GridPosition(35, 18)
+        ));
+        Assert.False(CottageLayout.IsAdjacentToKitchenReserve(
+            new GridPosition(24, 14)
+        ));
+    }
+
+    [Fact]
+    public void CompletedUpgradeMovesLegacyKitchenPositionToSafeArrival()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Player.LocationId = PlayerLocationIds.Cottage;
+        save.Player.X = 27 * 16 + 8;
+        save.Player.Y = 14 * 16 + 8;
+        save.Construction = new ConstructionSave
+        {
+            ProjectId = ConstructionCatalog.CottageFirstUpgradeId,
+            Completed = true
+        };
+
+        session.Restore(save);
+
+        Assert.Equal(CottageLayout.SafeArrivalCell, session.PlayerCell);
+        Assert.True(CottageLayout.IsWalkable(
+            session.PlayerCell,
+            upgraded: true
+        ));
+    }
+
+    [Fact]
+    public void LegacyKitchenExtensionPositionStaysValidBeforeUpgrade()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Player.LocationId = PlayerLocationIds.Cottage;
+        save.Player.X = 27 * 16 + 8;
+        save.Player.Y = 14 * 16 + 8;
+
+        session.Restore(save);
+
+        Assert.Equal(new GridPosition(27, 14), session.PlayerCell);
+        Assert.True(CottageLayout.IsWalkable(
+            session.PlayerCell,
+            upgraded: false
+        ));
     }
 
     private static GameSession PreparedSession(

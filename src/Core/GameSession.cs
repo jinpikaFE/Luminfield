@@ -163,6 +163,7 @@ public sealed class GameSession
             save.Player.LocationId,
             save.Player.InsideCottage
         );
+        NormalizeCottagePlayerPositionForUpgrade();
         Locale = save.Locale;
         EnergyChanged?.Invoke();
         WaterChanged?.Invoke();
@@ -1255,9 +1256,9 @@ public sealed class GameSession
         return ActionResult.Success(messageKey: "construction.started");
     }
 
-    public ActionResult InspectKitchenReserve()
+    public ActionResult InspectKitchenReserve(GridPosition target)
     {
-        var check = CheckKitchenReserve();
+        var check = CheckKitchenReserve(target);
         return check.Succeeded
             ? ActionResult.Success(
                 messageKey: "construction.kitchen_reserve.dialogue"
@@ -1665,6 +1666,7 @@ public sealed class GameSession
         Farm.EndDay();
         Processor.ResolveNight();
         Construction.ResolveNight();
+        NormalizeCottagePlayerPositionForUpgrade();
         Quest.OnNightResolved(Farm.CountMatureCrop(DataCatalog.StarbudId));
         var settlement = Shipping.Settle(endedDay);
         Coins += settlement.TotalCoins;
@@ -1745,12 +1747,12 @@ public sealed class GameSession
         }
 
         if (!Construction.IsCompleted ||
-            target != CottageLayout.KitchenReserveCell)
+            !CottageLayout.IsKitchenReserveArea(target))
         {
             return TargetPreview.Neutral(target);
         }
 
-        var result = CheckKitchenReserve();
+        var result = CheckKitchenReserve(target);
         if (result.Succeeded)
         {
             return TargetPreview.Available(
@@ -1767,9 +1769,13 @@ public sealed class GameSession
         );
     }
 
-    private ActionResult CheckKitchenReserve()
+    private ActionResult CheckKitchenReserve(GridPosition target)
     {
-        if (!InsideCottage || !Construction.IsCompleted)
+        if (!InsideCottage ||
+            !Construction.IsCompleted ||
+            !CottageLayout.IsKitchenReserveArea(target) ||
+            Math.Abs(PlayerCell.X - target.X) +
+                Math.Abs(PlayerCell.Y - target.Y) != 1)
         {
             return ActionResult.Fail("notice.nothing_to_interact");
         }
@@ -1779,6 +1785,19 @@ public sealed class GameSession
                 messageKey: "construction.kitchen_reserve.dialogue"
             )
             : ActionResult.Fail("notice.needs_hand");
+    }
+
+    private void NormalizeCottagePlayerPositionForUpgrade()
+    {
+        if (!InsideCottage ||
+            !Construction.IsCompleted ||
+            !CottageLayout.IsKitchenReserveArea(PlayerCell))
+        {
+            return;
+        }
+
+        PlayerX = CottageLayout.SafeArrivalCell.X * 16 + 8;
+        PlayerY = CottageLayout.SafeArrivalCell.Y * 16 + 8;
     }
 
     private TargetPreview PreviewArchiveTarget(GridPosition target)

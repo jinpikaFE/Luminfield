@@ -614,8 +614,8 @@ public sealed partial class Main : Node
         _session.EndDay();
         _session.EndDay();
         _session.SetPlayerLocation(
-            26 * 16 + 8,
-            14 * 16 + 8,
+            27 * 16 + 8,
+            9 * 16 + 8,
             PlayerLocationIds.Cottage
         );
         ShowCottage(false);
@@ -2970,9 +2970,9 @@ public sealed partial class Main : Node
         }
     }
 
-    private void InspectKitchenReserve()
+    private void InspectKitchenReserve(GridPosition target)
     {
-        var result = _session.InspectKitchenReserve();
+        var result = _session.InspectKitchenReserve(target);
         if (!result.Succeeded)
         {
             _hud?.ShowNotice(result.MessageKey);

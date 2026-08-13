@@ -29,6 +29,7 @@ public sealed partial class CottageView : Node2D
         };
         _player.PositionChanged += position =>
             _session.SetPlayerState(position.X, position.Y, true);
+        session.Construction.Changed += OnConstructionChanged;
         AddChild(_player);
         AddChild(new CottageInteractionHints(
             () => _player.CurrentCell,
@@ -51,7 +52,7 @@ public sealed partial class CottageView : Node2D
 
     public event Action? SleepRequested;
     public event Action? ExitRequested;
-    public event Action? KitchenReserveRequested;
+    public event Action<GridPosition>? KitchenReserveRequested;
     public event Action? StepRequested
     {
         add => _player.Stepped += value;
@@ -74,10 +75,9 @@ public sealed partial class CottageView : Node2D
         }
 
         if (_session.Construction.IsCompleted &&
-            (target == KitchenReserveCell ||
-             Distance(_player.CurrentCell, KitchenReserveCell) <= 3))
+            CottageLayout.IsKitchenReserveArea(target))
         {
-            return _session.PreviewSelectedTarget(KitchenReserveCell);
+            return _session.PreviewSelectedTarget(target);
         }
 
         return TargetPreview.Neutral(target);
@@ -106,21 +106,25 @@ public sealed partial class CottageView : Node2D
             }
         }
         else if (_session.Construction.IsCompleted &&
-            (target == KitchenReserveCell ||
-             Distance(_player.CurrentCell, KitchenReserveCell) <= 3))
+            CottageLayout.IsKitchenReserveArea(target))
         {
-            KitchenReserveRequested?.Invoke();
+            KitchenReserveRequested?.Invoke(target);
         }
 
         GetViewport().SetInputAsHandled();
     }
 
-    private static bool CanOccupy(Vector2 worldPosition)
+    public override void _ExitTree()
+    {
+        _session.Construction.Changed -= OnConstructionChanged;
+    }
+
+    private bool CanOccupy(Vector2 worldPosition)
     {
         return CottageLayout.IsWalkable(new GridPosition(
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
-        ));
+        ), _session.Construction.IsCompleted);
     }
 
     private static bool IsBedArea(GridPosition cell) =>
@@ -132,8 +136,21 @@ public sealed partial class CottageView : Node2D
     private static bool IsAdjacent(GridPosition first, GridPosition second) =>
         Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y) <= 1;
 
-    private static int Distance(GridPosition first, GridPosition second) =>
-        Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y);
+    private void OnConstructionChanged()
+    {
+        if (!_session.Construction.IsCompleted ||
+            !CottageLayout.IsKitchenReserveArea(_player.CurrentCell))
+        {
+            return;
+        }
+
+        _player.Position = CellCenter(CottageLayout.SafeArrivalCell);
+        _session.SetPlayerState(
+            _player.Position.X,
+            _player.Position.Y,
+            true
+        );
+    }
 }
 
 internal sealed partial class CottageInteractionHints : Node2D
@@ -178,8 +195,7 @@ internal sealed partial class CottageInteractionHints : Node2D
                     CottageView.KitchenReserveCell.X * 16 + 8,
                     CottageView.KitchenReserveCell.Y * 16 + 8
                 ),
-                Math.Abs(player.X - CottageView.KitchenReserveCell.X) +
-                    Math.Abs(player.Y - CottageView.KitchenReserveCell.Y) <= 3,
+                CottageLayout.IsAdjacentToKitchenReserve(player),
                 ThemeFactory.Mint
             );
         }

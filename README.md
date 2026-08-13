@@ -61,17 +61,19 @@ exploration state in the regular save file.
   works in the archive from 09:00 to 13:00 on weekdays.
 - The Moonstone Workshop is the second enterable building and opens from 08:00
   to 19:00. Tavi works inside from 09:00 to 13:00 on ordinary days. Its
-  moon-rune workbench explains the currently available inspection and upkeep
-  services and marks tool upgrades as future work without changing the economy.
+  moon-rune workbench now opens the first construction plan: spend 240 glow
+  coins, 12 Lumenwood, and 4 Crystal shards atomically, then sleep twice to
+  complete the first cottage upgrade.
 - The Starweaver Tea House is the third enterable building and opens from 09:00
   to 21:00. Vessa works inside from 09:00 to 13:00 on ordinary days. Its
   starwoven tea counter is a read-only inspection point and does not add
   purchases, recipes, energy costs, or a new economy contract.
 - The Twilight Emporium is the fourth enterable building and opens from 10:00
   to 18:00. Orin checks travel inventory inside from 10:00 to 13:00 on ordinary
-  days. Its manifest shelf only describes routes and sealed cargo; it adds no
-  purchasing, stock rotation, currency, recipes, energy costs, or economy
-  contract.
+  days; the shop closes for all of Lanternrest. Its manifest shelf opens a
+  four-item seed inventory that rotates deterministically by week and season.
+  Purchases recheck the interior, opening rule, stock, funds, and backpack
+  capacity before changing coins or items. The farm stall remains independent.
 - The Starlight Post is the fifth enterable building and opens from 07:00 to
   19:00. Nemi sorts village routes inside from 09:00 to 13:00 on ordinary days.
   Its route-sorting counter is read-only and adds no sending, receiving,
@@ -117,12 +119,21 @@ exploration state in the regular save file.
   route. At 25 points, “Tempered Starlight” begins; after it was completed on an
   earlier day, 60 points unlocks “The Shared Forge Rhythm.” The stable IDs are
   `sela_tempered_starlight` and `sela_shared_forge_rhythm`.
+- Orin now has the sixth complete event chain, limited to his ordinary
+  afternoon plaza schedule. At 25 points, “The Unpriced Waybill” begins; after
+  it was completed on an earlier day, 60 points unlocks “The Shared Lantern
+  Route.” The stable IDs are `orin_unpriced_waybill` and
+  `orin_shared_lantern_route`.
 - Character-event eligibility now resolves the NPC, location, relationship
-  threshold, and prerequisite from each definition. Liora's, Tavi's, Nemi's,
-  Kael's, and Sela's chains normalize independently, so malformed ordering in
-  one chain does not remove valid entries from another.
-- Phase B's six-building interior target is complete; more character events,
-  shop stock rotation, and construction remain planned.
+  threshold, optional schedule dialogue, and prerequisite from each definition.
+  All six chains normalize independently, so malformed ordering in one chain
+  does not remove valid entries from another.
+- The cottage construction state is additive under `schemaVersion: 1` and
+  survives sleep and save/restore. Completion swaps to an original upgraded
+  interior while retaining the shared bed and door routes, and exposes a
+  read-only kitchen preparation area without enabling cooking.
+- Phase B's seven required feature groups are complete. Additional character
+  events remain optional content expansion rather than a core Phase B blocker.
 
 ## Starlight Mail and relationship rewards
 
@@ -345,6 +356,9 @@ warm-gold tool-mismatch state.
 Use `--playtest-sela-event-one` and `--playtest-sela-event-two` to open Sela's
 two friendship stages from her real ordinary-day 14:00 village projection.
 
+Use `--playtest-orin-event-one` and `--playtest-orin-event-two` to open Orin's
+two friendship stages from his real ordinary-day 14:00 plaza projection.
+
 Use `--playtest-weekly-commission-offer`,
 `--playtest-weekly-commission-stage-ready`, and
 `--playtest-weekly-commission-reward-ready` to inspect the Weekly tab's offer,
@@ -357,6 +371,14 @@ Use `--playtest-emporium-door`, `--playtest-emporium`, and
 `--playtest-emporium-orin` to inspect the Twilight Emporium exterior entrance,
 interior manifest shelf, and Orin interaction. They also support deterministic
 capture.
+
+Use `--playtest-emporium-rotation` to open the current week-and-season purchase
+panel, and `--playtest-emporium-restday-door` to inspect Lanternrest closure.
+
+Use `--playtest-cottage-upgrade-ready`,
+`--playtest-cottage-upgrade-in-progress`, and
+`--playtest-cottage-upgrade-completed` to inspect the construction offer,
+two-night progress state, and upgraded cottage with its read-only kitchen area.
 
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
@@ -444,6 +466,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-13 11:28:47 CST — Completed the seven Phase B feature groups with
+  Twilight Emporium opening hours, Lanternrest closure and deterministic stock
+  rotation; the atomic two-night first cottage upgrade and original completed
+  interior; and Orin's schedule-gated two-stage friendship chain.
 - 2026-08-13 09:39:42 CST — Added the independent three-stage weekly “Starlit
   Route Restoration” commission with same-week persistence, atomic material
   reward settlement, Daily/Weekly board tabs, HUD tracking, and weekly-only
