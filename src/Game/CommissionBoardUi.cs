@@ -3,6 +3,12 @@ using Luminfield.Core;
 
 namespace Luminfield.Game;
 
+public enum CommissionBoardPage
+{
+    Daily,
+    Weekly
+}
+
 public sealed partial class CommissionBoardOverlay : FullScreenUi
 {
     private readonly GameSession _session;
@@ -19,15 +25,20 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
     private readonly Label _notice;
     private readonly Button _action;
     private readonly Button _close;
+    private readonly Button _dailyTab;
+    private readonly Button _weeklyTab;
+    private CommissionBoardPage _page;
 
     public CommissionBoardOverlay(
         Theme theme,
         GameSession session,
-        LocaleService locale
+        LocaleService locale,
+        CommissionBoardPage initialPage = CommissionBoardPage.Daily
     ) : base(theme)
     {
         _session = session;
         _locale = locale;
+        _page = initialPage;
         AddChild(Dim(new Color(0.012f, 0.018f, 0.075f, 0.84f)));
 
         var center = new CenterContainer();
@@ -36,7 +47,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
 
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(486, 320)
+            CustomMinimumSize = new Vector2(486, 340)
         };
         panel.AddThemeStyleboxOverride(
             "panel",
@@ -50,14 +61,14 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         center.AddChild(panel);
 
         var column = new VBoxContainer();
-        column.AddThemeConstantOverride("separation", 7);
+        column.AddThemeConstantOverride("separation", 4);
         panel.AddChild(column);
 
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 10);
         header.AddChild(Icon(
             GeneratedArt.CreateCommissionParchmentIcon(),
-            new Vector2(62, 58)
+            new Vector2(52, 48)
         ));
 
         var headerText = new VBoxContainer
@@ -76,9 +87,24 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         header.AddChild(_kind);
         column.AddChild(header);
 
+        var tabs = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center
+        };
+        tabs.AddThemeConstantOverride("separation", 8);
+        _dailyTab = ThemeFactory.Button("");
+        _dailyTab.CustomMinimumSize = new Vector2(150, 24);
+        _dailyTab.Pressed += () => ShowPage(CommissionBoardPage.Daily);
+        _weeklyTab = ThemeFactory.Button("");
+        _weeklyTab.CustomMinimumSize = new Vector2(150, 24);
+        _weeklyTab.Pressed += () => ShowPage(CommissionBoardPage.Weekly);
+        tabs.AddChild(_dailyTab);
+        tabs.AddChild(_weeklyTab);
+        column.AddChild(tabs);
+
         var paper = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(438, 126)
+            CustomMinimumSize = new Vector2(438, 108)
         };
         paper.AddThemeStyleboxOverride(
             "panel",
@@ -96,7 +122,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         _commissionTitle = ThemeFactory.Label(size: 16, color: ThemeFactory.Gold);
         _description = ThemeFactory.Label(size: 10);
         _description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _description.CustomMinimumSize = new Vector2(410, 38);
+        _description.CustomMinimumSize = new Vector2(410, 30);
         paperColumn.AddChild(_commissionTitle);
         paperColumn.AddChild(_description);
 
@@ -124,7 +150,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         rewardRow.AddThemeConstantOverride("separation", 7);
         rewardRow.AddChild(Icon(
             GeneratedArt.CreateCommissionRewardIcon(),
-            new Vector2(34, 34)
+            new Vector2(30, 30)
         ));
         _reward = ThemeFactory.Label(size: 13, color: ThemeFactory.Gold);
         _state = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
@@ -133,18 +159,18 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         column.AddChild(rewardRow);
 
         _action = ThemeFactory.Button("");
-        _action.CustomMinimumSize = new Vector2(318, 32);
+        _action.CustomMinimumSize = new Vector2(318, 29);
         _action.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         _action.Pressed += Execute;
         column.AddChild(_action);
 
         _notice = ThemeFactory.Label(size: 9, color: ThemeFactory.Mint);
         _notice.HorizontalAlignment = HorizontalAlignment.Center;
-        _notice.CustomMinimumSize = new Vector2(430, 16);
+        _notice.CustomMinimumSize = new Vector2(430, 14);
         column.AddChild(_notice);
 
         _close = ThemeFactory.Button("");
-        _close.CustomMinimumSize = new Vector2(170, 27);
+        _close.CustomMinimumSize = new Vector2(170, 24);
         _close.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         _close.Pressed += () => CloseRequested?.Invoke();
         column.AddChild(_close);
@@ -160,6 +186,30 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
 
     public void RefreshText()
     {
+        _title.Text = _locale.Tr("commission.board.title");
+        _dailyTab.Text = _locale.Tr("commission.tab.daily");
+        _weeklyTab.Text = _locale.Tr("commission.tab.weekly");
+        _dailyTab.Disabled = _page == CommissionBoardPage.Daily;
+        _weeklyTab.Disabled = _page == CommissionBoardPage.Weekly;
+        _close.Text = _locale.Tr("menu.back");
+
+        if (_page == CommissionBoardPage.Weekly)
+        {
+            RefreshWeekly();
+            return;
+        }
+
+        RefreshDaily();
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Changed -= RefreshText;
+        _locale.LocaleChanged -= RefreshText;
+    }
+
+    private void RefreshDaily()
+    {
         var definition = _session.Commission.Current;
         var targetName = _locale.Tr(
             DataCatalog.Item(definition.TargetId).NameKey
@@ -168,7 +218,6 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             _session.Inventory
         );
 
-        _title.Text = _locale.Tr("commission.board.title");
         _day.Text = _locale.Tr("commission.board.day", _session.Clock.Day);
         _kind.Text = _locale.Tr(KindKey(definition.Kind));
         _commissionTitle.Text = _locale.Tr(definition.TitleKey);
@@ -188,8 +237,6 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             "commission.reward",
             definition.RewardCoins
         );
-        _close.Text = _locale.Tr("menu.back");
-
         if (_session.Commission.Claimed)
         {
             _state.Text = _locale.Tr("commission.state.claimed");
@@ -219,13 +266,99 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         _action.Disabled = true;
     }
 
-    public override void _ExitTree()
+    private void RefreshWeekly()
     {
-        _session.Changed -= RefreshText;
-        _locale.LocaleChanged -= RefreshText;
+        var commission = _session.WeeklyCommission;
+        var definition = commission.Current;
+        var stage = commission.CurrentStage;
+        var targetName = _locale.Tr(
+            DataCatalog.Item(stage.TargetId).NameKey
+        );
+        var rewardName = _locale.Tr(
+            DataCatalog.Item(definition.RewardItemId).NameKey
+        );
+        var progress = commission.DisplayProgress(_session.Inventory);
+
+        _day.Text = _locale.Tr(
+            "weekly_commission.board.week",
+            commission.Week
+        );
+        _kind.Text = _locale.Tr(
+            "weekly_commission.board.stage",
+            commission.CurrentStageIndex + 1,
+            definition.Stages.Count
+        );
+        _commissionTitle.Text = _locale.Tr(definition.TitleKey);
+        _description.Text = _locale.Tr(
+            stage.DescriptionKey,
+            stage.RequiredCount,
+            targetName
+        );
+        _progress.MaxValue = stage.RequiredCount;
+        _progress.Value = progress;
+        _progressText.Text = _locale.Tr(
+            "commission.progress",
+            progress,
+            stage.RequiredCount
+        );
+        _reward.Text = _locale.Tr(
+            "weekly_commission.reward",
+            definition.RewardCoins,
+            definition.RewardItemCount,
+            rewardName
+        );
+
+        if (commission.Claimed)
+        {
+            _state.Text = _locale.Tr(
+                "weekly_commission.state.claimed"
+            );
+            _action.Text = _locale.Tr(
+                "weekly_commission.action.claimed"
+            );
+            _action.Disabled = true;
+            return;
+        }
+
+        if (!commission.Accepted)
+        {
+            _state.Text = _locale.Tr(
+                "weekly_commission.state.offered"
+            );
+            _action.Text = _locale.Tr(
+                "weekly_commission.action.accept"
+            );
+            _action.Disabled = false;
+            return;
+        }
+
+        if (commission.IsReady(_session.Inventory))
+        {
+            RefreshWeeklyReadyState(commission.IsFinalStage);
+            return;
+        }
+
+        _state.Text = _locale.Tr(
+            "weekly_commission.state.tracking"
+        );
+        _action.Text = _locale.Tr(
+            "weekly_commission.action.tracking"
+        );
+        _action.Disabled = true;
     }
 
     private void Execute()
+    {
+        if (_page == CommissionBoardPage.Weekly)
+        {
+            ExecuteWeekly();
+            return;
+        }
+
+        ExecuteDaily();
+    }
+
+    private void ExecuteDaily()
     {
         var succeeded = false;
         var messageKey = "commission.not_ready";
@@ -248,6 +381,78 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             CommissionChanged?.Invoke();
         }
         RefreshText();
+    }
+
+    private void ExecuteWeekly()
+    {
+        var succeeded = false;
+        var messageKey = "weekly_commission.not_ready";
+        var commission = _session.WeeklyCommission;
+        if (!commission.Accepted)
+        {
+            var result = _session.AcceptWeeklyCommission();
+            succeeded = result.Succeeded;
+            messageKey = result.MessageKey;
+        }
+        else if (commission.IsReady(_session.Inventory))
+        {
+            if (commission.IsFinalStage)
+            {
+                var result = _session.ClaimWeeklyCommission();
+                succeeded = result.Succeeded;
+                messageKey = result.MessageKey;
+            }
+            else
+            {
+                var result = _session.AdvanceWeeklyCommissionStage();
+                succeeded = result.Succeeded;
+                messageKey = result.MessageKey;
+            }
+        }
+
+        _notice.Text = _locale.Tr(messageKey);
+        if (succeeded)
+        {
+            CommissionChanged?.Invoke();
+        }
+        RefreshText();
+    }
+
+    private void ShowPage(CommissionBoardPage page)
+    {
+        if (_page == page)
+        {
+            return;
+        }
+
+        _page = page;
+        _notice.Text = string.Empty;
+        RefreshText();
+        _action.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    private void RefreshWeeklyReadyState(bool isFinalStage)
+    {
+        if (isFinalStage)
+        {
+            _state.Text = _locale.Tr(
+                "weekly_commission.state.reward_ready"
+            );
+            _action.Text = _locale.Tr(
+                "weekly_commission.action.claim"
+            );
+        }
+        else
+        {
+            _state.Text = _locale.Tr(
+                "weekly_commission.state.stage_ready"
+            );
+            _action.Text = _locale.Tr(
+                "weekly_commission.action.advance"
+            );
+        }
+
+        _action.Disabled = false;
     }
 
     private static string KindKey(DailyCommissionKind kind) => kind switch

@@ -88,6 +88,30 @@ public sealed record DailyCommissionDefinition(
     string DescriptionKey
 );
 
+public enum WeeklyCommissionStageKind
+{
+    Plant,
+    Gather,
+    Deliver
+}
+
+public sealed record WeeklyCommissionStageDefinition(
+    string Id,
+    WeeklyCommissionStageKind Kind,
+    string TargetId,
+    int RequiredCount,
+    string DescriptionKey
+);
+
+public sealed record WeeklyCommissionDefinition(
+    string Id,
+    string TitleKey,
+    IReadOnlyList<WeeklyCommissionStageDefinition> Stages,
+    int RewardCoins,
+    string RewardItemId,
+    int RewardItemCount
+);
+
 public sealed record StarlightContributionOption(
     string ItemId,
     int MaximumCount
@@ -221,6 +245,14 @@ public static class DataCatalog
     public const string PlantStarbudCommissionId = "commission_plant_starbud";
     public const string GatherLumenwoodCommissionId = "commission_gather_lumenwood";
     public const string DeliverStarbudCommissionId = "commission_deliver_starbud";
+    public const string StarlitRouteRestorationWeeklyCommissionId =
+        "weekly_starlit_route_restoration";
+    public const string StarlitRoutePlantStageId =
+        "weekly_starlit_route_plant_starbud";
+    public const string StarlitRouteGatherStageId =
+        "weekly_starlit_route_gather_lumenwood";
+    public const string StarlitRouteDeliverStageId =
+        "weekly_starlit_route_deliver_crystal_shard";
     public const string WoodlandStarlightId = "starlight_woodland";
     public const string WoodlandHarvestNodeId = "starlight_woodland_harvest";
     public const string WoodlandMaterialsNodeId = "starlight_woodland_materials";
@@ -931,6 +963,37 @@ public static class DataCatalog
             definition => definition.Id,
             StringComparer.Ordinal
         );
+
+    public static readonly WeeklyCommissionDefinition WeeklyCommission = new(
+        StarlitRouteRestorationWeeklyCommissionId,
+        "weekly_commission.starlit_route.title",
+        [
+            new WeeklyCommissionStageDefinition(
+                StarlitRoutePlantStageId,
+                WeeklyCommissionStageKind.Plant,
+                StarbudId,
+                3,
+                "weekly_commission.stage.plant.description"
+            ),
+            new WeeklyCommissionStageDefinition(
+                StarlitRouteGatherStageId,
+                WeeklyCommissionStageKind.Gather,
+                LumenwoodId,
+                4,
+                "weekly_commission.stage.gather.description"
+            ),
+            new WeeklyCommissionStageDefinition(
+                StarlitRouteDeliverStageId,
+                WeeklyCommissionStageKind.Deliver,
+                CrystalShardId,
+                3,
+                "weekly_commission.stage.deliver.description"
+            )
+        ],
+        120,
+        MoonstonePathId,
+        4
+    );
 
     public static readonly StarlightPedestalDefinition WoodlandStarlight =
         new(

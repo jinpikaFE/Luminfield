@@ -1510,6 +1510,298 @@ public sealed class DailyCommissionTests
     }
 }
 
+public sealed class WeeklyCommissionTests
+{
+    [Fact]
+    public void SameWeekProgressSurvivesSleepAndSaveRestore()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+
+        session.EndDay();
+
+        Assert.Equal(2, session.Clock.Day);
+        Assert.Equal(1, session.WeeklyCommission.Week);
+        Assert.Equal(2, session.WeeklyCommission.Progress);
+        var restored = new GameSession();
+        restored.Restore(session.Capture());
+        Assert.Equal(1, restored.WeeklyCommission.Week);
+        Assert.True(restored.WeeklyCommission.Accepted);
+        Assert.Equal(
+            DataCatalog.StarlitRoutePlantStageId,
+            restored.WeeklyCommission.CurrentStage.Id
+        );
+        Assert.Equal(2, restored.WeeklyCommission.Progress);
+    }
+
+    [Fact]
+    public void DaySevenToEightRefreshesWeeklyStateWithoutChangingDailyRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+
+        while (session.Clock.Day < 7)
+        {
+            session.EndDay();
+        }
+
+        Assert.Equal(1, session.WeeklyCommission.Week);
+        Assert.True(session.WeeklyCommission.Accepted);
+        Assert.Equal(1, session.WeeklyCommission.Progress);
+
+        session.EndDay();
+
+        Assert.Equal(8, session.Clock.Day);
+        Assert.Equal(2, session.WeeklyCommission.Week);
+        Assert.False(session.WeeklyCommission.Accepted);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+        Assert.Equal(
+            DataCatalog.GatherLumenwoodCommissionId,
+            session.Commission.Current.Id
+        );
+    }
+
+    [Fact]
+    public void OnlyTheActiveStageCountsAndConfirmationIsStrictlyOrdered()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+
+        session.WeeklyCommission.RecordGather(DataCatalog.LumenwoodId, 4);
+        session.WeeklyCommission.RecordPlant(DataCatalog.MoonrootId);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+        Assert.False(session.AdvanceWeeklyCommissionStage().Succeeded);
+
+        RecordStarbudPlanting(session, 3);
+        session.WeeklyCommission.RecordGather(DataCatalog.LumenwoodId, 4);
+        Assert.True(session.WeeklyCommission.IsReady(session.Inventory));
+        Assert.True(session.AdvanceWeeklyCommissionStage().Succeeded);
+        Assert.Equal(
+            DataCatalog.StarlitRouteGatherStageId,
+            session.WeeklyCommission.CurrentStage.Id
+        );
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+        session.WeeklyCommission.RecordGather(DataCatalog.CrystalShardId, 4);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+        session.WeeklyCommission.RecordGather(DataCatalog.LumenwoodId, 4);
+        Assert.True(session.AdvanceWeeklyCommissionStage().Succeeded);
+        Assert.Equal(
+            DataCatalog.StarlitRouteDeliverStageId,
+            session.WeeklyCommission.CurrentStage.Id
+        );
+        Assert.True(session.WeeklyCommission.IsFinalStage);
+    }
+
+    [Fact]
+    public void FailedPlantingAndWrongToolGatheringDoNotCount()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.AcceptWeeklyCommission();
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudSeedId, 1));
+        session.Inventory.Select(5);
+        var soil = new GridPosition(12, 16);
+
+        Assert.False(session.UseSelected(soil).Succeeded);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+
+        session.Inventory.Select(1);
+        Assert.True(session.UseSelected(soil).Succeeded);
+        session.Inventory.Select(5);
+        Assert.True(session.UseSelected(soil).Succeeded);
+        Assert.Equal(1, session.WeeklyCommission.Progress);
+        RecordStarbudPlanting(session, 2);
+        Assert.True(session.AdvanceWeeklyCommissionStage().Succeeded);
+        var tree = FindWorldResource(WorldResourceKind.Tree);
+        session.Inventory.Select(1);
+
+        Assert.False(session.UseSelected(tree).Succeeded);
+        Assert.Equal(0, session.WeeklyCommission.Progress);
+        session.Inventory.Select(2);
+        Assert.True(session.UseSelected(tree).Succeeded);
+        Assert.Equal(2, session.WeeklyCommission.Progress);
+    }
+
+    [Fact]
+    public void InsufficientFinalDeliveryNeverDeductsOrAdvances()
+    {
+        var session = PrepareFinalStage();
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalShardId, 2));
+        var startingCoins = session.Coins;
+
+        var result = session.ClaimWeeklyCommission();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.MoonstonePathId));
+        Assert.Equal(startingCoins, session.Coins);
+        Assert.False(session.WeeklyCommission.Claimed);
+        Assert.Equal(
+            DataCatalog.StarlitRouteDeliverStageId,
+            session.WeeklyCommission.CurrentStage.Id
+        );
+    }
+
+    [Fact]
+    public void FullBackpackMakesFinalRewardAnAtomicFailure()
+    {
+        var session = PrepareFinalStage();
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalShardId, 4));
+        var seedStack = DataCatalog.Item(DataCatalog.StarbudSeedId).MaxStack;
+        Assert.True(session.Inventory.Add(
+            DataCatalog.StarbudSeedId,
+            18 * seedStack
+        ));
+        var before = session.Inventory.Capture()
+            .Select(slot => (slot.ItemId, slot.Count))
+            .ToArray();
+        var startingCoins = session.Coins;
+
+        var result = session.ClaimWeeklyCommission();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("weekly_commission.backpack_full", result.MessageKey);
+        Assert.Equal(
+            before,
+            session.Inventory.Capture()
+                .Select(slot => (slot.ItemId, slot.Count))
+                .ToArray()
+        );
+        Assert.Equal(startingCoins, session.Coins);
+        Assert.False(session.WeeklyCommission.Claimed);
+    }
+
+    [Fact]
+    public void FinalClaimOnlyRemovesCrystalsAndRewardsExactlyOnce()
+    {
+        var session = PrepareFinalStage();
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalShardId, 3));
+        Assert.True(session.Inventory.Add(DataCatalog.LumenwoodId, 5));
+        var startingCoins = session.Coins;
+
+        var claimed = session.ClaimWeeklyCommission();
+
+        Assert.True(claimed.Succeeded);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.Equal(5, session.Inventory.Count(DataCatalog.LumenwoodId));
+        Assert.Equal(4, session.Inventory.Count(DataCatalog.MoonstonePathId));
+        Assert.Equal(startingCoins + 120, session.Coins);
+        Assert.True(session.WeeklyCommission.Claimed);
+
+        Assert.False(session.ClaimWeeklyCommission().Succeeded);
+        Assert.Equal(4, session.Inventory.Count(DataCatalog.MoonstonePathId));
+        Assert.Equal(startingCoins + 120, session.Coins);
+    }
+
+    [Fact]
+    public void UnknownOrDamagedWeeklyStateReturnsToTheCurrentOffer()
+    {
+        var unknownDefinition = WeeklyCommissionSystem.NormalizeSave(
+            new WeeklyCommissionSave
+            {
+                Week = 2,
+                DefinitionId = "unknown_weekly_commission",
+                Accepted = true,
+                StageId = DataCatalog.StarlitRouteDeliverStageId,
+                Progress = 999,
+                Claimed = true
+            },
+            8
+        );
+        var unknownStage = WeeklyCommissionSystem.NormalizeSave(
+            new WeeklyCommissionSave
+            {
+                Week = 2,
+                DefinitionId =
+                    DataCatalog.StarlitRouteRestorationWeeklyCommissionId,
+                Accepted = true,
+                StageId = "unknown_stage",
+                Progress = -7
+            },
+            8
+        );
+
+        Assert.Equal(2, unknownDefinition.Week);
+        Assert.False(unknownDefinition.Accepted);
+        Assert.Equal(
+            DataCatalog.StarlitRoutePlantStageId,
+            unknownDefinition.StageId
+        );
+        Assert.False(unknownStage.Accepted);
+        Assert.Equal(0, unknownStage.Progress);
+        Assert.Equal(
+            DataCatalog.StarlitRoutePlantStageId,
+            unknownStage.StageId
+        );
+    }
+
+    [Fact]
+    public void DailyAndWeeklyCommissionsProgressAndRefreshIndependently()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.AcceptDailyCommission().Succeeded);
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+        session.Commission.RecordPlant(DataCatalog.StarbudId);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+
+        session.EndDay();
+
+        Assert.False(session.Commission.Accepted);
+        Assert.Equal(0, session.Commission.Progress);
+        Assert.True(session.WeeklyCommission.Accepted);
+        Assert.Equal(1, session.WeeklyCommission.Progress);
+    }
+
+    private static GameSession PrepareFinalStage()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+        RecordStarbudPlanting(session, 3);
+        Assert.True(session.AdvanceWeeklyCommissionStage().Succeeded);
+        session.WeeklyCommission.RecordGather(DataCatalog.LumenwoodId, 4);
+        Assert.True(session.AdvanceWeeklyCommissionStage().Succeeded);
+        return session;
+    }
+
+    private static void RecordStarbudPlanting(GameSession session, int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        }
+    }
+
+    private static GridPosition FindWorldResource(WorldResourceKind kind)
+    {
+        for (var y = FarmSystem.MapHeight; y < WorldDefinition.Height; y++)
+        {
+            for (var x = 1; x < WorldDefinition.Width - 1; x++)
+            {
+                var cell = new GridPosition(x, y);
+                if (WorldDefinition.ResourceAt(cell) == kind)
+                {
+                    return cell;
+                }
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not find a world resource for {kind}."
+        );
+    }
+}
+
 public sealed class StarlightSystemTests
 {
     [Fact]
@@ -6028,6 +6320,50 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void WeeklyCommissionKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var definition = DataCatalog.WeeklyCommission;
+        var keys = new[]
+        {
+            "commission.tab.daily",
+            "commission.tab.weekly",
+            "weekly_commission.board.week",
+            "weekly_commission.board.stage",
+            definition.TitleKey,
+            "weekly_commission.reward",
+            "weekly_commission.state.offered",
+            "weekly_commission.state.stage_ready",
+            "weekly_commission.state.reward_ready",
+            "weekly_commission.action.accept",
+            "weekly_commission.action.advance",
+            "weekly_commission.action.claim",
+            "weekly_commission.hud",
+            "weekly_commission.backpack_full"
+        }.Concat(
+            definition.Stages.Select(stage => stage.DescriptionKey)
+        );
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void EveryVillagerDefinitionHasBilingualDialogueAndGiftFeedback()
     {
         var locale = new LocaleService();
@@ -6123,6 +6459,9 @@ public sealed class SaveServiceTests : IDisposable
         session.NewGame(LocaleService.English);
         Assert.True(session.AcceptDailyCommission().Succeeded);
         session.Commission.RecordPlant(DataCatalog.StarbudId);
+        Assert.True(session.AcceptWeeklyCommission().Succeeded);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
         session.InteractWithMira();
         session.Inventory.Select(1);
         session.UseSelected(new GridPosition(12, 16));
@@ -6206,6 +6545,18 @@ public sealed class SaveServiceTests : IDisposable
         Assert.True(result.Save.Commission.Accepted);
         Assert.Equal(1, result.Save.Commission.Progress);
         Assert.False(result.Save.Commission.Claimed);
+        Assert.Equal(1, result.Save.WeeklyCommission.Week);
+        Assert.Equal(
+            DataCatalog.StarlitRouteRestorationWeeklyCommissionId,
+            result.Save.WeeklyCommission.DefinitionId
+        );
+        Assert.True(result.Save.WeeklyCommission.Accepted);
+        Assert.Equal(
+            DataCatalog.StarlitRoutePlantStageId,
+            result.Save.WeeklyCommission.StageId
+        );
+        Assert.Equal(2, result.Save.WeeklyCommission.Progress);
+        Assert.False(result.Save.WeeklyCommission.Claimed);
         Assert.True(result.Save.Starlight.Discovered);
         Assert.False(result.Save.Starlight.RewardUnlocked);
         Assert.Equal(
@@ -6309,6 +6660,17 @@ public sealed class SaveServiceTests : IDisposable
             result.Save.Commission.DefinitionId
         );
         Assert.False(result.Save.Commission.Accepted);
+        Assert.Equal(1, result.Save.WeeklyCommission.Week);
+        Assert.Equal(
+            DataCatalog.StarlitRouteRestorationWeeklyCommissionId,
+            result.Save.WeeklyCommission.DefinitionId
+        );
+        Assert.Equal(
+            DataCatalog.StarlitRoutePlantStageId,
+            result.Save.WeeklyCommission.StageId
+        );
+        Assert.False(result.Save.WeeklyCommission.Accepted);
+        Assert.False(result.Save.WeeklyCommission.Claimed);
         Assert.Equal(
             DataCatalog.WoodlandStarlightId,
             result.Save.Starlight.PedestalId

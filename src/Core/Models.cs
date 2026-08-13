@@ -186,6 +186,16 @@ public sealed class DailyCommissionSave
     public bool Claimed { get; set; }
 }
 
+public sealed class WeeklyCommissionSave
+{
+    public int Week { get; set; } = 1;
+    public string DefinitionId { get; set; } = string.Empty;
+    public bool Accepted { get; set; }
+    public string StageId { get; set; } = string.Empty;
+    public int Progress { get; set; }
+    public bool Claimed { get; set; }
+}
+
 public sealed class StarlightContributionSave
 {
     public string ItemId { get; set; } = string.Empty;
@@ -263,6 +273,7 @@ public sealed class GameSaveV1
     public StorageSave Storage { get; set; } = new();
     public FarmObjectSave FarmObjects { get; set; } = new();
     public DailyCommissionSave Commission { get; set; } = new();
+    public WeeklyCommissionSave WeeklyCommission { get; set; } = new();
     public StarlightSave Starlight { get; set; } = new();
     public VillageSave Village { get; set; } = new();
     public MailSave Mail { get; set; } = new();

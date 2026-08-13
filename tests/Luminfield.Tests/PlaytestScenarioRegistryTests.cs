@@ -185,6 +185,18 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.CommissionMap
         ),
         (
+            "--playtest-weekly-commission-offer",
+            PlaytestScenarioId.WeeklyCommissionOffer
+        ),
+        (
+            "--playtest-weekly-commission-stage-ready",
+            PlaytestScenarioId.WeeklyCommissionStageReady
+        ),
+        (
+            "--playtest-weekly-commission-reward-ready",
+            PlaytestScenarioId.WeeklyCommissionRewardReady
+        ),
+        (
             "--playtest-mailbox-unread",
             PlaytestScenarioId.MailboxUnread
         ),

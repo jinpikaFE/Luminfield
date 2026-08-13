@@ -491,6 +491,12 @@ public sealed partial class Main : Node
                     StartCommissionReadyEnglishPlaytest,
                 [PlaytestScenarioId.CommissionMap] =
                     StartCommissionMapPlaytest,
+                [PlaytestScenarioId.WeeklyCommissionOffer] =
+                    StartWeeklyCommissionOfferPlaytest,
+                [PlaytestScenarioId.WeeklyCommissionStageReady] =
+                    StartWeeklyCommissionStageReadyPlaytest,
+                [PlaytestScenarioId.WeeklyCommissionRewardReady] =
+                    StartWeeklyCommissionRewardReadyPlaytest,
                 [PlaytestScenarioId.MailboxUnread] =
                     StartMailboxUnreadPlaytest,
                 [PlaytestScenarioId.MailPanel] =
@@ -804,6 +810,56 @@ public sealed partial class Main : Node
         {
             Callable.From(OpenCommissionBoard).CallDeferred();
         }
+    }
+
+    private void StartWeeklyCommissionOfferPlaytest()
+    {
+        PrepareWeeklyCommissionPlaytest();
+    }
+
+    private void StartWeeklyCommissionStageReadyPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.AcceptWeeklyCommission();
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        StartWeeklyCommissionPlaytestWorld();
+    }
+
+    private void StartWeeklyCommissionRewardReadyPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.AcceptWeeklyCommission();
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        _session.WeeklyCommission.RecordPlant(DataCatalog.StarbudId);
+        _session.AdvanceWeeklyCommissionStage();
+        _session.WeeklyCommission.RecordGather(
+            DataCatalog.LumenwoodId,
+            4
+        );
+        _session.AdvanceWeeklyCommissionStage();
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 3);
+        StartWeeklyCommissionPlaytestWorld();
+    }
+
+    private void PrepareWeeklyCommissionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        StartWeeklyCommissionPlaytestWorld();
+    }
+
+    private void StartWeeklyCommissionPlaytestWorld()
+    {
+        StartCommissionPlaytestWorld(false);
+        Callable.From(OpenWeeklyCommissionBoard).CallDeferred();
     }
 
     private void StartMailboxUnreadPlaytest()
@@ -3028,6 +3084,16 @@ public sealed partial class Main : Node
 
     private void OpenCommissionBoard()
     {
+        OpenCommissionBoard(CommissionBoardPage.Daily);
+    }
+
+    private void OpenWeeklyCommissionBoard()
+    {
+        OpenCommissionBoard(CommissionBoardPage.Weekly);
+    }
+
+    private void OpenCommissionBoard(CommissionBoardPage initialPage)
+    {
         if (_commissionOverlay is not null)
         {
             return;
@@ -3038,7 +3104,8 @@ public sealed partial class Main : Node
         _commissionOverlay = new CommissionBoardOverlay(
             _theme,
             _session,
-            _locale
+            _locale,
+            initialPage
         );
         _commissionOverlay.CloseRequested += CloseCommissionBoard;
         _commissionOverlay.CommissionChanged += () =>

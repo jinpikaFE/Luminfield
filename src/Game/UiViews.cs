@@ -392,6 +392,23 @@ public sealed partial class HudView : Control
             );
         }
 
+        if (_session.WeeklyCommission.Accepted &&
+            !_session.WeeklyCommission.Claimed)
+        {
+            var weekly = _session.WeeklyCommission;
+            var stage = weekly.CurrentStage;
+            var progress = weekly.DisplayProgress(_session.Inventory);
+            objectiveText = _locale.Tr(
+                "weekly_commission.hud",
+                objectiveText,
+                _locale.Tr(weekly.Current.TitleKey),
+                weekly.CurrentStageIndex + 1,
+                weekly.Current.Stages.Count,
+                progress,
+                stage.RequiredCount
+            );
+        }
+
         if (_session.Starlight.Discovered)
         {
             objectiveText = _locale.Tr(

@@ -21,6 +21,7 @@ public sealed class GameSession
     public StorageSystem Storage { get; } = new();
     public FarmObjectSystem FarmObjects { get; } = new();
     public DailyCommissionSystem Commission { get; } = new();
+    public WeeklyCommissionSystem WeeklyCommission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
     public VillageSystem Village { get; }
     public MailSystem Mail { get; } = new();
@@ -75,6 +76,7 @@ public sealed class GameSession
         Storage.Changed += _ => NotifyChanged();
         FarmObjects.Changed += _ => NotifyChanged();
         Commission.Changed += NotifyChanged;
+        WeeklyCommission.Changed += NotifyChanged;
         Starlight.Changed += NotifyChanged;
         Village.Changed += NotifyChanged;
         Mail.Changed += NotifyChanged;
@@ -95,6 +97,7 @@ public sealed class GameSession
         Storage.Reset();
         FarmObjects.Reset();
         Commission.Reset(Clock.Day);
+        WeeklyCommission.Reset(Clock.Day);
         Starlight.Reset();
         Village.Reset();
         Mail.Reset();
@@ -134,6 +137,7 @@ public sealed class GameSession
         Weather.Restore(save.Weather, save.Day);
         Shipping.Restore(save.Shipping);
         Commission.Restore(save.Commission, save.Day);
+        WeeklyCommission.Restore(save.WeeklyCommission, save.Day);
         if (Weather.Current.AutoWatersCrops)
         {
             Farm.ApplyWeatherWatering();
@@ -340,6 +344,7 @@ public sealed class GameSession
                     Inventory.Remove(selected.ItemId, 1);
                     Quest.OnPlanted(item.CropId);
                     Commission.RecordPlant(item.CropId);
+                    WeeklyCommission.RecordPlant(item.CropId);
                     ApplyCurrentWeatherTo(target);
                 }
                 break;
@@ -348,6 +353,10 @@ public sealed class GameSession
         if (result.Succeeded && result.GrantedItemId is not null)
         {
             Commission.RecordGather(
+                DataCatalog.BaseItemId(result.GrantedItemId),
+                result.GrantedItemCount
+            );
+            WeeklyCommission.RecordGather(
                 DataCatalog.BaseItemId(result.GrantedItemId),
                 result.GrantedItemCount
             );
@@ -1488,6 +1497,25 @@ public sealed class GameSession
         return result;
     }
 
+    public ActionResult AcceptWeeklyCommission() =>
+        WeeklyCommission.Accept();
+
+    public ActionResult AdvanceWeeklyCommissionStage() =>
+        WeeklyCommission.AdvanceStage(Inventory);
+
+    public WeeklyCommissionClaimResult ClaimWeeklyCommission()
+    {
+        var result = WeeklyCommission.Claim(Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Coins += result.RewardCoins;
+        Changed?.Invoke();
+        return result;
+    }
+
     public ActionResult ReadMail(string mailId) => Mail.Read(mailId);
 
     public ActionResult ClaimMailAttachment(string mailId) =>
@@ -1526,6 +1554,7 @@ public sealed class GameSession
         Coins += settlement.TotalCoins;
         Clock.StartNextDay();
         Commission.RefreshForDay(Clock.Day);
+        WeeklyCommission.RefreshForDay(Clock.Day);
         Mail.DeliverForDay(Clock.Day, Village);
         LastRespawnedResources = Resources.ResolveDay(
             Clock.Day,
@@ -1571,6 +1600,7 @@ public sealed class GameSession
         Storage = Storage.Capture(),
         FarmObjects = FarmObjects.Capture(),
         Commission = Commission.Capture(),
+        WeeklyCommission = WeeklyCommission.Capture(),
         Starlight = Starlight.Capture(),
         Village = Village.Capture(),
         Mail = Mail.Capture(),

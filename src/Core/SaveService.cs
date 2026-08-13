@@ -352,6 +352,10 @@ public sealed class SaveService
             save.Commission,
             save.Day
         );
+        save.WeeklyCommission = WeeklyCommissionSystem.NormalizeSave(
+            save.WeeklyCommission,
+            save.Day
+        );
         save.Starlight = StarlightSystem.NormalizeSave(save.Starlight);
         save.Village = VillageSystem.NormalizeSave(save.Village);
         save.Mail = MailSystem.NormalizeSave(save.Mail);
