@@ -6,7 +6,8 @@ public sealed record CharacterEventDefinition(
     int RequiredRelationshipPoints,
     string RequiredLocationId,
     IReadOnlyList<string> DialogueKeys,
-    string? RequiredPreviousEventId = null
+    string? RequiredPreviousEventId = null,
+    string? RequiredNpcDialogueKey = null
 );
 
 public sealed record CharacterEventDialogue(
@@ -168,7 +169,8 @@ public static class CharacterEventCatalog
                     "character_event.orin.unpriced_waybill.1",
                     "character_event.orin.unpriced_waybill.2",
                     "character_event.orin.unpriced_waybill.3"
-                ]
+                ],
+                RequiredNpcDialogueKey: "village.npc.orin.plaza"
             ),
             new(
                 OrinSharedLanternRouteId,
@@ -180,7 +182,8 @@ public static class CharacterEventCatalog
                     "character_event.orin.shared_lantern_route.2",
                     "character_event.orin.shared_lantern_route.3"
                 ],
-                OrinUnpricedWaybillId
+                RequiredPreviousEventId: OrinUnpricedWaybillId,
+                RequiredNpcDialogueKey: "village.npc.orin.plaza"
             )
         ];
 
@@ -266,6 +269,8 @@ public sealed class CharacterEventSystem
             if (_completedDays.ContainsKey(definition.Id) ||
                 definition.NpcId != npc.Definition.Id ||
                 definition.RequiredLocationId != locationId ||
+                (definition.RequiredNpcDialogueKey is not null &&
+                    definition.RequiredNpcDialogueKey != npc.DialogueKey) ||
                 relationshipPoints <
                     definition.RequiredRelationshipPoints)
             {

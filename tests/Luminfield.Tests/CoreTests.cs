@@ -6001,6 +6001,60 @@ public sealed class CharacterEventSystemTests
         Assert.Empty(wrongTime.Session.CharacterEvents.Capture().Entries);
     }
 
+    [Theory]
+    [InlineData(7, 14 * 60, "village.npc.orin.restday")]
+    [InlineData(15, 8 * 60, "village.npc.orin.morning")]
+    [InlineData(15, 19 * 60, "village.npc.orin.evening")]
+    public void OrinEventsRequireTheOrdinaryAfternoonPlazaSchedule(
+        int day,
+        int minuteOfDay,
+        string expectedDialogueKey
+    )
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = 96 * 16 + 8;
+        save.Player.Y = 60 * 16 + 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.OrinId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = VillageCatalog.OrinId,
+                    Points = 25,
+                    LastTalkDay = day
+                }
+            ]
+        };
+        session.Restore(save);
+        session.Inventory.Select(0);
+        var orin = session.Village.CurrentNpcs(
+            day,
+            minuteOfDay,
+            PlayerLocationIds.World,
+            session.PlayerCell
+        ).Single(state => state.Definition.Id == VillageCatalog.OrinId);
+        Assert.Equal(expectedDialogueKey, orin.DialogueKey);
+
+        var conversation = session.InteractWithVillager(
+            orin.Position,
+            out var result
+        );
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(conversation);
+        Assert.Equal(expectedDialogueKey, conversation.DialogueKey);
+        Assert.Null(conversation.CharacterEvent);
+        Assert.Null(session.CharacterEvents.ActiveEventId);
+        Assert.Empty(session.CharacterEvents.Capture().Entries);
+    }
+
     [Fact]
     public void CharacterEventSaveFiltersUnknownDuplicatesAndBadOrder()
     {
