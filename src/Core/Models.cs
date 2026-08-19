@@ -273,6 +273,12 @@ public sealed class ConstructionSave
     public bool Completed { get; set; }
 }
 
+public sealed class FarmingSkillSave
+{
+    public int Experience { get; set; }
+    public string SpecializationId { get; set; } = string.Empty;
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -298,6 +304,7 @@ public sealed class GameSaveV1
     public MailSave Mail { get; set; } = new();
     public CharacterEventSave CharacterEvents { get; set; } = new();
     public ConstructionSave Construction { get; set; } = new();
+    public FarmingSkillSave FarmingSkill { get; set; } = new();
 }
 
 public sealed record ActionResult(

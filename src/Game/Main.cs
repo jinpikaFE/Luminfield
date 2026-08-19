@@ -36,6 +36,7 @@ public sealed partial class Main : Node
     private StorageOverlay? _storageOverlay;
     private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
+    private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
     private FadeTransition? _fadeTransition;
     private bool _playing;
     private bool _paused;
@@ -206,6 +207,13 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _farmingSpecializationOverlay is not null)
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Pause) && _storageOverlay is not null)
         {
             CloseStorage();
@@ -257,6 +265,7 @@ public sealed partial class Main : Node
             _storageOverlay is null &&
             _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
+            _farmingSpecializationOverlay is null &&
             _fadeTransition is null)
         {
             if (_paused)
@@ -332,6 +341,7 @@ public sealed partial class Main : Node
         _storageOverlay is not null ||
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
+        _farmingSpecializationOverlay is not null ||
         _fadeTransition is not null;
 
     private bool CanRestoreWorldControls =>
@@ -349,6 +359,7 @@ public sealed partial class Main : Node
         _storageOverlay is null &&
         _nightlySummaryOverlay is null &&
         _backpackOverlay is null &&
+        _farmingSpecializationOverlay is null &&
         _fadeTransition is null;
 
     private void ShowTitle(string? noticeKey = null)
@@ -388,6 +399,8 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay = null;
         FreeUi(_backpackOverlay);
         _backpackOverlay = null;
+        FreeUi(_farmingSpecializationOverlay);
+        _farmingSpecializationOverlay = null;
         FreeUi(_fadeTransition);
         _fadeTransition = null;
         FreeUi(_title);
@@ -570,6 +583,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.QualityBackpack] =
                     StartQualityBackpackPlaytest,
                 [PlaytestScenarioId.Quality] = StartQualityPlaytest,
+                [PlaytestScenarioId.FarmingSpecialization] =
+                    StartFarmingSpecializationPlaytest,
                 [PlaytestScenarioId.Farm] = StartNewGame
             }
         );
@@ -838,6 +853,23 @@ public sealed partial class Main : Node
         );
         _session.SetPlayerState(12 * 16 + 8, 15 * 16 + 8, false);
         ShowFarm(false);
+    }
+
+    private void StartFarmingSpecializationPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.FarmingSkill.Experience = FarmingSkillCatalog.Levels[
+            FarmingSkillSystem.SpecializationUnlockLevel
+        ].RequiredExperience;
+        _session.Restore(save);
+        _session.SetPlayerState(20 * 16 + 8, 14 * 16 + 8, false);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(TryOpenFarmingSpecialization).CallDeferred();
     }
 
     private void StartFarmPlaceablesPlaytest()
@@ -2495,6 +2527,7 @@ public sealed partial class Main : Node
         {
             ShowFarm(false);
         }
+        Callable.From(TryOpenFarmingSpecialization).CallDeferred();
     }
 
     private void EnsureHud()
@@ -2835,22 +2868,74 @@ public sealed partial class Main : Node
             _hud?.ShowNotice(result.MessageKey);
         }
 
-        var selectedIsSeed =
-            DataCatalog.Items.TryGetValue(selectedId, out var selectedItem) &&
-            selectedItem.Kind == ItemKind.Seed;
-        var sound = result.GrantedItemId is not null
-            ? PixelSound.Harvest
-            : selectedIsSeed
-                ? PixelSound.Plant
-                : selectedId switch
-            {
-                DataCatalog.ShovelId => PixelSound.Till,
-                DataCatalog.MacheteId => PixelSound.Harvest,
-                DataCatalog.WateringCanId => PixelSound.Water,
-                DataCatalog.BucketId => PixelSound.Water,
-                _ => PixelSound.Chime
-            };
-        _audio.Play(sound);
+        _audio.Play(ResolveFarmActionSound(result, selectedId));
+        Callable.From(TryOpenFarmingSpecialization).CallDeferred();
+    }
+
+    private static PixelSound ResolveFarmActionSound(
+        ActionResult result,
+        string selectedId
+    )
+    {
+        if (result.GrantedItemId is not null)
+        {
+            return PixelSound.Harvest;
+        }
+
+        if (DataCatalog.Items.TryGetValue(selectedId, out var selectedItem) &&
+            selectedItem.Kind == ItemKind.Seed)
+        {
+            return PixelSound.Plant;
+        }
+
+        return selectedId switch
+        {
+            DataCatalog.ShovelId => PixelSound.Till,
+            DataCatalog.MacheteId => PixelSound.Harvest,
+            DataCatalog.WateringCanId => PixelSound.Water,
+            DataCatalog.BucketId => PixelSound.Water,
+            _ => PixelSound.Chime
+        };
+    }
+
+    private void TryOpenFarmingSpecialization()
+    {
+        if (!_playing ||
+            !_session.FarmingSkill.CanChooseSpecialization ||
+            _farmingSpecializationOverlay is not null ||
+            !CanRestoreWorldControls)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _farmingSpecializationOverlay = new FarmingSpecializationOverlay(
+            _theme,
+            _locale
+        );
+        _farmingSpecializationOverlay.SelectionRequested +=
+            ChooseFarmingSpecialization;
+        _uiLayer.AddChild(_farmingSpecializationOverlay);
+    }
+
+    private void ChooseFarmingSpecialization(string specializationId)
+    {
+        var result = _session.ChooseFarmingSpecialization(specializationId);
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        SaveNow(false);
+        _audio.Play(PixelSound.Chime);
+        FreeUi(_farmingSpecializationOverlay);
+        _farmingSpecializationOverlay = null;
+        _hud?.ShowNotice(result.MessageKey);
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void TalkToMira()
@@ -3729,6 +3814,7 @@ public sealed partial class Main : Node
         _craftingOverlay?.RefreshText();
         _storageOverlay?.RefreshText();
         _backpackOverlay?.RefreshText();
+        _farmingSpecializationOverlay?.RefreshText();
         _hud?.Refresh();
     }
 

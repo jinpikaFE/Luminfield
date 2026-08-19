@@ -278,6 +278,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.QualityBackpack
         ),
         ("--playtest-quality", PlaytestScenarioId.Quality),
+        (
+            "--playtest-farming-specialization",
+            PlaytestScenarioId.FarmingSpecialization
+        ),
         ("--playtest-farm", PlaytestScenarioId.Farm)
     ];
 

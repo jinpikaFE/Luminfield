@@ -112,7 +112,11 @@ public sealed class FarmSystem
         return ActionResult.Success(messageKey: "fertilizer.applied");
     }
 
-    public ActionResult TryWater(GridPosition position, int availableEnergy)
+    public ActionResult TryWater(
+        GridPosition position,
+        int availableEnergy,
+        int energyCost = FarmingSkillSystem.BaseWateringEnergyCost
+    )
     {
         if (!_tiles.TryGetValue(position, out var tile) || !tile.Tilled)
         {
@@ -124,14 +128,15 @@ public sealed class FarmSystem
             return ActionResult.Fail("notice.already_watered");
         }
 
-        if (availableEnergy < 2)
+        var normalizedEnergyCost = Math.Max(1, energyCost);
+        if (availableEnergy < normalizedEnergyCost)
         {
             return ActionResult.Fail("notice.no_energy");
         }
 
         tile.Watered = true;
         TileChanged?.Invoke(position);
-        return ActionResult.Success(2);
+        return ActionResult.Success(normalizedEnergyCost);
     }
 
     public bool ApplyWeatherWatering(GridPosition position)

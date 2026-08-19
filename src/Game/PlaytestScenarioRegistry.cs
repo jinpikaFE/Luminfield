@@ -87,6 +87,7 @@ public enum PlaytestScenarioId
     QualityBackpackEnglish,
     QualityBackpack,
     Quality,
+    FarmingSpecialization,
     Farm
 }
 
@@ -373,6 +374,10 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-quality-backpack"
         ),
         new(PlaytestScenarioId.Quality, "--playtest-quality"),
+        new(
+            PlaytestScenarioId.FarmingSpecialization,
+            "--playtest-farming-specialization"
+        ),
         new(PlaytestScenarioId.Farm, "--playtest-farm")
     ];
 

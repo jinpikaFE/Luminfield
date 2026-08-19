@@ -423,6 +423,9 @@ public sealed class SaveService
         save.Construction = ConstructionSystem.NormalizeSave(
             save.Construction
         );
+        save.FarmingSkill = FarmingSkillSystem.NormalizeSave(
+            save.FarmingSkill
+        );
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

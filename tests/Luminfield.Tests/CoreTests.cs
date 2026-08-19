@@ -8038,6 +8038,44 @@ public sealed class LocaleTests
         Assert.Contains("2/3", locale.Tr("objective.till", 2));
     }
 
+    [Fact]
+    public void FarmingSpecializationTextExistsInBothLanguages()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = FarmingSkillCatalog.Specializations.Values
+            .SelectMany(definition => new[]
+            {
+                definition.NameKey,
+                definition.DescriptionKey
+            })
+            .Concat(new[]
+            {
+                "hud.farming_skill",
+                "hud.farming_skill_max",
+                "farming.specialization.title",
+                "farming.specialization.body",
+                "farming.specialization.warning"
+            });
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
     private static string ReadLocale(string name) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "localization", name));
 }
@@ -8092,6 +8130,12 @@ public sealed class SaveServiceTests : IDisposable
             DataCatalog.WoodlandHarvestNodeId
         ).Succeeded);
         session.SetPlayerState(70 * 16 + 8, 70 * 16 + 8, false);
+        var skillReadySave = session.Capture();
+        skillReadySave.FarmingSkill.Experience = 100;
+        session.Restore(skillReadySave);
+        Assert.True(session.ChooseFarmingSpecialization(
+            FarmingSkillCatalog.ResonanceScholarId
+        ).Succeeded);
 
         service.Save(session.Capture());
         var result = service.Load();
@@ -8138,11 +8182,20 @@ public sealed class SaveServiceTests : IDisposable
         );
         Assert.Equal(pathPosition.X, result.Save.FarmObjects.Objects[0].X);
         Assert.Equal(pathPosition.Y, result.Save.FarmObjects.Objects[0].Y);
+        Assert.Equal(100, result.Save.FarmingSkill.Experience);
+        Assert.Equal(
+            FarmingSkillCatalog.ResonanceScholarId,
+            result.Save.FarmingSkill.SpecializationId
+        );
         var restoredSession = new GameSession();
         restoredSession.Restore(result.Save);
         Assert.Equal(
             DataCatalog.MoonstonePathId,
             restoredSession.FarmObjects.ItemAt(pathPosition)
+        );
+        Assert.Equal(
+            FarmingSkillCatalog.ResonanceScholarId,
+            restoredSession.FarmingSkill.SpecializationId
         );
         Assert.Equal(
             DataCatalog.PlantStarbudCommissionId,

@@ -130,6 +130,7 @@ public sealed partial class HudView : Control
     private readonly Label _energyText;
     private readonly Label _water;
     private readonly Label _coins;
+    private readonly Label _farmingSkill;
     private readonly Label _selected;
     private readonly Label _controls;
     private readonly PanelContainer _noticePanel;
@@ -199,7 +200,7 @@ public sealed partial class HudView : Control
         _objective.VerticalAlignment = VerticalAlignment.Center;
         objectivePanel.AddChild(_objective);
 
-        var energyPanel = PanelAt(new Vector2(448, 8), new Vector2(184, 46));
+        var energyPanel = PanelAt(new Vector2(448, 8), new Vector2(184, 62));
         energyPanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
@@ -231,6 +232,9 @@ public sealed partial class HudView : Control
         statusRow.AddChild(_coins);
         energyColumn.AddChild(statusRow);
         energyColumn.AddChild(_energy);
+        _farmingSkill = ThemeFactory.Label(size: 8, color: ThemeFactory.Gold);
+        _farmingSkill.HorizontalAlignment = HorizontalAlignment.Center;
+        energyColumn.AddChild(_farmingSkill);
 
         var hotbar = new HBoxContainer
         {
@@ -296,7 +300,7 @@ public sealed partial class HudView : Control
 
         _minimap = new MinimapView(session)
         {
-            Position = new Vector2(500, 59),
+            Position = new Vector2(500, 74),
             Size = new Vector2(132, 92),
             ZIndex = 20
         };
@@ -372,6 +376,17 @@ public sealed partial class HudView : Control
             GameSession.MaxWateringCanWater
         );
         _coins.Text = _locale.Tr("hud.coins", _session.Coins);
+        _farmingSkill.Text = _session.FarmingSkill.IsMaximumLevel
+            ? _locale.Tr(
+                "hud.farming_skill_max",
+                _session.FarmingSkill.Level
+            )
+            : _locale.Tr(
+                "hud.farming_skill",
+                _session.FarmingSkill.Level,
+                _session.FarmingSkill.ExperienceIntoLevel,
+                _session.FarmingSkill.ExperienceForCurrentLevel
+            );
         var tutorialObjective = $"✦ {_locale.Tr(
             _session.Quest.ObjectiveKey,
             _session.Quest.ObjectiveCount

@@ -27,6 +27,7 @@ public sealed class GameSession
     public MailSystem Mail { get; } = new();
     public CharacterEventSystem CharacterEvents { get; } = new();
     public ConstructionSystem Construction { get; } = new();
+    public FarmingSkillSystem FarmingSkill { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -86,6 +87,7 @@ public sealed class GameSession
         Mail.Changed += NotifyChanged;
         CharacterEvents.Changed += NotifyChanged;
         Construction.Changed += NotifyChanged;
+        FarmingSkill.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -108,6 +110,7 @@ public sealed class GameSession
         Mail.Reset();
         CharacterEvents.Reset();
         Construction.Reset();
+        FarmingSkill.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -136,6 +139,7 @@ public sealed class GameSession
         Mail.Restore(save.Mail);
         CharacterEvents.Restore(save.CharacterEvents, save.Day);
         Construction.Restore(save.Construction);
+        FarmingSkill.Restore(save.FarmingSkill);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -248,6 +252,7 @@ public sealed class GameSession
         }
 
         ActionResult result;
+        FarmingSkillAction? farmingSkillAction = null;
         switch (selected.ItemId)
         {
             case DataCatalog.HandId:
@@ -270,6 +275,7 @@ public sealed class GameSession
                 {
                     Quest.OnTilled();
                     ApplyCurrentWeatherTo(target);
+                    farmingSkillAction = FarmingSkillAction.Till;
                 }
                 break;
             case DataCatalog.MacheteId:
@@ -288,12 +294,17 @@ public sealed class GameSession
                 }
 
                 var cropId = Farm.Tiles.GetValueOrDefault(target)?.CropId;
-                result = Farm.TryWater(target, Energy);
+                result = Farm.TryWater(
+                    target,
+                    Energy,
+                    FarmingSkill.WateringEnergyCost
+                );
                 if (result.Succeeded)
                 {
                     WateringCanWater--;
                     WaterChanged?.Invoke();
                     Quest.OnWatered(cropId);
+                    farmingSkillAction = FarmingSkillAction.Water;
                 }
                 break;
             case DataCatalog.BucketId:
@@ -354,6 +365,7 @@ public sealed class GameSession
                     Commission.RecordPlant(item.CropId);
                     WeeklyCommission.RecordPlant(item.CropId);
                     ApplyCurrentWeatherTo(target);
+                    farmingSkillAction = FarmingSkillAction.Plant;
                 }
                 break;
         }
@@ -375,6 +387,11 @@ public sealed class GameSession
             Energy = Math.Max(0, Energy - result.EnergyCost);
             EnergyChanged?.Invoke();
             Changed?.Invoke();
+        }
+
+        if (result.Succeeded && farmingSkillAction is { } successfulAction)
+        {
+            FarmingSkill.RecordSuccessfulAction(successfulAction);
         }
 
         return result;
@@ -855,7 +872,7 @@ public sealed class GameSession
                 );
             }
 
-            return Energy < 2
+            return Energy < FarmingSkill.WateringEnergyCost
                 ? TargetPreview.Blocked(
                     target,
                     TargetPreviewKind.Crop,
@@ -1048,6 +1065,9 @@ public sealed class GameSession
                 Inventory.Add(harvested.GrantedItemId, harvested.GrantedItemCount);
                 Quest.OnHarvested(
                     DataCatalog.BaseItemId(harvested.GrantedItemId)
+                );
+                FarmingSkill.RecordSuccessfulAction(
+                    FarmingSkillAction.Harvest
                 );
             }
 
@@ -1818,8 +1838,13 @@ public sealed class GameSession
         Village = Village.Capture(),
         Mail = Mail.Capture(),
         CharacterEvents = CharacterEvents.Capture(),
-        Construction = Construction.Capture()
+        Construction = Construction.Capture(),
+        FarmingSkill = FarmingSkill.Capture()
     };
+
+    public ActionResult ChooseFarmingSpecialization(
+        string specializationId
+    ) => FarmingSkill.ChooseSpecialization(specializationId);
 
     private TargetPreview PreviewCottageTarget(GridPosition target)
     {
