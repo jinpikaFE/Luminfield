@@ -174,10 +174,10 @@ public sealed class FarmSystemTests
     }
 
     [Fact]
-    public void AllEightCatalogCropsPlantGrowHarvestAndRemainSellable()
+    public void AllTwelveCatalogCropsPlantGrowHarvestAndRemainSellable()
     {
-        Assert.Equal(8, DataCatalog.CropIds.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(8, DataCatalog.SeedItemIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(12, DataCatalog.CropIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(12, DataCatalog.SeedItemIds.Distinct(StringComparer.Ordinal).Count());
 
         foreach (var cropId in DataCatalog.CropIds)
         {
@@ -210,6 +210,266 @@ public sealed class FarmSystemTests
             session.Inventory.Select(0);
             Assert.True(session.UseSelected(position).Succeeded);
             Assert.Equal(1, session.Inventory.Count(crop.HarvestItemId));
+        }
+    }
+
+    [Fact]
+    public void GleamriseSeedsSharePreviewPlantingAndPurchaseSeasonRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(15, 8 * 60);
+        var position = new GridPosition(12, 16);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.DawnlaceSeedId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.DawnlaceSeedId
+        ));
+        var beforeEnergy = session.Energy;
+        var beforeCoins = session.Coins;
+
+        var preview = session.PreviewSelectedTarget(position);
+        var planted = session.UseSelected(position);
+        var bought = session.BuyItem(DataCatalog.DawnlaceSeedId);
+
+        Assert.Equal(TargetPreviewState.Blocked, preview.State);
+        Assert.Equal(
+            "target.blocked.seed_out_of_season",
+            preview.LabelKey
+        );
+        Assert.False(planted.Succeeded);
+        Assert.Equal("notice.seed_out_of_season", planted.MessageKey);
+        Assert.False(bought.Succeeded);
+        Assert.Equal("shop.seed_out_of_season", bought.MessageKey);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.DawnlaceSeedId));
+        Assert.Equal(beforeEnergy, session.Energy);
+        Assert.Equal(beforeCoins, session.Coins);
+        Assert.Null(session.Farm.Tiles[position].CropId);
+        Assert.All(DataCatalog.CropIds.Take(8), cropId =>
+            Assert.True(DataCatalog.Crop(cropId).IsAvailableOnDay(15))
+        );
+        Assert.All(DataCatalog.GleamriseCropIds, cropId =>
+            Assert.False(DataCatalog.Crop(cropId).IsAvailableOnDay(15))
+        );
+    }
+
+    [Fact]
+    public void GlimmerpodReallyRegrowsWithoutConsumingAnotherSeed()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var position = new GridPosition(12, 16);
+        var crop = DataCatalog.Crop(DataCatalog.GlimmerpodId);
+        Assert.Equal(2, crop.RegrowthNights);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.GlimmerpodSeedId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.GlimmerpodSeedId
+        ));
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.GlimmerpodSeedId));
+
+        GrowToMaturity(
+            session.Farm,
+            position,
+            crop,
+            DataCatalog.ClearWeatherId
+        );
+        session.Inventory.Select(0);
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(DataCatalog.GlimmerpodId, session.Farm.Tiles[position].CropId);
+        Assert.Equal(
+            crop.RegrowthWateredNights,
+            session.Farm.Tiles[position].WateredNights
+        );
+
+        for (var night = 0; night < crop.RegrowthNights; night++)
+        {
+            Assert.True(session.Farm.TryWater(position, 100).Succeeded);
+            session.Farm.EndDay();
+        }
+
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.GlimmerpodId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.GlimmerpodSeedId));
+        Assert.Equal(DataCatalog.GlimmerpodId, session.Farm.Tiles[position].CropId);
+    }
+
+    [Fact]
+    public void ResonanceHarvestsUseWeatherPlantingDayAndCoordinatesDeterministically()
+    {
+        var scenarios = new[]
+        {
+            (
+                DataCatalog.DawnlaceId,
+                DataCatalog.RainWeatherId,
+                DataCatalog.RainwovenDawnlaceId
+            ),
+            (
+                DataCatalog.GlimmerpodId,
+                DataCatalog.StardustWindWeatherId,
+                DataCatalog.StarwindGlimmerpodId
+            )
+        };
+
+        foreach (var (cropId, weatherId, expectedItemId) in scenarios)
+        {
+            var position = FindResonantPosition(cropId, weatherId, expectedItemId);
+            var first = MatureFarm(position, cropId, weatherId, plantedDay: 1);
+            var restoredEquivalent = MatureFarm(
+                position,
+                cropId,
+                weatherId,
+                plantedDay: 1
+            );
+            var clear = MatureFarm(
+                position,
+                cropId,
+                DataCatalog.ClearWeatherId,
+                plantedDay: 1
+            );
+
+            Assert.Equal(expectedItemId, first.HarvestItemIdAt(position));
+            Assert.Equal(
+                first.Tiles[position].ResonanceItemId,
+                restoredEquivalent.Tiles[position].ResonanceItemId
+            );
+            Assert.Null(clear.Tiles[position].ResonanceItemId);
+            Assert.Equal(1, first.Tiles[position].PlantedDay);
+        }
+    }
+
+    [Fact]
+    public void FullBackpackDoesNotHarvestOrClearResonanceState()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var position = new GridPosition(12, 16);
+        var crop = DataCatalog.Crop(DataCatalog.DawnlaceId);
+        session.Farm.Restore(
+        [
+            new FarmTileState
+            {
+                X = position.X,
+                Y = position.Y,
+                Tilled = true,
+                CropId = crop.Id,
+                WateredNights = crop.MatureAfterWateredNights,
+                PlantedDay = 1,
+                ResonanceItemId = DataCatalog.RainwovenDawnlaceId
+            }
+        ]);
+        Assert.True(session.Inventory.Add(
+            DataCatalog.StarbudSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount)
+        ));
+
+        var preview = session.PreviewSelectedTarget(position);
+        var harvested = session.UseSelected(position);
+
+        Assert.Equal(TargetPreviewState.Blocked, preview.State);
+        Assert.Equal("target.blocked.backpack_full", preview.LabelKey);
+        Assert.False(harvested.Succeeded);
+        Assert.Equal(crop.Id, session.Farm.Tiles[position].CropId);
+        Assert.Equal(
+            crop.MatureAfterWateredNights,
+            session.Farm.Tiles[position].WateredNights
+        );
+        Assert.Equal(
+            DataCatalog.RainwovenDawnlaceId,
+            session.Farm.Tiles[position].ResonanceItemId
+        );
+    }
+
+    [Fact]
+    public void ResonanceProduceSupportsImmediateSaleAndShipping()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var beforeCoins = session.Coins;
+        Assert.True(session.Inventory.Add(DataCatalog.RainwovenDawnlaceId, 2));
+
+        Assert.True(session.SellItem(
+            DataCatalog.RainwovenDawnlaceId
+        ).Succeeded);
+        Assert.True(session.QueueForShipping(
+            DataCatalog.RainwovenDawnlaceId
+        ).Succeeded);
+        var settlement = session.EndDay();
+
+        Assert.Equal(1, settlement.TotalItems);
+        Assert.Equal(
+            beforeCoins + DataCatalog.Item(
+                DataCatalog.RainwovenDawnlaceId
+            ).SellPrice * 2,
+            session.Coins
+        );
+    }
+
+    private static GridPosition FindResonantPosition(
+        string cropId,
+        string weatherId,
+        string expectedItemId
+    )
+    {
+        for (var y = 15; y <= 21; y++)
+        {
+            for (var x = 11; x <= 32; x++)
+            {
+                var position = new GridPosition(x, y);
+                if (!FarmSystem.IsPlantingBed(position))
+                {
+                    continue;
+                }
+
+                var farm = MatureFarm(
+                    position,
+                    cropId,
+                    weatherId,
+                    plantedDay: 1
+                );
+                if (farm.HarvestItemIdAt(position) == expectedItemId)
+                {
+                    return position;
+                }
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"No deterministic resonance position found for {cropId}."
+        );
+    }
+
+    private static FarmSystem MatureFarm(
+        GridPosition position,
+        string cropId,
+        string weatherId,
+        int plantedDay
+    )
+    {
+        var farm = new FarmSystem();
+        Assert.True(farm.TryTill(position, 100).Succeeded);
+        Assert.True(farm.TryPlant(position, cropId, plantedDay).Succeeded);
+        GrowToMaturity(
+            farm,
+            position,
+            DataCatalog.Crop(cropId),
+            weatherId
+        );
+        return farm;
+    }
+
+    private static void GrowToMaturity(
+        FarmSystem farm,
+        GridPosition position,
+        CropDefinition crop,
+        string weatherId
+    )
+    {
+        for (var night = 0; night < crop.MatureAfterWateredNights; night++)
+        {
+            Assert.True(farm.TryWater(position, 100).Succeeded);
+            farm.EndDay(weatherId);
         }
     }
 }
@@ -422,9 +682,9 @@ public sealed class CropQualityAndFertilizerTests
     [Fact]
     public void EveryCropHasStableIncreasingQualityVariants()
     {
-        Assert.Equal(16, DataCatalog.QualityProduceItemIds.Count);
+        Assert.Equal(24, DataCatalog.QualityProduceItemIds.Count);
         Assert.Equal(
-            16,
+            24,
             DataCatalog.QualityProduceItemIds
                 .Distinct(StringComparer.Ordinal)
                 .Count()
@@ -915,9 +1175,14 @@ public sealed class TwilightEmporiumRotationTests
 
         Assert.Equal(firstWeek, firstWeekAgain);
         Assert.Equal(TwilightEmporiumSystem.StockSize, firstWeek.Length);
+        Assert.Equal(DataCatalog.GleamriseSeedItemIds, firstWeek);
         Assert.Equal(firstWeek.Length, firstWeek.Distinct().Count());
         Assert.False(firstWeek.SequenceEqual(secondWeek));
         Assert.False(secondWeek.SequenceEqual(nextSeason));
+        Assert.DoesNotContain(
+            nextSeason,
+            itemId => DataCatalog.GleamriseSeedItemIds.Contains(itemId)
+        );
         Assert.All(firstWeek.Concat(secondWeek).Concat(nextSeason), itemId =>
         {
             Assert.Contains(itemId, DataCatalog.SeedItemIds);
@@ -7227,6 +7492,47 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void GleamriseCropItemAndSeasonRuleKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = DataCatalog.GleamriseCropIds
+            .Select(cropId => DataCatalog.Crop(cropId).NameKey)
+            .Concat(DataCatalog.GleamriseCropIds.SelectMany(cropId =>
+            {
+                var crop = DataCatalog.Crop(cropId);
+                return DataCatalog.ItemFamilyIds(cropId)
+                    .Append(crop.SeedItemId)
+                    .Select(itemId => DataCatalog.Item(itemId).NameKey);
+            }))
+            .Concat(
+            [
+                "target.blocked.seed_out_of_season",
+                "notice.seed_out_of_season",
+                "shop.seed_out_of_season"
+            ])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void TeaHouseInteractionKeysAreBilingual()
     {
         var locale = new LocaleService();
@@ -7646,6 +7952,72 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(
             1,
             restored.Inventory.Count(DataCatalog.StarbudStarlightId)
+        );
+    }
+
+    [Fact]
+    public void ResonanceStateRoundTripsAndRejectsUnknownOrCrossCropIds()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var dawnlace = DataCatalog.Crop(DataCatalog.DawnlaceId);
+        var glimmerpod = DataCatalog.Crop(DataCatalog.GlimmerpodId);
+        var save = new GameSaveV1
+        {
+            FarmTiles =
+            [
+                new FarmTileState
+                {
+                    X = 12,
+                    Y = 16,
+                    Tilled = true,
+                    CropId = dawnlace.Id,
+                    WateredNights = dawnlace.MatureAfterWateredNights,
+                    PlantedDay = 3,
+                    ResonanceItemId = DataCatalog.RainwovenDawnlaceId
+                },
+                new FarmTileState
+                {
+                    X = 13,
+                    Y = 16,
+                    Tilled = true,
+                    CropId = glimmerpod.Id,
+                    WateredNights = glimmerpod.MatureAfterWateredNights,
+                    PlantedDay = 0,
+                    ResonanceItemId = DataCatalog.RainwovenDawnlaceId
+                },
+                new FarmTileState
+                {
+                    X = 14,
+                    Y = 16,
+                    Tilled = true,
+                    CropId = dawnlace.Id,
+                    WateredNights = dawnlace.MatureAfterWateredNights,
+                    PlantedDay = 2,
+                    ResonanceItemId = "removed_resonance"
+                }
+            ]
+        };
+
+        service.Save(save);
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        var valid = result.Save.FarmTiles.Single(tile => tile.X == 12);
+        var crossCrop = result.Save.FarmTiles.Single(tile => tile.X == 13);
+        var unknown = result.Save.FarmTiles.Single(tile => tile.X == 14);
+        Assert.Equal(DataCatalog.RainwovenDawnlaceId, valid.ResonanceItemId);
+        Assert.Equal(3, valid.PlantedDay);
+        Assert.Null(crossCrop.ResonanceItemId);
+        Assert.Equal(1, crossCrop.PlantedDay);
+        Assert.Null(unknown.ResonanceItemId);
+
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.Equal(
+            DataCatalog.RainwovenDawnlaceId,
+            restored.Farm.HarvestItemIdAt(new GridPosition(12, 16))
         );
     }
 

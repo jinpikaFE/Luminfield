@@ -898,6 +898,15 @@ public sealed class GameSession
                 selectedItem.Kind == ItemKind.Seed &&
                 selectedItem.CropId is not null)
             {
+                if (!DataCatalog.IsSeedAvailableOnDay(selectedId, Clock.Day))
+                {
+                    return TargetPreview.Blocked(
+                        target,
+                        TargetPreviewKind.Soil,
+                        "target.blocked.seed_out_of_season"
+                    );
+                }
+
                 return selected.Count > 0
                     ? TargetPreview.Available(
                         target,
@@ -1524,6 +1533,11 @@ public sealed class GameSession
             return ActionResult.Fail(access.NoticeKey);
         }
 
+        if (!DataCatalog.IsSeedAvailableOnDay(itemId, Clock.Day))
+        {
+            return ActionResult.Fail("shop.seed_out_of_season");
+        }
+
         if (!TwilightEmporiumSystem.IsStocked(Clock.Day, itemId))
         {
             return ActionResult.Fail("emporium.shop.unavailable");
@@ -1541,6 +1555,12 @@ public sealed class GameSession
         if (item.BuyPrice <= 0)
         {
             return ActionResult.Fail("shop.not_for_sale");
+        }
+
+        if (item.Kind == ItemKind.Seed &&
+            !DataCatalog.IsSeedAvailableOnDay(itemId, Clock.Day))
+        {
+            return ActionResult.Fail("shop.seed_out_of_season");
         }
 
         if (Coins < item.BuyPrice)
@@ -1663,7 +1683,7 @@ public sealed class GameSession
     {
         var endedDay = Clock.Day;
         FarmObjects.ApplySprinklers(Farm);
-        Farm.EndDay();
+        Farm.EndDay(Weather.CurrentId);
         Processor.ResolveNight();
         Construction.ResolveNight();
         NormalizeCottagePlayerPositionForUpgrade();

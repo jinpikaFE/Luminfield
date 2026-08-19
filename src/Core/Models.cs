@@ -56,6 +56,8 @@ public sealed class FarmTileState
     public string? CropId { get; set; }
     public int WateredNights { get; set; }
     public int QualityRoll { get; set; } = -1;
+    public int PlantedDay { get; set; }
+    public string? ResonanceItemId { get; set; }
 
     public GridPosition Position => new(X, Y);
 
@@ -68,7 +70,9 @@ public sealed class FarmTileState
         FertilizerId = FertilizerId,
         CropId = CropId,
         WateredNights = WateredNights,
-        QualityRoll = QualityRoll
+        QualityRoll = QualityRoll,
+        PlantedDay = PlantedDay,
+        ResonanceItemId = ResonanceItemId
     };
 }
 

@@ -20,6 +20,12 @@ internal static class GeneratedArt
     private static readonly Texture2D CropExpansion =
         GD.Load<Texture2D>("res://assets/generated/crop_expansion.png");
 
+    private static readonly Texture2D GleamriseCrops =
+        GD.Load<Texture2D>("res://assets/generated/gleamrise_crops.png");
+
+    private static readonly Texture2D GleamriseResonance =
+        GD.Load<Texture2D>("res://assets/generated/gleamrise_resonance.png");
+
     private static readonly Texture2D StarwovenChest =
         GD.Load<Texture2D>("res://assets/generated/starwoven_chest.png");
 
@@ -89,6 +95,23 @@ internal static class GeneratedArt
             [DataCatalog.DewmelonId] = 4,
             [DataCatalog.DuskbellId] = 5
         };
+
+    private static readonly IReadOnlyDictionary<string, int> GleamriseCropRows =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [DataCatalog.DawnlaceId] = 0,
+            [DataCatalog.GlimmerpodId] = 1,
+            [DataCatalog.MistsongMintId] = 2,
+            [DataCatalog.CometTuberId] = 3
+        };
+
+    private static readonly IReadOnlyDictionary<string, int>
+        GleamriseResonanceColumns =
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                [DataCatalog.RainwovenDawnlaceId] = 0,
+                [DataCatalog.StarwindGlimmerpodId] = 1
+            };
 
     private static readonly Rect2 StarbudPreserveRegion = new(185, 125, 275, 330);
     private static readonly Rect2 MoonrootTonicRegion = new(805, 75, 220, 420);
@@ -730,6 +753,53 @@ internal static class GeneratedArt
         return new Rect2(column * cellWidth, top, cellWidth, bottom - top);
     }
 
+    public static Texture2D GleamriseCropsTexture => GleamriseCrops;
+
+    public static bool TryGleamriseCropRow(string cropId, out int row) =>
+        GleamriseCropRows.TryGetValue(cropId, out row);
+
+    public static bool TryGleamriseItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = GleamriseResonance;
+        region = default;
+        if (GleamriseResonanceColumns.TryGetValue(itemId, out var column))
+        {
+            const float cellSize = 887;
+            region = new Rect2(column * cellSize, 0, cellSize, cellSize);
+            return true;
+        }
+
+        texture = GleamriseCrops;
+        if (!DataCatalog.Items.TryGetValue(itemId, out var item))
+        {
+            return false;
+        }
+
+        var cropId = item.Kind switch
+        {
+            ItemKind.Seed => item.CropId,
+            ItemKind.Produce => DataCatalog.BaseItemId(item.Id),
+            _ => null
+        };
+        if (cropId is null || !TryGleamriseCropRow(cropId, out var row))
+        {
+            return false;
+        }
+
+        region = GleamriseCropRegion(
+            row,
+            item.Kind == ItemKind.Seed ? 0 : 1
+        );
+        return true;
+    }
+
+    public static Rect2 GleamriseCropRegion(int row, int column) =>
+        new(column * 256, row * 256, 256, 256);
+
     public static (Texture2D Texture, Rect2 Region) EconomyItemIcon(string itemId) =>
         itemId switch
         {
@@ -1099,7 +1169,23 @@ internal sealed partial class GeneratedCropLayer : Node2D
             Rect2 source;
             Material? material;
             float height;
-            if (GeneratedArt.TryCropExpansionRow(tile.CropId, out var expandedRow))
+            if (GeneratedArt.TryGleamriseCropRow(
+                    tile.CropId,
+                    out var gleamriseRow
+                ))
+            {
+                texture = GeneratedArt.GleamriseCropsTexture;
+                source = GeneratedArt.GleamriseCropRegion(
+                    gleamriseRow,
+                    frameIndex + 2
+                );
+                material = null;
+                height = 34f;
+            }
+            else if (GeneratedArt.TryCropExpansionRow(
+                         tile.CropId,
+                         out var expandedRow
+                     ))
             {
                 texture = GeneratedArt.CropExpansionTexture;
                 source = GeneratedArt.CropExpansionRegion(expandedRow, frameIndex + 2);

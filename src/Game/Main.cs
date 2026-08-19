@@ -428,6 +428,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.CottageUpgradeCompleted] =
                     StartCottageUpgradeCompletedPlaytest,
                 [PlaytestScenarioId.Crops] = StartCropPlaytest,
+                [PlaytestScenarioId.GleamriseCrops] =
+                    StartGleamriseCropPlaytest,
                 [PlaytestScenarioId.Economy] = StartEconomyPlaytest,
                 [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
@@ -655,7 +657,10 @@ public sealed partial class Main : Node
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
-        var columns = new[] { 12, 14, 16, 20, 22, 24, 27, 29 };
+        var columns = new[]
+        {
+            11, 12, 14, 16, 17, 19, 20, 22, 24, 26, 29, 32
+        };
         var crops = new List<FarmTileState>();
         for (var index = 0; index < DataCatalog.CropIds.Count; index++)
         {
@@ -663,6 +668,38 @@ public sealed partial class Main : Node
             crops.Add(CropState(columns[index], 16, crop.Id, crop.MatureAfterWateredNights));
             crops.Add(CropState(columns[index], 20, crop.Id, 0));
         }
+        _session.Farm.Restore(crops);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartGleamriseCropPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var cropIds = new[]
+        {
+            DataCatalog.DawnlaceId,
+            DataCatalog.GlimmerpodId,
+            DataCatalog.MistsongMintId,
+            DataCatalog.CometTuberId
+        };
+        var columns = new[] { 12, 16, 22, 29 };
+        var crops = new List<FarmTileState>();
+        for (var index = 0; index < cropIds.Length; index++)
+        {
+            var crop = DataCatalog.Crop(cropIds[index]);
+            crops.Add(CropState(
+                columns[index],
+                16,
+                crop.Id,
+                crop.MatureAfterWateredNights
+            ));
+            crops.Add(CropState(columns[index], 20, crop.Id, 0));
+        }
+
         _session.Farm.Restore(crops);
         _playing = true;
         EnsureHud();

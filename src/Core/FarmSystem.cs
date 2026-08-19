@@ -183,9 +183,16 @@ public sealed class FarmSystem
             return ActionResult.Fail("notice.already_planted");
         }
 
-        _ = DataCatalog.Crop(cropId);
+        var crop = DataCatalog.Crop(cropId);
+        if (!crop.IsAvailableOnDay(plantedDay))
+        {
+            return ActionResult.Fail("notice.seed_out_of_season");
+        }
+
         tile.CropId = cropId;
         tile.WateredNights = 0;
+        tile.PlantedDay = Math.Max(1, plantedDay);
+        tile.ResonanceItemId = null;
         tile.QualityRoll = StableQualityRoll(
             position,
             cropId,
@@ -218,6 +225,11 @@ public sealed class FarmSystem
         }
 
         var crop = DataCatalog.Crop(tile.CropId);
+        if (crop.AllowsResonanceItem(tile.ResonanceItemId))
+        {
+            return tile.ResonanceItemId;
+        }
+
         return DataCatalog.ProduceItemId(
             crop.HarvestItemId,
             HarvestQualityAt(position)
@@ -239,15 +251,26 @@ public sealed class FarmSystem
 
         var harvestItemId = HarvestItemIdAt(position)
             ?? definition.HarvestItemId;
-        tile.CropId = null;
-        tile.FertilizerId = null;
-        tile.WateredNights = 0;
-        tile.QualityRoll = -1;
+        tile.Watered = false;
+        tile.ResonanceItemId = null;
+        if (definition.RegrowthNights > 0)
+        {
+            tile.WateredNights = definition.RegrowthWateredNights;
+        }
+        else
+        {
+            tile.CropId = null;
+            tile.FertilizerId = null;
+            tile.WateredNights = 0;
+            tile.QualityRoll = -1;
+            tile.PlantedDay = 0;
+        }
+
         TileChanged?.Invoke(position);
         return new ActionResult(true, 0, string.Empty, harvestItemId, 1);
     }
 
-    public int EndDay()
+    public int EndDay(string weatherId = DataCatalog.ClearWeatherId)
     {
         var advanced = 0;
         foreach (var pair in _tiles)
@@ -255,7 +278,22 @@ public sealed class FarmSystem
             var tile = pair.Value;
             if (!string.IsNullOrWhiteSpace(tile.CropId) && tile.Watered)
             {
-                tile.WateredNights++;
+                var crop = DataCatalog.Crop(tile.CropId);
+                var wasMature = crop.IsMature(tile.WateredNights);
+                tile.WateredNights = Math.Min(
+                    crop.MatureAfterWateredNights,
+                    tile.WateredNights + 1
+                );
+                if (!wasMature && crop.IsMature(tile.WateredNights))
+                {
+                    tile.ResonanceItemId = ResolveResonanceItemId(
+                        pair.Key,
+                        tile,
+                        crop,
+                        weatherId
+                    );
+                }
+
                 advanced++;
             }
 
@@ -308,6 +346,70 @@ public sealed class FarmSystem
             hash = (hash ^ (uint)position.Y) * 16777619u;
             hash = (hash ^ (uint)Math.Max(1, plantedDay)) * 16777619u;
             return (int)(hash % 100);
+        }
+    }
+
+    private static string? ResolveResonanceItemId(
+        GridPosition position,
+        FarmTileState tile,
+        CropDefinition crop,
+        string weatherId
+    )
+    {
+        if (crop.Resonances is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        foreach (var resonance in crop.Resonances)
+        {
+            if (resonance.WeatherId != weatherId ||
+                resonance.RollModulo <= 0)
+            {
+                continue;
+            }
+
+            var roll = StableResonanceRoll(
+                position,
+                crop.Id,
+                weatherId,
+                tile.PlantedDay,
+                resonance.RollModulo
+            );
+            if (roll == resonance.RollResidue)
+            {
+                return resonance.ItemId;
+            }
+        }
+
+        return null;
+    }
+
+    private static int StableResonanceRoll(
+        GridPosition position,
+        string cropId,
+        string weatherId,
+        int plantedDay,
+        int modulo
+    )
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var character in cropId)
+            {
+                hash = (hash ^ character) * 16777619u;
+            }
+
+            foreach (var character in weatherId)
+            {
+                hash = (hash ^ character) * 16777619u;
+            }
+
+            hash = (hash ^ (uint)position.X) * 16777619u;
+            hash = (hash ^ (uint)position.Y) * 16777619u;
+            hash = (hash ^ (uint)Math.Max(1, plantedDay)) * 16777619u;
+            return (int)(hash % (uint)modulo);
         }
     }
 }

@@ -8,6 +8,7 @@ public enum PlaytestScenarioId
     CottageUpgradeInProgress,
     CottageUpgradeCompleted,
     Crops,
+    GleamriseCrops,
     Economy,
     Processor,
     ArchiveGift,
@@ -112,6 +113,10 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-cottage-upgrade-completed"
         ),
         new(PlaytestScenarioId.Crops, "--playtest-crops"),
+        new(
+            PlaytestScenarioId.GleamriseCrops,
+            "--playtest-gleamrise-crops"
+        ),
         new(PlaytestScenarioId.Economy, "--playtest-economy"),
         new(PlaytestScenarioId.Processor, "--playtest-processor"),
         new(PlaytestScenarioId.ArchiveGift, "--playtest-archive-gift"),

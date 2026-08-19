@@ -141,13 +141,23 @@ public sealed record WeatherDefinition(
     bool AutoWatersCrops = false
 );
 
+public sealed record CropResonanceDefinition(
+    string ItemId,
+    string WeatherId,
+    int RollModulo,
+    int RollResidue
+);
+
 public sealed record CropDefinition(
     string Id,
     string SeedItemId,
     string HarvestItemId,
     string NameKey,
     int[] StageDayThresholds,
-    int AtlasStartIndex
+    int AtlasStartIndex,
+    IReadOnlyList<string>? SeasonIds = null,
+    int RegrowthNights = 0,
+    IReadOnlyList<CropResonanceDefinition>? Resonances = null
 )
 {
     public int MatureAfterWateredNights => StageDayThresholds[^1];
@@ -167,6 +177,23 @@ public sealed record CropDefinition(
     }
 
     public bool IsMature(int wateredNights) => wateredNights >= MatureAfterWateredNights;
+
+    public bool IsAvailableOnDay(int day) =>
+        SeasonIds is not { Count: > 0 } ||
+        SeasonIds.Contains(
+            CalendarSystem.SeasonId(day),
+            StringComparer.Ordinal
+        );
+
+    public bool AllowsResonanceItem(string? itemId) =>
+        !string.IsNullOrWhiteSpace(itemId) &&
+        Resonances is { Count: > 0 } &&
+        Resonances.Any(resonance => resonance.ItemId == itemId);
+
+    public int RegrowthWateredNights => Math.Max(
+        0,
+        MatureAfterWateredNights - RegrowthNights
+    );
 
     public int GetVisualStageIndex(int wateredNights)
     {
@@ -223,6 +250,24 @@ public static class DataCatalog
     public const string DuskbellId = "duskbell";
     public const string DuskbellLuminousId = "duskbell_luminous";
     public const string DuskbellStarlightId = "duskbell_starlight";
+    public const string DawnlaceSeedId = "dawnlace_seed";
+    public const string DawnlaceId = "dawnlace";
+    public const string DawnlaceLuminousId = "dawnlace_luminous";
+    public const string DawnlaceStarlightId = "dawnlace_starlight";
+    public const string RainwovenDawnlaceId = "rainwoven_dawnlace";
+    public const string GlimmerpodSeedId = "glimmerpod_seed";
+    public const string GlimmerpodId = "glimmerpod";
+    public const string GlimmerpodLuminousId = "glimmerpod_luminous";
+    public const string GlimmerpodStarlightId = "glimmerpod_starlight";
+    public const string StarwindGlimmerpodId = "starwind_glimmerpod";
+    public const string MistsongMintSeedId = "mistsong_mint_seed";
+    public const string MistsongMintId = "mistsong_mint";
+    public const string MistsongMintLuminousId = "mistsong_mint_luminous";
+    public const string MistsongMintStarlightId = "mistsong_mint_starlight";
+    public const string CometTuberSeedId = "comet_tuber_seed";
+    public const string CometTuberId = "comet_tuber";
+    public const string CometTuberLuminousId = "comet_tuber_luminous";
+    public const string CometTuberStarlightId = "comet_tuber_starlight";
     public const string StarsoilFertilizerId = "starsoil_fertilizer";
     public const string StarbudPreserveId = "starbud_preserve";
     public const string MoonrootTonicId = "moonroot_tonic";
@@ -389,6 +434,66 @@ public static class DataCatalog
                 "item.duskbell",
                 SellPrice: 54
             ),
+            [DawnlaceSeedId] = new(
+                DawnlaceSeedId,
+                ItemKind.Seed,
+                99,
+                "item.dawnlace_seed",
+                DawnlaceId,
+                BuyPrice: 26
+            ),
+            [DawnlaceId] = new(
+                DawnlaceId,
+                ItemKind.Produce,
+                99,
+                "item.dawnlace",
+                SellPrice: 46
+            ),
+            [GlimmerpodSeedId] = new(
+                GlimmerpodSeedId,
+                ItemKind.Seed,
+                99,
+                "item.glimmerpod_seed",
+                GlimmerpodId,
+                BuyPrice: 42
+            ),
+            [GlimmerpodId] = new(
+                GlimmerpodId,
+                ItemKind.Produce,
+                99,
+                "item.glimmerpod",
+                SellPrice: 34
+            ),
+            [MistsongMintSeedId] = new(
+                MistsongMintSeedId,
+                ItemKind.Seed,
+                99,
+                "item.mistsong_mint_seed",
+                MistsongMintId,
+                BuyPrice: 18
+            ),
+            [MistsongMintId] = new(
+                MistsongMintId,
+                ItemKind.Produce,
+                99,
+                "item.mistsong_mint",
+                SellPrice: 30
+            ),
+            [CometTuberSeedId] = new(
+                CometTuberSeedId,
+                ItemKind.Seed,
+                99,
+                "item.comet_tuber_seed",
+                CometTuberId,
+                BuyPrice: 34
+            ),
+            [CometTuberId] = new(
+                CometTuberId,
+                ItemKind.Produce,
+                99,
+                "item.comet_tuber",
+                SellPrice: 62
+            ),
             [StarbudLuminousId] = new(
                 StarbudLuminousId,
                 ItemKind.Produce,
@@ -533,6 +638,94 @@ public static class DataCatalog
                 BaseItemId: DuskbellId,
                 Quality: CropQuality.Starlight
             ),
+            [DawnlaceLuminousId] = new(
+                DawnlaceLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.dawnlace_luminous",
+                SellPrice: 69,
+                BaseItemId: DawnlaceId,
+                Quality: CropQuality.Luminous
+            ),
+            [DawnlaceStarlightId] = new(
+                DawnlaceStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.dawnlace_starlight",
+                SellPrice: 104,
+                BaseItemId: DawnlaceId,
+                Quality: CropQuality.Starlight
+            ),
+            [RainwovenDawnlaceId] = new(
+                RainwovenDawnlaceId,
+                ItemKind.Produce,
+                99,
+                "item.rainwoven_dawnlace",
+                SellPrice: 92,
+                BaseItemId: DawnlaceId
+            ),
+            [GlimmerpodLuminousId] = new(
+                GlimmerpodLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.glimmerpod_luminous",
+                SellPrice: 51,
+                BaseItemId: GlimmerpodId,
+                Quality: CropQuality.Luminous
+            ),
+            [GlimmerpodStarlightId] = new(
+                GlimmerpodStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.glimmerpod_starlight",
+                SellPrice: 77,
+                BaseItemId: GlimmerpodId,
+                Quality: CropQuality.Starlight
+            ),
+            [StarwindGlimmerpodId] = new(
+                StarwindGlimmerpodId,
+                ItemKind.Produce,
+                99,
+                "item.starwind_glimmerpod",
+                SellPrice: 88,
+                BaseItemId: GlimmerpodId
+            ),
+            [MistsongMintLuminousId] = new(
+                MistsongMintLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.mistsong_mint_luminous",
+                SellPrice: 45,
+                BaseItemId: MistsongMintId,
+                Quality: CropQuality.Luminous
+            ),
+            [MistsongMintStarlightId] = new(
+                MistsongMintStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.mistsong_mint_starlight",
+                SellPrice: 68,
+                BaseItemId: MistsongMintId,
+                Quality: CropQuality.Starlight
+            ),
+            [CometTuberLuminousId] = new(
+                CometTuberLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.comet_tuber_luminous",
+                SellPrice: 93,
+                BaseItemId: CometTuberId,
+                Quality: CropQuality.Luminous
+            ),
+            [CometTuberStarlightId] = new(
+                CometTuberStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.comet_tuber_starlight",
+                SellPrice: 140,
+                BaseItemId: CometTuberId,
+                Quality: CropQuality.Starlight
+            ),
             [StarsoilFertilizerId] = new(
                 StarsoilFertilizerId,
                 ItemKind.Fertilizer,
@@ -625,6 +818,20 @@ public static class DataCatalog
         DuskbellId,
         DuskbellLuminousId,
         DuskbellStarlightId,
+        DawnlaceId,
+        DawnlaceLuminousId,
+        DawnlaceStarlightId,
+        RainwovenDawnlaceId,
+        GlimmerpodId,
+        GlimmerpodLuminousId,
+        GlimmerpodStarlightId,
+        StarwindGlimmerpodId,
+        MistsongMintId,
+        MistsongMintLuminousId,
+        MistsongMintStarlightId,
+        CometTuberId,
+        CometTuberLuminousId,
+        CometTuberStarlightId,
         StarbudPreserveId,
         MoonrootTonicId,
         LumenwoodId,
@@ -640,7 +847,11 @@ public static class DataCatalog
         EmberbellSeedId,
         PrismcornSeedId,
         DewmelonSeedId,
-        DuskbellSeedId
+        DuskbellSeedId,
+        DawnlaceSeedId,
+        GlimmerpodSeedId,
+        MistsongMintSeedId,
+        CometTuberSeedId
     ];
 
     public static readonly IReadOnlyList<string> CropIds =
@@ -652,7 +863,27 @@ public static class DataCatalog
         EmberbellId,
         PrismcornId,
         DewmelonId,
-        DuskbellId
+        DuskbellId,
+        DawnlaceId,
+        GlimmerpodId,
+        MistsongMintId,
+        CometTuberId
+    ];
+
+    public static readonly IReadOnlyList<string> GleamriseCropIds =
+    [
+        DawnlaceId,
+        GlimmerpodId,
+        MistsongMintId,
+        CometTuberId
+    ];
+
+    public static readonly IReadOnlyList<string> GleamriseSeedItemIds =
+    [
+        DawnlaceSeedId,
+        GlimmerpodSeedId,
+        MistsongMintSeedId,
+        CometTuberSeedId
     ];
 
     public static readonly IReadOnlyList<string> QualityProduceItemIds =
@@ -672,7 +903,21 @@ public static class DataCatalog
         DewmelonLuminousId,
         DewmelonStarlightId,
         DuskbellLuminousId,
-        DuskbellStarlightId
+        DuskbellStarlightId,
+        DawnlaceLuminousId,
+        DawnlaceStarlightId,
+        GlimmerpodLuminousId,
+        GlimmerpodStarlightId,
+        MistsongMintLuminousId,
+        MistsongMintStarlightId,
+        CometTuberLuminousId,
+        CometTuberStarlightId
+    ];
+
+    public static readonly IReadOnlyList<string> ResonanceProduceItemIds =
+    [
+        RainwovenDawnlaceId,
+        StarwindGlimmerpodId
     ];
 
     public static readonly IReadOnlyList<string> StorableItemIds =
@@ -709,6 +954,24 @@ public static class DataCatalog
         DuskbellId,
         DuskbellLuminousId,
         DuskbellStarlightId,
+        DawnlaceSeedId,
+        DawnlaceId,
+        DawnlaceLuminousId,
+        DawnlaceStarlightId,
+        RainwovenDawnlaceId,
+        GlimmerpodSeedId,
+        GlimmerpodId,
+        GlimmerpodLuminousId,
+        GlimmerpodStarlightId,
+        StarwindGlimmerpodId,
+        MistsongMintSeedId,
+        MistsongMintId,
+        MistsongMintLuminousId,
+        MistsongMintStarlightId,
+        CometTuberSeedId,
+        CometTuberId,
+        CometTuberLuminousId,
+        CometTuberStarlightId,
         StarsoilFertilizerId,
         StarbudPreserveId,
         MoonrootTonicId,
@@ -838,6 +1101,61 @@ public static class DataCatalog
                 "crop.duskbell",
                 [0, 1, 3, 4],
                 0
+            ),
+            [DawnlaceId] = new(
+                DawnlaceId,
+                DawnlaceSeedId,
+                DawnlaceId,
+                "crop.dawnlace",
+                [0, 1, 2, 4],
+                0,
+                SeasonIds: [CalendarSystem.GleamriseSeasonId],
+                Resonances:
+                [
+                    new CropResonanceDefinition(
+                        RainwovenDawnlaceId,
+                        RainWeatherId,
+                        3,
+                        0
+                    )
+                ]
+            ),
+            [GlimmerpodId] = new(
+                GlimmerpodId,
+                GlimmerpodSeedId,
+                GlimmerpodId,
+                "crop.glimmerpod",
+                [0, 1, 3, 5],
+                0,
+                SeasonIds: [CalendarSystem.GleamriseSeasonId],
+                RegrowthNights: 2,
+                Resonances:
+                [
+                    new CropResonanceDefinition(
+                        StarwindGlimmerpodId,
+                        StardustWindWeatherId,
+                        3,
+                        1
+                    )
+                ]
+            ),
+            [MistsongMintId] = new(
+                MistsongMintId,
+                MistsongMintSeedId,
+                MistsongMintId,
+                "crop.mistsong_mint",
+                [0, 1, 2, 3],
+                0,
+                SeasonIds: [CalendarSystem.GleamriseSeasonId]
+            ),
+            [CometTuberId] = new(
+                CometTuberId,
+                CometTuberSeedId,
+                CometTuberId,
+                "crop.comet_tuber",
+                [0, 1, 2, 4],
+                0,
+                SeasonIds: [CalendarSystem.GleamriseSeasonId]
             )
         };
 
@@ -1058,6 +1376,23 @@ public static class DataCatalog
             StringComparer.Ordinal
         );
 
+    public static IReadOnlyList<string> SeedItemIdsForDay(int day) =>
+        SeedItemIds.Where(itemId => IsSeedAvailableOnDay(itemId, day))
+            .ToArray();
+
+    public static bool IsSeedAvailableOnDay(string itemId, int day)
+    {
+        if (!Items.TryGetValue(itemId, out var item) ||
+            item.Kind != ItemKind.Seed ||
+            string.IsNullOrWhiteSpace(item.CropId) ||
+            !Crops.TryGetValue(item.CropId, out var crop))
+        {
+            return false;
+        }
+
+        return crop.IsAvailableOnDay(day);
+    }
+
     public static string BaseItemId(string itemId)
     {
         if (!Items.TryGetValue(itemId, out var item))
@@ -1099,12 +1434,18 @@ public static class DataCatalog
             return [itemId];
         }
 
-        return
-        [
+        var family = new List<string>
+        {
             baseItemId,
             ProduceItemId(baseItemId, CropQuality.Luminous),
             ProduceItemId(baseItemId, CropQuality.Starlight)
-        ];
+        };
+        if (Crops[baseItemId].Resonances is { Count: > 0 } resonances)
+        {
+            family.AddRange(resonances.Select(resonance => resonance.ItemId));
+        }
+
+        return family;
     }
 
     public static ItemDefinition Item(string id) =>

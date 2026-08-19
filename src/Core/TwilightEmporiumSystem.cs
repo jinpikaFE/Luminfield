@@ -42,15 +42,22 @@ public static class TwilightEmporiumSystem
 
     public static IReadOnlyList<string> StockForDay(int day)
     {
-        var seasonOffset = CalendarSystem.SeasonIndex(day) * 2;
         var weekOffset = CalendarSystem.WeekNumber(day) - 1;
-        var start = (seasonOffset + weekOffset) %
-            DataCatalog.SeedItemIds.Count;
+        var availableSeeds = DataCatalog.SeedItemIdsForDay(day);
+        var start = CalendarSystem.SeasonIndex(day) * 2 + weekOffset;
+        if (CalendarSystem.SeasonId(day) ==
+            CalendarSystem.GleamriseSeasonId)
+        {
+            var gleamriseCropCount = 4;
+            start = availableSeeds.Count - gleamriseCropCount + weekOffset * 2;
+        }
+
+        start %= availableSeeds.Count;
         var stock = new string[StockSize];
         for (var index = 0; index < StockSize; index++)
         {
-            stock[index] = DataCatalog.SeedItemIds[
-                (start + index) % DataCatalog.SeedItemIds.Count
+            stock[index] = availableSeeds[
+                (start + index) % availableSeeds.Count
             ];
         }
 

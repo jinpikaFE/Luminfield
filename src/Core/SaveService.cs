@@ -157,6 +157,8 @@ public sealed class SaveService
                 tile.CropId = null;
                 tile.WateredNights = 0;
                 tile.QualityRoll = -1;
+                tile.PlantedDay = 0;
+                tile.ResonanceItemId = null;
                 continue;
             }
 
@@ -171,6 +173,8 @@ public sealed class SaveService
                 tile.CropId = null;
                 tile.WateredNights = 0;
                 tile.QualityRoll = -1;
+                tile.PlantedDay = 0;
+                tile.ResonanceItemId = null;
                 continue;
             }
 
@@ -181,6 +185,11 @@ public sealed class SaveService
                 crop.MatureAfterWateredNights
             );
             tile.QualityRoll = Math.Clamp(tile.QualityRoll, 0, 99);
+            tile.PlantedDay = Math.Max(1, tile.PlantedDay);
+            if (!crop.AllowsResonanceItem(tile.ResonanceItemId))
+            {
+                tile.ResonanceItemId = null;
+            }
         }
         save.Quest ??= new QuestSave();
         save.Coins = Math.Max(0, save.Coins);

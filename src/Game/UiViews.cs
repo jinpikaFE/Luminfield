@@ -769,6 +769,11 @@ internal sealed partial class HotbarSlotContent : Control
         out Rect2 region
     )
     {
+        if (GeneratedArt.TryGleamriseItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         if (GeneratedArt.TryCropExpansionItemIcon(itemId, out texture, out region))
         {
             return true;
@@ -1364,7 +1369,7 @@ public sealed partial class ShopOverlay : FullScreenUi
         _mode = mode;
         _buyItemIds = mode == ShopOverlayMode.TwilightEmporium
             ? TwilightEmporiumSystem.StockForDay(session.Clock.Day)
-            : DataCatalog.SeedItemIds;
+            : DataCatalog.SeedItemIdsForDay(session.Clock.Day);
         AddChild(Dim(new Color(0.02f, 0.03f, 0.1f, 0.72f)));
 
         var center = new CenterContainer();

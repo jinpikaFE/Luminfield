@@ -25,6 +25,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.CottageUpgradeCompleted
         ),
         ("--playtest-crops", PlaytestScenarioId.Crops),
+        (
+            "--playtest-gleamrise-crops",
+            PlaytestScenarioId.GleamriseCrops
+        ),
         ("--playtest-economy", PlaytestScenarioId.Economy),
         ("--playtest-processor", PlaytestScenarioId.Processor),
         ("--playtest-archive-gift", PlaytestScenarioId.ArchiveGift),
