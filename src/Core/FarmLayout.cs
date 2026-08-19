@@ -25,7 +25,6 @@ public static class FarmLayout
         new(35, 12), new(36, 12), new(37, 12),
         new(35, 13), new(36, 13), new(37, 13),
         new(35, 14), new(36, 14), new(37, 14),
-        new(32, 14), new(40, 14),
         new(26, 10), new(28, 10),
         MiraCell,
         CottageDoorCell,

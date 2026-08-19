@@ -19,11 +19,14 @@ The playable loop is:
 
 After the tutorial, the farm opens into a repeatable economy loop:
 
-- Buy seeds for eight original crops at the Twilight Market.
+- Buy seeds for twelve original crops at the Twilight Market. The four new
+  Gleamrise crops are season-limited; the original eight remain cross-season
+  for save and tutorial compatibility.
 - Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
-  Duskbell, and more valuable artisan goods for glow coins.
-- Load two crops into the Moonwell Infuser, sleep one night, then collect
-  Starbud preserve or Moonroot tonic.
+  Duskbell, Dawnlace, Glimmerpod, Mistsong Mint, Comet Tuber, and more valuable
+  artisan goods for glow coins.
+- Run three fixed processing machines independently, then collect one ready
+  product or claim every completed batch atomically.
 - Reinvest the proceeds in more seeds to keep expanding the farm.
 
 The original 48×32 farm now opens through its illuminated southern gate into a
@@ -155,7 +158,7 @@ exploration state in the regular save file.
   mailbox, unknown IDs are filtered, and loading or sleeping cannot duplicate
   a delivered reward.
 
-## Seven-day weather, shipping, and eight crops
+## Seven-day weather, shipping, and twelve crops
 
 - Seven days form a week. Four stable 14-day seasons form a 56-day year:
   Gleamrise, Rainveil, Starharvest, and Longnight. The HUD shows the current
@@ -182,16 +185,26 @@ exploration state in the regular save file.
 | Prismcorn | 5 | ◈36 | ◈68 |
 | Dewmelon | 5 | ◈40 | ◈76 |
 | Duskbell | 4 | ◈30 | ◈54 |
+| Dawnlace (Gleamrise) | 4 | ◈26 | ◈46 |
+| Glimmerpod (Gleamrise, regrows in 2 nights) | 5 | ◈42 | ◈34 |
+| Mistsong Mint (Gleamrise) | 3 | ◈18 | ◈30 |
+| Comet Tuber (Gleamrise) | 4 | ◈34 | ◈62 |
+
+Rain can turn a maturing Dawnlace into Rainwoven Dawnlace, while stardust wind
+can turn a maturing Glimmerpod into Starwind Glimmerpod. The result is derived
+from weather, planting day, and cell, then saved so loading never rerolls it.
 
 These systems complete all eight core phase-A gameplay increments in the
 [gameplay expansion outline](docs/玩法扩展大纲.md). Crafting, the first
 placeable facility, the daily commission board, and the first Starlight
 Pedestal are complete. The first roads, fences, lights, and sprinklers are now
 complete as well. Three crop-quality tiers and the first fertilizer are now
-implemented. Phase B now includes the first village, eight NPC schedules, all
+implemented. Phase B includes the first village, eight NPC schedules, all
 six enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and complete two-stage friendship event chains
-for Liora, Tavi, Nemi, and Kael.
+for Liora, Tavi, Nemi, Kael, Sela, and Orin. Phase C has begun with twelve crops,
+two resonance variants, three independent processing machines, and the first
+0–5 farming skill with a permanent level-three specialization.
 
 ## Tools and backpack
 
@@ -245,7 +258,7 @@ fixed tool order without dropping seeds or harvests.
 
 ## Crop quality and Starsoil Fertilizer
 
-- All eight crops now have Regular, Luminous, and Starlight quality tiers.
+- All twelve crops now have Regular, Luminous, and Starlight quality tiers.
   Luminous produce is worth about 1.5× its regular value and Starlight about
   2.25×. Stable item IDs keep each tier separately stackable and sellable.
 - With Starsoil selected, only an empty, tilled, unfertilized cell shows the
@@ -254,9 +267,28 @@ fixed tool order without dropping seeds or harvests.
 - One application affects one crop. It guarantees at least Luminous quality,
   with a stable 20% Starlight result based on crop, cell, and planting day, so
   saving and loading cannot reroll the harvest.
-- Harvest clears the fertilizer. Tutorial progress, delivery commissions,
+- Harvest clears fertilizer for single-harvest crops. A regrowing Glimmerpod
+  keeps its fertilizer and stable quality roll for the lifetime of that plant;
+  the effect clears when the plant itself is removed. Tutorial progress,
+  delivery commissions,
   processing, and Starlight offerings accept all three qualities as the same
   crop family and consume lower-value quality first.
+
+## Processing machines and farming skill
+
+- The Moonwell Infuser, Prism Preserve Vat, and Starweave Drying Loom are fixed
+  farm entities with independent recipes, remaining nights, ready states, and
+  save records. Cloudleaf can now become Cloudleaf Night Tea after two nights.
+- The shared machine panel can focus one machine or collect every ready product
+  at once. Batch collection first simulates the complete backpack result; if
+  any product will not fit, neither inventory nor machine state changes.
+- Legacy single-queue `ProcessorSave` data migrates to the Moonwell Infuser only
+  when no valid modern machine record exists. Older legal chest and decoration
+  cells remain legal and retain their contents.
+- Successful tilling, planting, watering, and harvesting grant farming XP from
+  one Core system. Levels run from 0 to 5. At level 3 the player permanently
+  chooses Dewkeeper (watering costs one less energy, minimum one) or Resonance
+  Scholar (successful harvest XP gains a 50% bonus).
 
 ## Daily and weekly commission board
 
@@ -380,6 +412,12 @@ Use `--playtest-cottage-upgrade-ready`,
 `--playtest-cottage-upgrade-completed` to inspect the construction offer,
 two-night progress state, and upgraded cottage with its read-only kitchen area.
 
+Use `--playtest-gleamrise-crops` to inspect the four seasonal crops, persistent
+Glimmerpod regrowth, and both deterministic resonance harvests. Use
+`--playtest-multi-processor` to inspect three machine states and atomic batch
+collection. Use `--playtest-farming-specialization` to inspect the farming HUD
+and permanent level-three specialization panel.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -433,18 +471,21 @@ godot --headless --path . --quit-after 180
 
 The save file is written atomically to `user://saves/slot_1.json`. Corrupt saves
 are preserved with a `.broken-<timestamp>` suffix.
-Glow coins, the active processing job, artisan goods, watering-can water,
+Glow coins, the three independent processing jobs, artisan goods,
+watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily and weekly commission
 states, the Woodland Watch Starlight's partial offerings and permanent reward,
 and the 24-slot backpack are stored in the existing `schemaVersion: 1` save.
-Liora's, Tavi's, Nemi's, Kael's, and Sela's character-event completion IDs and
-dates use another additive projection in that same schema.
+Liora's, Tavi's, Nemi's, Kael's, Sela's, and Orin's character-event completion
+IDs and dates use another additive projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
 not add a save field or change the `schemaVersion: 1` contract.
-Fertilized farm cells, stable quality rolls, Moonstone Paths, Starwood Fences,
+Fertilized farm cells, stable quality rolls, planting days, resolved resonance
+produce, farming XP and specialization, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
-schema. Older saves receive safe defaults and tool-ID migration for the new
+schema. The modern per-machine list safely migrates the legacy processing
+queue. Older saves receive safe defaults and tool-ID migration for the new
 additive fields.
 Discovered world chunks are stored as stable chunk IDs; older saves begin with
 the home chunk revealed.
@@ -466,6 +507,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-19 10:13:02 CST — Began Phase C with four Gleamrise-only crops to
+  reach twelve total plants, persistent Glimmerpod regrowth and two
+  deterministic resonance harvests; added three independent fixed processing
+  machines with atomic batch collection and legacy-save migration; and added
+  the 0–5 farming skill with one permanent level-three specialization.
 - 2026-08-13 11:28:47 CST — Completed the seven Phase B feature groups with
   Twilight Emporium opening hours, Lanternrest closure and deterministic stock
   rotation; the atomic two-night first cottage upgrade and original completed

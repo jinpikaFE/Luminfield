@@ -1826,8 +1826,13 @@ public sealed partial class ProcessorOverlay : FullScreenUi
             return _locale.Tr("processor.ready", outputName);
         }
 
+        if (machine.RemainingNights == 1)
+        {
+            return _locale.Tr("processor.processing_one", outputName);
+        }
+
         return _locale.Tr(
-            "processor.processing",
+            "processor.processing_many",
             outputName,
             machine.RemainingNights
         );

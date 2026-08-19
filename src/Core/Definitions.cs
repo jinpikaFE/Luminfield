@@ -1544,13 +1544,13 @@ public static class ProcessorCatalog
             ),
             [PrismPreserveVatId] = new(
                 PrismPreserveVatId,
-                new GridPosition(32, 14),
+                new GridPosition(35, 12),
                 "processor.machine.prism_vat",
                 [DataCatalog.StarbudPreserveRecipeId]
             ),
             [StarweaveDryingLoomId] = new(
                 StarweaveDryingLoomId,
-                new GridPosition(40, 14),
+                new GridPosition(37, 12),
                 "processor.machine.drying_loom",
                 [DataCatalog.CloudleafTeaRecipeId]
             )

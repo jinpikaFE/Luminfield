@@ -8681,7 +8681,7 @@ public sealed class SaveServiceTests : IDisposable
     }
 
     [Fact]
-    public void FixedProcessorCellsRejectRestoredChestsAndFarmObjects()
+    public void FixedProcessorCellsRejectConflictsWhileLegacyLegalCellsKeepContents()
     {
         var path = Path.Combine(_directory, "slot_1.json");
         Directory.CreateDirectory(_directory);
@@ -8704,7 +8704,19 @@ public sealed class SaveServiceTests : IDisposable
                             ).Position.Y,
                             items = Array.Empty<object>()
                         },
-                        new { x = 25, y = 13, items = Array.Empty<object>() }
+                        new
+                        {
+                            x = 32,
+                            y = 14,
+                            items = new[]
+                            {
+                                new
+                                {
+                                    itemId = DataCatalog.StarbudId,
+                                    count = 2
+                                }
+                            }
+                        }
                     }
                 },
                 farmObjects = new
@@ -8723,8 +8735,8 @@ public sealed class SaveServiceTests : IDisposable
                         },
                         new
                         {
-                            x = 26,
-                            y = 13,
+                            x = 40,
+                            y = 14,
                             itemId = DataCatalog.MoonstonePathId
                         }
                     }
@@ -8737,11 +8749,14 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(SaveLoadStatus.Loaded, result.Status);
         Assert.NotNull(result.Save);
         var chest = Assert.Single(result.Save.Storage.Chests);
-        Assert.Equal(25, chest.X);
-        Assert.Equal(13, chest.Y);
+        Assert.Equal(32, chest.X);
+        Assert.Equal(14, chest.Y);
+        var stack = Assert.Single(chest.Items);
+        Assert.Equal(DataCatalog.StarbudId, stack.ItemId);
+        Assert.Equal(2, stack.Count);
         var farmObject = Assert.Single(result.Save.FarmObjects.Objects);
-        Assert.Equal(26, farmObject.X);
-        Assert.Equal(13, farmObject.Y);
+        Assert.Equal(40, farmObject.X);
+        Assert.Equal(14, farmObject.Y);
     }
 
     [Fact]
