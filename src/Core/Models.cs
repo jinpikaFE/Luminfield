@@ -189,6 +189,30 @@ public sealed class FarmObjectSave
     public List<PlacedFarmObjectSave> Objects { get; set; } = [];
 }
 
+public sealed class FruitTreeSave
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string TreeId { get; set; } = string.Empty;
+    public int AgeNights { get; set; }
+    public bool FruitReady { get; set; }
+    public int RegrowthProgress { get; set; }
+}
+
+public sealed class BeehiveSave
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int PendingHoney { get; set; }
+    public int ProgressNights { get; set; }
+}
+
+public sealed class OrchardSave
+{
+    public List<FruitTreeSave> FruitTrees { get; set; } = [];
+    public List<BeehiveSave> Beehives { get; set; } = [];
+}
+
 public sealed class DailyCommissionSave
 {
     public int Day { get; set; } = 1;
@@ -297,6 +321,7 @@ public sealed class GameSaveV1
     public ShippingSave Shipping { get; set; } = new();
     public StorageSave Storage { get; set; } = new();
     public FarmObjectSave FarmObjects { get; set; } = new();
+    public OrchardSave Orchard { get; set; } = new();
     public DailyCommissionSave Commission { get; set; } = new();
     public WeeklyCommissionSave WeeklyCommission { get; set; } = new();
     public StarlightSave Starlight { get; set; } = new();
@@ -356,6 +381,8 @@ public enum TargetPreviewKind
     Fence,
     Torch,
     Sprinkler,
+    FruitTree,
+    Beehive,
     Bed,
     KitchenReserve
 }

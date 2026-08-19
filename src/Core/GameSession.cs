@@ -20,6 +20,7 @@ public sealed class GameSession
     public CraftingSystem Crafting { get; } = new();
     public StorageSystem Storage { get; } = new();
     public FarmObjectSystem FarmObjects { get; } = new();
+    public OrchardSystem Orchard { get; } = new();
     public DailyCommissionSystem Commission { get; } = new();
     public WeeklyCommissionSystem WeeklyCommission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
@@ -80,6 +81,7 @@ public sealed class GameSession
         Shipping.Changed += NotifyChanged;
         Storage.Changed += _ => NotifyChanged();
         FarmObjects.Changed += _ => NotifyChanged();
+        Orchard.Changed += _ => NotifyChanged();
         Commission.Changed += NotifyChanged;
         WeeklyCommission.Changed += NotifyChanged;
         Starlight.Changed += NotifyChanged;
@@ -103,6 +105,7 @@ public sealed class GameSession
         Shipping.Reset();
         Storage.Reset();
         FarmObjects.Reset();
+        Orchard.Reset();
         Commission.Reset(Clock.Day);
         WeeklyCommission.Reset(Clock.Day);
         Starlight.Reset();
@@ -131,6 +134,7 @@ public sealed class GameSession
         Farm.Restore(save.FarmTiles);
         Storage.Restore(save.Storage, Farm);
         FarmObjects.Restore(save.FarmObjects, Farm, Storage);
+        Orchard.Restore(save.Orchard, Farm, Storage, FarmObjects);
         Quest.Restore(save.Quest);
         Processor.Restore(save.Processor);
         Exploration.Restore(save.Exploration);
@@ -246,7 +250,19 @@ public sealed class GameSession
             return UseHand(WorldDefinition.WoodlandStarlightCell);
         }
 
-        if (FarmObjects.HasObject(target))
+        var farmObjectId = FarmObjects.ItemAt(target);
+        if (Orchard.HasFruitTree(target) ||
+            farmObjectId == DataCatalog.GlowcombHiveId)
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return UseHand(target);
+        }
+
+        if (farmObjectId is not null)
         {
             return ActionResult.Fail("notice.placeable_occupied");
         }
@@ -319,22 +335,55 @@ public sealed class GameSession
                             target,
                             Farm,
                             Inventory,
-                            FarmObjects.HasObject
+                            IsPlacementOccupiedByFarmObjectOrOrchard
                         );
                     }
 
                     if (DataCatalog.FarmObjects.ContainsKey(item.Id))
                     {
-                        return FarmObjects.Place(
+                        var placed = FarmObjects.Place(
                             item.Id,
                             target,
                             Farm,
                             Storage,
-                            Inventory
+                            Inventory,
+                            Orchard.BlocksMovement
                         );
+                        if (placed.Succeeded &&
+                            item.Id == DataCatalog.GlowcombHiveId)
+                        {
+                            Orchard.EnsureBeehive(target);
+                        }
+
+                        return placed;
                     }
 
                     return ActionResult.Fail("notice.not_ready");
+                }
+
+                if (item.Kind == ItemKind.Sapling &&
+                    item.FruitTreeId is not null)
+                {
+                    if (selected.Count <= 0)
+                    {
+                        return ActionResult.Fail("notice.no_sapling");
+                    }
+
+                    result = Orchard.TryPlantTree(
+                        item.FruitTreeId,
+                        target,
+                        Inventory,
+                        Farm,
+                        Storage,
+                        FarmObjects,
+                        Clock.Day
+                    );
+                    if (result.Succeeded)
+                    {
+                        farmingSkillAction = FarmingSkillAction.Plant;
+                    }
+
+                    break;
                 }
 
                 if (item.Kind == ItemKind.Fertilizer)
@@ -678,7 +727,12 @@ public sealed class GameSession
                 VillageCatalog.StarfallWatchDoorCell,
                 TargetPreviewKind.Door,
                 "target.status.starfall_watch_closed"
-            );
+                );
+        }
+
+        if (Orchard.HasFruitTree(target))
+        {
+            return PreviewFruitTree(target, selectedId);
         }
 
         var villager = Village.NpcAt(
@@ -696,6 +750,11 @@ public sealed class GameSession
         var placedFarmObject = FarmObjects.ItemAt(target);
         if (placedFarmObject is not null)
         {
+            if (placedFarmObject == DataCatalog.GlowcombHiveId)
+            {
+                return PreviewBeehive(target, selectedId);
+            }
+
             return TargetPreview.Blocked(
                 target,
                 PreviewKindForFarmObject(placedFarmObject),
@@ -749,12 +808,22 @@ public sealed class GameSession
                 );
         }
 
+        if (DataCatalog.Items.TryGetValue(selectedId, out var previewItem) &&
+            previewItem.Kind == ItemKind.Sapling)
+        {
+            return PreviewFruitTreePlacement(
+                previewItem,
+                selected.Count,
+                target
+            );
+        }
+
         if (selectedId == DataCatalog.StarwovenChestId)
         {
             var issue = Storage.CheckPlacement(
                 target,
                 Farm,
-                FarmObjects.HasObject
+                IsPlacementOccupiedByFarmObjectOrOrchard
             );
             return issue switch
             {
@@ -975,6 +1044,185 @@ public sealed class GameSession
             );
     }
 
+    private TargetPreview PreviewFruitTree(
+        GridPosition target,
+        string selectedId
+    )
+    {
+        if (selectedId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.need.hand"
+            );
+        }
+
+        var tree = Orchard.FruitTreeAt(target);
+        if (tree is null)
+        {
+            return TargetPreview.Neutral(target);
+        }
+
+        if (!tree.IsMature)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.status.fruit_tree_growing"
+            );
+        }
+
+        if (!tree.FruitReady)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.status.fruit_tree_recovering"
+            );
+        }
+
+        var treeDefinition = DataCatalog.FruitTree(tree.TreeId);
+        if (!Inventory.CanAdd(treeDefinition.HarvestItemId, 1))
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.blocked.backpack_full"
+            );
+        }
+
+        return TargetPreview.Available(
+            target,
+            TargetPreviewKind.FruitTree,
+            "target.action.harvest_fruit"
+        );
+    }
+
+    private TargetPreview PreviewBeehive(
+        GridPosition target,
+        string selectedId
+    )
+    {
+        if (selectedId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                target,
+                TargetPreviewKind.Beehive,
+                "target.need.hand"
+            );
+        }
+
+        var hive = Orchard.BeehiveAt(target);
+        if (hive is null)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.Beehive,
+                "target.status.placed"
+            );
+        }
+
+        if (hive.HasHoney)
+        {
+            if (!Inventory.CanAdd(DataCatalog.StarhoneyId, hive.PendingHoney))
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Beehive,
+                    "target.blocked.backpack_full"
+                );
+            }
+
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.Beehive,
+                "target.action.collect_honey"
+            );
+        }
+
+        if (!Orchard.HasPollinationSource(target))
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.Beehive,
+                "target.status.beehive_needs_tree"
+            );
+        }
+
+        return TargetPreview.Blocked(
+            target,
+            TargetPreviewKind.Beehive,
+            "target.status.beehive_brewing"
+        );
+    }
+
+    private TargetPreview PreviewFruitTreePlacement(
+        ItemDefinition item,
+        int count,
+        GridPosition target
+    )
+    {
+        if (item.FruitTreeId is null ||
+            !DataCatalog.FruitTrees.TryGetValue(
+                item.FruitTreeId,
+                out var definition
+            ))
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.blocked.sapling_clear"
+            );
+        }
+
+        if (!definition.IsAvailableOnDay(Clock.Day))
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.blocked.sapling_out_of_season"
+            );
+        }
+
+        var issue = Orchard.CheckTreePlacement(
+            target,
+            Farm,
+            Storage,
+            FarmObjects
+        );
+        if (issue == OrchardPlacementIssue.None && count > 0)
+        {
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.action.plant_tree"
+            );
+        }
+
+        if (issue == OrchardPlacementIssue.None)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.FruitTree,
+                "target.blocked.no_sapling"
+            );
+        }
+
+        var labelKey = issue switch
+        {
+            OrchardPlacementIssue.NotHome => "target.blocked.sapling_home",
+            OrchardPlacementIssue.WrongSurface => "target.blocked.sapling_ground",
+            OrchardPlacementIssue.Occupied => "target.blocked.sapling_occupied",
+            _ => "target.blocked.sapling_clear"
+        };
+        return TargetPreview.Blocked(
+            target,
+            TargetPreviewKind.FruitTree,
+            labelKey
+        );
+    }
+
     private TargetPreview PreviewResource(
         GridPosition target,
         WorldResourceKind resource,
@@ -1041,6 +1289,48 @@ public sealed class GameSession
         if (Storage.HasChest(target))
         {
             return ActionResult.Success(messageKey: "storage.opened");
+        }
+
+        if (Orchard.HasFruitTree(target))
+        {
+            var harvested = Orchard.TryHarvestFruit(target, Inventory);
+            if (harvested.Succeeded &&
+                harvested.GrantedItemId is not null)
+            {
+                Commission.RecordGather(
+                    DataCatalog.BaseItemId(harvested.GrantedItemId),
+                    harvested.GrantedItemCount
+                );
+                WeeklyCommission.RecordGather(
+                    DataCatalog.BaseItemId(harvested.GrantedItemId),
+                    harvested.GrantedItemCount
+                );
+                FarmingSkill.RecordSuccessfulAction(
+                    FarmingSkillAction.Harvest
+                );
+            }
+
+            return harvested;
+        }
+
+        if (FarmObjects.ItemAt(target) == DataCatalog.GlowcombHiveId)
+        {
+            Orchard.EnsureBeehive(target);
+            var collected = Orchard.TryCollectHoney(target, Inventory);
+            if (collected.Succeeded &&
+                collected.GrantedItemId is not null)
+            {
+                Commission.RecordGather(
+                    DataCatalog.BaseItemId(collected.GrantedItemId),
+                    collected.GrantedItemCount
+                );
+                WeeklyCommission.RecordGather(
+                    DataCatalog.BaseItemId(collected.GrantedItemId),
+                    collected.GrantedItemCount
+                );
+            }
+
+            return collected;
         }
 
         var tile = Farm.Tiles.GetValueOrDefault(target);
@@ -1583,6 +1873,12 @@ public sealed class GameSession
             return ActionResult.Fail("shop.seed_out_of_season");
         }
 
+        if (item.Kind == ItemKind.Sapling &&
+            !DataCatalog.IsSaplingAvailableOnDay(itemId, Clock.Day))
+        {
+            return ActionResult.Fail("shop.sapling_out_of_season");
+        }
+
         if (Coins < item.BuyPrice)
         {
             return ActionResult.Fail("shop.not_enough_coins");
@@ -1779,6 +2075,7 @@ public sealed class GameSession
         var endedDay = Clock.Day;
         FarmObjects.ApplySprinklers(Farm);
         Farm.EndDay(Weather.CurrentId);
+        Orchard.ResolveNight(FarmObjects);
         Processor.ResolveNight();
         Construction.ResolveNight();
         NormalizeCottagePlayerPositionForUpgrade();
@@ -1832,6 +2129,7 @@ public sealed class GameSession
         Shipping = Shipping.Capture(),
         Storage = Storage.Capture(),
         FarmObjects = FarmObjects.Capture(),
+        Orchard = Orchard.Capture(),
         Commission = Commission.Capture(),
         WeeklyCommission = WeeklyCommission.Capture(),
         Starlight = Starlight.Capture(),
@@ -2317,6 +2615,12 @@ public sealed class GameSession
         }
     }
 
+    private bool IsPlacementOccupiedByFarmObjectOrOrchard(
+        GridPosition position
+    ) =>
+        FarmObjects.HasObject(position) ||
+        Orchard.BlocksMovement(position);
+
     private TargetPreview PreviewFarmObjectPlacement(
         string itemId,
         int count,
@@ -2328,7 +2632,8 @@ public sealed class GameSession
             itemId,
             target,
             Farm,
-            Storage
+            Storage,
+            Orchard.BlocksMovement
         );
         if (issue == FarmObjectPlacementIssue.None && count > 0)
         {
@@ -2368,6 +2673,7 @@ public sealed class GameSession
             FarmObjectKind.Fence => TargetPreviewKind.Fence,
             FarmObjectKind.Torch => TargetPreviewKind.Torch,
             FarmObjectKind.Sprinkler => TargetPreviewKind.Sprinkler,
+            FarmObjectKind.Beehive => TargetPreviewKind.Beehive,
             _ => TargetPreviewKind.Ground
         };
 
@@ -2378,6 +2684,7 @@ public sealed class GameSession
             FarmObjectKind.Fence => "target.action.place_fence",
             FarmObjectKind.Torch => "target.action.place_torch",
             FarmObjectKind.Sprinkler => "target.action.place_sprinkler",
+            FarmObjectKind.Beehive => "target.action.place_hive",
             _ => "target.action.place"
         };
 

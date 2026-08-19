@@ -42,7 +42,8 @@ public sealed class FarmObjectSystem
         string itemId,
         GridPosition position,
         FarmSystem farm,
-        StorageSystem storage
+        StorageSystem storage,
+        Func<GridPosition, bool>? extraOccupied = null
     )
     {
         if (!DataCatalog.FarmObjects.TryGetValue(itemId, out var definition))
@@ -55,7 +56,9 @@ public sealed class FarmObjectSystem
             return FarmObjectPlacementIssue.NotHome;
         }
 
-        if (_objects.ContainsKey(position) || storage.HasChest(position))
+        if (_objects.ContainsKey(position) ||
+            storage.HasChest(position) ||
+            extraOccupied?.Invoke(position) == true)
         {
             return FarmObjectPlacementIssue.Occupied;
         }
@@ -86,10 +89,17 @@ public sealed class FarmObjectSystem
         GridPosition position,
         FarmSystem farm,
         StorageSystem storage,
-        Inventory inventory
+        Inventory inventory,
+        Func<GridPosition, bool>? extraOccupied = null
     )
     {
-        var issue = CheckPlacement(itemId, position, farm, storage);
+        var issue = CheckPlacement(
+            itemId,
+            position,
+            farm,
+            storage,
+            extraOccupied
+        );
         if (issue != FarmObjectPlacementIssue.None)
         {
             return ActionResult.Fail(MessageForIssue(issue));

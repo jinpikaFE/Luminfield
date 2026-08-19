@@ -1159,6 +1159,286 @@ public sealed class CraftingAndStorageTests
     }
 }
 
+public sealed class OrchardSystemTests
+{
+    [Fact]
+    public void MoonplumTreesUsePreviewGrowthHarvestAndRegrowthRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var treeCell = new GridPosition(23, 13);
+        var beforeEnergy = session.Energy;
+        Assert.True(session.Inventory.Add(DataCatalog.MoonplumSaplingId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonplumSaplingId
+        ));
+
+        var placementPreview = session.PreviewSelectedTarget(treeCell);
+        var planted = session.UseSelected(treeCell);
+
+        Assert.True(placementPreview.IsAvailable);
+        Assert.Equal(TargetPreviewKind.FruitTree, placementPreview.Kind);
+        Assert.Equal("target.action.plant_tree", placementPreview.LabelKey);
+        Assert.True(planted.Succeeded);
+        Assert.Equal("notice.fruit_tree_planted", planted.MessageKey);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.MoonplumSaplingId));
+        Assert.True(session.Orchard.HasFruitTree(treeCell));
+        Assert.True(session.Orchard.BlocksMovement(treeCell));
+        Assert.Equal(beforeEnergy, session.Energy);
+
+        session.Inventory.Select(1);
+        var wrongTool = session.PreviewSelectedTarget(treeCell);
+        var wrongToolAction = session.UseSelected(treeCell);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongTool.State);
+        Assert.Equal("target.need.hand", wrongTool.LabelKey);
+        Assert.False(wrongToolAction.Succeeded);
+        Assert.Equal("notice.needs_hand", wrongToolAction.MessageKey);
+
+        session.Inventory.Select(0);
+        var growing = session.PreviewSelectedTarget(treeCell);
+        Assert.Equal(TargetPreviewState.Blocked, growing.State);
+        Assert.Equal("target.status.fruit_tree_growing", growing.LabelKey);
+        Assert.Equal(
+            "notice.fruit_tree_growing",
+            session.UseSelected(treeCell).MessageKey
+        );
+
+        for (var night = 0;
+             night < DataCatalog.FruitTree(DataCatalog.MoonplumTreeId)
+                 .MatureAfterNights;
+             night++)
+        {
+            session.EndDay();
+        }
+
+        var ready = session.PreviewSelectedTarget(treeCell);
+        var harvested = session.UseSelected(treeCell);
+        Assert.True(ready.IsAvailable);
+        Assert.Equal("target.action.harvest_fruit", ready.LabelKey);
+        Assert.True(harvested.Succeeded);
+        Assert.Equal(DataCatalog.MoonplumId, harvested.GrantedItemId);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.MoonplumId));
+        Assert.False(session.Orchard.FruitTreeAt(treeCell)!.FruitReady);
+
+        var recovering = session.PreviewSelectedTarget(treeCell);
+        Assert.Equal(TargetPreviewState.Blocked, recovering.State);
+        Assert.Equal(
+            "target.status.fruit_tree_recovering",
+            recovering.LabelKey
+        );
+
+        for (var night = 0;
+             night < DataCatalog.FruitTree(DataCatalog.MoonplumTreeId)
+                 .RegrowthNights;
+             night++)
+        {
+            session.EndDay();
+        }
+
+        Assert.True(session.Orchard.FruitTreeAt(treeCell)!.FruitReady);
+        Assert.True(session.UseSelected(treeCell).Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.MoonplumId));
+    }
+
+    [Fact]
+    public void FruitTreePlacementRejectsOccupiedFarmAndWorldCells()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var plantingBed = new GridPosition(12, 16);
+        var chestCell = new GridPosition(25, 13);
+        var farmObjectCell = new GridPosition(26, 13);
+        var treeCell = new GridPosition(23, 13);
+        var tilledCell = new GridPosition(13, 16);
+        var outside = new GridPosition(60, 60);
+        Assert.True(session.Inventory.Add(DataCatalog.StarwovenChestId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.StarwovenChestId
+        ));
+        Assert.True(session.UseSelected(chestCell).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.MoonstonePathId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonstonePathId
+        ));
+        Assert.True(session.UseSelected(farmObjectCell).Succeeded);
+        Assert.True(session.Farm.TryTill(tilledCell, session.Energy).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.MoonplumSaplingId, 8));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonplumSaplingId
+        ));
+
+        Assert.Equal(
+            "target.blocked.sapling_ground",
+            session.PreviewSelectedTarget(plantingBed).LabelKey
+        );
+        Assert.False(session.UseSelected(plantingBed).Succeeded);
+        Assert.False(session.UseSelected(chestCell).Succeeded);
+        Assert.False(session.UseSelected(farmObjectCell).Succeeded);
+        Assert.False(session.UseSelected(tilledCell).Succeeded);
+        Assert.False(session.UseSelected(outside).Succeeded);
+
+        Assert.True(session.UseSelected(treeCell).Succeeded);
+        Assert.False(session.UseSelected(treeCell).Succeeded);
+        Assert.Equal(7, session.Inventory.Count(DataCatalog.MoonplumSaplingId));
+        Assert.Single(session.Orchard.FruitTrees);
+    }
+
+    [Fact]
+    public void GlowcombHivesCraftPlaceProduceAndCollectAtomically()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var treeCell = new GridPosition(23, 13);
+        var hiveCell = new GridPosition(27, 13);
+        Assert.True(session.Inventory.Add(DataCatalog.MoonplumSaplingId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonplumSaplingId
+        ));
+        Assert.True(session.UseSelected(treeCell).Succeeded);
+        GrowMoonplumTree(session);
+        session.Inventory.Select(0);
+        Assert.True(session.UseSelected(treeCell).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.LumenwoodId, 8));
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalShardId, 2));
+
+        var crafted = session.CraftItem(DataCatalog.GlowcombHiveRecipeId);
+        Assert.True(crafted.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.GlowcombHiveId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.MoonplumId));
+
+        var failedOnTree = session.UseSelected(treeCell);
+        Assert.False(failedOnTree.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.GlowcombHiveId));
+
+        var placed = session.UseSelected(hiveCell);
+        Assert.True(placed.Succeeded);
+        Assert.True(session.FarmObjects.HasObject(hiveCell));
+        Assert.True(session.Orchard.HasBeehive(hiveCell));
+        Assert.True(session.FarmObjects.BlocksMovement(hiveCell));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.GlowcombHiveId));
+
+        session.Inventory.Select(0);
+        var brewing = session.PreviewSelectedTarget(hiveCell);
+        Assert.Equal(TargetPreviewState.Blocked, brewing.State);
+        Assert.Equal("target.status.beehive_brewing", brewing.LabelKey);
+        session.EndDay();
+        session.EndDay();
+        Assert.True(session.Orchard.BeehiveAt(hiveCell)!.HasHoney);
+
+        session.Inventory.Select(1);
+        var wrongTool = session.PreviewSelectedTarget(hiveCell);
+        var wrongToolAction = session.UseSelected(hiveCell);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongTool.State);
+        Assert.False(wrongToolAction.Succeeded);
+        Assert.Equal("notice.needs_hand", wrongToolAction.MessageKey);
+        Assert.True(session.Orchard.BeehiveAt(hiveCell)!.HasHoney);
+
+        session.Inventory.Select(0);
+        var ready = session.PreviewSelectedTarget(hiveCell);
+        var collected = session.UseSelected(hiveCell);
+        Assert.True(ready.IsAvailable);
+        Assert.Equal("target.action.collect_honey", ready.LabelKey);
+        Assert.True(collected.Succeeded);
+        Assert.Equal(DataCatalog.StarhoneyId, collected.GrantedItemId);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.StarhoneyId));
+        Assert.False(session.Orchard.BeehiveAt(hiveCell)!.HasHoney);
+
+        var lonely = new GameSession();
+        lonely.NewGame();
+        var lonelyHiveCell = new GridPosition(31, 13);
+        Assert.True(lonely.Inventory.Add(DataCatalog.GlowcombHiveId, 1));
+        Assert.True(lonely.Inventory.PromoteToHotbar(
+            DataCatalog.GlowcombHiveId
+        ));
+        Assert.True(lonely.UseSelected(lonelyHiveCell).Succeeded);
+        lonely.Inventory.Select(0);
+        Assert.Equal(
+            "target.status.beehive_needs_tree",
+            lonely.PreviewSelectedTarget(lonelyHiveCell).LabelKey
+        );
+        lonely.EndDay();
+        lonely.EndDay();
+        Assert.False(lonely.Orchard.BeehiveAt(lonelyHiveCell)!.HasHoney);
+        Assert.Equal(0, lonely.Orchard.BeehiveAt(lonelyHiveCell)!.ProgressNights);
+
+        var full = SessionWithReadyHive(treeCell, hiveCell);
+        FillBackpack(full.Inventory);
+        full.Inventory.Select(0);
+        var failedFull = full.UseSelected(hiveCell);
+        Assert.False(failedFull.Succeeded);
+        Assert.Equal("notice.inventory_full", failedFull.MessageKey);
+        Assert.Equal(1, full.Orchard.BeehiveAt(hiveCell)!.PendingHoney);
+        Assert.Equal(0, full.Inventory.Count(DataCatalog.StarhoneyId));
+    }
+
+    private static void GrowMoonplumTree(GameSession session)
+    {
+        for (var night = 0;
+             night < DataCatalog.FruitTree(DataCatalog.MoonplumTreeId)
+                 .MatureAfterNights;
+             night++)
+        {
+            session.EndDay();
+        }
+    }
+
+    private static GameSession SessionWithReadyHive(
+        GridPosition treeCell,
+        GridPosition hiveCell
+    )
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Orchard.FruitTrees =
+        [
+            new FruitTreeSave
+            {
+                X = treeCell.X,
+                Y = treeCell.Y,
+                TreeId = DataCatalog.MoonplumTreeId,
+                AgeNights = DataCatalog.FruitTree(
+                    DataCatalog.MoonplumTreeId
+                ).MatureAfterNights,
+                FruitReady = true
+            }
+        ];
+        save.FarmObjects.Objects =
+        [
+            new PlacedFarmObjectSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                ItemId = DataCatalog.GlowcombHiveId
+            }
+        ];
+        save.Orchard.Beehives =
+        [
+            new BeehiveSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                PendingHoney = 1
+            }
+        ];
+        session.Restore(save);
+        return session;
+    }
+
+    private static void FillBackpack(Inventory inventory)
+    {
+        var fillerSlots = DataCatalog.StorableItemIds
+            .Where(itemId => itemId != DataCatalog.StarhoneyId)
+            .Take(Inventory.SlotCount - Inventory.StartingToolCount)
+            .Select(itemId => new InventorySlot
+            {
+                ItemId = itemId,
+                Count = DataCatalog.Item(itemId).MaxStack
+            });
+        inventory.Restore(fillerSlots, 0);
+    }
+}
+
 public sealed class TwilightEmporiumRotationTests
 {
     [Fact]
@@ -7804,6 +8084,73 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void OrchardItemActionAndStatusKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = DataCatalog.FruitTrees.Values
+            .SelectMany(tree => new[]
+            {
+                tree.NameKey,
+                DataCatalog.Item(tree.SaplingItemId).NameKey,
+                DataCatalog.Item(tree.HarvestItemId).NameKey
+            })
+            .Concat(new[]
+            {
+                DataCatalog.Item(DataCatalog.StarhoneyId).NameKey,
+                DataCatalog.Item(DataCatalog.GlowcombHiveId).NameKey,
+                DataCatalog.CraftingRecipes[
+                    DataCatalog.GlowcombHiveRecipeId
+                ].NameKey,
+                "target.action.plant_tree",
+                "target.action.harvest_fruit",
+                "target.action.place_hive",
+                "target.action.collect_honey",
+                "target.status.fruit_tree_growing",
+                "target.status.fruit_tree_recovering",
+                "target.status.beehive_needs_tree",
+                "target.status.beehive_brewing",
+                "target.blocked.no_sapling",
+                "target.blocked.sapling_home",
+                "target.blocked.sapling_ground",
+                "target.blocked.sapling_occupied",
+                "target.blocked.sapling_clear",
+                "target.blocked.sapling_out_of_season",
+                "notice.no_sapling",
+                "notice.sapling_out_of_season",
+                "notice.sapling_home_only",
+                "notice.sapling_ground_only",
+                "notice.sapling_occupied",
+                "notice.sapling_blocked",
+                "notice.fruit_tree_planted",
+                "notice.fruit_tree_growing",
+                "notice.fruit_tree_recovering",
+                "notice.fruit_tree_harvested",
+                "notice.honey_not_ready",
+                "notice.honey_collected",
+                "shop.sapling_out_of_season"
+            })
+            .Distinct(StringComparer.Ordinal);
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void TeaHouseInteractionKeysAreBilingual()
     {
         var locale = new LocaleService();
@@ -9671,6 +10018,123 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(MailCatalog.TaviTrustedId, mail.MailId);
         Assert.True(mail.IsRead);
         Assert.True(mail.AttachmentClaimed);
+    }
+
+    [Fact]
+    public void OrchardSaveRoundTripsAndNormalizesInvalidStates()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        var service = new SaveService(path);
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Storage.Chests =
+        [
+            new PlacedChestSave
+            {
+                X = 25,
+                Y = 13
+            }
+        ];
+        save.FarmObjects.Objects =
+        [
+            new PlacedFarmObjectSave
+            {
+                X = 27,
+                Y = 13,
+                ItemId = DataCatalog.GlowcombHiveId
+            }
+        ];
+        save.Orchard.FruitTrees =
+        [
+            new FruitTreeSave
+            {
+                X = 23,
+                Y = 13,
+                TreeId = DataCatalog.MoonplumTreeId,
+                AgeNights = 99,
+                FruitReady = true,
+                RegrowthProgress = 99
+            },
+            new FruitTreeSave
+            {
+                X = 23,
+                Y = 13,
+                TreeId = DataCatalog.MoonplumTreeId
+            },
+            new FruitTreeSave
+            {
+                X = 25,
+                Y = 13,
+                TreeId = DataCatalog.MoonplumTreeId,
+                FruitReady = true
+            },
+            new FruitTreeSave
+            {
+                X = 27,
+                Y = 13,
+                TreeId = DataCatalog.MoonplumTreeId,
+                FruitReady = true
+            },
+            new FruitTreeSave
+            {
+                X = 12,
+                Y = 16,
+                TreeId = DataCatalog.MoonplumTreeId,
+                FruitReady = true
+            },
+            new FruitTreeSave
+            {
+                X = 24,
+                Y = 13,
+                TreeId = "unknown_tree",
+                FruitReady = true
+            }
+        ];
+        save.Orchard.Beehives =
+        [
+            new BeehiveSave
+            {
+                X = 27,
+                Y = 13,
+                PendingHoney = 7,
+                ProgressNights = 4
+            },
+            new BeehiveSave
+            {
+                X = 31,
+                Y = 13,
+                PendingHoney = 1
+            }
+        ];
+        service.Save(save);
+
+        var result = service.Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        var tree = Assert.Single(result.Save.Orchard.FruitTrees);
+        Assert.Equal((23, 13), (tree.X, tree.Y));
+        Assert.Equal(DataCatalog.MoonplumTreeId, tree.TreeId);
+        Assert.Equal(
+            DataCatalog.FruitTree(DataCatalog.MoonplumTreeId)
+                .MatureAfterNights,
+            tree.AgeNights
+        );
+        Assert.True(tree.FruitReady);
+        Assert.Equal(0, tree.RegrowthProgress);
+        var hive = Assert.Single(result.Save.Orchard.Beehives);
+        Assert.Equal((27, 13), (hive.X, hive.Y));
+        Assert.Equal(1, hive.PendingHoney);
+        Assert.Equal(0, hive.ProgressNights);
+
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.Orchard.HasFruitTree(new GridPosition(23, 13)));
+        Assert.True(restored.Orchard.HasBeehive(new GridPosition(27, 13)));
+        Assert.Equal(1, restored.Orchard.BeehiveAt(
+            new GridPosition(27, 13)
+        )!.PendingHoney);
     }
 
     [Fact]

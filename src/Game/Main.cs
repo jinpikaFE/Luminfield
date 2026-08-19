@@ -583,6 +583,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.QualityBackpack] =
                     StartQualityBackpackPlaytest,
                 [PlaytestScenarioId.Quality] = StartQualityPlaytest,
+                [PlaytestScenarioId.OrchardHives] =
+                    StartOrchardHivesPlaytest,
                 [PlaytestScenarioId.FarmingSpecialization] =
                     StartFarmingSpecializationPlaytest,
                 [PlaytestScenarioId.Farm] = StartNewGame
@@ -870,6 +872,66 @@ public sealed partial class Main : Node
         EnsureHud();
         ShowFarm(false);
         Callable.From(TryOpenFarmingSpecialization).CallDeferred();
+    }
+
+    private void StartOrchardHivesPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+
+        var treeCell = new GridPosition(23, 13);
+        var hiveCell = new GridPosition(27, 13);
+        var save = _session.Capture();
+        save.Orchard.FruitTrees =
+        [
+            new FruitTreeSave
+            {
+                X = treeCell.X,
+                Y = treeCell.Y,
+                TreeId = DataCatalog.MoonplumTreeId,
+                AgeNights = DataCatalog.FruitTree(
+                    DataCatalog.MoonplumTreeId
+                ).MatureAfterNights,
+                FruitReady = true
+            }
+        ];
+        save.FarmObjects.Objects =
+        [
+            new PlacedFarmObjectSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                ItemId = DataCatalog.GlowcombHiveId
+            }
+        ];
+        save.Orchard.Beehives =
+        [
+            new BeehiveSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                PendingHoney = 1
+            }
+        ];
+        _session.Restore(save);
+
+        _session.Inventory.Add(DataCatalog.MoonplumSaplingId, 2);
+        _session.Inventory.Add(DataCatalog.MoonplumId, 3);
+        _session.Inventory.Add(DataCatalog.StarhoneyId, 2);
+        _session.Inventory.Add(DataCatalog.GlowcombHiveId, 1);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 8);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 2);
+        _session.Inventory.PromoteToHotbar(DataCatalog.GlowcombHiveId);
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            hiveCell.X * 16 + 8,
+            (hiveCell.Y - 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
     }
 
     private void StartFarmPlaceablesPlaytest()

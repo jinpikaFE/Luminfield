@@ -282,6 +282,10 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-farming-specialization",
             PlaytestScenarioId.FarmingSpecialization
         ),
+        (
+            "--playtest-orchard-hives",
+            PlaytestScenarioId.OrchardHives
+        ),
         ("--playtest-farm", PlaytestScenarioId.Farm)
     ];
 

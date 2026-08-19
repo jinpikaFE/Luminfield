@@ -88,6 +88,9 @@ internal static class GeneratedArt
             "res://assets/generated/starlight_mailbox.png"
         );
 
+    private static readonly Texture2D OrchardHives =
+        GD.Load<Texture2D>("res://assets/generated/orchard_hives.png");
+
     private static readonly IReadOnlyDictionary<string, int> CropExpansionRows =
         new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -181,6 +184,22 @@ internal static class GeneratedArt
         new(0, 627, 627, 627);
     private static readonly Rect2 RelationshipReplyRegion =
         new(627, 627, 627, 627);
+    private static readonly Rect2 MoonplumSaplingMapRegion =
+        new(56, 102, 328, 410);
+    private static readonly Rect2 MoonplumTreeMapRegion =
+        new(384, 25, 384, 487);
+    private static readonly Rect2 GlowcombHiveMapRegion =
+        new(768, 169, 384, 343);
+    private static readonly Rect2 GlowcombHiveReadyMapRegion =
+        new(1152, 97, 334, 415);
+    private static readonly Rect2 MoonplumSaplingIconRegion =
+        new(57, 512, 327, 438);
+    private static readonly Rect2 MoonplumIconRegion =
+        new(385, 512, 361, 421);
+    private static readonly Rect2 StarhoneyIconRegion =
+        new(806, 512, 346, 439);
+    private static readonly Rect2 GlowcombHiveIconRegion =
+        new(1152, 512, 319, 446);
     private static readonly Rect2 StarsoilFertilizerItemRegion =
         new(154, 126, 281, 324);
     private static readonly Rect2 FertilizedSoilRegion =
@@ -421,6 +440,11 @@ internal static class GeneratedArt
 
     public static Sprite2D CreateFarmObjectSprite(string itemId)
     {
+        if (itemId == DataCatalog.GlowcombHiveId)
+        {
+            return CreateBeehiveSprite(false);
+        }
+
         var definition = DataCatalog.FarmObject(itemId);
         var source = FarmObjectRegions[itemId];
         var sprite = new Sprite2D
@@ -449,13 +473,25 @@ internal static class GeneratedArt
         return sprite;
     }
 
-    public static Texture2D CreateFarmObjectItemIcon(string itemId) =>
-        new AtlasTexture
+    public static Texture2D CreateFarmObjectItemIcon(string itemId)
+    {
+        if (TryOrchardItemIcon(itemId, out var texture, out var region))
+        {
+            return new AtlasTexture
+            {
+                Atlas = texture,
+                Region = region,
+                FilterClip = true
+            };
+        }
+
+        return new AtlasTexture
         {
             Atlas = FarmPlaceables,
             Region = FarmObjectIconRegions[itemId],
             FilterClip = true
         };
+    }
 
     public static bool TryFarmObjectItemIcon(
         string itemId,
@@ -463,8 +499,50 @@ internal static class GeneratedArt
         out Rect2 region
     )
     {
+        if (TryOrchardItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         texture = FarmPlaceables;
         return FarmObjectIconRegions.TryGetValue(itemId, out region);
+    }
+
+    public static Sprite2D CreateFruitTreeSprite(FruitTreeState tree)
+    {
+        var definition = DataCatalog.FruitTree(tree.TreeId);
+        var source = definition.Id == DataCatalog.MoonplumTreeId &&
+            tree.IsMature
+                ? MoonplumTreeMapRegion
+                : MoonplumSaplingMapRegion;
+        var height = tree.IsMature ? 72f : 42f;
+        return CreateOrchardSprite(source, height);
+    }
+
+    public static Sprite2D CreateBeehiveSprite(bool ready)
+    {
+        var source = ready
+            ? GlowcombHiveReadyMapRegion
+            : GlowcombHiveMapRegion;
+        return CreateOrchardSprite(source, ready ? 50f : 45f);
+    }
+
+    public static bool TryOrchardItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = OrchardHives;
+        region = itemId switch
+        {
+            DataCatalog.MoonplumSaplingId => MoonplumSaplingIconRegion,
+            DataCatalog.MoonplumId => MoonplumIconRegion,
+            DataCatalog.StarhoneyId => StarhoneyIconRegion,
+            DataCatalog.GlowcombHiveId => GlowcombHiveIconRegion,
+            _ => default
+        };
+        return region.Size != Vector2.Zero;
     }
 
     public static Texture2D CreateStarsoilFertilizerCraftIcon() =>
@@ -950,6 +1028,23 @@ internal static class GeneratedArt
         };
     }
 
+    private static Sprite2D CreateOrchardSprite(
+        Rect2 source,
+        float targetHeight
+    )
+    {
+        var scale = targetHeight / source.Size.Y;
+        return new Sprite2D
+        {
+            Texture = OrchardHives,
+            RegionEnabled = true,
+            RegionRect = source,
+            Offset = new Vector2(0, -source.Size.Y / 2f),
+            Scale = Vector2.One * scale,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+    }
+
     private static AtlasTexture CreatePhaseAIcon(int index) => new()
     {
         Atlas = PhaseAAssets,
@@ -1156,6 +1251,95 @@ internal sealed partial class StarfallWatchBackdrop : Node2D
             new Rect2(0, 80, 1536, 864)
         );
     }
+}
+
+internal sealed partial class GeneratedOrchardLayer : Node2D
+{
+    private readonly GameSession _session;
+
+    public GeneratedOrchardLayer(GameSession session)
+    {
+        _session = session;
+        ZIndex = 6;
+        YSortEnabled = true;
+        session.Orchard.Changed += OnOrchardChanged;
+        session.FarmObjects.Changed += OnFarmObjectChanged;
+        Rebuild();
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Orchard.Changed -= OnOrchardChanged;
+        _session.FarmObjects.Changed -= OnFarmObjectChanged;
+    }
+
+    private void OnOrchardChanged(GridPosition position)
+    {
+        _ = position;
+        Rebuild();
+    }
+
+    private void OnFarmObjectChanged(GridPosition position)
+    {
+        _ = position;
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        foreach (var child in GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var pair in _session.Orchard.FruitTrees)
+        {
+            var sprite = GeneratedArt.CreateFruitTreeSprite(pair.Value);
+            sprite.Name = $"FruitTree_{pair.Value.TreeId}_{pair.Key.X}_{pair.Key.Y}";
+            sprite.Position = CellCenter(pair.Key) + new Vector2(0, 8);
+            sprite.ZIndex = pair.Key.Y;
+            sprite.AddChild(new ActorShadow
+            {
+                Position = new Vector2(0, 1),
+                ZIndex = -2
+            });
+            AddChild(sprite);
+        }
+
+        foreach (var pair in _session.FarmObjects.Objects)
+        {
+            if (pair.Value != DataCatalog.GlowcombHiveId)
+            {
+                continue;
+            }
+
+            var hive = _session.Orchard.BeehiveAt(pair.Key);
+            var sprite = GeneratedArt.CreateBeehiveSprite(
+                hive?.HasHoney == true
+            );
+            sprite.Name = $"GlowcombHive_{pair.Key.X}_{pair.Key.Y}";
+            sprite.Position = CellCenter(pair.Key) + new Vector2(0, 8);
+            sprite.ZIndex = pair.Key.Y;
+            sprite.AddChild(new ActorShadow
+            {
+                Position = new Vector2(0, 1),
+                ZIndex = -2
+            });
+            if (hive?.HasHoney == true)
+            {
+                sprite.AddChild(new FarmObjectGlow(FarmObjectKind.Beehive)
+                {
+                    Position = new Vector2(0, -18),
+                    ZIndex = -1
+                });
+            }
+
+            AddChild(sprite);
+        }
+    }
+
+    private static Vector2 CellCenter(GridPosition cell) =>
+        new(cell.X * 16 + 8, cell.Y * 16 + 8);
 }
 
 internal sealed partial class GeneratedCropLayer : Node2D

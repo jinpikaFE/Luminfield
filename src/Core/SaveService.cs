@@ -405,6 +405,12 @@ public sealed class SaveService
             });
         }
         save.FarmObjects.Objects = normalizedFarmObjects;
+        save.Orchard = OrchardSystem.NormalizeSave(
+            save.Orchard,
+            save.FarmObjects,
+            occupiedFarmTiles,
+            occupiedStorageCells
+        );
         save.Commission = DailyCommissionSystem.NormalizeSave(
             save.Commission,
             save.Day

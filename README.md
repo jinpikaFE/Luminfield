@@ -22,6 +22,9 @@ After the tutorial, the farm opens into a repeatable economy loop:
 - Buy seeds for twelve original crops at the Twilight Market. The four new
   Gleamrise crops are season-limited; the original eight remain cross-season
   for save and tutorial compatibility.
+- Buy Moonplum Saplings from the farm stall, plant them on clear homestead
+  ground, harvest repeat Moonplums after they mature, then craft Glowcomb Hives
+  that brew Starhoney when a mature fruit tree is nearby.
 - Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
   Duskbell, Dawnlace, Glimmerpod, Mistsong Mint, Comet Tuber, and more valuable
   artisan goods for glow coins.
@@ -418,6 +421,10 @@ Glimmerpod regrowth, and both deterministic resonance harvests. Use
 collection. Use `--playtest-farming-specialization` to inspect the farming HUD
 and permanent level-three specialization panel.
 
+Use `--playtest-orchard-hives` to inspect a mature Moonplum tree, ready
+Glowcomb Hive, orchard hotbar icons, object outlines, and deterministic
+Starhoney collection state.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -484,7 +491,9 @@ not add a save field or change the `schemaVersion: 1` contract.
 Fertilized farm cells, stable quality rolls, planting days, resolved resonance
 produce, farming XP and specialization, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
-schema. The modern per-machine list safely migrates the legacy processing
+schema. Moonplum fruit trees and Glowcomb Hive production state also use
+additive orchard fields; invalid, overlapping, or orphaned orchard entries are
+filtered on load. The modern per-machine list safely migrates the legacy processing
 queue. Older saves receive safe defaults and tool-ID migration for the new
 additive fields.
 Discovered world chunks are stored as stable chunk IDs; older saves begin with
@@ -507,6 +516,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-19 15:03:15 CST — Added Phase C orchard and hive play: Moonplum
+  Saplings, mature fruit-tree harvest/regrowth, craftable Glowcomb Hives,
+  nearby-tree Starhoney production, stable save normalization, bilingual
+  previews/actions, original generated art, focused tests, and a deterministic
+  playtest.
 - 2026-08-19 10:13:02 CST — Began Phase C with four Gleamrise-only crops to
   reach twelve total plants, persistent Glimmerpod regrowth and two
   deterministic resonance harvests; added three independent fixed processing

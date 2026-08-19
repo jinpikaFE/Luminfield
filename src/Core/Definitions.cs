@@ -4,6 +4,7 @@ public enum ItemKind
 {
     Tool,
     Seed,
+    Sapling,
     Produce,
     Fertilizer,
     Artisan,
@@ -27,7 +28,8 @@ public sealed record ItemDefinition(
     int BuyPrice = 0,
     int SellPrice = 0,
     string? BaseItemId = null,
-    CropQuality Quality = CropQuality.Regular
+    CropQuality Quality = CropQuality.Regular,
+    string? FruitTreeId = null
 );
 
 public sealed record ProcessorRecipe(
@@ -62,7 +64,8 @@ public enum FarmObjectKind
     Path,
     Fence,
     Torch,
-    Sprinkler
+    Sprinkler,
+    Beehive
 }
 
 public enum FarmObjectSurface
@@ -217,6 +220,24 @@ public sealed record CropDefinition(
     }
 }
 
+public sealed record FruitTreeDefinition(
+    string Id,
+    string SaplingItemId,
+    string HarvestItemId,
+    string NameKey,
+    int MatureAfterNights,
+    int RegrowthNights,
+    IReadOnlyList<string>? SeasonIds = null
+)
+{
+    public bool IsAvailableOnDay(int day) =>
+        SeasonIds is not { Count: > 0 } ||
+        SeasonIds.Contains(
+            CalendarSystem.SeasonId(day),
+            StringComparer.Ordinal
+        );
+}
+
 public static class DataCatalog
 {
     public const string LegacyHoeId = "hoe";
@@ -286,6 +307,11 @@ public static class DataCatalog
     public const string StarwoodFenceId = "starwood_fence";
     public const string StarlightTorchId = "starlight_torch";
     public const string DewfallSprinklerId = "dewfall_sprinkler";
+    public const string MoonplumSaplingId = "moonplum_sapling";
+    public const string MoonplumTreeId = "moonplum_tree";
+    public const string MoonplumId = "moonplum";
+    public const string StarhoneyId = "starhoney";
+    public const string GlowcombHiveId = "glowcomb_hive";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
@@ -296,6 +322,7 @@ public static class DataCatalog
     public const string DewfallSprinklerRecipeId = "recipe_dewfall_sprinkler";
     public const string StarsoilFertilizerRecipeId =
         "recipe_starsoil_fertilizer";
+    public const string GlowcombHiveRecipeId = "recipe_glowcomb_hive";
     public const string PlantStarbudCommissionId = "commission_plant_starbud";
     public const string GatherLumenwoodCommissionId = "commission_gather_lumenwood";
     public const string DeliverStarbudCommissionId = "commission_deliver_starbud";
@@ -805,6 +832,34 @@ public static class DataCatalog
                 ItemKind.Placeable,
                 99,
                 "item.dewfall_sprinkler"
+            ),
+            [MoonplumSaplingId] = new(
+                MoonplumSaplingId,
+                ItemKind.Sapling,
+                99,
+                "item.moonplum_sapling",
+                BuyPrice: 120,
+                FruitTreeId: MoonplumTreeId
+            ),
+            [MoonplumId] = new(
+                MoonplumId,
+                ItemKind.Produce,
+                99,
+                "item.moonplum",
+                SellPrice: 92
+            ),
+            [StarhoneyId] = new(
+                StarhoneyId,
+                ItemKind.Artisan,
+                99,
+                "item.starhoney",
+                SellPrice: 118
+            ),
+            [GlowcombHiveId] = new(
+                GlowcombHiveId,
+                ItemKind.Placeable,
+                99,
+                "item.glowcomb_hive"
             )
         };
 
@@ -851,6 +906,8 @@ public static class DataCatalog
         StarbudPreserveId,
         MoonrootTonicId,
         CloudleafTeaId,
+        MoonplumId,
+        StarhoneyId,
         LumenwoodId,
         CrystalShardId
     ];
@@ -901,6 +958,11 @@ public static class DataCatalog
         GlimmerpodSeedId,
         MistsongMintSeedId,
         CometTuberSeedId
+    ];
+
+    public static readonly IReadOnlyList<string> SaplingItemIds =
+    [
+        MoonplumSaplingId
     ];
 
     public static readonly IReadOnlyList<string> QualityProduceItemIds =
@@ -993,13 +1055,17 @@ public static class DataCatalog
         StarbudPreserveId,
         MoonrootTonicId,
         CloudleafTeaId,
+        MoonplumSaplingId,
+        MoonplumId,
+        StarhoneyId,
         LumenwoodId,
         CrystalShardId,
         StarwovenChestId,
         MoonstonePathId,
         StarwoodFenceId,
         StarlightTorchId,
-        DewfallSprinklerId
+        DewfallSprinklerId,
+        GlowcombHiveId
     ];
 
     public static readonly IReadOnlyDictionary<string, FarmObjectDefinition>
@@ -1028,6 +1094,12 @@ public static class DataCatalog
                     DewfallSprinklerId,
                     FarmObjectKind.Sprinkler,
                     FarmObjectSurface.PlantingBed,
+                    BlocksMovement: true
+                ),
+                [GlowcombHiveId] = new(
+                    GlowcombHiveId,
+                    FarmObjectKind.Beehive,
+                    FarmObjectSurface.Ground,
                     BlocksMovement: true
                 )
             };
@@ -1177,6 +1249,25 @@ public static class DataCatalog
             )
         };
 
+    public static readonly IReadOnlyList<string> FruitTreeIds =
+    [
+        MoonplumTreeId
+    ];
+
+    public static readonly IReadOnlyDictionary<string, FruitTreeDefinition>
+        FruitTrees =
+            new Dictionary<string, FruitTreeDefinition>(StringComparer.Ordinal)
+            {
+                [MoonplumTreeId] = new(
+                    MoonplumTreeId,
+                    MoonplumSaplingId,
+                    MoonplumId,
+                    "fruit_tree.moonplum",
+                    MatureAfterNights: 3,
+                    RegrowthNights: 2
+                )
+            };
+
     public static readonly IReadOnlyDictionary<string, ProcessorRecipe> ProcessorRecipes =
         new Dictionary<string, ProcessorRecipe>(StringComparer.Ordinal)
         {
@@ -1269,6 +1360,17 @@ public static class DataCatalog
                     new CraftingIngredient(CrystalShardId, 3)
                 ],
                 "recipe.dewfall_sprinkler"
+            ),
+            [GlowcombHiveRecipeId] = new(
+                GlowcombHiveRecipeId,
+                GlowcombHiveId,
+                1,
+                [
+                    new CraftingIngredient(LumenwoodId, 8),
+                    new CraftingIngredient(CrystalShardId, 2),
+                    new CraftingIngredient(MoonplumId, 1)
+                ],
+                "recipe.glowcomb_hive"
             )
         };
 
@@ -1407,6 +1509,13 @@ public static class DataCatalog
         SeedItemIds.Where(itemId => IsSeedAvailableOnDay(itemId, day))
             .ToArray();
 
+    public static IReadOnlyList<string> FarmShopItemIdsForDay(int day) =>
+        SeedItemIdsForDay(day)
+            .Concat(SaplingItemIds.Where(itemId =>
+                IsSaplingAvailableOnDay(itemId, day)
+            ))
+            .ToArray();
+
     public static bool IsSeedAvailableOnDay(string itemId, int day)
     {
         if (!Items.TryGetValue(itemId, out var item) ||
@@ -1418,6 +1527,19 @@ public static class DataCatalog
         }
 
         return crop.IsAvailableOnDay(day);
+    }
+
+    public static bool IsSaplingAvailableOnDay(string itemId, int day)
+    {
+        if (!Items.TryGetValue(itemId, out var item) ||
+            item.Kind != ItemKind.Sapling ||
+            string.IsNullOrWhiteSpace(item.FruitTreeId) ||
+            !FruitTrees.TryGetValue(item.FruitTreeId, out var tree))
+        {
+            return false;
+        }
+
+        return tree.IsAvailableOnDay(day);
     }
 
     public static string BaseItemId(string itemId)
@@ -1484,6 +1606,11 @@ public static class DataCatalog
         Crops.TryGetValue(id, out var definition)
             ? definition
             : throw new KeyNotFoundException($"Unknown crop id '{id}'.");
+
+    public static FruitTreeDefinition FruitTree(string id) =>
+        FruitTrees.TryGetValue(id, out var definition)
+            ? definition
+            : throw new KeyNotFoundException($"Unknown fruit tree id '{id}'.");
 
     public static ProcessorRecipe ProcessorRecipe(string id) =>
         ProcessorRecipes.TryGetValue(id, out var definition)

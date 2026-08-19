@@ -73,6 +73,7 @@ public sealed partial class FarmView : Node2D
         AddChild(new FarmSoilStateLayer(session));
         AddChild(new GeneratedCropLayer(session));
         AddChild(new CropGlowLayer(session));
+        AddChild(new GeneratedOrchardLayer(session));
         AddChild(new MoteField(new Rect2(0, 0, FarmSystem.MapWidth * 16, FarmSystem.MapHeight * 16)));
 
         var mira = GeneratedArt.CreateMiraSprite();
@@ -378,6 +379,12 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        var orchardTarget = ResolveOrchardTarget(target, player);
+        if (orchardTarget is { } orchardCell)
+        {
+            return _session.PreviewSelectedTarget(orchardCell);
+        }
+
         if (target == MiraCell || IsAdjacent(player, MiraCell))
         {
             return PreviewHandInteraction(
@@ -520,6 +527,7 @@ public sealed partial class FarmView : Node2D
             _player.CurrentCell
         );
         var storageTarget = ResolveStorageTarget(target, _player.CurrentCell);
+        var orchardTarget = ResolveOrchardTarget(target, _player.CurrentCell);
         if (villager is not null)
         {
             VillagerRequested?.Invoke(villager.Position);
@@ -542,6 +550,10 @@ public sealed partial class FarmView : Node2D
         else if (storageTarget is { } chest)
         {
             RequestHandInteraction(() => StorageRequested?.Invoke(chest));
+        }
+        else if (orchardTarget is { } orchardCell)
+        {
+            UseRequested?.Invoke(orchardCell);
         }
         else if (target == MiraCell || IsAdjacent(_player.CurrentCell, MiraCell))
         {
@@ -903,6 +915,11 @@ public sealed partial class FarmView : Node2D
 
         foreach (var pair in _session.FarmObjects.Objects)
         {
+            if (pair.Value == DataCatalog.GlowcombHiveId)
+            {
+                continue;
+            }
+
             var definition = DataCatalog.FarmObject(pair.Value);
             var sprite = GeneratedArt.CreateFarmObjectSprite(pair.Value);
             sprite.Name = $"FarmObject_{pair.Value}_{pair.Key.X}_{pair.Key.Y}";
@@ -936,6 +953,33 @@ public sealed partial class FarmView : Node2D
 
             _farmObjectLayer.AddChild(sprite);
         }
+    }
+
+    private GridPosition? ResolveOrchardTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        if (_session.Orchard.HasFruitTree(target) ||
+            _session.FarmObjects.ItemAt(target) == DataCatalog.GlowcombHiveId)
+        {
+            return target;
+        }
+
+        return _session.Orchard.InteractiveCells
+            .Concat(_session.FarmObjects.Objects
+                .Where(pair => pair.Value == DataCatalog.GlowcombHiveId)
+                .Select(pair => pair.Key))
+            .Distinct()
+            .Where(cell => IsAdjacent(player, cell))
+            .OrderBy(cell =>
+                Math.Abs(cell.X - target.X) +
+                Math.Abs(cell.Y - target.Y)
+            )
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .Cast<GridPosition?>()
+            .FirstOrDefault();
     }
 
     private GridPosition? ResolveStorageTarget(
@@ -1025,7 +1069,8 @@ public sealed partial class FarmView : Node2D
         if (FarmLayout.IsStaticBlocked(cell) ||
             _session.Farm.IsReserved(cell) ||
             _session.Storage.HasChest(cell) ||
-            _session.FarmObjects.BlocksMovement(cell))
+            _session.FarmObjects.BlocksMovement(cell) ||
+            _session.Orchard.BlocksMovement(cell))
         {
             return false;
         }
@@ -1324,6 +1369,60 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)), line, false, 1.5f);
                 DrawArc(origin + new Vector2(8, 3), 12 + pulse, 0, Mathf.Tau, 24, new Color(accent, 0.3f), 1);
                 break;
+            case TargetPreviewKind.FruitTree:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -60),
+                        new Vector2(58, 76)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -60),
+                        new Vector2(58, 76)
+                    ),
+                    line,
+                    false,
+                    1.5f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -27),
+                    30 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    28,
+                    new Color(accent, 0.34f),
+                    1.2f
+                );
+                break;
+            case TargetPreviewKind.Beehive:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -39),
+                        new Vector2(52, 55)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -39),
+                        new Vector2(52, 55)
+                    ),
+                    line,
+                    false,
+                    1.5f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -12),
+                    24 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    28,
+                    new Color(accent, 0.32f),
+                    1
+                );
+                break;
             case TargetPreviewKind.Landmark:
                 DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), line, false, 1.5f);
@@ -1404,6 +1503,8 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewKind.Fence => -39,
         TargetPreviewKind.Torch => -48,
         TargetPreviewKind.Sprinkler => -34,
+        TargetPreviewKind.FruitTree => -74,
+        TargetPreviewKind.Beehive => -54,
         TargetPreviewKind.Character => -62,
         TargetPreviewKind.Door => -49,
         TargetPreviewKind.Crystal => -47,
