@@ -5,7 +5,8 @@ public static class FarmLayout
     public static readonly GridPosition MiraCell = new(32, 9);
     public static readonly GridPosition CottageDoorCell = new(16, 11);
     public static readonly GridPosition ShopCell = new(43, 14);
-    public static readonly GridPosition ProcessorCell = new(36, 14);
+    public static readonly GridPosition ProcessorCell =
+        ProcessorCatalog.Machine(ProcessorCatalog.MainMachineId).Position;
     public static readonly GridPosition ShippingCell = new(8, 14);
     public static readonly GridPosition CommissionBoardCell = new(27, 10);
     public static readonly GridPosition StarlightMailboxCell = new(19, 10);
@@ -24,6 +25,7 @@ public static class FarmLayout
         new(35, 12), new(36, 12), new(37, 12),
         new(35, 13), new(36, 13), new(37, 13),
         new(35, 14), new(36, 14), new(37, 14),
+        new(32, 14), new(40, 14),
         new(26, 10), new(28, 10),
         MiraCell,
         CottageDoorCell,
@@ -40,4 +42,7 @@ public static class FarmLayout
     public static bool IsCommissionBoardCell(GridPosition position) =>
         position.Y == CommissionBoardCell.Y &&
         position.X is >= 26 and <= 28;
+
+    public static string? ProcessorMachineIdAt(GridPosition position) =>
+        ProcessorCatalog.MachineIdAt(position);
 }

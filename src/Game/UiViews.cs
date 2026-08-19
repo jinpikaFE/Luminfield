@@ -779,6 +779,15 @@ internal sealed partial class HotbarSlotContent : Control
             return true;
         }
 
+        if (GeneratedArt.TryProcessorMachineItemIcon(
+                itemId,
+                out texture,
+                out region
+            ))
+        {
+            return true;
+        }
+
         if (GeneratedArt.TryStarwovenChestItemIcon(itemId, out texture, out region))
         {
             return true;
@@ -1606,17 +1615,21 @@ public sealed partial class ProcessorOverlay : FullScreenUi
     private readonly GameSession _session;
     private readonly LocaleService _locale;
     private readonly Label _title;
-    private readonly Label _state;
+    private readonly Label _summary;
     private readonly Label _status;
-    private readonly Button _starbud;
-    private readonly Button _moonroot;
-    private readonly Button _collect;
+    private readonly Dictionary<string, Label> _machineNames = [];
+    private readonly Dictionary<string, Label> _machineStates = [];
+    private readonly Dictionary<(string MachineId, string RecipeId), Button>
+        _recipeButtons = [];
+    private readonly Dictionary<string, Button> _collectButtons = [];
+    private readonly Button _collectAll;
     private readonly Button _close;
 
     public ProcessorOverlay(
         Theme theme,
         GameSession session,
-        LocaleService locale
+        LocaleService locale,
+        string selectedMachineId = ProcessorCatalog.MainMachineId
     ) : base(theme)
     {
         _session = session;
@@ -1627,7 +1640,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(430, 292) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(540, 330) };
         panel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.Box(new Color("#101a3af8"), ThemeFactory.Mint, 2, 9)
@@ -1638,37 +1651,54 @@ public sealed partial class ProcessorOverlay : FullScreenUi
         {
             Alignment = BoxContainer.AlignmentMode.Center
         };
-        column.AddThemeConstantOverride("separation", 8);
+        column.AddThemeConstantOverride("separation", 5);
         panel.AddChild(column);
 
-        _title = ThemeFactory.Label(size: 22, color: ThemeFactory.Mint);
+        _title = ThemeFactory.Label(size: 19, color: ThemeFactory.Mint);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
-        _state = ThemeFactory.Label(size: 11, color: ThemeFactory.Gold);
-        _state.HorizontalAlignment = HorizontalAlignment.Center;
-        _state.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _state.CustomMinimumSize = new Vector2(390, 36);
-        _starbud = RecipeButton(DataCatalog.StarbudPreserveRecipeId);
-        _moonroot = RecipeButton(DataCatalog.MoonrootTonicRecipeId);
-        _collect = ThemeFactory.Button("");
-        _collect.Pressed += () => Execute(_session.CollectProcessedItem);
+        _summary = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
+        _summary.HorizontalAlignment = HorizontalAlignment.Center;
+        _summary.CustomMinimumSize = new Vector2(500, 18);
+
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(510, 200),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+        };
+        var machines = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(490, 0)
+        };
+        machines.AddThemeConstantOverride("separation", 5);
+        scroll.AddChild(machines);
+
+        foreach (var definition in ProcessorCatalog.Machines.Values)
+        {
+            machines.AddChild(MachineCard(definition));
+        }
+
+        _collectAll = ThemeFactory.Button("");
+        _collectAll.CustomMinimumSize = new Vector2(500, 28);
+        _collectAll.AddThemeFontSizeOverride("font_size", 10);
+        _collectAll.Pressed += () => Execute(_session.CollectAllProcessedItems);
         _status = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
         _status.HorizontalAlignment = HorizontalAlignment.Center;
-        _status.CustomMinimumSize = new Vector2(390, 24);
+        _status.CustomMinimumSize = new Vector2(500, 18);
         _close = ThemeFactory.Button("");
+        _close.CustomMinimumSize = new Vector2(500, 26);
         _close.Pressed += () => CloseRequested?.Invoke();
 
         column.AddChild(_title);
-        column.AddChild(_state);
-        column.AddChild(_starbud);
-        column.AddChild(_moonroot);
-        column.AddChild(_collect);
+        column.AddChild(_summary);
+        column.AddChild(scroll);
+        column.AddChild(_collectAll);
         column.AddChild(_status);
         column.AddChild(_close);
 
         session.Changed += RefreshText;
         locale.LocaleChanged += RefreshText;
         RefreshText();
-        _starbud.CallDeferred(Control.MethodName.GrabFocus);
+        FocusMachine(selectedMachineId);
     }
 
     public event Action? CloseRequested;
@@ -1677,34 +1707,38 @@ public sealed partial class ProcessorOverlay : FullScreenUi
     public void RefreshText()
     {
         _title.Text = _locale.Tr("processor.title");
+        _summary.Text = _locale.Tr(
+            "processor.summary",
+            _session.Processor.ReadyCount,
+            ProcessorCatalog.Machines.Count
+        );
+        _collectAll.Text = _locale.Tr(
+            "processor.collect_all",
+            _session.Processor.ReadyCount
+        );
+        _collectAll.Disabled = _session.Processor.ReadyCount == 0;
         _close.Text = _locale.Tr("menu.back");
 
-        var idle = _session.Processor.IsIdle;
-        _starbud.Disabled = !idle;
-        _moonroot.Disabled = !idle;
-        SetRecipeText(_starbud, DataCatalog.StarbudPreserveRecipeId);
-        SetRecipeText(_moonroot, DataCatalog.MoonrootTonicRecipeId);
-
-        if (idle)
+        foreach (var definition in ProcessorCatalog.Machines.Values)
         {
-            _state.Text = _locale.Tr("processor.idle");
-        }
-        else
-        {
-            var recipe = DataCatalog.ProcessorRecipe(_session.Processor.ActiveRecipeId);
-            var outputName = _locale.Tr(DataCatalog.Item(recipe.OutputItemId).NameKey);
-            _state.Text = _session.Processor.IsReady
-                ? _locale.Tr("processor.ready", outputName)
-                : _locale.Tr(
-                    "processor.processing",
-                    outputName,
-                    _session.Processor.RemainingNights
-                );
-        }
+            var machine = _session.Processor.Machine(definition.Id);
+            _machineNames[definition.Id].Text = _locale.Tr(definition.NameKey);
+            _machineStates[definition.Id].Text = MachineStateText(machine);
+            foreach (var recipeId in definition.RecipeIds)
+            {
+                var recipe = DataCatalog.ProcessorRecipe(recipeId);
+                var button = _recipeButtons[(definition.Id, recipeId)];
+                button.Text = RecipeText(recipe);
+                button.Disabled = !machine.IsIdle ||
+                    _session.Inventory.CountFamily(recipe.InputItemId) <
+                    recipe.InputCount;
+            }
 
-        _collect.Visible = _session.Processor.IsReady;
-        _collect.Disabled = !_session.Processor.IsReady;
-        _collect.Text = _locale.Tr("processor.collect");
+            var collect = _collectButtons[definition.Id];
+            collect.Text = _locale.Tr("processor.collect");
+            collect.Visible = machine.IsReady;
+            collect.Disabled = !machine.IsReady;
+        }
     }
 
     public override void _ExitTree()
@@ -1713,25 +1747,101 @@ public sealed partial class ProcessorOverlay : FullScreenUi
         _locale.LocaleChanged -= RefreshText;
     }
 
-    private Button RecipeButton(string recipeId)
+    private Control MachineCard(ProcessorMachineDefinition definition)
     {
-        var button = ThemeFactory.Button("");
-        button.CustomMinimumSize = new Vector2(390, 34);
-        button.AddThemeFontSizeOverride("font_size", 11);
-        button.Pressed += () => Execute(() => _session.StartProcessing(recipeId));
-        return button;
+        var card = new VBoxContainer();
+        card.AddThemeConstantOverride("separation", 2);
+        var name = ThemeFactory.Label(size: 11, color: ThemeFactory.Mint);
+        var state = ThemeFactory.Label(size: 9, color: ThemeFactory.Gold);
+        state.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 4);
+        foreach (var recipeId in definition.RecipeIds)
+        {
+            var button = ThemeFactory.Button("");
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.CustomMinimumSize = new Vector2(0, 26);
+            button.AddThemeFontSizeOverride("font_size", 9);
+            button.Pressed += () => Execute(() =>
+                _session.StartProcessing(definition.Id, recipeId)
+            );
+            _recipeButtons[(definition.Id, recipeId)] = button;
+            actions.AddChild(button);
+        }
+
+        var collect = ThemeFactory.Button("");
+        collect.CustomMinimumSize = new Vector2(105, 26);
+        collect.AddThemeFontSizeOverride("font_size", 9);
+        collect.Pressed += () => Execute(() =>
+            _session.CollectProcessedItem(definition.Id)
+        );
+        _collectButtons[definition.Id] = collect;
+        actions.AddChild(collect);
+
+        _machineNames[definition.Id] = name;
+        _machineStates[definition.Id] = state;
+        card.AddChild(name);
+        card.AddChild(state);
+        card.AddChild(actions);
+        return card;
     }
 
-    private void SetRecipeText(Button button, string recipeId)
+    private string RecipeText(ProcessorRecipe recipe)
     {
-        var recipe = DataCatalog.ProcessorRecipe(recipeId);
-        button.Text = _locale.Tr(
+        return _locale.Tr(
             "processor.recipe_action",
             _locale.Tr(DataCatalog.Item(recipe.InputItemId).NameKey),
             recipe.InputCount,
             _locale.Tr(DataCatalog.Item(recipe.OutputItemId).NameKey),
             _session.Inventory.CountFamily(recipe.InputItemId)
         );
+    }
+
+    private string MachineStateText(ProcessorMachineState machine)
+    {
+        if (machine.IsIdle)
+        {
+            return _locale.Tr("processor.machine_idle");
+        }
+
+        var recipe = DataCatalog.ProcessorRecipe(machine.ActiveRecipeId);
+        var outputName = _locale.Tr(DataCatalog.Item(recipe.OutputItemId).NameKey);
+        if (machine.IsReady)
+        {
+            return _locale.Tr("processor.ready", outputName);
+        }
+
+        return _locale.Tr(
+            "processor.processing",
+            outputName,
+            machine.RemainingNights
+        );
+    }
+
+    private void FocusMachine(string machineId)
+    {
+        if (!ProcessorCatalog.Machines.TryGetValue(machineId, out var definition))
+        {
+            _collectAll.CallDeferred(Control.MethodName.GrabFocus);
+            return;
+        }
+
+        var machine = _session.Processor.Machine(machineId);
+        if (machine.IsReady)
+        {
+            _collectButtons[machineId].CallDeferred(Control.MethodName.GrabFocus);
+            return;
+        }
+
+        var firstRecipeId = definition.RecipeIds.FirstOrDefault();
+        if (firstRecipeId is not null &&
+            _recipeButtons.TryGetValue((machineId, firstRecipeId), out var button))
+        {
+            button.CallDeferred(Control.MethodName.GrabFocus);
+            return;
+        }
+
+        _collectButtons[machineId].CallDeferred(Control.MethodName.GrabFocus);
     }
 
     private void Execute(Func<ActionResult> action)

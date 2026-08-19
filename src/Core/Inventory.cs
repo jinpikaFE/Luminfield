@@ -294,6 +294,29 @@ public sealed class Inventory
         return true;
     }
 
+    public bool TryAddMany(IReadOnlyList<CraftingIngredient> additions)
+    {
+        if (additions.Count == 0 ||
+            additions.Any(addition => addition.Count <= 0))
+        {
+            return false;
+        }
+
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        foreach (var addition in additions)
+        {
+            if (!DataCatalog.Items.ContainsKey(addition.ItemId) ||
+                !AddTo(simulated, addition.ItemId, addition.Count))
+            {
+                return false;
+            }
+        }
+
+        ApplySimulation(simulated);
+        Changed?.Invoke();
+        return true;
+    }
+
     public bool PromoteToHotbar(string itemId)
     {
         var sourceIndex = _slots.FindIndex(slot => slot.ItemId == itemId && !slot.IsEmpty);

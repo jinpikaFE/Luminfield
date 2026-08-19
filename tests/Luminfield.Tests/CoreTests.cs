@@ -848,6 +848,42 @@ public sealed class InventoryTests
         Assert.Equal(DataCatalog.BucketId, inventory.Slots[4].ItemId);
         Assert.All(inventory.Slots.Take(5), slot => Assert.Equal(1, slot.Count));
     }
+
+    [Fact]
+    public void AddManySequentiallySimulatesDuplicateItemsAndNeverPartiallyCommits()
+    {
+        var inventory = new Inventory();
+        inventory.Reset();
+        Assert.True(inventory.Add(DataCatalog.StarbudPreserveId, 98));
+        Assert.True(inventory.Add(
+            DataCatalog.DuskbellSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount - 1)
+        ));
+        var changes = 0;
+        inventory.Changed += () => changes++;
+
+        var failed = inventory.TryAddMany(
+        [
+            new CraftingIngredient(DataCatalog.StarbudPreserveId, 1),
+            new CraftingIngredient(DataCatalog.StarbudPreserveId, 1)
+        ]);
+
+        Assert.False(failed);
+        Assert.Equal(0, changes);
+        Assert.Equal(98, inventory.Count(DataCatalog.StarbudPreserveId));
+
+        Assert.True(inventory.Remove(DataCatalog.DuskbellSeedId, 99));
+        changes = 0;
+        var succeeded = inventory.TryAddMany(
+        [
+            new CraftingIngredient(DataCatalog.StarbudPreserveId, 1),
+            new CraftingIngredient(DataCatalog.StarbudPreserveId, 99)
+        ]);
+
+        Assert.True(succeeded);
+        Assert.Equal(1, changes);
+        Assert.Equal(198, inventory.Count(DataCatalog.StarbudPreserveId));
+    }
 }
 
 public sealed class CraftingAndStorageTests
@@ -1404,6 +1440,238 @@ public sealed class EconomyAndProcessorTests
     }
 
     [Fact]
+    public void ProcessorMachinesAdvanceTheirOwnRecipesIndependently()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.Inventory.Add(DataCatalog.MoonrootId, 2));
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudId, 2));
+        Assert.True(session.Inventory.Add(DataCatalog.CloudleafId, 3));
+
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.MoonwellInfuserId,
+            DataCatalog.MoonrootTonicRecipeId
+        ).Succeeded);
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.PrismPreserveVatId,
+            DataCatalog.StarbudPreserveRecipeId
+        ).Succeeded);
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.StarweaveDryingLoomId,
+            DataCatalog.CloudleafTeaRecipeId
+        ).Succeeded);
+
+        session.EndDay();
+
+        Assert.True(session.Processor.Machine(
+            ProcessorCatalog.MoonwellInfuserId
+        ).IsReady);
+        Assert.True(session.Processor.Machine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).IsReady);
+        var dryingLoom = session.Processor.Machine(
+            ProcessorCatalog.StarweaveDryingLoomId
+        );
+        Assert.False(dryingLoom.IsReady);
+        Assert.Equal(1, dryingLoom.RemainingNights);
+
+        session.EndDay();
+
+        Assert.Equal(3, session.Processor.ReadyCount);
+    }
+
+    [Fact]
+    public void CollectAllProcessorsIsAtomicAndNotifiesInventoryOnce()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.Inventory.Add(DataCatalog.MoonrootId, 2));
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudId, 2));
+        Assert.True(session.Inventory.Add(DataCatalog.CloudleafId, 3));
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.MoonwellInfuserId,
+            DataCatalog.MoonrootTonicRecipeId
+        ).Succeeded);
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.PrismPreserveVatId,
+            DataCatalog.StarbudPreserveRecipeId
+        ).Succeeded);
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.StarweaveDryingLoomId,
+            DataCatalog.CloudleafTeaRecipeId
+        ).Succeeded);
+        session.EndDay();
+        session.EndDay();
+        Assert.True(session.Inventory.Add(
+            DataCatalog.DuskbellSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount - 1)
+        ));
+        var inventoryChanges = 0;
+        var processorChanges = 0;
+        session.Inventory.Changed += () => inventoryChanges++;
+        session.Processor.Changed += () => processorChanges++;
+
+        var failed = session.CollectAllProcessedItems();
+
+        Assert.False(failed.Succeeded);
+        Assert.Equal(0, inventoryChanges);
+        Assert.Equal(0, processorChanges);
+        Assert.Equal(3, session.Processor.ReadyCount);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.MoonrootTonicId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.StarbudPreserveId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.CloudleafTeaId));
+
+        Assert.True(session.Inventory.Remove(
+            DataCatalog.DuskbellSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount - 1)
+        ));
+        inventoryChanges = 0;
+        processorChanges = 0;
+        var collected = session.CollectAllProcessedItems();
+
+        Assert.True(collected.Succeeded);
+        Assert.Equal(1, inventoryChanges);
+        Assert.Equal(1, processorChanges);
+        Assert.Equal(0, session.Processor.ReadyCount);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.MoonrootTonicId));
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.StarbudPreserveId));
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.CloudleafTeaId));
+    }
+
+    [Fact]
+    public void ProcessorPreviewMatchesToolMaterialBusyReadyAndCapacityRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Inventory.Select(1);
+        Assert.Equal(
+            TargetPreviewState.NeedsTool,
+            session.PreviewProcessorMachine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).State
+        );
+
+        session.Inventory.Select(0);
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            session.PreviewProcessorMachine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).State
+        );
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudId, 2));
+        Assert.True(session.PreviewProcessorMachine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).IsAvailable);
+        Assert.True(session.StartProcessing(
+            ProcessorCatalog.PrismPreserveVatId,
+            DataCatalog.StarbudPreserveRecipeId
+        ).Succeeded);
+        Assert.Equal(
+            "processor.busy",
+            session.PreviewProcessorMachine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).LabelKey
+        );
+
+        session.EndDay();
+        Assert.Equal(
+            "target.action.open_processor_ready",
+            session.PreviewProcessorMachine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).LabelKey
+        );
+        Assert.True(session.Inventory.Add(
+            DataCatalog.DuskbellSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount)
+        ));
+        Assert.Equal(
+            "notice.inventory_full",
+            session.PreviewProcessorMachine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).LabelKey
+        );
+        var failedCollect = session.CollectProcessedItem(
+            ProcessorCatalog.PrismPreserveVatId
+        );
+        Assert.False(failedCollect.Succeeded);
+        Assert.True(session.Processor.Machine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).IsReady);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.StarbudPreserveId));
+    }
+
+    [Fact]
+    public void LegacyProcessorMigratesOnlyWhenNoModernMachineEntryExists()
+    {
+        var processor = new ProcessorSystem();
+        processor.Reset();
+        processor.Restore(new ProcessorSave
+        {
+            RecipeId = DataCatalog.StarbudPreserveRecipeId,
+            RemainingNights = 99
+        });
+
+        Assert.Equal(
+            DataCatalog.StarbudPreserveRecipeId,
+            processor.MainMachine.ActiveRecipeId
+        );
+        Assert.Equal(1, processor.MainMachine.RemainingNights);
+        Assert.True(processor.Machine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).IsIdle);
+
+        processor.Restore(new ProcessorSave
+        {
+            RecipeId = DataCatalog.MoonrootTonicRecipeId,
+            RemainingNights = 1,
+            Machines =
+            [
+                new ProcessorMachineSave
+                {
+                    MachineId = ProcessorCatalog.PrismPreserveVatId,
+                    RecipeId = DataCatalog.StarbudPreserveRecipeId,
+                    RemainingNights = 0
+                },
+                new ProcessorMachineSave
+                {
+                    MachineId = "unknown_machine",
+                    RecipeId = DataCatalog.MoonrootTonicRecipeId,
+                    RemainingNights = 1
+                }
+            ]
+        });
+
+        Assert.True(processor.MainMachine.IsIdle);
+        Assert.True(processor.Machine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).IsReady);
+
+        processor.Restore(new ProcessorSave
+        {
+            RecipeId = DataCatalog.MoonrootTonicRecipeId,
+            RemainingNights = 1,
+            Machines =
+            [
+                new ProcessorMachineSave
+                {
+                    MachineId = "unknown_machine",
+                    RecipeId = DataCatalog.StarbudPreserveRecipeId,
+                    RemainingNights = 0
+                }
+            ]
+        });
+
+        Assert.Equal(
+            DataCatalog.MoonrootTonicRecipeId,
+            processor.MainMachine.ActiveRecipeId
+        );
+        Assert.Equal(
+            1,
+            processor.Machines.Values.Count(machine => !machine.IsIdle)
+        );
+    }
+
+    [Fact]
     public void QualityProduceKeepsItsOwnShippingAndSaleValue()
     {
         var session = new GameSession();
@@ -1440,9 +1708,12 @@ public sealed class EconomyAndProcessorTests
         var starbud = DataCatalog.Item(DataCatalog.StarbudId);
         var tonic = DataCatalog.Item(DataCatalog.MoonrootTonicId);
         var moonroot = DataCatalog.Item(DataCatalog.MoonrootId);
+        var tea = DataCatalog.Item(DataCatalog.CloudleafTeaId);
+        var cloudleaf = DataCatalog.Item(DataCatalog.CloudleafId);
 
         Assert.True(preserve.SellPrice > starbud.SellPrice * 2);
         Assert.True(tonic.SellPrice > moonroot.SellPrice * 2);
+        Assert.True(tea.SellPrice > cloudleaf.SellPrice * 3);
     }
 
     [Fact]
@@ -7833,6 +8104,13 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(GameSession.NewGameCoins - 24, result.Save.Coins);
         Assert.Equal(DataCatalog.StarbudPreserveRecipeId, result.Save.Processor.RecipeId);
         Assert.Equal(1, result.Save.Processor.RemainingNights);
+        Assert.Equal(3, result.Save.Processor.Machines.Count);
+        Assert.Equal(
+            DataCatalog.StarbudPreserveRecipeId,
+            result.Save.Processor.Machines.Single(entry =>
+                entry.MachineId == ProcessorCatalog.MainMachineId
+            ).RecipeId
+        );
         Assert.Equal(
             GameSession.MaxWateringCanWater - 1,
             result.Save.Player.WateringCanWater
@@ -8181,6 +8459,7 @@ public sealed class SaveServiceTests : IDisposable
         Assert.NotNull(result.Save.Inventory);
         Assert.Equal(GameSession.NewGameCoins, result.Save.Coins);
         Assert.NotNull(result.Save.Processor);
+        Assert.Empty(result.Save.Processor.Machines);
         Assert.Contains("0:0", result.Save.Exploration.DiscoveredChunks);
         Assert.Equal(
             GameSession.MaxWateringCanWater,
@@ -8224,6 +8503,192 @@ public sealed class SaveServiceTests : IDisposable
         );
         Assert.NotNull(result.Save.CharacterEvents);
         Assert.Empty(result.Save.CharacterEvents.Entries);
+    }
+
+    [Fact]
+    public void LegacyProcessorSaveMigratesToMainMachineOnRestore()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                processor = new
+                {
+                    recipeId = DataCatalog.MoonrootTonicRecipeId,
+                    remainingNights = 99
+                }
+            })
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Empty(result.Save.Processor.Machines);
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.Equal(
+            DataCatalog.MoonrootTonicRecipeId,
+            restored.Processor.MainMachine.ActiveRecipeId
+        );
+        Assert.Equal(1, restored.Processor.MainMachine.RemainingNights);
+    }
+
+    [Fact]
+    public void ModernProcessorEntriesOverrideLegacyAndNormalizeUnknownIds()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                processor = new
+                {
+                    recipeId = DataCatalog.MoonrootTonicRecipeId,
+                    remainingNights = 1,
+                    machines = new object[]
+                    {
+                        new
+                        {
+                            machineId = ProcessorCatalog.PrismPreserveVatId,
+                            recipeId = DataCatalog.StarbudPreserveRecipeId,
+                            remainingNights = 99
+                        },
+                        new
+                        {
+                            machineId = "unknown_machine",
+                            recipeId = DataCatalog.MoonrootTonicRecipeId,
+                            remainingNights = 1
+                        }
+                    }
+                }
+            })
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        var machine = Assert.Single(result.Save.Processor.Machines);
+        Assert.Equal(ProcessorCatalog.PrismPreserveVatId, machine.MachineId);
+        Assert.Equal(1, machine.RemainingNights);
+        Assert.Empty(result.Save.Processor.RecipeId);
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.Processor.MainMachine.IsIdle);
+        Assert.Equal(
+            DataCatalog.StarbudPreserveRecipeId,
+            restored.Processor.Machine(
+                ProcessorCatalog.PrismPreserveVatId
+            ).ActiveRecipeId
+        );
+
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                processor = new
+                {
+                    recipeId = DataCatalog.MoonrootTonicRecipeId,
+                    remainingNights = 1,
+                    machines = new[]
+                    {
+                        new
+                        {
+                            machineId = "unknown_machine",
+                            recipeId = DataCatalog.StarbudPreserveRecipeId,
+                            remainingNights = 0
+                        }
+                    }
+                }
+            })
+        );
+
+        var unknownOnly = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, unknownOnly.Status);
+        Assert.NotNull(unknownOnly.Save);
+        Assert.Empty(unknownOnly.Save.Processor.Machines);
+        var fallback = new GameSession();
+        fallback.Restore(unknownOnly.Save);
+        Assert.Equal(
+            DataCatalog.MoonrootTonicRecipeId,
+            fallback.Processor.MainMachine.ActiveRecipeId
+        );
+        Assert.Equal(
+            1,
+            fallback.Processor.Machines.Values.Count(machine => !machine.IsIdle)
+        );
+    }
+
+    [Fact]
+    public void FixedProcessorCellsRejectRestoredChestsAndFarmObjects()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                storage = new
+                {
+                    chests = new object[]
+                    {
+                        new
+                        {
+                            x = ProcessorCatalog.Machine(
+                                ProcessorCatalog.PrismPreserveVatId
+                            ).Position.X,
+                            y = ProcessorCatalog.Machine(
+                                ProcessorCatalog.PrismPreserveVatId
+                            ).Position.Y,
+                            items = Array.Empty<object>()
+                        },
+                        new { x = 25, y = 13, items = Array.Empty<object>() }
+                    }
+                },
+                farmObjects = new
+                {
+                    objects = new object[]
+                    {
+                        new
+                        {
+                            x = ProcessorCatalog.Machine(
+                                ProcessorCatalog.StarweaveDryingLoomId
+                            ).Position.X,
+                            y = ProcessorCatalog.Machine(
+                                ProcessorCatalog.StarweaveDryingLoomId
+                            ).Position.Y,
+                            itemId = DataCatalog.MoonstonePathId
+                        },
+                        new
+                        {
+                            x = 26,
+                            y = 13,
+                            itemId = DataCatalog.MoonstonePathId
+                        }
+                    }
+                }
+            })
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        var chest = Assert.Single(result.Save.Storage.Chests);
+        Assert.Equal(25, chest.X);
+        Assert.Equal(13, chest.Y);
+        var farmObject = Assert.Single(result.Save.FarmObjects.Objects);
+        Assert.Equal(26, farmObject.X);
+        Assert.Equal(13, farmObject.Y);
     }
 
     [Fact]

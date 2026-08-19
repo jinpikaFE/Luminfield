@@ -432,6 +432,8 @@ public sealed partial class Main : Node
                     StartGleamriseCropPlaytest,
                 [PlaytestScenarioId.Economy] = StartEconomyPlaytest,
                 [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
+                [PlaytestScenarioId.MultiProcessorBatch] =
+                    StartMultiProcessorBatchPlaytest,
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
                 [PlaytestScenarioId.Archive] = StartArchivePlaytest,
                 [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
@@ -587,7 +589,47 @@ public sealed partial class Main : Node
         _playing = true;
         EnsureHud();
         ShowFarm(false);
-        Callable.From(OpenProcessor).CallDeferred();
+        Callable.From(
+            () => OpenProcessor(ProcessorCatalog.MainMachineId)
+        ).CallDeferred();
+    }
+
+    private void StartMultiProcessorBatchPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.StarbudId, 2);
+        _session.Inventory.Add(DataCatalog.MoonrootId, 2);
+        _session.Inventory.Add(DataCatalog.CloudleafId, 3);
+        _session.StartProcessing(
+            ProcessorCatalog.MoonwellInfuserId,
+            DataCatalog.MoonrootTonicRecipeId
+        );
+        _session.StartProcessing(
+            ProcessorCatalog.PrismPreserveVatId,
+            DataCatalog.StarbudPreserveRecipeId
+        );
+        _session.StartProcessing(
+            ProcessorCatalog.StarweaveDryingLoomId,
+            DataCatalog.CloudleafTeaRecipeId
+        );
+        _session.EndDay();
+        _session.EndDay();
+        var focus = ProcessorCatalog.Machine(
+            ProcessorCatalog.PrismPreserveVatId
+        ).Position;
+        _session.SetPlayerState(
+            focus.X * 16 + 8,
+            (focus.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(
+            () => OpenProcessor(ProcessorCatalog.PrismPreserveVatId)
+        ).CallDeferred();
     }
 
     private void StartCottagePlaytest()
@@ -3235,7 +3277,7 @@ public sealed partial class Main : Node
         }
     }
 
-    private void OpenProcessor()
+    private void OpenProcessor(string machineId)
     {
         if (_processorOverlay is not null)
         {
@@ -3243,7 +3285,12 @@ public sealed partial class Main : Node
         }
 
         SetWorldControls(false);
-        _processorOverlay = new ProcessorOverlay(_theme, _session, _locale);
+        _processorOverlay = new ProcessorOverlay(
+            _theme,
+            _session,
+            _locale,
+            machineId
+        );
         _processorOverlay.CloseRequested += CloseProcessor;
         _processorOverlay.ProcessingSucceeded += () =>
         {

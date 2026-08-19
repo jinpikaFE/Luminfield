@@ -40,6 +40,13 @@ public sealed record ProcessorRecipe(
     string NameKey
 );
 
+public sealed record ProcessorMachineDefinition(
+    string Id,
+    GridPosition Position,
+    string NameKey,
+    IReadOnlyList<string> RecipeIds
+);
+
 public sealed record CraftingIngredient(string ItemId, int Count);
 
 public sealed record CraftingRecipe(
@@ -271,6 +278,7 @@ public static class DataCatalog
     public const string StarsoilFertilizerId = "starsoil_fertilizer";
     public const string StarbudPreserveId = "starbud_preserve";
     public const string MoonrootTonicId = "moonroot_tonic";
+    public const string CloudleafTeaId = "cloudleaf_tea";
     public const string LumenwoodId = "lumenwood";
     public const string CrystalShardId = "crystal_shard";
     public const string StarwovenChestId = "starwoven_chest";
@@ -280,6 +288,7 @@ public static class DataCatalog
     public const string DewfallSprinklerId = "dewfall_sprinkler";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
+    public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
     public const string StarwovenChestRecipeId = "recipe_starwoven_chest";
     public const string MoonstonePathRecipeId = "recipe_moonstone_path";
     public const string StarwoodFenceRecipeId = "recipe_starwood_fence";
@@ -746,6 +755,13 @@ public static class DataCatalog
                 "item.moonroot_tonic",
                 SellPrice: 90
             ),
+            [CloudleafTeaId] = new(
+                CloudleafTeaId,
+                ItemKind.Artisan,
+                99,
+                "item.cloudleaf_tea",
+                SellPrice: 62
+            ),
             [LumenwoodId] = new(
                 LumenwoodId,
                 ItemKind.Resource,
@@ -834,6 +850,7 @@ public static class DataCatalog
         CometTuberStarlightId,
         StarbudPreserveId,
         MoonrootTonicId,
+        CloudleafTeaId,
         LumenwoodId,
         CrystalShardId
     ];
@@ -975,6 +992,7 @@ public static class DataCatalog
         StarsoilFertilizerId,
         StarbudPreserveId,
         MoonrootTonicId,
+        CloudleafTeaId,
         LumenwoodId,
         CrystalShardId,
         StarwovenChestId,
@@ -1179,6 +1197,15 @@ public static class DataCatalog
                 1,
                 1,
                 "recipe.moonroot_tonic"
+            ),
+            [CloudleafTeaRecipeId] = new(
+                CloudleafTeaRecipeId,
+                CloudleafId,
+                3,
+                CloudleafTeaId,
+                1,
+                2,
+                "recipe.cloudleaf_tea"
             )
         };
 
@@ -1492,4 +1519,54 @@ public static class DataCatalog
         WeatherDefinitions.TryGetValue(id, out var definition)
             ? definition
             : throw new KeyNotFoundException($"Unknown weather id '{id}'.");
+}
+
+public static class ProcessorCatalog
+{
+    public const string MoonwellInfuserId = "machine_moonwell_infuser";
+    public const string PrismPreserveVatId = "machine_prism_preserve_vat";
+    public const string StarweaveDryingLoomId = "machine_starweave_drying_loom";
+    public const string MainMachineId = MoonwellInfuserId;
+
+    public static readonly IReadOnlyDictionary<string, ProcessorMachineDefinition>
+        Machines = new Dictionary<string, ProcessorMachineDefinition>(
+            StringComparer.Ordinal
+        )
+        {
+            [MoonwellInfuserId] = new(
+                MoonwellInfuserId,
+                new GridPosition(36, 14),
+                "processor.machine.moonwell",
+                [
+                    DataCatalog.MoonrootTonicRecipeId,
+                    DataCatalog.StarbudPreserveRecipeId
+                ]
+            ),
+            [PrismPreserveVatId] = new(
+                PrismPreserveVatId,
+                new GridPosition(32, 14),
+                "processor.machine.prism_vat",
+                [DataCatalog.StarbudPreserveRecipeId]
+            ),
+            [StarweaveDryingLoomId] = new(
+                StarweaveDryingLoomId,
+                new GridPosition(40, 14),
+                "processor.machine.drying_loom",
+                [DataCatalog.CloudleafTeaRecipeId]
+            )
+        };
+
+    public static ProcessorMachineDefinition Machine(string id) =>
+        Machines.TryGetValue(id, out var definition)
+            ? definition
+            : throw new KeyNotFoundException(
+                $"Unknown processor machine id '{id}'."
+            );
+
+    public static bool SupportsRecipe(string machineId, string recipeId) =>
+        Machines.TryGetValue(machineId, out var machine) &&
+        machine.RecipeIds.Contains(recipeId, StringComparer.Ordinal);
+
+    public static string? MachineIdAt(GridPosition position) =>
+        Machines.Values.FirstOrDefault(machine => machine.Position == position)?.Id;
 }

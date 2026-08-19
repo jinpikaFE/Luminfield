@@ -31,6 +31,10 @@ public sealed class PlaytestScenarioRegistryTests
         ),
         ("--playtest-economy", PlaytestScenarioId.Economy),
         ("--playtest-processor", PlaytestScenarioId.Processor),
+        (
+            "--playtest-multi-processor",
+            PlaytestScenarioId.MultiProcessorBatch
+        ),
         ("--playtest-archive-gift", PlaytestScenarioId.ArchiveGift),
         ("--playtest-archive", PlaytestScenarioId.Archive),
         ("--playtest-archive-door", PlaytestScenarioId.ArchiveDoor),

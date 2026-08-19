@@ -97,11 +97,20 @@ public sealed partial class FarmView : Node2D
         marketStall.ZIndex = 7;
         AddChild(marketStall);
 
-        var infuser = GeneratedArt.CreateMoonwellInfuserSprite();
-        infuser.Name = "MoonwellInfuser";
-        infuser.Position = CellCenter(ProcessorCell) + new Vector2(0, 8);
-        infuser.ZIndex = 7;
-        AddChild(infuser);
+        foreach (var definition in ProcessorCatalog.Machines.Values)
+        {
+            var machine = GeneratedArt.CreateProcessorMachineSprite(definition.Id);
+            machine.Name = definition.Id;
+            machine.Position = CellCenter(definition.Position) + new Vector2(0, 8);
+            machine.ZIndex = 7;
+            machine.SetMeta("entity_id", definition.Id);
+            machine.AddChild(new ActorShadow
+            {
+                Position = new Vector2(0, 1),
+                ZIndex = -1
+            });
+            AddChild(machine);
+        }
 
         _shippingBin = GeneratedArt.CreateShippingBinSprite(
             session.Shipping.PendingItemCount > 0
@@ -175,11 +184,18 @@ public sealed partial class FarmView : Node2D
             Position = CellCenter(ShopCell) + new Vector2(0, 8),
             ZIndex = 26
         });
-        AddChild(new StationBeacon(() => _player.CurrentCell, ProcessorCell, ThemeFactory.Mint)
+        foreach (var definition in ProcessorCatalog.Machines.Values)
         {
-            Position = CellCenter(ProcessorCell) + new Vector2(0, 8),
-            ZIndex = 26
-        });
+            AddChild(new StationBeacon(
+                () => _player.CurrentCell,
+                definition.Position,
+                ThemeFactory.Mint
+            )
+            {
+                Position = CellCenter(definition.Position) + new Vector2(0, 8),
+                ZIndex = 26
+            });
+        }
         AddChild(new StationBeacon(() => _player.CurrentCell, ShippingCell, ThemeFactory.Gold)
         {
             Position = CellCenter(ShippingCell) + new Vector2(0, 8),
@@ -265,7 +281,7 @@ public sealed partial class FarmView : Node2D
     public event Action? EnterStarlightPostRequested;
     public event Action? EnterStarfallWatchRequested;
     public event Action? ShopRequested;
-    public event Action? ProcessorRequested;
+    public event Action<string>? ProcessorRequested;
     public event Action? ShippingRequested;
     public event Action? CommissionRequested;
     public event Action? MailRequested;
@@ -431,13 +447,10 @@ public sealed partial class FarmView : Node2D
             );
         }
 
-        if (target == ProcessorCell || IsAdjacent(player, ProcessorCell))
+        var processorTarget = ResolveProcessorTarget(target, player);
+        if (processorTarget is not null)
         {
-            return PreviewHandInteraction(
-                ProcessorCell,
-                TargetPreviewKind.Station,
-                "target.action.infuse"
-            );
+            return _session.PreviewProcessorMachine(processorTarget.Id);
         }
 
         if (target == ShippingCell || IsAdjacent(player, ShippingCell))
@@ -584,9 +597,9 @@ public sealed partial class FarmView : Node2D
         {
             RequestHandInteraction(ShopRequested);
         }
-        else if (target == ProcessorCell || IsAdjacent(_player.CurrentCell, ProcessorCell))
+        else if (ResolveProcessorTarget(target, _player.CurrentCell) is { } processor)
         {
-            RequestHandInteraction(ProcessorRequested);
+            RequestProcessor(processor.Id);
         }
         else if (target == ShippingCell || IsAdjacent(_player.CurrentCell, ShippingCell))
         {
@@ -755,6 +768,18 @@ public sealed partial class FarmView : Node2D
         }
 
         action?.Invoke();
+    }
+
+    private void RequestProcessor(string machineId)
+    {
+        var preview = _session.PreviewProcessorMachine(machineId);
+        if (!preview.IsAvailable)
+        {
+            NoticeRequested?.Invoke(preview.LabelKey);
+            return;
+        }
+
+        ProcessorRequested?.Invoke(machineId);
     }
 
     private void RefreshShippingBin()
@@ -929,6 +954,28 @@ public sealed partial class FarmView : Node2D
             .ThenBy(cell => cell.Y)
             .ThenBy(cell => cell.X)
             .Cast<GridPosition?>()
+            .FirstOrDefault();
+    }
+
+    private static ProcessorMachineDefinition? ResolveProcessorTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        var exactId = FarmLayout.ProcessorMachineIdAt(target);
+        if (exactId is not null)
+        {
+            return ProcessorCatalog.Machine(exactId);
+        }
+
+        return ProcessorCatalog.Machines.Values
+            .Where(machine => IsAdjacent(player, machine.Position))
+            .OrderBy(machine =>
+                Math.Abs(machine.Position.X - target.X) +
+                Math.Abs(machine.Position.Y - target.Y)
+            )
+            .ThenBy(machine => machine.Position.Y)
+            .ThenBy(machine => machine.Position.X)
             .FirstOrDefault();
     }
 

@@ -194,13 +194,61 @@ public sealed class SaveService
         save.Quest ??= new QuestSave();
         save.Coins = Math.Max(0, save.Coins);
         save.Processor ??= new ProcessorSave();
-        if (!string.IsNullOrWhiteSpace(save.Processor.RecipeId) &&
-            DataCatalog.ProcessorRecipes.TryGetValue(save.Processor.RecipeId, out var recipe))
+        save.Processor.Machines ??= [];
+        save.Processor.Machines = save.Processor.Machines
+            .Where(entry =>
+                entry is not null &&
+                ProcessorCatalog.Machines.ContainsKey(entry.MachineId)
+            )
+            .GroupBy(entry => entry.MachineId, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+        foreach (var machine in save.Processor.Machines)
+        {
+            if (string.IsNullOrWhiteSpace(machine.RecipeId) ||
+                !DataCatalog.ProcessorRecipes.TryGetValue(
+                    machine.RecipeId,
+                    out var machineRecipe
+                ) ||
+                !ProcessorCatalog.SupportsRecipe(
+                    machine.MachineId,
+                    machine.RecipeId
+                ))
+            {
+                machine.RecipeId = string.Empty;
+                machine.RemainingNights = 0;
+                continue;
+            }
+
+            machine.RemainingNights = Math.Clamp(
+                machine.RemainingNights,
+                0,
+                machineRecipe.Nights
+            );
+        }
+
+        if (save.Processor.Machines.Count > 0)
+        {
+            var mainMachine = save.Processor.Machines.FirstOrDefault(entry =>
+                entry.MachineId == ProcessorCatalog.MainMachineId
+            );
+            save.Processor.RecipeId = mainMachine?.RecipeId ?? string.Empty;
+            save.Processor.RemainingNights = mainMachine?.RemainingNights ?? 0;
+        }
+        else if (!string.IsNullOrWhiteSpace(save.Processor.RecipeId) &&
+            DataCatalog.ProcessorRecipes.TryGetValue(
+                save.Processor.RecipeId,
+                out var legacyRecipe
+            ) &&
+            ProcessorCatalog.SupportsRecipe(
+                ProcessorCatalog.MainMachineId,
+                save.Processor.RecipeId
+            ))
         {
             save.Processor.RemainingNights = Math.Clamp(
                 save.Processor.RemainingNights,
                 0,
-                recipe.Nights
+                legacyRecipe.Nights
             );
         }
         else

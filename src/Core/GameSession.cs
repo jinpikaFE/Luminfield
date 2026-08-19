@@ -1605,8 +1605,83 @@ public sealed class GameSession
     public ActionResult StartProcessing(string recipeId) =>
         Processor.Start(recipeId, Inventory);
 
+    public ActionResult StartProcessing(string machineId, string recipeId) =>
+        Processor.Start(machineId, recipeId, Inventory);
+
     public ActionResult CollectProcessedItem() =>
         Processor.Collect(Inventory);
+
+    public ActionResult CollectProcessedItem(string machineId) =>
+        Processor.Collect(machineId, Inventory);
+
+    public ActionResult CollectAllProcessedItems() =>
+        Processor.CollectAllReady(Inventory);
+
+    public TargetPreview PreviewProcessorMachine(string machineId)
+    {
+        if (!ProcessorCatalog.Machines.TryGetValue(machineId, out var definition))
+        {
+            return TargetPreview.Neutral(PlayerCell);
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                definition.Position,
+                TargetPreviewKind.Station,
+                "target.need.hand"
+            );
+        }
+
+        var machine = Processor.Machine(machineId);
+        if (machine.IsReady)
+        {
+            var recipe = DataCatalog.ProcessorRecipe(machine.ActiveRecipeId);
+            if (!Inventory.CanAdd(recipe.OutputItemId, recipe.OutputCount))
+            {
+                return TargetPreview.Blocked(
+                    definition.Position,
+                    TargetPreviewKind.Station,
+                    "notice.inventory_full"
+                );
+            }
+
+            return TargetPreview.Available(
+                definition.Position,
+                TargetPreviewKind.Station,
+                "target.action.open_processor_ready"
+            );
+        }
+
+        if (!machine.IsIdle)
+        {
+            return TargetPreview.Blocked(
+                definition.Position,
+                TargetPreviewKind.Station,
+                "processor.busy"
+            );
+        }
+
+        var hasIngredients = definition.RecipeIds.Any(recipeId =>
+        {
+            var recipe = DataCatalog.ProcessorRecipe(recipeId);
+            return Inventory.CountFamily(recipe.InputItemId) >= recipe.InputCount;
+        });
+        if (!hasIngredients)
+        {
+            return TargetPreview.Blocked(
+                definition.Position,
+                TargetPreviewKind.Station,
+                "processor.missing_ingredients"
+            );
+        }
+
+        return TargetPreview.Available(
+            definition.Position,
+            TargetPreviewKind.Station,
+            "target.action.open_processor"
+        );
+    }
 
     public ActionResult CraftItem(string recipeId) =>
         Crafting.Craft(recipeId, Inventory);

@@ -11,6 +11,7 @@ public enum PlaytestScenarioId
     GleamriseCrops,
     Economy,
     Processor,
+    MultiProcessorBatch,
     ArchiveGift,
     Archive,
     ArchiveDoor,
@@ -119,6 +120,10 @@ public sealed class PlaytestScenarioRegistry
         ),
         new(PlaytestScenarioId.Economy, "--playtest-economy"),
         new(PlaytestScenarioId.Processor, "--playtest-processor"),
+        new(
+            PlaytestScenarioId.MultiProcessorBatch,
+            "--playtest-multi-processor"
+        ),
         new(PlaytestScenarioId.ArchiveGift, "--playtest-archive-gift"),
         new(PlaytestScenarioId.Archive, "--playtest-archive"),
         new(PlaytestScenarioId.ArchiveDoor, "--playtest-archive-door"),

@@ -113,6 +113,14 @@ public sealed class ProcessorSave
 {
     public string RecipeId { get; set; } = string.Empty;
     public int RemainingNights { get; set; }
+    public List<ProcessorMachineSave> Machines { get; set; } = [];
+}
+
+public sealed class ProcessorMachineSave
+{
+    public string MachineId { get; set; } = string.Empty;
+    public string RecipeId { get; set; } = string.Empty;
+    public int RemainingNights { get; set; }
 }
 
 public sealed class ExplorationSave

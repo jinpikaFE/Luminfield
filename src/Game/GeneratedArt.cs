@@ -14,6 +14,9 @@ internal static class GeneratedArt
     private static readonly Texture2D EconomyAssets =
         GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
 
+    private static readonly Texture2D ProcessorMachines =
+        GD.Load<Texture2D>("res://assets/generated/processor_machines.png");
+
     private static readonly Texture2D PhaseAAssets =
         GD.Load<Texture2D>("res://assets/generated/phase_a_systems.png");
 
@@ -322,6 +325,26 @@ internal static class GeneratedArt
 
     public static Sprite2D CreateMoonwellInfuserSprite() =>
         CreateEconomySprite(MoonwellInfuserRegion, 70);
+
+    public static Sprite2D CreateProcessorMachineSprite(string machineId)
+    {
+        var source = machineId switch
+        {
+            ProcessorCatalog.MoonwellInfuserId =>
+                new Rect2(20, 90, 344, 390),
+            ProcessorCatalog.PrismPreserveVatId =>
+                new Rect2(404, 50, 344, 430),
+            ProcessorCatalog.StarweaveDryingLoomId =>
+                new Rect2(788, 50, 344, 430),
+            _ => throw new KeyNotFoundException(
+                $"Unknown processor machine id '{machineId}'."
+            )
+        };
+        var targetHeight = machineId == ProcessorCatalog.MoonwellInfuserId
+            ? 62f
+            : 56f;
+        return CreateProcessorMachineSprite(source, targetHeight);
+    }
 
     public static Sprite2D CreateShippingBinSprite(bool open)
     {
@@ -803,10 +826,34 @@ internal static class GeneratedArt
     public static (Texture2D Texture, Rect2 Region) EconomyItemIcon(string itemId) =>
         itemId switch
         {
-            DataCatalog.StarbudPreserveId => (EconomyAssets, StarbudPreserveRegion),
-            DataCatalog.MoonrootTonicId => (EconomyAssets, MoonrootTonicRegion),
+            DataCatalog.StarbudPreserveId =>
+                (ProcessorMachines, new Rect2(45, 600, 294, 330)),
+            DataCatalog.MoonrootTonicId =>
+                (ProcessorMachines, new Rect2(450, 590, 252, 340)),
+            DataCatalog.CloudleafTeaId =>
+                (ProcessorMachines, new Rect2(825, 670, 270, 270)),
             _ => (null!, default)
         };
+
+    public static bool TryProcessorMachineItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        region = itemId switch
+        {
+            DataCatalog.StarbudPreserveId =>
+                new Rect2(45, 600, 294, 330),
+            DataCatalog.MoonrootTonicId =>
+                new Rect2(450, 590, 252, 340),
+            DataCatalog.CloudleafTeaId =>
+                new Rect2(825, 670, 270, 270),
+            _ => default
+        };
+        texture = ProcessorMachines;
+        return region.Size != Vector2.Zero;
+    }
 
     public static void SetPlayerFrame(
         Sprite2D sprite,
@@ -883,6 +930,23 @@ internal static class GeneratedArt
             Scale = new Vector2(scale, scale),
             TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
             Material = CreateChromaKeyMaterial()
+        };
+    }
+
+    private static Sprite2D CreateProcessorMachineSprite(
+        Rect2 source,
+        float targetHeight
+    )
+    {
+        var scale = targetHeight / source.Size.Y;
+        return new Sprite2D
+        {
+            Texture = ProcessorMachines,
+            RegionEnabled = true,
+            RegionRect = source,
+            Offset = new Vector2(0, -source.Size.Y / 2f),
+            Scale = new Vector2(scale, scale),
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
         };
     }
 
