@@ -279,14 +279,14 @@ public sealed class GameSession
             return UseHand(AnimalCatalog.CoopCell);
         }
 
-        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        if (WorldDefinition.IsStarlightPedestalCell(target))
         {
             if (selected.ItemId != DataCatalog.HandId)
             {
                 return ActionResult.Fail("notice.needs_hand");
             }
 
-            return UseHand(WorldDefinition.WoodlandStarlightCell);
+            return UseHand(target);
         }
 
         var farmObjectId = FarmObjects.ItemAt(target);
@@ -549,19 +549,20 @@ public sealed class GameSession
 
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
-        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        var starlightPedestalId = WorldDefinition.StarlightPedestalIdAt(target);
+        if (starlightPedestalId is not null)
         {
             if (selectedId == DataCatalog.HandId)
             {
                 return TargetPreview.Available(
-                    WorldDefinition.WoodlandStarlightCell,
+                    target,
                     TargetPreviewKind.StarlightPedestal,
                     "target.action.open_starlight"
                 );
             }
 
             return TargetPreview.NeedsTool(
-                WorldDefinition.WoodlandStarlightCell,
+                target,
                 TargetPreviewKind.StarlightPedestal,
                 "target.need.hand"
             );
@@ -1506,10 +1507,15 @@ public sealed class GameSession
             return UseChickenCoop();
         }
 
-        if (WorldDefinition.IsWoodlandStarlightCell(target))
+        var starlightPedestalId = WorldDefinition.StarlightPedestalIdAt(target);
+        if (starlightPedestalId is not null)
         {
-            Starlight.Discover();
-            return ActionResult.Success(messageKey: "starlight.opened");
+            Starlight.Discover(starlightPedestalId);
+            return ActionResult.Success(
+                messageKey: StarlightSystem.OpenedMessageKey(
+                    starlightPedestalId
+                )
+            );
         }
 
         if (target == FarmLayout.CommissionBoardCell)
@@ -2532,6 +2538,24 @@ public sealed class GameSession
         return result;
     }
 
+    public IReadOnlyList<FishingCollectionRewardSnapshot>
+        FishingCollectionRewards() => Fishing.RewardSnapshots();
+
+    public FishingCollectionRewardClaimResult ClaimFishingCollectionReward(
+        string rewardId
+    )
+    {
+        var result = Fishing.ClaimReward(rewardId, Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Coins += result.RewardCoins;
+        Changed?.Invoke();
+        return result;
+    }
+
     public void RecordGleamriseSeasonMilestone(
         string milestoneId,
         int count = 1
@@ -2547,7 +2571,8 @@ public sealed class GameSession
             return result;
         }
 
-        if (result.Activated)
+        if (result.Activated &&
+            result.PedestalId == DataCatalog.WoodlandStarlightId)
         {
             LastRespawnedResources += Resources.ResolveDay(
                 Clock.Day,

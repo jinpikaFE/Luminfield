@@ -10,8 +10,13 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
     private readonly Label _title;
     private readonly Label _summary;
     private readonly Label _hint;
+    private readonly Label _rewardTitle;
+    private readonly Label _rewardDetail;
+    private readonly Button _rewardAction;
+    private readonly Label _notice;
     private readonly Button _close;
     private readonly List<FishingCollectionRow> _rows = [];
+    private string _visibleRewardId = string.Empty;
 
     public FishingCollectionOverlay(
         Theme theme,
@@ -27,7 +32,7 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(548, 332) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(548, 342) };
         panel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.Box(new Color("#0c1735fa"), ThemeFactory.Mint, 2, 9)
@@ -58,9 +63,45 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
         _hint.HorizontalAlignment = HorizontalAlignment.Center;
         column.AddChild(_hint);
 
+        var rewardPanel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(514, 52)
+        };
+        rewardPanel.AddThemeStyleboxOverride(
+            "panel",
+            ThemeFactory.CompactBox(
+                new Color("#142943f2"),
+                ThemeFactory.Gold,
+                1,
+                6,
+                5
+            )
+        );
+        var rewardRow = new HBoxContainer();
+        rewardRow.AddThemeConstantOverride("separation", 8);
+        rewardPanel.AddChild(rewardRow);
+
+        var rewardText = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        rewardText.AddThemeConstantOverride("separation", 1);
+        _rewardTitle = ThemeFactory.Label(size: 11, color: ThemeFactory.Gold);
+        _rewardDetail = ThemeFactory.Label(size: 8, color: ThemeFactory.MutedInk);
+        _rewardDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        rewardText.AddChild(_rewardTitle);
+        rewardText.AddChild(_rewardDetail);
+        rewardRow.AddChild(rewardText);
+
+        _rewardAction = ThemeFactory.Button("");
+        _rewardAction.CustomMinimumSize = new Vector2(104, 24);
+        _rewardAction.Pressed += ClaimVisibleReward;
+        rewardRow.AddChild(_rewardAction);
+        column.AddChild(rewardPanel);
+
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(514, 164),
+            CustomMinimumSize = new Vector2(514, 118),
             SizeFlagsVertical = SizeFlags.Fill
         };
         var list = new VBoxContainer
@@ -78,6 +119,11 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
             list.AddChild(row);
             _rows.Add(row);
         }
+
+        _notice = ThemeFactory.Label(size: 8, color: ThemeFactory.Mint);
+        _notice.HorizontalAlignment = HorizontalAlignment.Center;
+        _notice.CustomMinimumSize = new Vector2(500, 12);
+        column.AddChild(_notice);
 
         _close = ThemeFactory.Button("");
         _close.CustomMinimumSize = new Vector2(180, 28);
@@ -103,11 +149,101 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
         );
         _hint.Text = _locale.Tr("fishing.collection.hint");
         _close.Text = _locale.Tr("menu.back");
+        RefreshReward();
 
         foreach (var row in _rows)
         {
             row.RefreshText();
         }
+    }
+
+    private void RefreshReward()
+    {
+        var reward = VisibleReward();
+        _visibleRewardId = reward.Definition.Id;
+        _rewardTitle.Text = _locale.Tr(reward.Definition.TitleKey);
+        _rewardDetail.Text = _locale.Tr(
+            "fishing.reward.detail",
+            _locale.Tr(reward.Definition.DescriptionKey),
+            reward.Progress,
+            reward.Definition.RequiredCaughtCount,
+            RewardText(reward.Definition)
+        );
+        _rewardAction.Text = RewardButtonText(reward.Status);
+        _rewardAction.Disabled =
+            reward.Status != FishingCollectionRewardStatus.Ready;
+    }
+
+    private FishingCollectionRewardSnapshot VisibleReward()
+    {
+        var snapshots = _session.FishingCollectionRewards();
+        var ready = snapshots.FirstOrDefault(snapshot =>
+            snapshot.Status == FishingCollectionRewardStatus.Ready
+        );
+        if (ready is not null)
+        {
+            return ready;
+        }
+
+        var locked = snapshots.FirstOrDefault(snapshot =>
+            snapshot.Status == FishingCollectionRewardStatus.Locked
+        );
+        if (locked is not null)
+        {
+            return locked;
+        }
+
+        return snapshots.Last();
+    }
+
+    private string RewardButtonText(FishingCollectionRewardStatus status)
+    {
+        return status switch
+        {
+            FishingCollectionRewardStatus.Claimed =>
+                _locale.Tr("fishing.reward.status.claimed"),
+            FishingCollectionRewardStatus.Ready =>
+                _locale.Tr("fishing.reward.action.claim"),
+            _ => _locale.Tr("fishing.reward.status.locked")
+        };
+    }
+
+    private string RewardText(FishingCollectionRewardDefinition definition)
+    {
+        var parts = new List<string>();
+        if (definition.RewardCoins > 0)
+        {
+            parts.Add(_locale.Tr(
+                "fishing.reward.coins",
+                definition.RewardCoins
+            ));
+        }
+
+        if (!string.IsNullOrWhiteSpace(definition.RewardItemId) &&
+            definition.RewardItemCount > 0)
+        {
+            parts.Add(_locale.Tr(
+                "fishing.reward.item",
+                _locale.Tr(
+                    DataCatalog.Item(definition.RewardItemId).NameKey
+                ),
+                definition.RewardItemCount
+            ));
+        }
+
+        return string.Join(" + ", parts);
+    }
+
+    private void ClaimVisibleReward()
+    {
+        if (string.IsNullOrWhiteSpace(_visibleRewardId))
+        {
+            return;
+        }
+
+        var result = _session.ClaimFishingCollectionReward(_visibleRewardId);
+        RefreshText();
+        _notice.Text = _locale.Tr(result.MessageKey);
     }
 
     public override void _ExitTree()

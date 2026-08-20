@@ -4,7 +4,8 @@ public sealed record StarlightContributionResult(
     bool Succeeded,
     string MessageKey,
     int ContributedCount = 0,
-    bool Activated = false
+    bool Activated = false,
+    string PedestalId = ""
 );
 
 public sealed class StarlightSystem
@@ -12,12 +13,15 @@ public sealed class StarlightSystem
     private StarlightSave _state = CreateEmpty();
 
     public StarlightPedestalDefinition Current =>
-        DataCatalog.StarlightPedestal(_state.PedestalId);
-    public bool Discovered => _state.Discovered;
-    public bool RewardUnlocked => _state.RewardUnlocked;
+        Pedestal(DataCatalog.WoodlandStarlightId);
+    public bool Discovered => IsDiscovered(DataCatalog.WoodlandStarlightId);
+    public bool RewardUnlocked =>
+        IsRewardUnlocked(DataCatalog.WoodlandStarlightId);
     public bool WoodlandRenewalUnlocked => RewardUnlocked;
+    public bool MoonwaterTideUnlocked =>
+        IsRewardUnlocked(DataCatalog.MoonwaterStarlightId);
     public int CompletedNodeCount =>
-        Current.Nodes.Count(node => IsNodeComplete(node.Id));
+        CompletedNodeCountFor(DataCatalog.WoodlandStarlightId);
 
     public event Action? Changed;
 
@@ -35,13 +39,35 @@ public sealed class StarlightSystem
 
     public void Discover()
     {
-        if (_state.Discovered)
+        Discover(DataCatalog.WoodlandStarlightId);
+    }
+
+    public void Discover(string pedestalId)
+    {
+        var state = StateForPedestal(pedestalId);
+        if (state.Discovered)
         {
             return;
         }
 
-        _state.Discovered = true;
+        state.Discovered = true;
+        MirrorWoodlandLegacy();
         Changed?.Invoke();
+    }
+
+    public StarlightPedestalDefinition Pedestal(string pedestalId) =>
+        DataCatalog.StarlightPedestal(pedestalId);
+
+    public bool IsDiscovered(string pedestalId) =>
+        StateForPedestal(pedestalId).Discovered;
+
+    public bool IsRewardUnlocked(string pedestalId) =>
+        StateForPedestal(pedestalId).RewardUnlocked;
+
+    public int CompletedNodeCountFor(string pedestalId)
+    {
+        var pedestal = DataCatalog.StarlightPedestal(pedestalId);
+        return pedestal.Nodes.Count(node => IsNodeComplete(node.Id));
     }
 
     public int ContributionCount(string nodeId, string itemId)
@@ -106,6 +132,8 @@ public sealed class StarlightSystem
         }
 
         var state = StateFor(nodeId);
+        var pedestalId = PedestalIdForNode(nodeId);
+        var pedestalState = StateForPedestal(pedestalId);
         foreach (var entry in available)
         {
             var existing = state.Contributions.FirstOrDefault(value =>
@@ -125,19 +153,21 @@ public sealed class StarlightSystem
             }
         }
 
-        _state.Discovered = true;
-        var activated = !_state.RewardUnlocked &&
-            Current.Nodes.All(node => IsNodeComplete(node.Id));
+        pedestalState.Discovered = true;
+        var pedestal = DataCatalog.StarlightPedestal(pedestalId);
+        var activated = !pedestalState.RewardUnlocked &&
+            pedestal.Nodes.All(node => IsNodeComplete(node.Id));
         if (activated)
         {
-            _state.RewardUnlocked = true;
+            pedestalState.RewardUnlocked = true;
         }
 
+        MirrorWoodlandLegacy();
         Changed?.Invoke();
         var messageKey = "starlight.contributed";
         if (activated)
         {
-            messageKey = "starlight.activated";
+            messageKey = ActivationMessageKey(pedestalId);
         }
         else if (IsNodeComplete(nodeId))
         {
@@ -148,43 +178,52 @@ public sealed class StarlightSystem
             true,
             messageKey,
             available.Sum(entry => entry.Count),
-            activated
+            activated,
+            pedestalId
         );
     }
 
-    public StarlightSave Capture() => new()
-    {
-        PedestalId = _state.PedestalId,
-        Discovered = _state.Discovered,
-        RewardUnlocked = _state.RewardUnlocked,
-        Nodes = _state.Nodes.Select(node => new StarlightNodeSave
-        {
-            NodeId = node.NodeId,
-            Contributions = node.Contributions
-                .OrderBy(entry => entry.ItemId, StringComparer.Ordinal)
-                .Select(entry => new StarlightContributionSave
-                {
-                    ItemId = entry.ItemId,
-                    Count = entry.Count
-                })
-                .ToList()
-        }).ToList()
-    };
+    public StarlightSave Capture() =>
+        BuildSave(_state.Pedestals.Select(ClonePedestal));
 
     public static StarlightSave NormalizeSave(StarlightSave? save)
     {
-        var definition = DataCatalog.WoodlandStarlight;
-        var normalized = new StarlightSave
+        var sourcePedestals = SourcePedestals(save);
+        var pedestals = DataCatalog.StarlightPedestals.Values
+            .Select(definition =>
+            {
+                sourcePedestals.TryGetValue(definition.Id, out var source);
+                return NormalizePedestal(definition, source);
+            });
+
+        return BuildSave(pedestals);
+    }
+
+    public static string OpenedMessageKey(string pedestalId)
+    {
+        if (pedestalId == DataCatalog.MoonwaterStarlightId)
+        {
+            return "starlight.opened.moonwater";
+        }
+
+        return "starlight.opened";
+    }
+
+    private static StarlightPedestalSave NormalizePedestal(
+        StarlightPedestalDefinition definition,
+        StarlightPedestalSave? source
+    )
+    {
+        var normalized = new StarlightPedestalSave
         {
             PedestalId = definition.Id,
-            Discovered = save?.Discovered == true
+            Discovered = source?.Discovered == true
         };
-
         foreach (var node in definition.Nodes)
         {
-            var source = save?.Nodes?
+            var sourceNode = source?.Nodes?
                 .FirstOrDefault(value => value.NodeId == node.Id);
-            var sourceCounts = (source?.Contributions ?? [])
+            var sourceCounts = (sourceNode?.Contributions ?? [])
                 .Where(entry => entry.Count > 0)
                 .GroupBy(entry => entry.ItemId, StringComparer.Ordinal)
                 .ToDictionary(
@@ -235,6 +274,115 @@ public sealed class StarlightSystem
         return normalized;
     }
 
+    private static IReadOnlyDictionary<string, StarlightPedestalSave>
+        SourcePedestals(StarlightSave? save)
+    {
+        var sources = new Dictionary<string, StarlightPedestalSave>(
+            StringComparer.Ordinal
+        );
+        if (save?.Pedestals is { Count: > 0 })
+        {
+            foreach (var pedestal in save.Pedestals)
+            {
+                if (!DataCatalog.StarlightPedestals.ContainsKey(
+                        pedestal.PedestalId
+                    ))
+                {
+                    continue;
+                }
+
+                sources[pedestal.PedestalId] = pedestal;
+            }
+        }
+
+        var legacy = LegacyWoodlandSource(save);
+        if (!sources.ContainsKey(DataCatalog.WoodlandStarlightId) &&
+            legacy is not null)
+        {
+            sources[DataCatalog.WoodlandStarlightId] = legacy;
+        }
+
+        return sources;
+    }
+
+    private static StarlightPedestalSave? LegacyWoodlandSource(
+        StarlightSave? save
+    )
+    {
+        if (save is null)
+        {
+            return null;
+        }
+
+        return new StarlightPedestalSave
+        {
+            PedestalId = DataCatalog.WoodlandStarlightId,
+            Discovered = save.Discovered,
+            RewardUnlocked = save.RewardUnlocked,
+            Nodes = save.Nodes
+        };
+    }
+
+    private static StarlightSave BuildSave(
+        IEnumerable<StarlightPedestalSave> pedestals
+    )
+    {
+        var sources = pedestals.ToList();
+        var ordered = DataCatalog.StarlightPedestals.Keys
+            .Select(pedestalId => sources
+                .First(pedestal => pedestal.PedestalId == pedestalId))
+            .Select(ClonePedestal)
+            .ToList();
+        var woodland = ordered.First(pedestal =>
+            pedestal.PedestalId == DataCatalog.WoodlandStarlightId
+        );
+        return new StarlightSave
+        {
+            PedestalId = woodland.PedestalId,
+            Discovered = woodland.Discovered,
+            RewardUnlocked = woodland.RewardUnlocked,
+            Nodes = CloneNodes(woodland.Nodes),
+            Pedestals = ordered
+        };
+    }
+
+    private static StarlightPedestalSave ClonePedestal(
+        StarlightPedestalSave source
+    ) => new()
+    {
+        PedestalId = source.PedestalId,
+        Discovered = source.Discovered,
+        RewardUnlocked = source.RewardUnlocked,
+        Nodes = CloneNodes(source.Nodes)
+    };
+
+    private static List<StarlightNodeSave> CloneNodes(
+        IEnumerable<StarlightNodeSave> nodes
+    ) => nodes
+        .Select(node => new StarlightNodeSave
+        {
+            NodeId = node.NodeId,
+            Contributions = node.Contributions
+                .OrderBy(entry => entry.ItemId, StringComparer.Ordinal)
+                .Select(entry => new StarlightContributionSave
+                {
+                    ItemId = entry.ItemId,
+                    Count = entry.Count
+                })
+                .ToList()
+        })
+        .ToList();
+
+    private static string ActivationMessageKey(string pedestalId)
+    {
+        if (pedestalId == DataCatalog.MoonwaterStarlightId)
+        {
+            return "starlight.activated.moonwater";
+        }
+
+        return "starlight.activated";
+    }
+
     private IReadOnlyList<StarlightContributionSave> BuildAvailableContributions(
         string nodeId,
         Inventory inventory
@@ -278,8 +426,45 @@ public sealed class StarlightSystem
         return available;
     }
 
-    private StarlightNodeSave StateFor(string nodeId) =>
-        _state.Nodes.First(node => node.NodeId == nodeId);
+    private StarlightPedestalSave StateForPedestal(string pedestalId)
+    {
+        DataCatalog.StarlightPedestal(pedestalId);
+        return _state.Pedestals.First(pedestal =>
+            pedestal.PedestalId == pedestalId
+        );
+    }
+
+    private StarlightNodeSave StateFor(string nodeId)
+    {
+        var pedestalId = PedestalIdForNode(nodeId);
+        return StateForPedestal(pedestalId)
+            .Nodes
+            .First(node => node.NodeId == nodeId);
+    }
+
+    private static string PedestalIdForNode(string nodeId)
+    {
+        foreach (var pedestal in DataCatalog.StarlightPedestals.Values)
+        {
+            if (pedestal.Nodes.Any(node => node.Id == nodeId))
+            {
+                return pedestal.Id;
+            }
+        }
+
+        throw new KeyNotFoundException(
+            $"Unknown starlight node id '{nodeId}'."
+        );
+    }
+
+    private void MirrorWoodlandLegacy()
+    {
+        var woodland = StateForPedestal(DataCatalog.WoodlandStarlightId);
+        _state.PedestalId = woodland.PedestalId;
+        _state.Discovered = woodland.Discovered;
+        _state.RewardUnlocked = woodland.RewardUnlocked;
+        _state.Nodes = CloneNodes(woodland.Nodes);
+    }
 
     private static StarlightSave CreateEmpty() =>
         NormalizeSave(null);

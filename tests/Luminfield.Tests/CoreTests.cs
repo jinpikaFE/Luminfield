@@ -2767,6 +2767,90 @@ public sealed class QuestAndSessionTests
     }
 
     [Fact]
+    public void FishingCollectionRewardsClaimMilestonesAtomically()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var firstReward = FishingSystem.CollectionRewardDefinitions.First();
+
+        var locked = Assert.Single(
+            session.FishingCollectionRewards(),
+            reward => reward.Definition.Id == firstReward.Id
+        );
+        Assert.Equal(FishingCollectionRewardStatus.Locked, locked.Status);
+        var notReady = session.ClaimFishingCollectionReward(firstReward.Id);
+        Assert.False(notReady.Succeeded);
+        Assert.Equal("fishing.reward.not_ready", notReady.MessageKey);
+        Assert.Equal(GameSession.NewGameCoins, session.Coins);
+
+        var save = session.Capture();
+        save.Fishing.CaughtFishIds = DataCatalog.FishItemIds
+            .Take(firstReward.RequiredCaughtCount)
+            .ToList();
+        var ready = new GameSession();
+        ready.Restore(save);
+        var readySnapshot = Assert.Single(
+            ready.FishingCollectionRewards(),
+            reward => reward.Definition.Id == firstReward.Id
+        );
+        Assert.Equal(FishingCollectionRewardStatus.Ready, readySnapshot.Status);
+        Assert.True(ready.Inventory.Add(
+            DataCatalog.StarbudSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount)
+        ));
+
+        var full = ready.ClaimFishingCollectionReward(firstReward.Id);
+
+        Assert.False(full.Succeeded);
+        Assert.Equal("notice.inventory_full", full.MessageKey);
+        Assert.DoesNotContain(
+            firstReward.Id,
+            ready.Fishing.ClaimedRewardIds
+        );
+        Assert.Equal(GameSession.NewGameCoins, ready.Coins);
+        Assert.Equal(0, ready.Inventory.Count(firstReward.RewardItemId));
+
+        Assert.True(ready.Inventory.Remove(DataCatalog.StarbudSeedId, 99));
+        var claimed = ready.ClaimFishingCollectionReward(firstReward.Id);
+
+        Assert.True(claimed.Succeeded);
+        Assert.Equal("fishing.reward.claimed", claimed.MessageKey);
+        Assert.Equal(
+            firstReward.RewardCoins,
+            claimed.RewardCoins
+        );
+        Assert.Equal(
+            GameSession.NewGameCoins + firstReward.RewardCoins,
+            ready.Coins
+        );
+        Assert.Equal(
+            firstReward.RewardItemCount,
+            ready.Inventory.Count(firstReward.RewardItemId)
+        );
+        Assert.Contains(firstReward.Id, ready.Fishing.ClaimedRewardIds);
+
+        var duplicate = ready.ClaimFishingCollectionReward(firstReward.Id);
+        Assert.False(duplicate.Succeeded);
+        Assert.Equal("fishing.reward.already_claimed", duplicate.MessageKey);
+        Assert.Equal(
+            GameSession.NewGameCoins + firstReward.RewardCoins,
+            ready.Coins
+        );
+
+        var restored = new GameSession();
+        restored.Restore(ready.Capture());
+        Assert.Contains(firstReward.Id, restored.Fishing.ClaimedRewardIds);
+        var restoredSnapshot = Assert.Single(
+            restored.FishingCollectionRewards(),
+            reward => reward.Definition.Id == firstReward.Id
+        );
+        Assert.Equal(
+            FishingCollectionRewardStatus.Claimed,
+            restoredSnapshot.Status
+        );
+    }
+
+    [Fact]
     public void FishingCatalogDefinesTwentyFourConditionedFish()
     {
         Assert.Equal(24, DataCatalog.Fishes.Count);
@@ -3705,6 +3789,45 @@ public sealed class StarlightSystemTests
     }
 
     [Fact]
+    public void MoonwaterPedestalPreviewAndActionUseTheWetlandTargetOnly()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var pedestal = WorldDefinition.MoonwaterStarlightCell;
+        session.Inventory.Select(1);
+        var startingEnergy = session.Energy;
+
+        var wrongToolPreview = session.PreviewSelectedTarget(pedestal);
+        var wrongToolAction = session.UseSelected(pedestal);
+
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongToolPreview.State);
+        Assert.Equal(TargetPreviewKind.StarlightPedestal, wrongToolPreview.Kind);
+        Assert.Equal("target.need.hand", wrongToolPreview.LabelKey);
+        Assert.False(wrongToolAction.Succeeded);
+        Assert.Equal("notice.needs_hand", wrongToolAction.MessageKey);
+        Assert.Equal(startingEnergy, session.Energy);
+        Assert.False(session.Starlight.Discovered);
+        Assert.False(session.Starlight.IsDiscovered(
+            DataCatalog.MoonwaterStarlightId
+        ));
+
+        session.Inventory.Select(0);
+        var handPreview = session.PreviewSelectedTarget(pedestal);
+        var handAction = session.UseSelected(pedestal);
+
+        Assert.True(handPreview.IsAvailable);
+        Assert.Equal(TargetPreviewKind.StarlightPedestal, handPreview.Kind);
+        Assert.Equal("target.action.open_starlight", handPreview.LabelKey);
+        Assert.True(handAction.Succeeded);
+        Assert.Equal("starlight.opened.moonwater", handAction.MessageKey);
+        Assert.False(session.Starlight.Discovered);
+        Assert.True(session.Starlight.IsDiscovered(
+            DataCatalog.MoonwaterStarlightId
+        ));
+        Assert.Equal(startingEnergy, session.Energy);
+    }
+
+    [Fact]
     public void ThreeNodesAcceptPartialDistinctOfferingsAndActivateOnlyOnce()
     {
         var session = new GameSession();
@@ -3796,6 +3919,63 @@ public sealed class StarlightSystemTests
             secondActivation.MessageKey
         );
         Assert.Equal(3, session.Starlight.CompletedNodeCount);
+    }
+
+    [Fact]
+    public void MoonwaterNodesAcceptFishWithoutUnlockingWoodlandRenewal()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Inventory.Add(DataCatalog.MoonwaterMinnowId, 1);
+        session.Inventory.Add(DataCatalog.MarshveilKilliId, 1);
+        session.Inventory.Add(DataCatalog.SilverreedMudfishId, 1);
+
+        var local = session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterLocalFishNodeId
+        );
+
+        Assert.True(local.Succeeded);
+        Assert.Equal("starlight.node_completed", local.MessageKey);
+        Assert.Equal(DataCatalog.MoonwaterStarlightId, local.PedestalId);
+        Assert.Equal(3, session.Starlight.Progress(
+            DataCatalog.MoonwaterLocalFishNodeId
+        ));
+        Assert.Equal(0, session.Inventory.Count(
+            DataCatalog.MoonwaterMinnowId
+        ));
+
+        session.Inventory.Add(DataCatalog.RainveilLampreyId, 1);
+        session.Inventory.Add(DataCatalog.StardustRayId, 1);
+        var weather = session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterWeatherFishNodeId
+        );
+        Assert.True(weather.Succeeded);
+        Assert.Equal("starlight.node_completed", weather.MessageKey);
+
+        session.Inventory.Add(DataCatalog.StarharvestOrbfinId, 1);
+        session.Inventory.Add(DataCatalog.LongnightWispfishId, 1);
+        var activated = session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterSeasonalFishNodeId
+        );
+
+        Assert.True(activated.Succeeded);
+        Assert.True(activated.Activated);
+        Assert.Equal("starlight.activated.moonwater", activated.MessageKey);
+        Assert.True(session.Starlight.MoonwaterTideUnlocked);
+        Assert.False(session.Starlight.WoodlandRenewalUnlocked);
+        Assert.False(session.Starlight.RewardUnlocked);
+        Assert.Equal(3, session.Starlight.CompletedNodeCountFor(
+            DataCatalog.MoonwaterStarlightId
+        ));
+        Assert.Equal(0, session.Starlight.CompletedNodeCount);
+
+        var save = session.Capture();
+        Assert.False(save.Starlight.RewardUnlocked);
+        var moonwater = save.Starlight.Pedestals.Single(pedestal =>
+            pedestal.PedestalId == DataCatalog.MoonwaterStarlightId
+        );
+        Assert.True(moonwater.Discovered);
+        Assert.True(moonwater.RewardUnlocked);
     }
 
     [Fact]
@@ -8818,6 +8998,13 @@ public sealed class LocaleTests
                 fish.NameKey,
                 DataCatalog.Item(fish.ItemId).NameKey
             })
+            .Concat(FishingSystem.CollectionRewardDefinitions.SelectMany(
+                reward => new[]
+                {
+                    reward.TitleKey,
+                    reward.DescriptionKey
+                }
+            ))
             .Concat(new[]
             {
                 DataCatalog.Item(DataCatalog.FishingRodId).NameKey,
@@ -8836,6 +9023,16 @@ public sealed class LocaleTests
                 "fishing.collection.hidden_detail",
                 "fishing.collection.caught",
                 "fishing.collection.unseen",
+                "fishing.reward.detail",
+                "fishing.reward.coins",
+                "fishing.reward.item",
+                "fishing.reward.action.claim",
+                "fishing.reward.status.claimed",
+                "fishing.reward.status.locked",
+                "fishing.reward.claimed",
+                "fishing.reward.not_ready",
+                "fishing.reward.already_claimed",
+                "fishing.reward.unknown",
                 "fishing.water.homestead_pond",
                 "fishing.water.crystal_stream",
                 "fishing.water.moonwater_wetlands",
@@ -8846,6 +9043,64 @@ public sealed class LocaleTests
                 "fishing.condition.time",
                 "fishing.condition.weather",
                 "fishing.condition.weather_time"
+            })
+            .Distinct(StringComparer.Ordinal);
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
+    public void StarlightPedestalAndNodeKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var definitionKeys = DataCatalog.StarlightPedestals.Values
+            .SelectMany(pedestal => new[]
+            {
+                pedestal.NameKey,
+                pedestal.RegionKey,
+                pedestal.RewardTitleKey,
+                pedestal.RewardDescriptionKey
+            }.Concat(pedestal.Nodes.SelectMany(node => new[]
+            {
+                node.TitleKey,
+                node.DescriptionKey
+            })));
+        var keys = definitionKeys.Concat(new[]
+            {
+                "target.action.open_starlight",
+                "starlight.state.restored",
+                "starlight.state.progress",
+                "starlight.node.progress",
+                "starlight.node.action.contribute",
+                "starlight.node.action.missing",
+                "starlight.node.action.complete",
+                "starlight.reward.unlocked",
+                "starlight.opened",
+                "starlight.opened.moonwater",
+                "starlight.contributed",
+                "starlight.node_completed",
+                "starlight.activated",
+                "starlight.activated.moonwater",
+                "starlight.nothing_available",
+                "starlight.node_already_complete",
+                "starlight.unknown_node",
+                "starlight.hud"
             })
             .Distinct(StringComparer.Ordinal);
 
@@ -9266,6 +9521,8 @@ public sealed class SaveServiceTests : IDisposable
         Assert.True(session.ChooseFarmingSpecialization(
             FarmingSkillCatalog.ResonanceScholarId
         ).Succeeded);
+        session.Inventory.Select(5);
+        Assert.True(session.UseSelected(new GridPosition(38, 21)).Succeeded);
 
         service.Save(session.Capture());
         var result = service.Load();
@@ -9360,8 +9617,59 @@ public sealed class SaveServiceTests : IDisposable
                 .Single(entry => entry.ItemId == DataCatalog.StarbudId)
                 .Count
         );
+        Assert.Single(result.Save.Fishing.CaughtFishIds);
+        Assert.Equal(
+            DataCatalog.PondglowMinnowId,
+            result.Save.Fishing.CaughtFishIds[0]
+        );
         Assert.Equal(5, result.Save.Inventory.Sum(slot =>
             slot.ItemId == DataCatalog.StarbudSeedId ? slot.Count : 0));
+    }
+
+    [Fact]
+    public void FishingSaveNormalizesUnknownFishAndRewardIds()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        var save = new GameSaveV1
+        {
+            Fishing = new FishingSave
+            {
+                CaughtFishIds =
+                [
+                    DataCatalog.PondglowMinnowId,
+                    "unknown_fish",
+                    DataCatalog.PondglowMinnowId
+                ],
+                ClaimedRewardIds =
+                [
+                    FishingSystem.FirstWatersRewardId,
+                    "unknown_reward",
+                    FishingSystem.FirstWatersRewardId
+                ]
+            }
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(save));
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(
+            [DataCatalog.PondglowMinnowId],
+            result.Save.Fishing.CaughtFishIds
+        );
+        Assert.Equal(
+            [FishingSystem.FirstWatersRewardId],
+            result.Save.Fishing.ClaimedRewardIds
+        );
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.Fishing.IsCaught(DataCatalog.PondglowMinnowId));
+        Assert.Contains(
+            FishingSystem.FirstWatersRewardId,
+            restored.Fishing.ClaimedRewardIds
+        );
     }
 
     [Fact]
@@ -9683,6 +9991,20 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(
             DataCatalog.WoodlandStarlight.Nodes.Count,
             result.Save.Starlight.Nodes.Count
+        );
+        Assert.Equal(
+            DataCatalog.StarlightPedestals.Count,
+            result.Save.Starlight.Pedestals.Count
+        );
+        var moonwaterStarlight = result.Save.Starlight.Pedestals
+            .Single(pedestal =>
+                pedestal.PedestalId == DataCatalog.MoonwaterStarlightId
+            );
+        Assert.False(moonwaterStarlight.Discovered);
+        Assert.False(moonwaterStarlight.RewardUnlocked);
+        Assert.Equal(
+            DataCatalog.MoonwaterStarlight.Nodes.Count,
+            moonwaterStarlight.Nodes.Count
         );
         Assert.NotNull(result.Save.CharacterEvents);
         Assert.Empty(result.Save.CharacterEvents.Entries);
@@ -10074,6 +10396,15 @@ public sealed class SaveServiceTests : IDisposable
                 result.Save.Starlight,
                 DataCatalog.WoodlandCraftNodeId
             )
+        );
+        var moonwater = result.Save.Starlight.Pedestals.Single(pedestal =>
+            pedestal.PedestalId == DataCatalog.MoonwaterStarlightId
+        );
+        Assert.False(moonwater.Discovered);
+        Assert.False(moonwater.RewardUnlocked);
+        Assert.Equal(
+            DataCatalog.MoonwaterStarlight.Nodes.Count,
+            moonwater.Nodes.Count
         );
     }
 

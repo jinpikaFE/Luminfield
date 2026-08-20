@@ -630,6 +630,8 @@ public sealed partial class Main : Node
                     StartStarlightRestoredPlaytest,
                 [PlaytestScenarioId.StarlightRestoredEnglish] =
                     StartStarlightRestoredEnglishPlaytest,
+                [PlaytestScenarioId.MoonwaterStarlight] =
+                    StartMoonwaterStarlightPlaytest,
                 [PlaytestScenarioId.QualityCrafting] =
                     StartQualityCraftingPlaytest,
                 [PlaytestScenarioId.QualityBackpackEnglish] =
@@ -1485,6 +1487,33 @@ public sealed partial class Main : Node
     {
         _locale.SetLocale(LocaleService.English);
         StartStarlightRestoredPlaytest();
+    }
+
+    private void StartMoonwaterStarlightPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.MoonwaterMinnowId, 1);
+        _session.Inventory.Add(DataCatalog.MarshveilKilliId, 1);
+        _session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterLocalFishNodeId
+        );
+        _session.Inventory.Add(DataCatalog.SilverreedMudfishId, 1);
+        _session.Inventory.Add(DataCatalog.RainveilLampreyId, 1);
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            FarmView.MoonwaterStarlightCell.X * 16 + 8,
+            (FarmView.MoonwaterStarlightCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(() =>
+        {
+            OpenStarlightPedestal(DataCatalog.MoonwaterStarlightId);
+        }).CallDeferred();
     }
 
     private void PrepareStarlightPlaytest()
@@ -2616,6 +2645,7 @@ public sealed partial class Main : Node
         save.Fishing.CaughtFishIds =
         [
             DataCatalog.PondglowMinnowId,
+            DataCatalog.CrystalfinDaceId,
             DataCatalog.MoonwaterMinnowId
         ];
         _session.Restore(save);
@@ -3899,17 +3929,23 @@ public sealed partial class Main : Node
 
     private void OpenStarlightPedestal()
     {
+        OpenStarlightPedestal(DataCatalog.WoodlandStarlightId);
+    }
+
+    private void OpenStarlightPedestal(string pedestalId)
+    {
         if (_starlightOverlay is not null)
         {
             return;
         }
 
         SetWorldControls(false);
-        _session.Starlight.Discover();
+        _session.Starlight.Discover(pedestalId);
         _starlightOverlay = new StarlightPedestalOverlay(
             _theme,
             _session,
-            _locale
+            _locale,
+            pedestalId
         );
         _starlightOverlay.CloseRequested += CloseStarlightPedestal;
         _starlightOverlay.StarlightChanged += () =>

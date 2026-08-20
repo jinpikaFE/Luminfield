@@ -271,6 +271,12 @@ internal sealed partial class WorldChunkProps : Node2D
                     continue;
                 }
 
+                if (WorldDefinition.IsMoonwaterStarlightCell(cell))
+                {
+                    DrawMoonwaterStarlight(localX, localY);
+                    continue;
+                }
+
                 var atlasIndex = WorldDefinition.PropAtlasIndex(cell);
                 if (atlasIndex < 0 || _session.Resources.IsRemoved(cell))
                 {
@@ -334,6 +340,40 @@ internal sealed partial class WorldChunkProps : Node2D
             GeneratedArt.WoodlandStarlightTexture,
             destination,
             source
+        );
+    }
+
+    private void DrawMoonwaterStarlight(int localX, int localY)
+    {
+        const int atlasIndex = 15;
+        var size = PropSize(atlasIndex);
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        var destination = new Rect2(
+            anchor - new Vector2(size.X / 2, size.Y),
+            size
+        );
+        var source = new Rect2(
+            atlasIndex % 4 * AtlasCell,
+            atlasIndex / 4 * AtlasCell,
+            AtlasCell,
+            AtlasCell
+        );
+        DrawTextureRectRegion(Atlas, destination, source);
+        if (!_session.Starlight.MoonwaterTideUnlocked)
+        {
+            return;
+        }
+
+        var haloCenter = anchor + new Vector2(0, -42);
+        DrawCircle(haloCenter, 28, new Color("#48d8ff44"));
+        DrawArc(
+            haloCenter,
+            34,
+            0,
+            Mathf.Tau,
+            32,
+            new Color("#b8fff6d8"),
+            2
         );
     }
 

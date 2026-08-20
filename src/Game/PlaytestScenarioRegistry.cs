@@ -85,6 +85,7 @@ public enum PlaytestScenarioId
     StarlightPanel,
     StarlightRestored,
     StarlightRestoredEnglish,
+    MoonwaterStarlight,
     QualityCrafting,
     QualityBackpackEnglish,
     QualityBackpack,
@@ -371,6 +372,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarlightRestoredEnglish,
             "--playtest-starlight-restored-en"
+        ),
+        new(
+            PlaytestScenarioId.MoonwaterStarlight,
+            "--playtest-moonwater-starlight"
         ),
         new(
             PlaytestScenarioId.QualityCrafting,

@@ -16,6 +16,8 @@ public sealed partial class FarmView : Node2D
         FarmLayout.StarlightMailboxCell;
     public static readonly GridPosition WoodlandStarlightCell =
         WorldDefinition.WoodlandStarlightCell;
+    public static readonly GridPosition MoonwaterStarlightCell =
+        WorldDefinition.MoonwaterStarlightCell;
     public static readonly GridPosition MoonlitArchiveDoorCell =
         VillageCatalog.MoonlitArchiveDoorCell;
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
@@ -310,7 +312,7 @@ public sealed partial class FarmView : Node2D
     public event Action? ShippingRequested;
     public event Action? CommissionRequested;
     public event Action? MailRequested;
-    public event Action? StarlightRequested;
+    public event Action<string>? StarlightRequested;
     public event Action<GridPosition>? VillagerRequested;
     public event Action<GridPosition>? StorageRequested;
     public event Action<string>? NoticeRequested;
@@ -382,10 +384,10 @@ public sealed partial class FarmView : Node2D
             return _session.PreviewSelectedTarget(villager.Position);
         }
 
-        if (WorldDefinition.IsWoodlandStarlightCell(target) ||
-            IsAdjacent(player, WoodlandStarlightCell))
+        var starlightTarget = ResolveStarlightPedestalTarget(target, player);
+        if (starlightTarget is { } pedestalCell)
         {
-            return _session.PreviewSelectedTarget(WoodlandStarlightCell);
+            return _session.PreviewSelectedTarget(pedestalCell);
         }
 
         if (FarmLayout.IsCommissionBoardCell(target) ||
@@ -579,14 +581,17 @@ public sealed partial class FarmView : Node2D
         );
         var storageTarget = ResolveStorageTarget(target, _player.CurrentCell);
         var orchardTarget = ResolveOrchardTarget(target, _player.CurrentCell);
+        var starlightTarget = ResolveStarlightPedestalTarget(
+            target,
+            _player.CurrentCell
+        );
         if (villager is not null)
         {
             VillagerRequested?.Invoke(villager.Position);
         }
-        else if (WorldDefinition.IsWoodlandStarlightCell(target) ||
-            IsAdjacent(_player.CurrentCell, WoodlandStarlightCell))
+        else if (starlightTarget is { } pedestalCell)
         {
-            RequestStarlight();
+            RequestStarlight(pedestalCell);
         }
         else if (FarmLayout.IsCommissionBoardCell(target) ||
             IsNearCommissionBoard(_player.CurrentCell))
@@ -914,16 +919,43 @@ public sealed partial class FarmView : Node2D
         MailRequested?.Invoke();
     }
 
-    private void RequestStarlight()
+    private void RequestStarlight(GridPosition pedestalCell)
     {
-        var result = _session.UseSelected(WoodlandStarlightCell);
+        var result = _session.UseSelected(pedestalCell);
         if (!result.Succeeded)
         {
             NoticeRequested?.Invoke(result.MessageKey);
             return;
         }
 
-        StarlightRequested?.Invoke();
+        var pedestalId = WorldDefinition.StarlightPedestalIdAt(pedestalCell);
+        if (pedestalId is not null)
+        {
+            StarlightRequested?.Invoke(pedestalId);
+        }
+    }
+
+    private static GridPosition? ResolveStarlightPedestalTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        if (WorldDefinition.IsStarlightPedestalCell(target))
+        {
+            return target;
+        }
+
+        if (IsAdjacent(player, WoodlandStarlightCell))
+        {
+            return WoodlandStarlightCell;
+        }
+
+        if (IsAdjacent(player, MoonwaterStarlightCell))
+        {
+            return MoonwaterStarlightCell;
+        }
+
+        return null;
     }
 
     public void SetStorageChestOpen(GridPosition? position)

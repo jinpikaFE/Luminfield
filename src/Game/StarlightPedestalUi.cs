@@ -16,6 +16,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     private readonly GameSession _session;
     private readonly LocaleService _locale;
+    private readonly string _pedestalId;
     private readonly Label _title;
     private readonly Label _region;
     private readonly Label _overall;
@@ -28,11 +29,13 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
     public StarlightPedestalOverlay(
         Theme theme,
         GameSession session,
-        LocaleService locale
+        LocaleService locale,
+        string pedestalId = DataCatalog.WoodlandStarlightId
     ) : base(theme)
     {
         _session = session;
         _locale = locale;
+        _pedestalId = pedestalId;
         AddChild(Dim(new Color(0.008f, 0.014f, 0.065f, 0.87f)));
 
         var center = new CenterContainer();
@@ -84,7 +87,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         header.AddChild(_overall);
         column.AddChild(header);
 
-        foreach (var node in session.Starlight.Current.Nodes)
+        foreach (var node in session.Starlight.Pedestal(_pedestalId).Nodes)
         {
             column.AddChild(BuildNode(node));
         }
@@ -106,7 +109,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         var rewardRow = new HBoxContainer();
         rewardRow.AddThemeConstantOverride("separation", 7);
         rewardRow.AddChild(Icon(
-            GeneratedArt.CreateWoodlandRenewalIcon(),
+            RewardIcon(),
             new Vector2(36, 36)
         ));
         var rewardText = new VBoxContainer
@@ -148,14 +151,14 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     public void RefreshText()
     {
-        var pedestal = _session.Starlight.Current;
+        var pedestal = _session.Starlight.Pedestal(_pedestalId);
         _title.Text = _locale.Tr(pedestal.NameKey);
         _region.Text = _locale.Tr(pedestal.RegionKey);
-        _overall.Text = _session.Starlight.RewardUnlocked
+        _overall.Text = _session.Starlight.IsRewardUnlocked(_pedestalId)
             ? _locale.Tr("starlight.state.restored")
             : _locale.Tr(
                 "starlight.state.progress",
-                _session.Starlight.CompletedNodeCount,
+                _session.Starlight.CompletedNodeCountFor(_pedestalId),
                 pedestal.Nodes.Count
             );
         _close.Text = _locale.Tr("menu.back");
@@ -191,7 +194,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
                 : _locale.Tr("starlight.node.action.missing");
         }
 
-        _rewardTitle.Text = _session.Starlight.RewardUnlocked
+        _rewardTitle.Text = _session.Starlight.IsRewardUnlocked(_pedestalId)
             ? _locale.Tr("starlight.reward.unlocked")
             : _locale.Tr(pedestal.RewardTitleKey);
         _rewardDescription.Text = _locale.Tr(
@@ -291,6 +294,16 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
             StarlightChanged?.Invoke();
         }
         RefreshText();
+    }
+
+    private Texture2D RewardIcon()
+    {
+        if (_pedestalId == DataCatalog.WoodlandStarlightId)
+        {
+            return GeneratedArt.CreateWoodlandRenewalIcon();
+        }
+
+        return GeneratedArt.CreateStarlightNodeSealIcon();
     }
 
     private static TextureRect Icon(Texture2D texture, Vector2 size) => new()

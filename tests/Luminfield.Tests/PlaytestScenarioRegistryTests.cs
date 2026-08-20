@@ -271,6 +271,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.StarlightRestoredEnglish
         ),
         (
+            "--playtest-moonwater-starlight",
+            PlaytestScenarioId.MoonwaterStarlight
+        ),
+        (
             "--playtest-quality-crafting",
             PlaytestScenarioId.QualityCrafting
         ),

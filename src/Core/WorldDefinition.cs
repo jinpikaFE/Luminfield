@@ -35,7 +35,9 @@ public static class WorldDefinition
     public const int ChunkColumns = Width / ChunkSize;
     public const int ChunkRows = Height / ChunkSize;
     public const string WoodlandStarlightLandmarkId = "woods_lantern";
+    public const string MoonwaterStarlightLandmarkId = "wetland_monolith";
     public static readonly GridPosition WoodlandStarlightCell = new(34, 72);
+    public static readonly GridPosition MoonwaterStarlightCell = new(164, 43);
 
     public static readonly IReadOnlyList<WorldLandmark> Landmarks =
     [
@@ -52,7 +54,12 @@ public static class WorldDefinition
             "world.landmark.village_gate"
         ),
         new("crystal_well", new GridPosition(77, 84), 9, "world.landmark.crystal_well"),
-        new("wetland_monolith", new GridPosition(164, 43), 15, "world.landmark.wetland_monolith"),
+        new(
+            MoonwaterStarlightLandmarkId,
+            MoonwaterStarlightCell,
+            15,
+            "world.landmark.wetland_monolith"
+        ),
         new("ruins_pillar", new GridPosition(121, 105), 7, "world.landmark.ruins_pillar"),
         new("southern_cache", new GridPosition(173, 104), 12, "world.landmark.southern_cache")
     ];
@@ -225,6 +232,27 @@ public static class WorldDefinition
 
     public static bool IsWoodlandStarlightCell(GridPosition cell) =>
         cell == WoodlandStarlightCell;
+
+    public static bool IsMoonwaterStarlightCell(GridPosition cell) =>
+        cell == MoonwaterStarlightCell;
+
+    public static bool IsStarlightPedestalCell(GridPosition cell) =>
+        StarlightPedestalIdAt(cell) is not null;
+
+    public static string? StarlightPedestalIdAt(GridPosition cell)
+    {
+        if (IsWoodlandStarlightCell(cell))
+        {
+            return DataCatalog.WoodlandStarlightId;
+        }
+
+        if (IsMoonwaterStarlightCell(cell))
+        {
+            return DataCatalog.MoonwaterStarlightId;
+        }
+
+        return null;
+    }
 
     public static int PropAtlasIndex(GridPosition cell)
     {

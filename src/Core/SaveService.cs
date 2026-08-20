@@ -454,6 +454,12 @@ public sealed class SaveService
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
+        save.Fishing.ClaimedRewardIds ??= [];
+        save.Fishing.ClaimedRewardIds = save.Fishing.ClaimedRewardIds
+            .Where(FishingSystem.IsCollectionRewardId)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

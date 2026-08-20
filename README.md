@@ -229,9 +229,14 @@ fish ID in the collection save. The pause menu now opens the first Fish
 Collection panel, showing discovered progress, discovered fish water/condition
 hints, and shadow placeholders for unknown entries. The fish catalog now
 contains 24 original fish, eight per water kind, with time, weather, and season
-conditions. Dedicated 24-fish icons, the full line-control minigame, bait,
-bobbers, rod upgrades, crab pots, the wetland Starlight Pedestal, Firefly Tide
-night, and the fishing skill remain later Phase D increments.
+conditions. The collection now offers 3/8/16/24-species milestone rewards,
+stores claimed reward IDs in the fishing save, and leaves coins/items untouched
+when the backpack is full. The Moonwater Wetlands monolith now opens the first
+wetland Starlight Pedestal, using three fish-offering nodes for local,
+weather-bound, and seasonal wetland fish while saving both Woodland and
+Moonwater pedestal states. Dedicated 24-fish icons, the full line-control
+minigame, bait, bobbers, rod upgrades, crab pots, museum donation entry,
+Firefly Tide night, and the fishing skill remain later Phase D increments.
 
 ## Tools and backpack
 
@@ -249,8 +254,8 @@ The eight-slot hotbar and the backpack are now separate:
   time, weather, and season.
 - The full backpack contains 24 slots. Press `B` or `Tab` to inspect it; the
   first eight slots are the active hotbar.
-- The pause menu opens the Fish Collection, which tracks discovered fish and
-  keeps unknown entries as shadows.
+- The pause menu opens the Fish Collection, which tracks discovered fish,
+  current milestone rewards, and unknown-entry shadows.
 
 The target preview identifies the object in front of the player. Mint outlines
 mean `E` can perform the shown action, gold explains which tool is required,
@@ -475,6 +480,9 @@ Use `--playtest-fishing-collection` to open a half-complete Fish Collection
 panel for visual QA of discovered rows, hidden shadows, the progress summary,
 and the pause-menu collection entry.
 
+Use `--playtest-moonwater-starlight` to open the first Moonwater Tide
+Starlight panel with prepared partial fish offerings for visual QA.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -532,8 +540,9 @@ Glow coins, the three independent processing jobs, artisan goods,
 watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily and weekly commission
-states, the Woodland Watch Starlight's partial offerings and permanent reward,
-and the 24-slot backpack are stored in the existing `schemaVersion: 1` save.
+states, the multi-pedestal Starlight state for Woodland and Moonwater offerings
+and rewards, and the 24-slot backpack are stored in the existing
+`schemaVersion: 1` save.
 Liora's, Tavi's, Nemi's, Kael's, Sela's, and Orin's character-event completion
 IDs and dates use another additive projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
@@ -568,6 +577,16 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-20 17:05:42 CST — Added the first Moonwater Tide Starlight: the
+  existing wetland monolith now uses Starlight preview/action rules, the shared
+  pedestal panel can open Woodland or Moonwater definitions, three fish-offering
+  nodes persist through multi-pedestal saves, and
+  `--playtest-moonwater-starlight` prepares visual QA.
+- 2026-08-20 16:27:57 CST — Added 3/8/16/24-species milestone rewards to the
+  Phase D Fish Collection. Claiming now routes through `GameSession` to
+  atomically grant coins and items, while full backpacks or repeated claims
+  leave reward state unchanged. The collection playtest now opens at a 3/24
+  claimable state, with save migration and bilingual tests updated.
 - 2026-08-20 15:10:45 CST — Expanded the Phase D fish catalog to 24 original
   fish, eight per water kind, and added time, weather, season conditions plus
   specific-condition priority in casting; the collection now displays season

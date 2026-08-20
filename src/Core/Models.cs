@@ -245,12 +245,21 @@ public sealed class StarlightNodeSave
     public List<StarlightContributionSave> Contributions { get; set; } = [];
 }
 
+public sealed class StarlightPedestalSave
+{
+    public string PedestalId { get; set; } = string.Empty;
+    public bool Discovered { get; set; }
+    public bool RewardUnlocked { get; set; }
+    public List<StarlightNodeSave> Nodes { get; set; } = [];
+}
+
 public sealed class StarlightSave
 {
     public string PedestalId { get; set; } = string.Empty;
     public bool Discovered { get; set; }
     public bool RewardUnlocked { get; set; }
     public List<StarlightNodeSave> Nodes { get; set; } = [];
+    public List<StarlightPedestalSave> Pedestals { get; set; } = [];
 }
 
 public sealed class VillageSave
@@ -352,6 +361,7 @@ public sealed class FestivalSave
 public sealed class FishingSave
 {
     public List<string> CaughtFishIds { get; set; } = [];
+    public List<string> ClaimedRewardIds { get; set; } = [];
 }
 
 public sealed class GameSaveV1

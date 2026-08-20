@@ -425,6 +425,13 @@ public static class DataCatalog
     public const string WoodlandHarvestNodeId = "starlight_woodland_harvest";
     public const string WoodlandMaterialsNodeId = "starlight_woodland_materials";
     public const string WoodlandCraftNodeId = "starlight_woodland_craft";
+    public const string MoonwaterStarlightId = "starlight_moonwater";
+    public const string MoonwaterLocalFishNodeId =
+        "starlight_moonwater_local_fish";
+    public const string MoonwaterWeatherFishNodeId =
+        "starlight_moonwater_weather_fish";
+    public const string MoonwaterSeasonalFishNodeId =
+        "starlight_moonwater_seasonal_fish";
     public const string ClearWeatherId = "clear";
     public const string RainWeatherId = "rain";
     public const string StardustWindWeatherId = "stardust_wind";
@@ -2071,20 +2078,63 @@ public static class DataCatalog
             ]
         );
 
+    public static readonly StarlightPedestalDefinition MoonwaterStarlight =
+        new(
+            MoonwaterStarlightId,
+            "starlight.moonwater.name",
+            "starlight.moonwater.region",
+            "starlight.moonwater.reward_title",
+            "starlight.moonwater.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    MoonwaterLocalFishNodeId,
+                    "starlight.node.moonwater_local.title",
+                    "starlight.node.moonwater_local.description",
+                    3,
+                    [
+                        new StarlightContributionOption(MoonwaterMinnowId, 1),
+                        new StarlightContributionOption(MarshveilKilliId, 1),
+                        new StarlightContributionOption(SilverreedMudfishId, 1),
+                        new StarlightContributionOption(MooncapGobyId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MoonwaterWeatherFishNodeId,
+                    "starlight.node.moonwater_weather.title",
+                    "starlight.node.moonwater_weather.description",
+                    2,
+                    [
+                        new StarlightContributionOption(RainveilLampreyId, 1),
+                        new StarlightContributionOption(StardustRayId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MoonwaterSeasonalFishNodeId,
+                    "starlight.node.moonwater_seasonal.title",
+                    "starlight.node.moonwater_seasonal.description",
+                    2,
+                    [
+                        new StarlightContributionOption(StarharvestOrbfinId, 1),
+                        new StarlightContributionOption(LongnightWispfishId, 1)
+                    ]
+                )
+            ]
+        );
+
     public static readonly IReadOnlyDictionary<string, StarlightPedestalDefinition>
         StarlightPedestals =
             new Dictionary<string, StarlightPedestalDefinition>(
                 StringComparer.Ordinal
             )
             {
-                [WoodlandStarlight.Id] = WoodlandStarlight
+                [WoodlandStarlight.Id] = WoodlandStarlight,
+                [MoonwaterStarlight.Id] = MoonwaterStarlight
             };
 
     public static readonly IReadOnlyDictionary<string, StarlightNodeDefinition>
-        StarlightNodes = WoodlandStarlight.Nodes.ToDictionary(
-            node => node.Id,
-            StringComparer.Ordinal
-        );
+        StarlightNodes = StarlightPedestals.Values
+            .SelectMany(pedestal => pedestal.Nodes)
+            .ToDictionary(node => node.Id, StringComparer.Ordinal);
 
     public static IReadOnlyList<string> SeedItemIdsForDay(int day) =>
         SeedItemIds.Where(itemId => IsSeedAvailableOnDay(itemId, day))

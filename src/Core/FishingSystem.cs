@@ -5,14 +5,93 @@ public sealed record FishCollectionEntry(
     bool Caught
 );
 
+public sealed record FishingCollectionRewardDefinition(
+    string Id,
+    int RequiredCaughtCount,
+    int RewardCoins,
+    string RewardItemId,
+    int RewardItemCount,
+    string TitleKey,
+    string DescriptionKey
+);
+
+public enum FishingCollectionRewardStatus
+{
+    Locked,
+    Ready,
+    Claimed
+}
+
+public sealed record FishingCollectionRewardSnapshot(
+    FishingCollectionRewardDefinition Definition,
+    int Progress,
+    FishingCollectionRewardStatus Status
+);
+
+public sealed record FishingCollectionRewardClaimResult(
+    bool Succeeded,
+    string MessageKey,
+    int RewardCoins = 0,
+    string RewardItemId = "",
+    int RewardItemCount = 0
+);
+
 public sealed class FishingSystem
 {
     public const int CastEnergyCost = 4;
+    public const string FirstWatersRewardId = "fish_reward_first_waters";
+    public const string EightSpeciesRewardId = "fish_reward_eight_species";
+    public const string SixteenSpeciesRewardId = "fish_reward_sixteen_species";
+    public const string FullLedgerRewardId = "fish_reward_full_ledger";
+
+    public static readonly IReadOnlyList<FishingCollectionRewardDefinition>
+        CollectionRewardDefinitions =
+        [
+            new(
+                FirstWatersRewardId,
+                3,
+                60,
+                DataCatalog.CrystalShardId,
+                2,
+                "fishing.reward.first_waters.title",
+                "fishing.reward.first_waters.description"
+            ),
+            new(
+                EightSpeciesRewardId,
+                8,
+                90,
+                DataCatalog.StarsoilFertilizerId,
+                2,
+                "fishing.reward.eight_species.title",
+                "fishing.reward.eight_species.description"
+            ),
+            new(
+                SixteenSpeciesRewardId,
+                16,
+                140,
+                DataCatalog.MoonstonePathId,
+                4,
+                "fishing.reward.sixteen_species.title",
+                "fishing.reward.sixteen_species.description"
+            ),
+            new(
+                FullLedgerRewardId,
+                24,
+                240,
+                DataCatalog.GlowcombHiveId,
+                1,
+                "fishing.reward.full_ledger.title",
+                "fishing.reward.full_ledger.description"
+            )
+        ];
 
     private readonly HashSet<string> _caughtFishIds =
         new(StringComparer.Ordinal);
+    private readonly HashSet<string> _claimedRewardIds =
+        new(StringComparer.Ordinal);
 
     public IReadOnlyCollection<string> CaughtFishIds => _caughtFishIds;
+    public IReadOnlyCollection<string> ClaimedRewardIds => _claimedRewardIds;
     public int CaughtCount => _caughtFishIds.Count;
     public int TotalFishCount => DataCatalog.Fishes.Count;
 
@@ -21,18 +100,28 @@ public sealed class FishingSystem
     public void Reset()
     {
         _caughtFishIds.Clear();
+        _claimedRewardIds.Clear();
         Changed?.Invoke();
     }
 
     public void Restore(FishingSave? save)
     {
         _caughtFishIds.Clear();
+        _claimedRewardIds.Clear();
 
         foreach (var fishId in save?.CaughtFishIds ?? [])
         {
             if (DataCatalog.Fishes.ContainsKey(fishId))
             {
                 _caughtFishIds.Add(fishId);
+            }
+        }
+
+        foreach (var rewardId in save?.ClaimedRewardIds ?? [])
+        {
+            if (IsCollectionRewardId(rewardId))
+            {
+                _claimedRewardIds.Add(rewardId);
             }
         }
 
@@ -74,6 +163,81 @@ public sealed class FishingSystem
     }
 
     public bool IsCaught(string fishId) => _caughtFishIds.Contains(fishId);
+
+    public static bool IsCollectionRewardId(string rewardId) =>
+        CollectionRewardDefinitions.Any(definition =>
+            definition.Id == rewardId
+        );
+
+    public IReadOnlyList<FishingCollectionRewardSnapshot> RewardSnapshots() =>
+        CollectionRewardDefinitions
+            .Select(definition =>
+            {
+                var status = RewardStatus(definition);
+                return new FishingCollectionRewardSnapshot(
+                    definition,
+                    Math.Min(CaughtCount, definition.RequiredCaughtCount),
+                    status
+                );
+            })
+            .ToArray();
+
+    public FishingCollectionRewardClaimResult ClaimReward(
+        string rewardId,
+        Inventory inventory
+    )
+    {
+        var definition = CollectionRewardDefinitions.FirstOrDefault(
+            reward => reward.Id == rewardId
+        );
+        if (definition is null)
+        {
+            return new FishingCollectionRewardClaimResult(
+                false,
+                "fishing.reward.unknown"
+            );
+        }
+
+        var status = RewardStatus(definition);
+        if (status == FishingCollectionRewardStatus.Claimed)
+        {
+            return new FishingCollectionRewardClaimResult(
+                false,
+                "fishing.reward.already_claimed"
+            );
+        }
+
+        if (status != FishingCollectionRewardStatus.Ready)
+        {
+            return new FishingCollectionRewardClaimResult(
+                false,
+                "fishing.reward.not_ready"
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(definition.RewardItemId) &&
+            definition.RewardItemCount > 0 &&
+            !inventory.Add(
+                definition.RewardItemId,
+                definition.RewardItemCount
+            ))
+        {
+            return new FishingCollectionRewardClaimResult(
+                false,
+                "notice.inventory_full"
+            );
+        }
+
+        _claimedRewardIds.Add(definition.Id);
+        Changed?.Invoke();
+        return new FishingCollectionRewardClaimResult(
+            true,
+            "fishing.reward.claimed",
+            definition.RewardCoins,
+            definition.RewardItemId,
+            definition.RewardItemCount
+        );
+    }
 
     public IReadOnlyList<FishCollectionEntry> CollectionEntries() =>
         DataCatalog.FishItemIds
@@ -124,6 +288,9 @@ public sealed class FishingSystem
     {
         CaughtFishIds = _caughtFishIds
             .Order(StringComparer.Ordinal)
+            .ToList(),
+        ClaimedRewardIds = _claimedRewardIds
+            .Order(StringComparer.Ordinal)
             .ToList()
     };
 
@@ -140,5 +307,19 @@ public sealed class FishingSystem
             WorldBiome.CrystalVale => FishingWaterKind.CrystalStream,
             _ => FishingWaterKind.HomesteadPond
         };
+    }
+
+    private FishingCollectionRewardStatus RewardStatus(
+        FishingCollectionRewardDefinition definition
+    )
+    {
+        if (_claimedRewardIds.Contains(definition.Id))
+        {
+            return FishingCollectionRewardStatus.Claimed;
+        }
+
+        return CaughtCount >= definition.RequiredCaughtCount
+            ? FishingCollectionRewardStatus.Ready
+            : FishingCollectionRewardStatus.Locked;
     }
 }
