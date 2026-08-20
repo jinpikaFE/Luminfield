@@ -1439,6 +1439,321 @@ public sealed class OrchardSystemTests
     }
 }
 
+public sealed class AnimalSystemTests
+{
+    [Fact]
+    public void StarfeatherCoopFeedPetEggAndProcessorLoopIsAtomic()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Coins = AnimalCatalog.CoopBuildCostCoins;
+        session.Restore(save);
+        Assert.True(session.Inventory.Add(DataCatalog.LumenwoodId, 10));
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalShardId, 3));
+        session.Inventory.Select(0);
+
+        var buildPreview = session.PreviewSelectedTarget(AnimalCatalog.CoopCell);
+        var built = session.UseSelected(AnimalCatalog.CoopCell);
+
+        Assert.True(buildPreview.IsAvailable);
+        Assert.Equal(TargetPreviewKind.ChickenCoop, buildPreview.Kind);
+        Assert.Equal("target.action.build_coop", buildPreview.LabelKey);
+        Assert.True(built.Succeeded);
+        Assert.True(session.Animals.CoopBuilt);
+        Assert.Equal(0, session.Coins);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.LumenwoodId));
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.CrystalShardId));
+        Assert.Single(session.Animals.Chickens);
+
+        var missingFeed = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.False(missingFeed.Succeeded);
+        Assert.Equal("animal.chicken.need_feed", missingFeed.MessageKey);
+        Assert.Equal(0, session.Animals.FirstChicken!.Affection);
+        Assert.Equal(0, session.Animals.FirstChicken.PendingEggs);
+
+        Assert.True(session.Inventory.Add(DataCatalog.StarbudId, 1));
+        Assert.True(session.Inventory.Add(DataCatalog.CloudleafId, 1));
+        var craftedFeed = session.CraftItem(DataCatalog.StargrainFeedRecipeId);
+        Assert.True(craftedFeed.Succeeded);
+        Assert.Equal(3, session.Inventory.Count(DataCatalog.StargrainFeedId));
+        session.Inventory.Select(0);
+
+        var feedPreview = session.PreviewSelectedTarget(AnimalCatalog.CoopCell);
+        var fed = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.True(feedPreview.IsAvailable);
+        Assert.Equal("target.action.feed_chicken", feedPreview.LabelKey);
+        Assert.True(fed.Succeeded);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.StargrainFeedId));
+        Assert.Equal(
+            AnimalSystem.FeedAffectionGain,
+            session.Animals.FirstChicken.Affection
+        );
+        Assert.Equal(session.Clock.Day, session.Animals.FirstChicken.LastFedDay);
+
+        var repeatFeed = session.Animals.FeedFirstChicken(
+            session.Inventory,
+            session.Clock.Day
+        );
+        Assert.False(repeatFeed.Succeeded);
+        Assert.Equal("animal.chicken.already_fed", repeatFeed.MessageKey);
+        Assert.Equal(2, session.Inventory.Count(DataCatalog.StargrainFeedId));
+
+        var petted = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.True(petted.Succeeded);
+        Assert.Equal("animal.chicken.petted", petted.MessageKey);
+        Assert.Equal(
+            AnimalSystem.FeedAffectionGain + AnimalSystem.PetAffectionGain,
+            session.Animals.FirstChicken.Affection
+        );
+
+        var repeatCare = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.False(repeatCare.Succeeded);
+        Assert.Equal("animal.chicken.already_cared", repeatCare.MessageKey);
+        Assert.Equal(0, session.Animals.FirstChicken.PendingEggs);
+
+        session.EndDay();
+        Assert.Equal(1, session.Animals.FirstChicken.PendingEggs);
+
+        session.Inventory.Select(1);
+        var wrongToolPreview = session.PreviewSelectedTarget(AnimalCatalog.CoopCell);
+        var wrongTool = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.Equal(TargetPreviewState.NeedsTool, wrongToolPreview.State);
+        Assert.False(wrongTool.Succeeded);
+        Assert.Equal("notice.needs_hand", wrongTool.MessageKey);
+        Assert.Equal(1, session.Animals.FirstChicken.PendingEggs);
+
+        session.Inventory.Select(0);
+        var collectPreview = session.PreviewSelectedTarget(AnimalCatalog.CoopCell);
+        var collected = session.UseSelected(AnimalCatalog.CoopCell);
+        Assert.True(collectPreview.IsAvailable);
+        Assert.Equal("target.action.collect_eggs", collectPreview.LabelKey);
+        Assert.True(collected.Succeeded);
+        Assert.Equal(DataCatalog.StarfeatherEggId, collected.GrantedItemId);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.StarfeatherEggId));
+        Assert.Equal(0, session.Animals.FirstChicken.PendingEggs);
+
+        var full = SessionWithPendingEgg();
+        FillBackpackExceptEggs(full.Inventory);
+        full.Inventory.Select(0);
+        var failedFull = full.UseSelected(AnimalCatalog.CoopCell);
+        Assert.False(failedFull.Succeeded);
+        Assert.Equal("notice.inventory_full", failedFull.MessageKey);
+        Assert.Equal(1, full.Animals.FirstChicken!.PendingEggs);
+        Assert.Equal(0, full.Inventory.Count(DataCatalog.StarfeatherEggId));
+
+        Assert.True(session.Inventory.Add(DataCatalog.StarfeatherEggId, 1));
+        var started = session.StartProcessing(
+            ProcessorCatalog.PrismPreserveVatId,
+            DataCatalog.GlowcustardRecipeId
+        );
+        Assert.True(started.Succeeded);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.StarfeatherEggId));
+        session.EndDay();
+        var processed = session.CollectProcessedItem(
+            ProcessorCatalog.PrismPreserveVatId
+        );
+        Assert.True(processed.Succeeded);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.GlowcustardId));
+    }
+
+    [Fact]
+    public void AnimalSaveRoundTripsAndFiltersConflictingCells()
+    {
+        var empty = AnimalSystem.NormalizeSave(null);
+        Assert.False(empty.CoopBuilt);
+        Assert.Empty(empty.Chickens);
+
+        var normalized = AnimalSystem.NormalizeSave(new AnimalSave
+        {
+            CoopBuilt = true,
+            Chickens =
+            [
+                new StarfeatherChickenSave
+                {
+                    ChickenId = "unknown_chicken",
+                    PendingEggs = 2
+                },
+                new StarfeatherChickenSave
+                {
+                    ChickenId = AnimalCatalog.FirstChickenId,
+                    Affection = 500,
+                    LastFedDay = -8,
+                    LastPettedDay = -3,
+                    PendingEggs = 9,
+                    MoodId = "glitched"
+                },
+                new StarfeatherChickenSave
+                {
+                    ChickenId = AnimalCatalog.FirstChickenId,
+                    Affection = 1
+                }
+            ]
+        });
+        var chicken = Assert.Single(normalized.Chickens);
+        Assert.Equal(AnimalCatalog.FirstChickenId, chicken.ChickenId);
+        Assert.Equal(AnimalSystem.MaxAffection, chicken.Affection);
+        Assert.Equal(0, chicken.LastFedDay);
+        Assert.Equal(0, chicken.LastPettedDay);
+        Assert.Equal(AnimalSystem.MaxPendingEggs, chicken.PendingEggs);
+        Assert.Equal(AnimalMoodIds.Content, chicken.MoodId);
+
+        var fallback = AnimalSystem.NormalizeSave(new AnimalSave
+        {
+            CoopBuilt = true,
+            Chickens =
+            [
+                new StarfeatherChickenSave
+                {
+                    ChickenId = "unknown_chicken"
+                }
+            ]
+        });
+        Assert.Equal(AnimalCatalog.FirstChickenId, Assert.Single(fallback.Chickens).ChickenId);
+
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Animals = new AnimalSave
+        {
+            CoopBuilt = true,
+            Chickens =
+            [
+                new StarfeatherChickenSave
+                {
+                    ChickenId = AnimalCatalog.FirstChickenId,
+                    PendingEggs = 1,
+                    MoodId = AnimalMoodIds.Happy
+                }
+            ]
+        };
+        save.Storage.Chests =
+        [
+            new PlacedChestSave
+            {
+                X = AnimalCatalog.CoopCell.X,
+                Y = AnimalCatalog.CoopCell.Y
+            },
+            new PlacedChestSave
+            {
+                X = 25,
+                Y = 13
+            }
+        ];
+        save.FarmObjects.Objects =
+        [
+            new PlacedFarmObjectSave
+            {
+                X = 29,
+                Y = 14,
+                ItemId = DataCatalog.MoonstonePathId
+            },
+            new PlacedFarmObjectSave
+            {
+                X = 27,
+                Y = 13,
+                ItemId = DataCatalog.GlowcombHiveId
+            }
+        ];
+        save.Orchard.FruitTrees =
+        [
+            new FruitTreeSave
+            {
+                X = 30,
+                Y = 14,
+                TreeId = DataCatalog.MoonplumTreeId,
+                FruitReady = true
+            },
+            new FruitTreeSave
+            {
+                X = 23,
+                Y = 13,
+                TreeId = DataCatalog.MoonplumTreeId,
+                AgeNights = DataCatalog.FruitTree(
+                    DataCatalog.MoonplumTreeId
+                ).MatureAfterNights,
+                FruitReady = true
+            }
+        ];
+        save.Orchard.Beehives =
+        [
+            new BeehiveSave
+            {
+                X = 27,
+                Y = 13,
+                PendingHoney = 1
+            }
+        ];
+
+        var servicePath = Path.Combine(
+            Path.GetTempPath(),
+            $"luminfield-animal-save-{Guid.NewGuid():N}.json"
+        );
+        try
+        {
+            var service = new SaveService(servicePath);
+            service.Save(save);
+
+            var result = service.Load();
+
+            Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+            Assert.NotNull(result.Save);
+            Assert.Single(result.Save.Storage.Chests);
+            Assert.Equal(25, result.Save.Storage.Chests[0].X);
+            Assert.Single(result.Save.FarmObjects.Objects);
+            Assert.Equal(27, result.Save.FarmObjects.Objects[0].X);
+            Assert.Single(result.Save.Orchard.FruitTrees);
+            Assert.Equal(23, result.Save.Orchard.FruitTrees[0].X);
+            Assert.Single(result.Save.Orchard.Beehives);
+            Assert.True(result.Save.Animals.CoopBuilt);
+            Assert.Equal(1, Assert.Single(result.Save.Animals.Chickens).PendingEggs);
+
+            var restored = new GameSession();
+            restored.Restore(result.Save);
+            Assert.True(restored.Animals.CoopBuilt);
+            Assert.True(restored.Storage.HasChest(new GridPosition(25, 13)));
+            Assert.False(restored.Storage.HasChest(AnimalCatalog.CoopCell));
+            Assert.True(restored.Orchard.HasFruitTree(new GridPosition(23, 13)));
+            Assert.False(restored.Orchard.HasFruitTree(new GridPosition(30, 14)));
+        }
+        finally
+        {
+            if (File.Exists(servicePath))
+            {
+                File.Delete(servicePath);
+            }
+        }
+    }
+
+    private static GameSession SessionWithPendingEgg()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Animals = new AnimalSave
+        {
+            CoopBuilt = true,
+            Chickens =
+            [
+                new StarfeatherChickenSave
+                {
+                    ChickenId = AnimalCatalog.FirstChickenId,
+                    PendingEggs = 1,
+                    MoodId = AnimalMoodIds.Happy
+                }
+            ]
+        };
+        session.Restore(save);
+        return session;
+    }
+
+    private static void FillBackpackExceptEggs(Inventory inventory)
+    {
+        var fillerAmount = 99 * (Inventory.SlotCount - Inventory.StartingToolCount);
+        Assert.True(inventory.Add(DataCatalog.DuskbellSeedId, fillerAmount));
+    }
+}
+
 public sealed class TwilightEmporiumRotationTests
 {
     [Fact]
@@ -8145,6 +8460,58 @@ public sealed class LocaleTests
             locale.SetLocale(language);
             Assert.All(
                 keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
+    public void AnimalItemActionAndNoticeKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = new[]
+        {
+            DataCatalog.Item(DataCatalog.StargrainFeedId).NameKey,
+            DataCatalog.Item(DataCatalog.StarfeatherEggId).NameKey,
+            DataCatalog.Item(DataCatalog.GlowcustardId).NameKey,
+            DataCatalog.CraftingRecipes[
+                DataCatalog.StargrainFeedRecipeId
+            ].NameKey,
+            DataCatalog.ProcessorRecipes[
+                DataCatalog.GlowcustardRecipeId
+            ].NameKey,
+            "target.action.build_coop",
+            "target.action.feed_chicken",
+            "target.action.pet_chicken",
+            "target.action.collect_eggs",
+            "animal.coop.built",
+            "animal.coop.not_built",
+            "animal.coop.already_built",
+            "animal.coop.need_coins",
+            "animal.coop.need_materials",
+            "animal.chicken.need_feed",
+            "animal.chicken.fed",
+            "animal.chicken.petted",
+            "animal.chicken.already_fed",
+            "animal.chicken.already_cared",
+            "animal.chicken.no_eggs",
+            "animal.chicken.eggs_collected"
+        };
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys.Distinct(StringComparer.Ordinal),
                 key => Assert.False(locale.Tr(key).StartsWith('['))
             );
         }

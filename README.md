@@ -28,6 +28,9 @@ After the tutorial, the farm opens into a repeatable economy loop:
 - Open the pause menu's Gleamrise Goals panel to follow the current season's
   fourteen-day objective route, track seasonal crop, processor, orchard, animal,
   and festival milestones, and claim atomic daily or season-closing rewards.
+- Build the Starlight Coop with glow coins, Lumenwood, and Crystal Shards, then
+  care for the first Starfeather Hen with Stargrain Feed and daily petting so
+  she lays Starfeather Eggs that can become Glowcustard.
 - Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
   Duskbell, Dawnlace, Glimmerpod, Mistsong Mint, Comet Tuber, and more valuable
   artisan goods for glow coins.
@@ -288,6 +291,8 @@ fixed tool order without dropping seeds or harvests.
 - The Moonwell Infuser, Prism Preserve Vat, and Starweave Drying Loom are fixed
   farm entities with independent recipes, remaining nights, ready states, and
   save records. Cloudleaf can now become Cloudleaf Night Tea after two nights.
+- Starfeather Eggs enter the Prism Preserve Vat as a two-egg artisan recipe and
+  become Glowcustard after one night, using the same atomic machine state.
 - The shared machine panel can focus one machine or collect every ready product
   at once. Batch collection first simulates the complete backpack result; if
   any product will not fit, neither inventory nor machine state changes.
@@ -434,6 +439,10 @@ Starhoney collection state.
 Use `--playtest-gleamrise-season` to open the pause-menu Gleamrise Goals panel
 with prepared progress across the fourteen-day seasonal route.
 
+Use `--playtest-starfeather-chickens` to start beside a built Starlight Coop
+with the first Starfeather Hen, pending eggs, feed, eggs, and build materials
+ready for visual QA and interaction checks.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -531,6 +540,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
   stable progress counters, pause-menu UI, atomic rewards, next-year reset
   normalization, Star Chicken and festival milestone hooks, bilingual text,
   focused tests, and a deterministic playtest flag.
+- 2026-08-20 11:20:28 CST — Added the first animal loop for Phase C: the
+  Starlight Coop, Starfeather Hen feeding/petting, overnight egg production,
+  egg collection, Stargrain Feed crafting, Glowcustard processing, stable save
+  normalization, bilingual text, generated art, tests, and a deterministic
+  playtest.
 - 2026-08-19 15:03:15 CST — Added Phase C orchard and hive play: Moonplum
   Saplings, mature fruit-tree harvest/regrowth, craftable Glowcomb Hives,
   nearby-tree Starhoney production, stable save normalization, bilingual

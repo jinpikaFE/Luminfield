@@ -88,6 +88,7 @@ public enum PlaytestScenarioId
     QualityBackpack,
     Quality,
     OrchardHives,
+    StarfeatherChickens,
     FarmingSpecialization,
     GleamriseSeason,
     Farm
@@ -387,6 +388,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.OrchardHives,
             "--playtest-orchard-hives"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherChickens,
+            "--playtest-starfeather-chickens"
         ),
         new(PlaytestScenarioId.Farm, "--playtest-farm")
     ];

@@ -290,6 +290,10 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-orchard-hives",
             PlaytestScenarioId.OrchardHives
         ),
+        (
+            "--playtest-starfeather-chickens",
+            PlaytestScenarioId.StarfeatherChickens
+        ),
         ("--playtest-farm", PlaytestScenarioId.Farm)
     ];
 

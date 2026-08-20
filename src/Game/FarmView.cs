@@ -74,6 +74,7 @@ public sealed partial class FarmView : Node2D
         AddChild(new GeneratedCropLayer(session));
         AddChild(new CropGlowLayer(session));
         AddChild(new GeneratedOrchardLayer(session));
+        AddChild(new GeneratedAnimalLayer(session));
         AddChild(new MoteField(new Rect2(0, 0, FarmSystem.MapWidth * 16, FarmSystem.MapHeight * 16)));
 
         var mira = GeneratedArt.CreateMiraSprite();
@@ -385,6 +386,12 @@ public sealed partial class FarmView : Node2D
             return _session.PreviewSelectedTarget(orchardCell);
         }
 
+        var animalTarget = ResolveAnimalTarget(target, player);
+        if (animalTarget is { } coopCell)
+        {
+            return _session.PreviewSelectedTarget(coopCell);
+        }
+
         if (target == MiraCell || IsAdjacent(player, MiraCell))
         {
             return PreviewHandInteraction(
@@ -616,6 +623,10 @@ public sealed partial class FarmView : Node2D
         else if (target == ShippingCell || IsAdjacent(_player.CurrentCell, ShippingCell))
         {
             RequestHandInteraction(ShippingRequested);
+        }
+        else if (ResolveAnimalTarget(target, _player.CurrentCell) is { } animalCell)
+        {
+            UseRequested?.Invoke(animalCell);
         }
         else
         {
@@ -982,6 +993,28 @@ public sealed partial class FarmView : Node2D
             .FirstOrDefault();
     }
 
+    private GridPosition? ResolveAnimalTarget(
+        GridPosition target,
+        GridPosition player
+    )
+    {
+        if (_session.Animals.IsCoopCell(target))
+        {
+            return AnimalCatalog.CoopCell;
+        }
+
+        return AnimalCatalog.CoopCells
+            .Where(cell => IsAdjacent(player, cell))
+            .OrderBy(cell =>
+                Math.Abs(cell.X - target.X) +
+                Math.Abs(cell.Y - target.Y)
+            )
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .Select(_ => (GridPosition?)AnimalCatalog.CoopCell)
+            .FirstOrDefault();
+    }
+
     private GridPosition? ResolveStorageTarget(
         GridPosition target,
         GridPosition player
@@ -1070,7 +1103,8 @@ public sealed partial class FarmView : Node2D
             _session.Farm.IsReserved(cell) ||
             _session.Storage.HasChest(cell) ||
             _session.FarmObjects.BlocksMovement(cell) ||
-            _session.Orchard.BlocksMovement(cell))
+            _session.Orchard.BlocksMovement(cell) ||
+            _session.Animals.BlocksMovement(cell))
         {
             return false;
         }
@@ -1420,6 +1454,33 @@ internal sealed partial class TargetCursor : Node2D
                     Mathf.Tau,
                     28,
                     new Color(accent, 0.32f),
+                    1
+                );
+                break;
+            case TargetPreviewKind.ChickenCoop:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-29, -56),
+                        new Vector2(82, 72)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-29, -56),
+                        new Vector2(82, 72)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -23),
+                    36 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    32,
+                    new Color(accent, 0.34f),
                     1
                 );
                 break;

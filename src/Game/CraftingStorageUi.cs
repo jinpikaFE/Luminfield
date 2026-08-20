@@ -194,6 +194,16 @@ public sealed partial class CraftingOverlay : FullScreenUi
             return GeneratedArt.CreateStarwovenChestItemIcon();
         }
 
+        if (GeneratedArt.TryAnimalItemIcon(itemId, out var texture, out var region))
+        {
+            return new AtlasTexture
+            {
+                Atlas = texture,
+                Region = region,
+                FilterClip = true
+            };
+        }
+
         return GeneratedArt.CreateFarmObjectItemIcon(itemId);
     }
 

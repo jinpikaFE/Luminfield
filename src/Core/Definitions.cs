@@ -312,9 +312,13 @@ public static class DataCatalog
     public const string MoonplumId = "moonplum";
     public const string StarhoneyId = "starhoney";
     public const string GlowcombHiveId = "glowcomb_hive";
+    public const string StargrainFeedId = "stargrain_feed";
+    public const string StarfeatherEggId = "starfeather_egg";
+    public const string GlowcustardId = "glowcustard";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
+    public const string GlowcustardRecipeId = "recipe_glowcustard";
     public const string StarwovenChestRecipeId = "recipe_starwoven_chest";
     public const string MoonstonePathRecipeId = "recipe_moonstone_path";
     public const string StarwoodFenceRecipeId = "recipe_starwood_fence";
@@ -323,6 +327,7 @@ public static class DataCatalog
     public const string StarsoilFertilizerRecipeId =
         "recipe_starsoil_fertilizer";
     public const string GlowcombHiveRecipeId = "recipe_glowcomb_hive";
+    public const string StargrainFeedRecipeId = "recipe_stargrain_feed";
     public const string PlantStarbudCommissionId = "commission_plant_starbud";
     public const string GatherLumenwoodCommissionId = "commission_gather_lumenwood";
     public const string DeliverStarbudCommissionId = "commission_deliver_starbud";
@@ -860,6 +865,26 @@ public static class DataCatalog
                 ItemKind.Placeable,
                 99,
                 "item.glowcomb_hive"
+            ),
+            [StargrainFeedId] = new(
+                StargrainFeedId,
+                ItemKind.Resource,
+                99,
+                "item.stargrain_feed"
+            ),
+            [StarfeatherEggId] = new(
+                StarfeatherEggId,
+                ItemKind.Produce,
+                99,
+                "item.starfeather_egg",
+                SellPrice: 82
+            ),
+            [GlowcustardId] = new(
+                GlowcustardId,
+                ItemKind.Artisan,
+                99,
+                "item.glowcustard",
+                SellPrice: 145
             )
         };
 
@@ -908,6 +933,8 @@ public static class DataCatalog
         CloudleafTeaId,
         MoonplumId,
         StarhoneyId,
+        StarfeatherEggId,
+        GlowcustardId,
         LumenwoodId,
         CrystalShardId
     ];
@@ -1058,6 +1085,9 @@ public static class DataCatalog
         MoonplumSaplingId,
         MoonplumId,
         StarhoneyId,
+        StargrainFeedId,
+        StarfeatherEggId,
+        GlowcustardId,
         LumenwoodId,
         CrystalShardId,
         StarwovenChestId,
@@ -1297,6 +1327,15 @@ public static class DataCatalog
                 1,
                 2,
                 "recipe.cloudleaf_tea"
+            ),
+            [GlowcustardRecipeId] = new(
+                GlowcustardRecipeId,
+                StarfeatherEggId,
+                2,
+                GlowcustardId,
+                1,
+                1,
+                "recipe.glowcustard"
             )
         };
 
@@ -1371,6 +1410,16 @@ public static class DataCatalog
                     new CraftingIngredient(MoonplumId, 1)
                 ],
                 "recipe.glowcomb_hive"
+            ),
+            [StargrainFeedRecipeId] = new(
+                StargrainFeedRecipeId,
+                StargrainFeedId,
+                3,
+                [
+                    new CraftingIngredient(StarbudId, 1),
+                    new CraftingIngredient(CloudleafId, 1)
+                ],
+                "recipe.stargrain_feed"
             )
         };
 
@@ -1673,7 +1722,10 @@ public static class ProcessorCatalog
                 PrismPreserveVatId,
                 new GridPosition(35, 12),
                 "processor.machine.prism_vat",
-                [DataCatalog.StarbudPreserveRecipeId]
+                [
+                    DataCatalog.StarbudPreserveRecipeId,
+                    DataCatalog.GlowcustardRecipeId
+                ]
             ),
             [StarweaveDryingLoomId] = new(
                 StarweaveDryingLoomId,
@@ -1696,4 +1748,36 @@ public static class ProcessorCatalog
 
     public static string? MachineIdAt(GridPosition position) =>
         Machines.Values.FirstOrDefault(machine => machine.Position == position)?.Id;
+}
+
+public static class AnimalCatalog
+{
+    public const string CoopId = "starlight_coop";
+    public const string FirstChickenId = "starfeather_hen";
+
+    public static readonly GridPosition CoopCell = new(30, 15);
+    public static readonly GridPosition ChickenCell = new(32, 16);
+
+    public const int CoopBuildCostCoins = 120;
+
+    public static readonly IReadOnlyList<GridPosition> CoopCells =
+    [
+        new(29, 14),
+        new(30, 14),
+        new(31, 14),
+        new(29, 15),
+        new(30, 15),
+        new(31, 15)
+    ];
+
+    public static readonly IReadOnlyList<CraftingIngredient> CoopBuildMaterials =
+    [
+        new(DataCatalog.LumenwoodId, 10),
+        new(DataCatalog.CrystalShardId, 3)
+    ];
+
+    public static readonly IReadOnlyList<string> ChickenIds =
+    [
+        FirstChickenId
+    ];
 }

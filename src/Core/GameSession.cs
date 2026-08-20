@@ -21,6 +21,7 @@ public sealed class GameSession
     public StorageSystem Storage { get; } = new();
     public FarmObjectSystem FarmObjects { get; } = new();
     public OrchardSystem Orchard { get; } = new();
+    public AnimalSystem Animals { get; } = new();
     public DailyCommissionSystem Commission { get; } = new();
     public WeeklyCommissionSystem WeeklyCommission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
@@ -83,6 +84,7 @@ public sealed class GameSession
         Storage.Changed += _ => NotifyChanged();
         FarmObjects.Changed += _ => NotifyChanged();
         Orchard.Changed += _ => NotifyChanged();
+        Animals.Changed += NotifyChanged;
         Commission.Changed += NotifyChanged;
         WeeklyCommission.Changed += NotifyChanged;
         Starlight.Changed += NotifyChanged;
@@ -108,6 +110,7 @@ public sealed class GameSession
         Storage.Reset();
         FarmObjects.Reset();
         Orchard.Reset();
+        Animals.Reset();
         Commission.Reset(Clock.Day);
         WeeklyCommission.Reset(Clock.Day);
         Starlight.Reset();
@@ -135,9 +138,21 @@ public sealed class GameSession
         Clock.Reset(save.Day, save.MinuteOfDay);
         Inventory.Restore(save.Inventory, save.Player.SelectedSlot);
         Farm.Restore(save.FarmTiles);
-        Storage.Restore(save.Storage, Farm);
-        FarmObjects.Restore(save.FarmObjects, Farm, Storage);
-        Orchard.Restore(save.Orchard, Farm, Storage, FarmObjects);
+        Animals.Restore(save.Animals);
+        Storage.Restore(save.Storage, Farm, Animals.IsCoopCell);
+        FarmObjects.Restore(
+            save.FarmObjects,
+            Farm,
+            Storage,
+            Animals.IsCoopCell
+        );
+        Orchard.Restore(
+            save.Orchard,
+            Farm,
+            Storage,
+            FarmObjects,
+            Animals.CoopBuilt ? AnimalCatalog.CoopCells : []
+        );
         Quest.Restore(save.Quest);
         Processor.Restore(save.Processor);
         Exploration.Restore(save.Exploration);
@@ -242,6 +257,16 @@ public sealed class GameSession
             }
 
             return UseHand(FarmLayout.StarlightMailboxCell);
+        }
+
+        if (Animals.IsCoopCell(target))
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return UseHand(AnimalCatalog.CoopCell);
         }
 
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -352,7 +377,7 @@ public sealed class GameSession
                             Farm,
                             Storage,
                             Inventory,
-                            Orchard.BlocksMovement
+                            IsPlacementOccupiedByFarmObjectOrOrchard
                         );
                         if (placed.Succeeded &&
                             item.Id == DataCatalog.GlowcombHiveId)
@@ -384,7 +409,8 @@ public sealed class GameSession
                         Farm,
                         Storage,
                         FarmObjects,
-                        Clock.Day
+                        Clock.Day,
+                        Animals.IsCoopCell
                     );
                     if (result.Succeeded)
                     {
@@ -558,6 +584,11 @@ public sealed class GameSession
                 TargetPreviewKind.Mailbox,
                 actionKey
             );
+        }
+
+        if (Animals.IsCoopCell(target))
+        {
+            return PreviewChickenCoop(selectedId);
         }
 
         if (Storage.HasChest(target))
@@ -1173,6 +1204,95 @@ public sealed class GameSession
         );
     }
 
+    private TargetPreview PreviewChickenCoop(string selectedId)
+    {
+        if (selectedId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                AnimalCatalog.CoopCell,
+                TargetPreviewKind.ChickenCoop,
+                "target.need.hand"
+            );
+        }
+
+        if (!Animals.CoopBuilt)
+        {
+            return Animals.CanBuildCoop(
+                Inventory,
+                Coins,
+                out var failureKey
+            )
+                ? TargetPreview.Available(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    "target.action.build_coop"
+                )
+                : TargetPreview.Blocked(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    failureKey
+                );
+        }
+
+        var chicken = Animals.FirstChicken;
+        if (chicken is null)
+        {
+            return TargetPreview.Blocked(
+                AnimalCatalog.CoopCell,
+                TargetPreviewKind.ChickenCoop,
+                "animal.coop.not_built"
+            );
+        }
+
+        if (chicken.PendingEggs > 0)
+        {
+            return Inventory.CanAdd(
+                DataCatalog.StarfeatherEggId,
+                chicken.PendingEggs
+            )
+                ? TargetPreview.Available(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    "target.action.collect_eggs"
+                )
+                : TargetPreview.Blocked(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    "target.blocked.backpack_full"
+                );
+        }
+
+        if (!chicken.FedToday(Clock.Day))
+        {
+            return Inventory.Count(DataCatalog.StargrainFeedId) > 0
+                ? TargetPreview.Available(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    "target.action.feed_chicken"
+                )
+                : TargetPreview.Blocked(
+                    AnimalCatalog.CoopCell,
+                    TargetPreviewKind.ChickenCoop,
+                    "animal.chicken.need_feed"
+                );
+        }
+
+        if (!chicken.PettedToday(Clock.Day))
+        {
+            return TargetPreview.Available(
+                AnimalCatalog.CoopCell,
+                TargetPreviewKind.ChickenCoop,
+                "target.action.pet_chicken"
+            );
+        }
+
+        return TargetPreview.Blocked(
+            AnimalCatalog.CoopCell,
+            TargetPreviewKind.ChickenCoop,
+            "animal.chicken.already_cared"
+        );
+    }
+
     private TargetPreview PreviewFruitTreePlacement(
         ItemDefinition item,
         int count,
@@ -1205,7 +1325,8 @@ public sealed class GameSession
             target,
             Farm,
             Storage,
-            FarmObjects
+            FarmObjects,
+            Animals.IsCoopCell
         );
         if (issue == OrchardPlacementIssue.None && count > 0)
         {
@@ -1286,6 +1407,11 @@ public sealed class GameSession
 
     private ActionResult UseHand(GridPosition target)
     {
+        if (Animals.IsCoopCell(target))
+        {
+            return UseChickenCoop();
+        }
+
         if (WorldDefinition.IsWoodlandStarlightCell(target))
         {
             Starlight.Discover();
@@ -1402,6 +1528,67 @@ public sealed class GameSession
         }
 
         return ActionResult.Fail("notice.nothing_to_interact");
+    }
+
+    private ActionResult UseChickenCoop()
+    {
+        if (!Animals.CoopBuilt)
+        {
+            return BuildChickenCoop();
+        }
+
+        var chicken = Animals.FirstChicken;
+        if (chicken is null)
+        {
+            return ActionResult.Fail("animal.coop.not_built");
+        }
+
+        if (chicken.PendingEggs > 0)
+        {
+            var collected = Animals.CollectEggs(Inventory);
+            if (collected.Succeeded && collected.GrantedItemId is not null)
+            {
+                Commission.RecordGather(
+                    collected.GrantedItemId,
+                    collected.GrantedItemCount
+                );
+                WeeklyCommission.RecordGather(
+                    collected.GrantedItemId,
+                    collected.GrantedItemCount
+                );
+            }
+
+            return collected;
+        }
+
+        if (!chicken.FedToday(Clock.Day))
+        {
+            return Animals.FeedFirstChicken(Inventory, Clock.Day);
+        }
+
+        return Animals.PetFirstChicken(Clock.Day);
+    }
+
+    private ActionResult BuildChickenCoop()
+    {
+        if (!Animals.CanBuildCoop(Inventory, Coins, out var failureKey))
+        {
+            return ActionResult.Fail(failureKey);
+        }
+
+        if (!Inventory.TryRemoveMany(AnimalCatalog.CoopBuildMaterials))
+        {
+            return ActionResult.Fail("animal.coop.need_materials");
+        }
+
+        Coins -= AnimalCatalog.CoopBuildCostCoins;
+        var result = Animals.BuildCoopAfterPayment();
+        if (result.Succeeded)
+        {
+            Changed?.Invoke();
+        }
+
+        return result;
     }
 
     private ActionResult RefillWateringCan(GridPosition target)
@@ -2176,6 +2363,7 @@ public sealed class GameSession
         FarmObjects.ApplySprinklers(Farm);
         Farm.EndDay(Weather.CurrentId);
         Orchard.ResolveNight(FarmObjects);
+        Animals.ResolveNight(endedDay);
         Processor.ResolveNight();
         Construction.ResolveNight();
         NormalizeCottagePlayerPositionForUpgrade();
@@ -2231,6 +2419,7 @@ public sealed class GameSession
         Storage = Storage.Capture(),
         FarmObjects = FarmObjects.Capture(),
         Orchard = Orchard.Capture(),
+        Animals = Animals.Capture(),
         Commission = Commission.Capture(),
         WeeklyCommission = WeeklyCommission.Capture(),
         Starlight = Starlight.Capture(),
@@ -2721,7 +2910,8 @@ public sealed class GameSession
         GridPosition position
     ) =>
         FarmObjects.HasObject(position) ||
-        Orchard.BlocksMovement(position);
+        Orchard.BlocksMovement(position) ||
+        Animals.IsCoopCell(position);
 
     private TargetPreview PreviewFarmObjectPlacement(
         string itemId,
@@ -2735,7 +2925,7 @@ public sealed class GameSession
             target,
             Farm,
             Storage,
-            Orchard.BlocksMovement
+            IsPlacementOccupiedByFarmObjectOrOrchard
         );
         if (issue == FarmObjectPlacementIssue.None && count > 0)
         {

@@ -323,6 +323,22 @@ public sealed class GleamriseSeasonSave
     public List<GleamriseGoalCounterSave> Counters { get; set; } = [];
 }
 
+public sealed class StarfeatherChickenSave
+{
+    public string ChickenId { get; set; } = string.Empty;
+    public int Affection { get; set; }
+    public int LastFedDay { get; set; }
+    public int LastPettedDay { get; set; }
+    public int PendingEggs { get; set; }
+    public string MoodId { get; set; } = string.Empty;
+}
+
+public sealed class AnimalSave
+{
+    public bool CoopBuilt { get; set; }
+    public List<StarfeatherChickenSave> Chickens { get; set; } = [];
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -351,6 +367,7 @@ public sealed class GameSaveV1
     public ConstructionSave Construction { get; set; } = new();
     public FarmingSkillSave FarmingSkill { get; set; } = new();
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
+    public AnimalSave Animals { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -404,6 +421,7 @@ public enum TargetPreviewKind
     Sprinkler,
     FruitTree,
     Beehive,
+    ChickenCoop,
     Bed,
     KitchenReserve
 }

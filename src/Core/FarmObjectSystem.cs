@@ -144,15 +144,21 @@ public sealed class FarmObjectSystem
     public void Restore(
         FarmObjectSave? save,
         FarmSystem farm,
-        StorageSystem storage
+        StorageSystem storage,
+        Func<GridPosition, bool>? extraOccupied = null
     )
     {
         _objects.Clear();
         foreach (var entry in save?.Objects ?? [])
         {
             var position = new GridPosition(entry.X, entry.Y);
-            if (CheckPlacement(entry.ItemId, position, farm, storage) !=
-                FarmObjectPlacementIssue.None)
+            if (CheckPlacement(
+                    entry.ItemId,
+                    position,
+                    farm,
+                    storage,
+                    extraOccupied
+                ) != FarmObjectPlacementIssue.None)
             {
                 continue;
             }

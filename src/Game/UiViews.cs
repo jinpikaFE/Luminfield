@@ -789,6 +789,11 @@ internal sealed partial class HotbarSlotContent : Control
             return true;
         }
 
+        if (GeneratedArt.TryAnimalItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         if (GeneratedArt.TryGleamriseItemIcon(itemId, out texture, out region))
         {
             return true;

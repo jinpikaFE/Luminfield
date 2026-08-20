@@ -145,13 +145,18 @@ public sealed class StorageSystem
 
     public void Reset() => _chests.Clear();
 
-    public void Restore(StorageSave? save, FarmSystem farm)
+    public void Restore(
+        StorageSave? save,
+        FarmSystem farm,
+        Func<GridPosition, bool>? extraOccupied = null
+    )
     {
         _chests.Clear();
         foreach (var chestSave in save?.Chests ?? [])
         {
             var position = new GridPosition(chestSave.X, chestSave.Y);
-            if (CheckPlacement(position, farm) != ChestPlacementIssue.None)
+            if (CheckPlacement(position, farm, extraOccupied) !=
+                ChestPlacementIssue.None)
             {
                 continue;
             }

@@ -91,6 +91,9 @@ internal static class GeneratedArt
     private static readonly Texture2D OrchardHives =
         GD.Load<Texture2D>("res://assets/generated/orchard_hives.png");
 
+    private static readonly Texture2D StarfeatherChickens =
+        GD.Load<Texture2D>("res://assets/generated/starfeather_chickens.png");
+
     private static readonly IReadOnlyDictionary<string, int> CropExpansionRows =
         new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -527,6 +530,22 @@ internal static class GeneratedArt
         return CreateOrchardSprite(source, ready ? 50f : 45f);
     }
 
+    public static Sprite2D CreateChickenCoopSprite(bool built)
+    {
+        var source = built
+            ? StarfeatherChickenRegion(1, 0)
+            : StarfeatherChickenRegion(0, 0);
+        return CreateStarfeatherSprite(source, 62f);
+    }
+
+    public static Sprite2D CreateStarfeatherHenSprite(bool happy)
+    {
+        var source = happy
+            ? StarfeatherChickenRegion(3, 0)
+            : StarfeatherChickenRegion(2, 0);
+        return CreateStarfeatherSprite(source, happy ? 44f : 40f);
+    }
+
     public static bool TryOrchardItemIcon(
         string itemId,
         out Texture2D texture,
@@ -540,6 +559,23 @@ internal static class GeneratedArt
             DataCatalog.MoonplumId => MoonplumIconRegion,
             DataCatalog.StarhoneyId => StarhoneyIconRegion,
             DataCatalog.GlowcombHiveId => GlowcombHiveIconRegion,
+            _ => default
+        };
+        return region.Size != Vector2.Zero;
+    }
+
+    public static bool TryAnimalItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = StarfeatherChickens;
+        region = itemId switch
+        {
+            DataCatalog.StarfeatherEggId => StarfeatherChickenRegion(0, 1),
+            DataCatalog.GlowcustardId => StarfeatherChickenRegion(1, 1),
+            DataCatalog.StargrainFeedId => StarfeatherChickenRegion(2, 1),
             _ => default
         };
         return region.Size != Vector2.Zero;
@@ -1045,6 +1081,26 @@ internal static class GeneratedArt
         };
     }
 
+    private static Sprite2D CreateStarfeatherSprite(
+        Rect2 source,
+        float targetHeight
+    )
+    {
+        var scale = targetHeight / source.Size.Y;
+        return new Sprite2D
+        {
+            Texture = StarfeatherChickens,
+            RegionEnabled = true,
+            RegionRect = source,
+            Offset = new Vector2(0, -source.Size.Y / 2f),
+            Scale = Vector2.One * scale,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+    }
+
+    private static Rect2 StarfeatherChickenRegion(int column, int row) =>
+        new(column * 384, row * 512, 384, 512);
+
     private static AtlasTexture CreatePhaseAIcon(int index) => new()
     {
         Atlas = PhaseAAssets,
@@ -1336,6 +1392,77 @@ internal sealed partial class GeneratedOrchardLayer : Node2D
 
             AddChild(sprite);
         }
+    }
+
+    private static Vector2 CellCenter(GridPosition cell) =>
+        new(cell.X * 16 + 8, cell.Y * 16 + 8);
+}
+
+internal sealed partial class GeneratedAnimalLayer : Node2D
+{
+    private readonly GameSession _session;
+
+    public GeneratedAnimalLayer(GameSession session)
+    {
+        _session = session;
+        ZIndex = 6;
+        YSortEnabled = true;
+        session.Animals.Changed += Rebuild;
+        Rebuild();
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Animals.Changed -= Rebuild;
+    }
+
+    private void Rebuild()
+    {
+        foreach (var child in GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        var coop = GeneratedArt.CreateChickenCoopSprite(_session.Animals.CoopBuilt);
+        coop.Name = AnimalCatalog.CoopId;
+        coop.Position = CellCenter(AnimalCatalog.CoopCell) + new Vector2(0, 8);
+        coop.ZIndex = AnimalCatalog.CoopCell.Y;
+        coop.Modulate = _session.Animals.CoopBuilt
+            ? Colors.White
+            : new Color(1f, 1f, 1f, 0.54f);
+        coop.AddChild(new ActorShadow
+        {
+            Position = new Vector2(0, 1),
+            ZIndex = -2
+        });
+        AddChild(coop);
+
+        var chicken = _session.Animals.FirstChicken;
+        if (!_session.Animals.CoopBuilt || chicken is null)
+        {
+            return;
+        }
+
+        var happy = chicken.MoodId == AnimalMoodIds.Happy ||
+            chicken.PendingEggs > 0;
+        var hen = GeneratedArt.CreateStarfeatherHenSprite(happy);
+        hen.Name = chicken.ChickenId;
+        hen.Position = CellCenter(AnimalCatalog.ChickenCell) + new Vector2(0, 8);
+        hen.ZIndex = AnimalCatalog.ChickenCell.Y;
+        hen.AddChild(new ActorShadow
+        {
+            Position = new Vector2(0, 1),
+            ZIndex = -2
+        });
+        if (chicken.PendingEggs > 0)
+        {
+            hen.AddChild(new FarmObjectGlow(FarmObjectKind.Torch)
+            {
+                Position = new Vector2(0, -18),
+                ZIndex = -1
+            });
+        }
+        AddChild(hen);
     }
 
     private static Vector2 CellCenter(GridPosition cell) =>

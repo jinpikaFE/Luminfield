@@ -332,6 +332,10 @@ public sealed class SaveService
         save.Shipping.LastSettlement.Entries = NormalizeShippingEntries(
             save.Shipping.LastSettlement.Entries
         );
+        save.Animals = AnimalSystem.NormalizeSave(save.Animals);
+        var occupiedAnimalCells = save.Animals.CoopBuilt
+            ? AnimalCatalog.CoopCells.ToHashSet()
+            : new HashSet<GridPosition>();
         save.Storage ??= new StorageSave();
         save.Storage.Chests ??= [];
         var occupiedFarmTiles = save.FarmTiles
@@ -347,7 +351,8 @@ public sealed class SaveService
                     !FarmLayout.IsStaticBlocked(position) &&
                     !FarmSystem.IsPlantingBed(position) &&
                     !farm.IsReserved(position) &&
-                    !occupiedFarmTiles.Contains(position);
+                    !occupiedFarmTiles.Contains(position) &&
+                    !occupiedAnimalCells.Contains(position);
             })
             .GroupBy(chest => new GridPosition(chest.X, chest.Y))
             .Select(group =>
@@ -391,6 +396,7 @@ public sealed class SaveService
                 occupiedFarmTiles.Contains(position) ||
                 occupiedStorageCells.Contains(position) ||
                 occupiedObjectCells.Contains(position) ||
+                occupiedAnimalCells.Contains(position) ||
                 !hasCorrectSurface)
             {
                 continue;
@@ -409,7 +415,8 @@ public sealed class SaveService
             save.Orchard,
             save.FarmObjects,
             occupiedFarmTiles,
-            occupiedStorageCells
+            occupiedStorageCells,
+            occupiedAnimalCells
         );
         save.Commission = DailyCommissionSystem.NormalizeSave(
             save.Commission,

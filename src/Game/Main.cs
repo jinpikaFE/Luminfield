@@ -599,6 +599,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.Quality] = StartQualityPlaytest,
                 [PlaytestScenarioId.OrchardHives] =
                     StartOrchardHivesPlaytest,
+                [PlaytestScenarioId.StarfeatherChickens] =
+                    StartStarfeatherChickensPlaytest,
                 [PlaytestScenarioId.FarmingSpecialization] =
                     StartFarmingSpecializationPlaytest,
                 [PlaytestScenarioId.GleamriseSeason] =
@@ -1006,6 +1008,47 @@ public sealed partial class Main : Node
             GleamriseSeasonGoalSystem.CounterHarvestMoonplum
         );
         _session.Inventory.Add(DataCatalog.GlimmerpodId, 2);
+    }
+
+    private void StartStarfeatherChickensPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+
+        var save = _session.Capture();
+        save.Coins = 180;
+        save.Animals = new AnimalSave
+        {
+            CoopBuilt = true,
+            Chickens =
+            [
+                new StarfeatherChickenSave
+                {
+                    ChickenId = AnimalCatalog.FirstChickenId,
+                    Affection = 12,
+                    LastFedDay = _session.Clock.Day,
+                    LastPettedDay = 0,
+                    PendingEggs = 1,
+                    MoodId = AnimalMoodIds.Happy
+                }
+            ]
+        };
+        _session.Restore(save);
+
+        _session.Inventory.Add(DataCatalog.StargrainFeedId, 3);
+        _session.Inventory.Add(DataCatalog.StarfeatherEggId, 2);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 10);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 3);
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            AnimalCatalog.CoopCell.X * 16 + 8,
+            (AnimalCatalog.CoopCell.Y + 2) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
     }
 
     private void StartFarmPlaceablesPlaytest()

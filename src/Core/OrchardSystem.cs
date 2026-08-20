@@ -84,7 +84,8 @@ public sealed class OrchardSystem
         GridPosition position,
         FarmSystem farm,
         StorageSystem storage,
-        FarmObjectSystem farmObjects
+        FarmObjectSystem farmObjects,
+        Func<GridPosition, bool>? extraOccupied = null
     )
     {
         if (!WorldDefinition.IsHomeCell(position))
@@ -94,7 +95,8 @@ public sealed class OrchardSystem
 
         if (_fruitTrees.ContainsKey(position) ||
             storage.HasChest(position) ||
-            farmObjects.HasObject(position))
+            farmObjects.HasObject(position) ||
+            extraOccupied?.Invoke(position) == true)
         {
             return OrchardPlacementIssue.Occupied;
         }
@@ -119,7 +121,8 @@ public sealed class OrchardSystem
         FarmSystem farm,
         StorageSystem storage,
         FarmObjectSystem farmObjects,
-        int day
+        int day,
+        Func<GridPosition, bool>? extraOccupied = null
     )
     {
         if (!DataCatalog.FruitTrees.TryGetValue(treeId, out var definition))
@@ -132,7 +135,13 @@ public sealed class OrchardSystem
             return ActionResult.Fail("notice.sapling_out_of_season");
         }
 
-        var issue = CheckTreePlacement(position, farm, storage, farmObjects);
+        var issue = CheckTreePlacement(
+            position,
+            farm,
+            storage,
+            farmObjects,
+            extraOccupied
+        );
         if (issue != OrchardPlacementIssue.None)
         {
             return ActionResult.Fail(MessageForIssue(issue));
@@ -268,7 +277,8 @@ public sealed class OrchardSystem
         OrchardSave? save,
         FarmSystem farm,
         StorageSystem storage,
-        FarmObjectSystem farmObjects
+        FarmObjectSystem farmObjects,
+        IEnumerable<GridPosition>? extraOccupiedCells = null
     )
     {
         _fruitTrees.Clear();
@@ -277,7 +287,8 @@ public sealed class OrchardSystem
             save,
             farmObjects.Capture(),
             farm.Tiles.Keys,
-            storage.Chests.Keys
+            storage.Chests.Keys,
+            extraOccupiedCells
         );
 
         foreach (var entry in normalized.FruitTrees)
@@ -334,11 +345,13 @@ public sealed class OrchardSystem
         OrchardSave? save,
         FarmObjectSave? farmObjects,
         IEnumerable<GridPosition>? occupiedFarmTiles,
-        IEnumerable<GridPosition>? occupiedStorageCells
+        IEnumerable<GridPosition>? occupiedStorageCells,
+        IEnumerable<GridPosition>? extraOccupiedCells = null
     )
     {
         var farmTileCells = occupiedFarmTiles?.ToHashSet() ?? [];
         var storageCells = occupiedStorageCells?.ToHashSet() ?? [];
+        var extraCells = extraOccupiedCells?.ToHashSet() ?? [];
         var objectCells = (farmObjects?.Objects ?? [])
             .Where(entry => entry is not null)
             .Select(entry => new GridPosition(entry.X, entry.Y))
@@ -360,6 +373,7 @@ public sealed class OrchardSystem
                     farmTileCells,
                     storageCells,
                     objectCells,
+                    extraCells,
                     treeCells
                 ))
             {
@@ -440,6 +454,7 @@ public sealed class OrchardSystem
         IReadOnlySet<GridPosition> farmTileCells,
         IReadOnlySet<GridPosition> storageCells,
         IReadOnlySet<GridPosition> objectCells,
+        IReadOnlySet<GridPosition> extraCells,
         IReadOnlySet<GridPosition> treeCells
     )
     {
@@ -456,6 +471,7 @@ public sealed class OrchardSystem
             !farmTileCells.Contains(position) &&
             !storageCells.Contains(position) &&
             !objectCells.Contains(position) &&
+            !extraCells.Contains(position) &&
             !treeCells.Contains(position);
     }
 
