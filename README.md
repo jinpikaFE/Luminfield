@@ -214,11 +214,13 @@ complete as well. Three crop-quality tiers and the first fertilizer are now
 implemented. Phase B includes the first village, eight NPC schedules, all
 six enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and complete two-stage friendship event chains
-for Liora, Tavi, Nemi, Kael, Sela, and Orin. Phase C has begun with twelve crops,
-two resonance variants, three independent processing machines, and the first
-0–5 farming skill with a permanent level-three specialization. It now also has
-a fourteen-day Gleamrise Goals panel that resets each Gleamrise year, stores
-stable progress counters and claimed reward IDs, and leaves unclaimed or
+for Liora, Tavi, Nemi, Kael, Sela, and Orin. Phase C is now complete at 7/7:
+twelve crops with two resonance variants; Moonplum trees, Glowcomb Hives, and
+Starhoney; three independent processing machines; the first 0–5 farming skill
+with a permanent level-three specialization; the fourteen-day Gleamrise Goals
+panel; the Starlight Coop and first Starfeather Hen loop; and the day-seven
+Gleamrise Sowing Festival. The seasonal goals reset each Gleamrise year, store
+stable progress counters and claimed reward IDs, and leave unclaimed or
 unfinished objectives available without permanent punishment.
 
 ## Tools and backpack
@@ -543,6 +545,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-20 12:06:47 CST — Finalized Phase C documentation as 7/7 by splitting
+  the mandatory scope into seven completed items, summarizing the fourteen-day
+  goals, Starfeather Hen loop, and Gleamrise Sowing Festival, and removing stale
+  Phase C progress wording.
 - 2026-08-20 10:59:20 CST — Added the fourteen-day Gleamrise Goals loop with
   stable progress counters, pause-menu UI, atomic rewards, next-year reset
   normalization, Star Chicken and festival milestone hooks, bilingual text,
