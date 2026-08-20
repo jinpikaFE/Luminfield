@@ -28,6 +28,8 @@ public sealed partial class FarmView : Node2D
         VillageCatalog.StarlightPostDoorCell;
     public static readonly GridPosition StarfallWatchDoorCell =
         VillageCatalog.StarfallWatchDoorCell;
+    public static readonly GridPosition GleamriseFestivalGateCell =
+        FestivalSystem.GateCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -98,6 +100,18 @@ public sealed partial class FarmView : Node2D
         marketStall.Position = CellCenter(ShopCell) + new Vector2(0, 8);
         marketStall.ZIndex = 7;
         AddChild(marketStall);
+
+        var festivalGate = GeneratedArt.CreateGleamriseFestivalGateSprite();
+        festivalGate.Name = "GleamriseFestivalGate";
+        festivalGate.Position =
+            CellCenter(GleamriseFestivalGateCell) + new Vector2(0, 8);
+        festivalGate.ZIndex = 7;
+        festivalGate.AddChild(new ActorShadow
+        {
+            Position = new Vector2(0, 1),
+            ZIndex = -1
+        });
+        AddChild(festivalGate);
 
         foreach (var definition in ProcessorCatalog.Machines.Values)
         {
@@ -232,6 +246,14 @@ public sealed partial class FarmView : Node2D
             Position = CellCenter(StarweaverTeaHouseDoorCell),
             ZIndex = 30
         });
+        AddChild(new VillageEntranceBeacon(
+            () => _player.CurrentCell,
+            GleamriseFestivalGateCell
+        )
+        {
+            Position = CellCenter(GleamriseFestivalGateCell),
+            ZIndex = 30
+        });
 
         var camera = new Camera2D
         {
@@ -282,6 +304,7 @@ public sealed partial class FarmView : Node2D
     public event Action? EnterTwilightEmporiumRequested;
     public event Action? EnterStarlightPostRequested;
     public event Action? EnterStarfallWatchRequested;
+    public event Action? EnterGleamriseFestivalRequested;
     public event Action? ShopRequested;
     public event Action<string>? ProcessorRequested;
     public event Action? ShippingRequested;
@@ -343,6 +366,13 @@ public sealed partial class FarmView : Node2D
         {
             return _session.PreviewSelectedTarget(
                 StarfallWatchDoorCell
+            );
+        }
+
+        if (target == GleamriseFestivalGateCell)
+        {
+            return _session.PreviewSelectedTarget(
+                GleamriseFestivalGateCell
             );
         }
 
@@ -452,6 +482,13 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        if (IsAdjacent(player, GleamriseFestivalGateCell))
+        {
+            return _session.PreviewSelectedTarget(
+                GleamriseFestivalGateCell
+            );
+        }
+
         if (target == ShopCell || IsAdjacent(player, ShopCell))
         {
             return PreviewHandInteraction(
@@ -525,6 +562,13 @@ public sealed partial class FarmView : Node2D
         if (target == StarfallWatchDoorCell)
         {
             EnterStarfallWatchRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == GleamriseFestivalGateCell)
+        {
+            EnterGleamriseFestivalRequested?.Invoke();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -611,6 +655,13 @@ public sealed partial class FarmView : Node2D
                  ))
         {
             EnterStarfallWatchRequested?.Invoke();
+        }
+        else if (IsAdjacent(
+                     _player.CurrentCell,
+                     GleamriseFestivalGateCell
+                 ))
+        {
+            EnterGleamriseFestivalRequested?.Invoke();
         }
         else if (target == ShopCell || IsAdjacent(_player.CurrentCell, ShopCell))
         {
@@ -1515,6 +1566,87 @@ internal sealed partial class TargetCursor : Node2D
                     1.2f
                 );
                 break;
+            case TargetPreviewKind.FestivalGate:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -50),
+                        new Vector2(52, 66)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -50),
+                        new Vector2(52, 66)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -22),
+                    28 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    28,
+                    new Color(accent, 0.34f),
+                    1.1f
+                );
+                break;
+            case TargetPreviewKind.FestivalPlot:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-144, -112),
+                        new Vector2(256, 176)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-144, -112),
+                        new Vector2(256, 176)
+                    ),
+                    line,
+                    false,
+                    1.5f
+                );
+                DrawArc(
+                    origin + new Vector2(-16, -24),
+                    74 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    36,
+                    new Color(accent, 0.28f),
+                    1
+                );
+                break;
+            case TargetPreviewKind.FestivalStall:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -56),
+                        new Vector2(72, 72)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -56),
+                        new Vector2(72, 72)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -25),
+                    30 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    28,
+                    new Color(accent, 0.32f),
+                    1
+                );
+                break;
             case TargetPreviewKind.Bed:
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), line, false, 1.5f);
@@ -1571,6 +1703,9 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewKind.Crystal => -47,
         TargetPreviewKind.Landmark => -56,
         TargetPreviewKind.StarlightPedestal => -62,
+        TargetPreviewKind.FestivalGate => -62,
+        TargetPreviewKind.FestivalPlot => -124,
+        TargetPreviewKind.FestivalStall => -70,
         TargetPreviewKind.Crop => -34,
         TargetPreviewKind.Bed => -25,
         _ => -18

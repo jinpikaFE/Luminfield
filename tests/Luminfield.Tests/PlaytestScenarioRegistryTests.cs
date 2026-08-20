@@ -294,6 +294,10 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-starfeather-chickens",
             PlaytestScenarioId.StarfeatherChickens
         ),
+        (
+            "--playtest-gleamrise-festival",
+            PlaytestScenarioId.GleamriseFestival
+        ),
         ("--playtest-farm", PlaytestScenarioId.Farm)
     ];
 

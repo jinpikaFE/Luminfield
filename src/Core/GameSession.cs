@@ -31,6 +31,7 @@ public sealed class GameSession
     public ConstructionSystem Construction { get; } = new();
     public FarmingSkillSystem FarmingSkill { get; } = new();
     public GleamriseSeasonGoalSystem GleamriseSeason { get; } = new();
+    public FestivalSystem Festival { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -61,6 +62,8 @@ public sealed class GameSession
         PlayerLocationId == PlayerLocationIds.StarlightPost;
     public bool InsideStarfallWatch =>
         PlayerLocationId == PlayerLocationIds.StarfallWatch;
+    public bool InsideGleamriseFestival =>
+        PlayerLocationId == PlayerLocationIds.GleamriseFestival;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
 
     public event Action? Changed;
@@ -94,6 +97,7 @@ public sealed class GameSession
         Construction.Changed += NotifyChanged;
         FarmingSkill.Changed += NotifyChanged;
         GleamriseSeason.Changed += NotifyChanged;
+        Festival.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -120,6 +124,7 @@ public sealed class GameSession
         Construction.Reset();
         FarmingSkill.Reset();
         GleamriseSeason.Reset(Clock.Day);
+        Festival.Reset(Clock.Day);
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -163,6 +168,7 @@ public sealed class GameSession
         Construction.Restore(save.Construction);
         FarmingSkill.Restore(save.FarmingSkill);
         GleamriseSeason.Restore(save.GleamriseSeason, save.Day);
+        Festival.Restore(save.Festival, save.Day);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -530,6 +536,11 @@ public sealed class GameSession
             return PreviewStarfallWatchTarget(target);
         }
 
+        if (InsideGleamriseFestival)
+        {
+            return PreviewGleamriseFestivalTarget(target);
+        }
+
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
         if (WorldDefinition.IsWoodlandStarlightCell(target))
@@ -774,6 +785,30 @@ public sealed class GameSession
                 VillageCatalog.StarfallWatchDoorCell,
                 TargetPreviewKind.Door,
                 "target.status.starfall_watch_closed"
+            );
+        }
+
+        if (target == FestivalSystem.GateCell)
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    FestivalSystem.GateCell,
+                    TargetPreviewKind.FestivalGate,
+                    "target.need.hand"
+                );
+            }
+
+            return FestivalSystem.IsFestivalDay(Clock.Day)
+                ? TargetPreview.Available(
+                    FestivalSystem.GateCell,
+                    TargetPreviewKind.FestivalGate,
+                    "target.action.enter_gleamrise_festival"
+                )
+                : TargetPreview.Blocked(
+                    FestivalSystem.GateCell,
+                    TargetPreviewKind.FestivalGate,
+                    "target.status.gleamrise_festival_closed"
                 );
         }
 
@@ -2028,6 +2063,74 @@ public sealed class GameSession
             : ActionResult.Fail("notice.needs_hand");
     }
 
+    public ActionResult TryEnterGleamriseFestival()
+    {
+        if (PlayerLocationId != PlayerLocationIds.World)
+        {
+            return ActionResult.Fail("notice.festival_world_only");
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        var wasJoined = Festival.Joined;
+        var joined = Festival.Join(Clock.Day);
+        if (!joined.Succeeded)
+        {
+            return joined;
+        }
+
+        if (!wasJoined)
+        {
+            GleamriseSeason.RecordMilestone(
+                GleamriseSeasonGoalSystem.CounterFestivalJoined
+            );
+        }
+
+        return ActionResult.Success(
+            messageKey: "notice.enter_gleamrise_festival"
+        );
+    }
+
+    public ActionResult TryExitGleamriseFestival()
+    {
+        if (!InsideGleamriseFestival)
+        {
+            return ActionResult.Fail("notice.nothing_to_interact");
+        }
+
+        return Inventory.Selected.ItemId == DataCatalog.HandId
+            ? ActionResult.Success(
+                messageKey: "notice.leave_gleamrise_festival"
+            )
+            : ActionResult.Fail("notice.needs_hand");
+    }
+
+    public FestivalActivitySnapshot GleamriseFestivalSnapshot() =>
+        Festival.Snapshot(Clock.Day, Inventory);
+
+    public ActionResult AdvanceGleamriseFestivalStage()
+    {
+        if (!InsideGleamriseFestival)
+        {
+            return ActionResult.Fail("notice.gleamrise_festival_only");
+        }
+
+        return Festival.AdvanceStage(Clock.Day, Inventory);
+    }
+
+    public ActionResult ExchangeGleamriseFestivalItem(string itemId)
+    {
+        if (!InsideGleamriseFestival)
+        {
+            return ActionResult.Fail("notice.gleamrise_festival_only");
+        }
+
+        return Festival.Exchange(itemId, Inventory);
+    }
+
     public ActionResult BuyItem(string itemId)
     {
         return PurchaseItem(itemId, "shop.bought");
@@ -2384,6 +2487,7 @@ public sealed class GameSession
         Commission.RefreshForDay(Clock.Day);
         WeeklyCommission.RefreshForDay(Clock.Day);
         GleamriseSeason.RefreshForDay(Clock.Day);
+        Festival.RefreshForDay(Clock.Day);
         Mail.DeliverForDay(Clock.Day, Village);
         LastRespawnedResources = Resources.ResolveDay(
             Clock.Day,
@@ -2438,7 +2542,8 @@ public sealed class GameSession
         CharacterEvents = CharacterEvents.Capture(),
         Construction = Construction.Capture(),
         FarmingSkill = FarmingSkill.Capture(),
-        GleamriseSeason = GleamriseSeason.Capture()
+        GleamriseSeason = GleamriseSeason.Capture(),
+        Festival = Festival.Capture()
     };
 
     public ActionResult ChooseFarmingSpecialization(
@@ -2863,6 +2968,71 @@ public sealed class GameSession
                 TargetPreviewKind.Door,
                 "target.need.hand"
             );
+        }
+
+        return TargetPreview.Neutral(target);
+    }
+
+    private TargetPreview PreviewGleamriseFestivalTarget(
+        GridPosition target
+    )
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        if (target == FestivalSystem.ExitCell)
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    FestivalSystem.ExitCell,
+                    TargetPreviewKind.FestivalGate,
+                    "target.action.exit_gleamrise_festival"
+                )
+                : TargetPreview.NeedsTool(
+                    FestivalSystem.ExitCell,
+                    TargetPreviewKind.FestivalGate,
+                    "target.need.hand"
+                );
+        }
+
+        if (target == FestivalSystem.ActivityCell)
+        {
+            if (selectedId != DataCatalog.HandId)
+            {
+                return TargetPreview.NeedsTool(
+                    FestivalSystem.ActivityCell,
+                    TargetPreviewKind.FestivalPlot,
+                    "target.need.hand"
+                );
+            }
+
+            var snapshot = Festival.Snapshot(Clock.Day, Inventory);
+            return snapshot.Completed
+                ? TargetPreview.Blocked(
+                    FestivalSystem.ActivityCell,
+                    TargetPreviewKind.FestivalPlot,
+                    "festival.gleamrise.completed"
+                )
+                : TargetPreview.Available(
+                    FestivalSystem.ActivityCell,
+                    TargetPreviewKind.FestivalPlot,
+                    "target.action.open_festival_activity"
+                );
+        }
+
+        if (target == FestivalSystem.ExchangeStallCell)
+        {
+            return selectedId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    FestivalSystem.ExchangeStallCell,
+                    TargetPreviewKind.FestivalStall,
+                    "target.action.open_festival_exchange"
+                )
+                : TargetPreview.NeedsTool(
+                    FestivalSystem.ExchangeStallCell,
+                    TargetPreviewKind.FestivalStall,
+                    "target.need.hand"
+                );
         }
 
         return TargetPreview.Neutral(target);

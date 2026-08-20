@@ -315,6 +315,8 @@ public static class DataCatalog
     public const string StargrainFeedId = "stargrain_feed";
     public const string StarfeatherEggId = "starfeather_egg";
     public const string GlowcustardId = "glowcustard";
+    public const string GleamriseFestivalTokenId =
+        "gleamrise_festival_token";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
@@ -885,6 +887,12 @@ public static class DataCatalog
                 99,
                 "item.glowcustard",
                 SellPrice: 145
+            ),
+            [GleamriseFestivalTokenId] = new(
+                GleamriseFestivalTokenId,
+                ItemKind.Resource,
+                99,
+                "item.gleamrise_festival_token"
             )
         };
 
@@ -1088,6 +1096,7 @@ public static class DataCatalog
         StargrainFeedId,
         StarfeatherEggId,
         GlowcustardId,
+        GleamriseFestivalTokenId,
         LumenwoodId,
         CrystalShardId,
         StarwovenChestId,

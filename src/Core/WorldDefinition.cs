@@ -336,6 +336,11 @@ public static class WorldDefinition
             return true;
         }
 
+        if (cell == FestivalSystem.GateCell)
+        {
+            return true;
+        }
+
         var prop = PropAtlasIndex(cell);
         return prop is 0 or 1 or 2 or 3 or 6 or 7 or 8 or 9 or 11 or 12 or 15;
     }

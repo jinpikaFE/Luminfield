@@ -89,6 +89,7 @@ public enum PlaytestScenarioId
     Quality,
     OrchardHives,
     StarfeatherChickens,
+    GleamriseFestival,
     FarmingSpecialization,
     GleamriseSeason,
     Farm
@@ -392,6 +393,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarfeatherChickens,
             "--playtest-starfeather-chickens"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestival,
+            "--playtest-gleamrise-festival"
         ),
         new(PlaytestScenarioId.Farm, "--playtest-farm")
     ];

@@ -91,6 +91,9 @@ internal static class GeneratedArt
     private static readonly Texture2D OrchardHives =
         GD.Load<Texture2D>("res://assets/generated/orchard_hives.png");
 
+    private static readonly Texture2D GleamriseFestival =
+        GD.Load<Texture2D>("res://assets/generated/gleamrise_festival.png");
+
     private static readonly Texture2D StarfeatherChickens =
         GD.Load<Texture2D>("res://assets/generated/starfeather_chickens.png");
 
@@ -203,6 +206,14 @@ internal static class GeneratedArt
         new(806, 512, 346, 439);
     private static readonly Rect2 GlowcombHiveIconRegion =
         new(1152, 512, 319, 446);
+    private static readonly Rect2 GleamriseFestivalGateRegion =
+        new(0, 0, 384, 512);
+    private static readonly Rect2 GleamriseFestivalPlotRegion =
+        new(384, 0, 384, 512);
+    private static readonly Rect2 GleamriseFestivalStallRegion =
+        new(768, 0, 384, 512);
+    private static readonly Rect2 GleamriseFestivalBadgeRegion =
+        new(1152, 512, 384, 512);
     private static readonly Rect2 StarsoilFertilizerItemRegion =
         new(154, 126, 281, 324);
     private static readonly Rect2 FertilizedSoilRegion =
@@ -529,6 +540,31 @@ internal static class GeneratedArt
             : GlowcombHiveMapRegion;
         return CreateOrchardSprite(source, ready ? 50f : 45f);
     }
+
+    public static Sprite2D CreateGleamriseFestivalGateSprite() =>
+        CreateGleamriseFestivalSprite(
+            GleamriseFestivalGateRegion,
+            84f
+        );
+
+    public static Sprite2D CreateGleamriseFestivalPlotSprite() =>
+        CreateGleamriseFestivalSprite(
+            GleamriseFestivalPlotRegion,
+            86f
+        );
+
+    public static Sprite2D CreateGleamriseFestivalStallSprite() =>
+        CreateGleamriseFestivalSprite(
+            GleamriseFestivalStallRegion,
+            78f
+        );
+
+    public static Texture2D CreateGleamriseFestivalBadgeIcon() => new AtlasTexture
+    {
+        Atlas = GleamriseFestival,
+        Region = GleamriseFestivalBadgeRegion,
+        FilterClip = true
+    };
 
     public static Sprite2D CreateChickenCoopSprite(bool built)
     {
@@ -1073,6 +1109,23 @@ internal static class GeneratedArt
         return new Sprite2D
         {
             Texture = OrchardHives,
+            RegionEnabled = true,
+            RegionRect = source,
+            Offset = new Vector2(0, -source.Size.Y / 2f),
+            Scale = Vector2.One * scale,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+    }
+
+    private static Sprite2D CreateGleamriseFestivalSprite(
+        Rect2 source,
+        float targetHeight
+    )
+    {
+        var scale = targetHeight / source.Size.Y;
+        return new Sprite2D
+        {
+            Texture = GleamriseFestival,
             RegionEnabled = true,
             RegionRect = source,
             Offset = new Vector2(0, -source.Size.Y / 2f),

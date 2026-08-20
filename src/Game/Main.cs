@@ -20,6 +20,7 @@ public sealed partial class Main : Node
     private TwilightEmporiumView? _twilightEmporium;
     private StarlightPostView? _starlightPost;
     private StarfallWatchView? _starfallWatch;
+    private GleamriseFestivalView? _gleamriseFestival;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -32,6 +33,7 @@ public sealed partial class Main : Node
     private ConstructionOverlay? _constructionOverlay;
     private StarlightMailOverlay? _mailOverlay;
     private StarlightPedestalOverlay? _starlightOverlay;
+    private GleamriseFestivalOverlay? _gleamriseFestivalOverlay;
     private CraftingOverlay? _craftingOverlay;
     private StorageOverlay? _storageOverlay;
     private NightlySummaryOverlay? _nightlySummaryOverlay;
@@ -124,6 +126,15 @@ public sealed partial class Main : Node
         }
 
         var image = GetViewport().GetTexture().GetImage();
+        if (image is null)
+        {
+            GD.PushError(
+                $"Could not capture playtest image because the viewport texture is unavailable: {resourcePath}"
+            );
+            GetTree().Quit(1);
+            return;
+        }
+
         var targetPath = ProjectSettings.GlobalizePath(resourcePath);
         var error = image.SavePng(targetPath);
         if (error != Error.Ok)
@@ -195,6 +206,14 @@ public sealed partial class Main : Node
             _starlightOverlay is not null)
         {
             CloseStarlightPedestal();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _gleamriseFestivalOverlay is not null)
+        {
+            CloseGleamriseFestivalPanel();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -347,6 +366,7 @@ public sealed partial class Main : Node
         _constructionOverlay is not null ||
         _mailOverlay is not null ||
         _starlightOverlay is not null ||
+        _gleamriseFestivalOverlay is not null ||
         _craftingOverlay is not null ||
         _storageOverlay is not null ||
         _nightlySummaryOverlay is not null ||
@@ -366,6 +386,7 @@ public sealed partial class Main : Node
         _constructionOverlay is null &&
         _mailOverlay is null &&
         _starlightOverlay is null &&
+        _gleamriseFestivalOverlay is null &&
         _craftingOverlay is null &&
         _storageOverlay is null &&
         _nightlySummaryOverlay is null &&
@@ -403,6 +424,8 @@ public sealed partial class Main : Node
         _mailOverlay = null;
         FreeUi(_starlightOverlay);
         _starlightOverlay = null;
+        FreeUi(_gleamriseFestivalOverlay);
+        _gleamriseFestivalOverlay = null;
         FreeUi(_craftingOverlay);
         _craftingOverlay = null;
         FreeUi(_storageOverlay);
@@ -601,6 +624,8 @@ public sealed partial class Main : Node
                     StartOrchardHivesPlaytest,
                 [PlaytestScenarioId.StarfeatherChickens] =
                     StartStarfeatherChickensPlaytest,
+                [PlaytestScenarioId.GleamriseFestival] =
+                    StartGleamriseFestivalPlaytest,
                 [PlaytestScenarioId.FarmingSpecialization] =
                     StartFarmingSpecializationPlaytest,
                 [PlaytestScenarioId.GleamriseSeason] =
@@ -1049,6 +1074,36 @@ public sealed partial class Main : Node
         _playing = true;
         EnsureHud();
         ShowFarm(false);
+    }
+
+    private void StartGleamriseFestivalPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(FestivalSystem.FestivalSeasonDay, 10 * 60);
+        _session.Inventory.Add(DataCatalog.DawnlaceSeedId, 2);
+        _session.Inventory.Add(DataCatalog.GlimmerpodSeedId, 2);
+        _session.Inventory.Add(DataCatalog.StarsoilFertilizerId, 1);
+        _session.SetPlayerLocation(
+            FestivalSystem.GateCell.X * 16 + 8,
+            (FestivalSystem.GateCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _playing = true;
+        EnsureHud();
+        var result = _session.TryEnterGleamriseFestival();
+        if (result.Succeeded)
+        {
+            ShowGleamriseFestival(true);
+            Callable.From(
+                () => OpenGleamriseFestivalPanel(false)
+            ).CallDeferred();
+            return;
+        }
+
+        ShowFarm(false);
+        _hud?.ShowNotice(result.MessageKey);
     }
 
     private void StartFarmPlaceablesPlaytest()
@@ -2702,6 +2757,10 @@ public sealed partial class Main : Node
         {
             ShowStarfallWatch(false);
         }
+        else if (_session.InsideGleamriseFestival)
+        {
+            ShowGleamriseFestival(false);
+        }
         else
         {
             ShowFarm(false);
@@ -2727,7 +2786,8 @@ public sealed partial class Main : Node
         bool fromTeaHouse = false,
         bool fromTwilightEmporium = false,
         bool fromStarlightPost = false,
-        bool fromStarfallWatch = false
+        bool fromStarfallWatch = false,
+        bool fromGleamriseFestival = false
     )
     {
         ClearWorld();
@@ -2787,6 +2847,14 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromGleamriseFestival)
+        {
+            _session.SetPlayerLocation(
+                FestivalSystem.GateCell.X * 16 + 8,
+                (FestivalSystem.GateCell.Y + 1) * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
@@ -2799,6 +2867,7 @@ public sealed partial class Main : Node
             TryEnterTwilightEmporium;
         _farm.EnterStarlightPostRequested += TryEnterStarlightPost;
         _farm.EnterStarfallWatchRequested += TryEnterStarfallWatch;
+        _farm.EnterGleamriseFestivalRequested += TryEnterGleamriseFestival;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -2840,6 +2909,10 @@ public sealed partial class Main : Node
         else if (fromStarfallWatch)
         {
             _hud?.ShowNotice("notice.leave_starfall_watch");
+        }
+        else if (fromGleamriseFestival)
+        {
+            _hud?.ShowNotice("notice.leave_gleamrise_festival");
         }
     }
 
@@ -3029,6 +3102,39 @@ public sealed partial class Main : Node
         if (fromWorld)
         {
             _hud?.ShowNotice("notice.enter_starfall_watch");
+        }
+    }
+
+    private void ShowGleamriseFestival(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                20 * 16 + 8,
+                19 * 16 + 8,
+                PlayerLocationIds.GleamriseFestival
+            );
+        }
+
+        _gleamriseFestival = new GleamriseFestivalView(
+            _session,
+            _locale
+        );
+        _gleamriseFestival.ExitRequested += TryLeaveGleamriseFestival;
+        _gleamriseFestival.ActivityRequested +=
+            () => OpenGleamriseFestivalPanel(false);
+        _gleamriseFestival.ExchangeRequested +=
+            () => OpenGleamriseFestivalPanel(true);
+        _gleamriseFestival.NoticeRequested += key => _hud?.ShowNotice(key);
+        _gleamriseFestival.StepRequested +=
+            () => _audio.Play(PixelSound.Step);
+        _world = _gleamriseFestival;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_gleamrise_festival");
         }
     }
 
@@ -3501,6 +3607,67 @@ public sealed partial class Main : Node
                 RelationshipTier.NewAcquaintance
             )
         );
+    }
+
+    private void TryEnterGleamriseFestival()
+    {
+        var result = _session.TryEnterGleamriseFestival();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowGleamriseFestival(true);
+        SaveNow(false);
+    }
+
+    private void TryLeaveGleamriseFestival()
+    {
+        var result = _session.TryExitGleamriseFestival();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        ShowFarm(false, fromGleamriseFestival: true);
+        SaveNow(false);
+    }
+
+    private void OpenGleamriseFestivalPanel(bool preferExchange)
+    {
+        if (_gleamriseFestivalOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _gleamriseFestivalOverlay = new GleamriseFestivalOverlay(
+            _theme,
+            _session,
+            _locale,
+            preferExchange
+        );
+        _gleamriseFestivalOverlay.CloseRequested +=
+            CloseGleamriseFestivalPanel;
+        _gleamriseFestivalOverlay.FestivalChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_gleamriseFestivalOverlay);
+    }
+
+    private void CloseGleamriseFestivalPanel()
+    {
+        FreeUi(_gleamriseFestivalOverlay);
+        _gleamriseFestivalOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void OpenShop()
@@ -4027,6 +4194,7 @@ public sealed partial class Main : Node
         _commissionOverlay?.RefreshText();
         _mailOverlay?.RefreshText();
         _starlightOverlay?.RefreshText();
+        _gleamriseFestivalOverlay?.RefreshText();
         _craftingOverlay?.RefreshText();
         _storageOverlay?.RefreshText();
         _backpackOverlay?.RefreshText();
@@ -4085,6 +4253,11 @@ public sealed partial class Main : Node
         {
             _starfallWatch.ControlsEnabled = enabled;
         }
+
+        if (_gleamriseFestival is not null)
+        {
+            _gleamriseFestival.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -4102,6 +4275,7 @@ public sealed partial class Main : Node
         _twilightEmporium = null;
         _starlightPost = null;
         _starfallWatch = null;
+        _gleamriseFestival = null;
     }
 
     private static void FreeUi(CanvasItem? item)

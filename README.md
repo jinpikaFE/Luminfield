@@ -31,6 +31,9 @@ After the tutorial, the farm opens into a repeatable economy loop:
 - Build the Starlight Coop with glow coins, Lumenwood, and Crystal Shards, then
   care for the first Starfeather Hen with Stargrain Feed and daily petting so
   she lays Starfeather Eggs that can become Glowcustard.
+- Visit the Gleamrise Sowing Festival on Gleamrise day 7, complete the three
+  sowing rite stages, earn Gleamrise Tokens, and exchange them for seasonal
+  seeds, Starsoil Fertilizer, or a Moonplum Sapling.
 - Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
   Duskbell, Dawnlace, Glimmerpod, Mistsong Mint, Comet Tuber, and more valuable
   artisan goods for glow coins.
@@ -443,6 +446,10 @@ Use `--playtest-starfeather-chickens` to start beside a built Starlight Coop
 with the first Starfeather Hen, pending eggs, feed, eggs, and build materials
 ready for visual QA and interaction checks.
 
+Use `--playtest-gleamrise-festival` to inspect the day-seven festival gate,
+dedicated festival scene, sowing rite panel, exchange stall, and deterministic
+festival rewards.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -545,6 +552,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
   egg collection, Stargrain Feed crafting, Glowcustard processing, stable save
   normalization, bilingual text, generated art, tests, and a deterministic
   playtest.
+- 2026-08-20 11:26:37 CST — Added the Gleamrise Sowing Festival for Phase C:
+  the day-seven festival gate, dedicated festival scene, three-stage sowing
+  rite, token rewards, exchange stall, save normalization, bilingual UI,
+  focused tests, and deterministic playtest entry.
 - 2026-08-19 15:03:15 CST — Added Phase C orchard and hive play: Moonplum
   Saplings, mature fruit-tree harvest/regrowth, craftable Glowcomb Hives,
   nearby-tree Starhoney production, stable save normalization, bilingual

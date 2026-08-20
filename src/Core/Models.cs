@@ -12,11 +12,12 @@ public static class PlayerLocationIds
     public const string TwilightEmporium = "twilight_emporium";
     public const string StarlightPost = "starlight_post";
     public const string StarfallWatch = "starfall_watch";
+    public const string GleamriseFestival = "gleamrise_festival";
 
     public static bool IsValid(string? locationId) =>
         locationId is World or Cottage or MoonlitArchive or
             MoonstoneWorkshop or StarweaverTeaHouse or TwilightEmporium or
-            StarlightPost or StarfallWatch;
+            StarlightPost or StarfallWatch or GleamriseFestival;
 
     public static string Normalize(
         string? locationId,
@@ -339,6 +340,15 @@ public sealed class AnimalSave
     public List<StarfeatherChickenSave> Chickens { get; set; } = [];
 }
 
+public sealed class FestivalSave
+{
+    public int Year { get; set; } = 1;
+    public string FestivalId { get; set; } =
+        FestivalSystem.GleamriseSowingFestivalId;
+    public bool Joined { get; set; }
+    public List<string> CompletedStageIds { get; set; } = [];
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -368,6 +378,7 @@ public sealed class GameSaveV1
     public FarmingSkillSave FarmingSkill { get; set; } = new();
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
     public AnimalSave Animals { get; set; } = new();
+    public FestivalSave Festival { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -422,6 +433,9 @@ public enum TargetPreviewKind
     FruitTree,
     Beehive,
     ChickenCoop,
+    FestivalGate,
+    FestivalPlot,
+    FestivalStall,
     Bed,
     KitchenReserve
 }

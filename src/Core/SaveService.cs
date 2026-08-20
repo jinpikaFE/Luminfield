@@ -443,6 +443,10 @@ public sealed class SaveService
             save.GleamriseSeason,
             save.Day
         );
+        save.Festival = FestivalSystem.NormalizeSave(
+            save.Festival,
+            save.Day
+        );
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

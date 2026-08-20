@@ -8547,6 +8547,76 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void GleamriseFestivalKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = new[]
+        {
+            DataCatalog.Item(DataCatalog.GleamriseFestivalTokenId).NameKey,
+            "target.action.enter_gleamrise_festival",
+            "target.action.exit_gleamrise_festival",
+            "target.action.open_festival_activity",
+            "target.action.open_festival_exchange",
+            "target.status.gleamrise_festival_closed",
+            "notice.enter_gleamrise_festival",
+            "notice.leave_gleamrise_festival",
+            "notice.festival_world_only",
+            "notice.gleamrise_festival_only",
+            "festival.gleamrise.closed",
+            "festival.gleamrise.joined",
+            "festival.gleamrise.completed",
+            "festival.gleamrise.festival_stage_lay_moonstone_rows.completed",
+            "festival.gleamrise.festival_stage_sow_dawnlace.completed",
+            "festival.gleamrise.festival_stage_tune_glimmerpod.completed",
+            "festival.exchange.unknown",
+            "festival.exchange.need_tokens",
+            "festival.exchange.changed",
+            "festival.exchange.done",
+            "festival.stage.rows.title",
+            "festival.stage.rows.description",
+            "festival.stage.dawnlace.title",
+            "festival.stage.dawnlace.description",
+            "festival.stage.glimmerpod.title",
+            "festival.stage.glimmerpod.description",
+            "festival.exchange.dawnlace",
+            "festival.exchange.glimmerpod",
+            "festival.exchange.mint",
+            "festival.exchange.tuber",
+            "festival.exchange.fertilizer",
+            "festival.exchange.sapling",
+            "festival.ui.title",
+            "festival.ui.subtitle",
+            "festival.ui.summary",
+            "festival.ui.stage_header",
+            "festival.ui.exchange_header",
+            "festival.ui.stage_reward",
+            "festival.ui.stage_reward_tokens",
+            "festival.ui.stage_do",
+            "festival.ui.stage_wait",
+            "festival.ui.stage_complete",
+            "festival.ui.exchange_action"
+        };
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys.Distinct(StringComparer.Ordinal),
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void TeaHouseInteractionKeysAreBilingual()
     {
         var locale = new LocaleService();
