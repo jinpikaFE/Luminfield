@@ -1556,6 +1556,9 @@ public sealed class GameSession
                     collected.GrantedItemId,
                     collected.GrantedItemCount
                 );
+                GleamriseSeason.RecordMilestone(
+                    GleamriseSeasonGoalSystem.CounterAnimalFirstEgg
+                );
             }
 
             return collected;
@@ -2262,6 +2265,13 @@ public sealed class GameSession
         {
             GleamriseSeason.RecordMilestone(
                 GleamriseSeasonGoalSystem.CounterPlaceGlowcombHive
+            );
+        }
+
+        if (recipe.Id == DataCatalog.StargrainFeedRecipeId)
+        {
+            GleamriseSeason.RecordMilestone(
+                GleamriseSeasonGoalSystem.CounterAnimalFeedPrepared
             );
         }
 

@@ -1472,11 +1472,28 @@ public sealed class AnimalSystemTests
         Assert.Equal(0, session.Animals.FirstChicken!.Affection);
         Assert.Equal(0, session.Animals.FirstChicken.PendingEggs);
 
+        var missingFeedCraft = session.CraftItem(
+            DataCatalog.StargrainFeedRecipeId
+        );
+        Assert.False(missingFeedCraft.Succeeded);
+        Assert.DoesNotContain(
+            session.Capture().GleamriseSeason.Counters,
+            counter => counter.CounterId ==
+                GleamriseSeasonGoalSystem.CounterAnimalFeedPrepared
+        );
+
         Assert.True(session.Inventory.Add(DataCatalog.StarbudId, 1));
         Assert.True(session.Inventory.Add(DataCatalog.CloudleafId, 1));
         var craftedFeed = session.CraftItem(DataCatalog.StargrainFeedRecipeId);
         Assert.True(craftedFeed.Succeeded);
         Assert.Equal(3, session.Inventory.Count(DataCatalog.StargrainFeedId));
+        Assert.Equal(
+            1,
+            session.Capture().GleamriseSeason.Counters.Single(counter =>
+                counter.CounterId ==
+                GleamriseSeasonGoalSystem.CounterAnimalFeedPrepared
+            ).Count
+        );
         session.Inventory.Select(0);
 
         var feedPreview = session.PreviewSelectedTarget(AnimalCatalog.CoopCell);
@@ -1532,6 +1549,13 @@ public sealed class AnimalSystemTests
         Assert.Equal(DataCatalog.StarfeatherEggId, collected.GrantedItemId);
         Assert.Equal(1, session.Inventory.Count(DataCatalog.StarfeatherEggId));
         Assert.Equal(0, session.Animals.FirstChicken.PendingEggs);
+        Assert.Equal(
+            1,
+            session.Capture().GleamriseSeason.Counters.Single(counter =>
+                counter.CounterId ==
+                GleamriseSeasonGoalSystem.CounterAnimalFirstEgg
+            ).Count
+        );
 
         var full = SessionWithPendingEgg();
         FillBackpackExceptEggs(full.Inventory);
@@ -1541,6 +1565,11 @@ public sealed class AnimalSystemTests
         Assert.Equal("notice.inventory_full", failedFull.MessageKey);
         Assert.Equal(1, full.Animals.FirstChicken!.PendingEggs);
         Assert.Equal(0, full.Inventory.Count(DataCatalog.StarfeatherEggId));
+        Assert.DoesNotContain(
+            full.Capture().GleamriseSeason.Counters,
+            counter => counter.CounterId ==
+                GleamriseSeasonGoalSystem.CounterAnimalFirstEgg
+        );
 
         Assert.True(session.Inventory.Add(DataCatalog.StarfeatherEggId, 1));
         var started = session.StartProcessing(
