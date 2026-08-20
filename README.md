@@ -25,6 +25,9 @@ After the tutorial, the farm opens into a repeatable economy loop:
 - Buy Moonplum Saplings from the farm stall, plant them on clear homestead
   ground, harvest repeat Moonplums after they mature, then craft Glowcomb Hives
   that brew Starhoney when a mature fruit tree is nearby.
+- Open the pause menu's Gleamrise Goals panel to follow the current season's
+  fourteen-day objective route, track seasonal crop, processor, orchard, animal,
+  and festival milestones, and claim atomic daily or season-closing rewards.
 - Sell Starbud, Moonroot, Cloudleaf, Glowpea, Emberbell, Prismcorn, Dewmelon,
   Duskbell, Dawnlace, Glimmerpod, Mistsong Mint, Comet Tuber, and more valuable
   artisan goods for glow coins.
@@ -207,7 +210,10 @@ six enterable buildings, a data-driven relationship and daily-gifting
 entry point, relationship mail, and complete two-stage friendship event chains
 for Liora, Tavi, Nemi, Kael, Sela, and Orin. Phase C has begun with twelve crops,
 two resonance variants, three independent processing machines, and the first
-0–5 farming skill with a permanent level-three specialization.
+0–5 farming skill with a permanent level-three specialization. It now also has
+a fourteen-day Gleamrise Goals panel that resets each Gleamrise year, stores
+stable progress counters and claimed reward IDs, and leaves unclaimed or
+unfinished objectives available without permanent punishment.
 
 ## Tools and backpack
 
@@ -425,6 +431,9 @@ Use `--playtest-orchard-hives` to inspect a mature Moonplum tree, ready
 Glowcomb Hive, orchard hotbar icons, object outlines, and deterministic
 Starhoney collection state.
 
+Use `--playtest-gleamrise-season` to open the pause-menu Gleamrise Goals panel
+with prepared progress across the fourteen-day seasonal route.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -493,9 +502,11 @@ produce, farming XP and specialization, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
 schema. Moonplum fruit trees and Glowcomb Hive production state also use
 additive orchard fields; invalid, overlapping, or orphaned orchard entries are
-filtered on load. The modern per-machine list safely migrates the legacy processing
-queue. Older saves receive safe defaults and tool-ID migration for the new
-additive fields.
+filtered on load. Gleamrise goal counters and claimed objective IDs use another
+additive projection; unknown goals or counters are filtered and a new Gleamrise
+year receives a fresh route. The modern per-machine list safely migrates the
+legacy processing queue. Older saves receive safe defaults and tool-ID
+migration for the new additive fields.
 Discovered world chunks are stored as stable chunk IDs; older saves begin with
 the home chunk revealed.
 
@@ -516,6 +527,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-20 10:59:20 CST — Added the fourteen-day Gleamrise Goals loop with
+  stable progress counters, pause-menu UI, atomic rewards, next-year reset
+  normalization, Star Chicken and festival milestone hooks, bilingual text,
+  focused tests, and a deterministic playtest flag.
 - 2026-08-19 15:03:15 CST — Added Phase C orchard and hive play: Moonplum
   Saplings, mature fruit-tree harvest/regrowth, craftable Glowcomb Hives,
   nearby-tree Starhoney production, stable save normalization, bilingual

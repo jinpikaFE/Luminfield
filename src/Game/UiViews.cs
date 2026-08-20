@@ -2025,6 +2025,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly LocaleService _locale;
     private readonly Label _title;
     private readonly Button _resume;
+    private readonly Button _gleamriseGoals;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2047,14 +2048,17 @@ public sealed partial class PauseOverlay : FullScreenUi
         _title = ThemeFactory.Label(size: 24, color: ThemeFactory.Mint);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
         _resume = ThemeFactory.Button("");
+        _gleamriseGoals = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
         column.AddChild(_resume);
+        column.AddChild(_gleamriseGoals);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
         _resume.Pressed += () => ResumeRequested?.Invoke();
+        _gleamriseGoals.Pressed += () => GleamriseGoalsRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2062,6 +2066,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     }
 
     public event Action? ResumeRequested;
+    public event Action? GleamriseGoalsRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -2069,6 +2074,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     {
         _title.Text = _locale.Tr("menu.pause");
         _resume.Text = _locale.Tr("menu.resume");
+        _gleamriseGoals.Text = _locale.Tr("menu.gleamrise_goals");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }

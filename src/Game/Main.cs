@@ -37,6 +37,7 @@ public sealed partial class Main : Node
     private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
+    private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FadeTransition? _fadeTransition;
     private bool _playing;
     private bool _paused;
@@ -214,6 +215,14 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _gleamriseSeasonOverlay is not null)
+        {
+            CloseGleamriseSeasonGoals();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Pause) && _storageOverlay is not null)
         {
             CloseStorage();
@@ -266,6 +275,7 @@ public sealed partial class Main : Node
             _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
             _farmingSpecializationOverlay is null &&
+            _gleamriseSeasonOverlay is null &&
             _fadeTransition is null)
         {
             if (_paused)
@@ -342,6 +352,7 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
+        _gleamriseSeasonOverlay is not null ||
         _fadeTransition is not null;
 
     private bool CanRestoreWorldControls =>
@@ -360,6 +371,7 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay is null &&
         _backpackOverlay is null &&
         _farmingSpecializationOverlay is null &&
+        _gleamriseSeasonOverlay is null &&
         _fadeTransition is null;
 
     private void ShowTitle(string? noticeKey = null)
@@ -401,6 +413,8 @@ public sealed partial class Main : Node
         _backpackOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
         _farmingSpecializationOverlay = null;
+        FreeUi(_gleamriseSeasonOverlay);
+        _gleamriseSeasonOverlay = null;
         FreeUi(_fadeTransition);
         _fadeTransition = null;
         FreeUi(_title);
@@ -587,6 +601,8 @@ public sealed partial class Main : Node
                     StartOrchardHivesPlaytest,
                 [PlaytestScenarioId.FarmingSpecialization] =
                     StartFarmingSpecializationPlaytest,
+                [PlaytestScenarioId.GleamriseSeason] =
+                    StartGleamriseSeasonPlaytest,
                 [PlaytestScenarioId.Farm] = StartNewGame
             }
         );
@@ -932,6 +948,64 @@ public sealed partial class Main : Node
         _playing = true;
         EnsureHud();
         ShowFarm(false);
+    }
+
+    private void StartGleamriseSeasonPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        PrepareGleamriseSeasonPlaytestProgress();
+        var save = _session.Capture();
+        save.Day = 14;
+        save.Weather = new WeatherSave
+        {
+            Day = 14,
+            CurrentId = WeatherSystem.WeatherForDay(14),
+            ForecastId = WeatherSystem.WeatherForDay(15)
+        };
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenGleamriseSeasonGoals).CallDeferred();
+    }
+
+    private void PrepareGleamriseSeasonPlaytestProgress()
+    {
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterBuyGleamriseSeed,
+            4
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterPlantGleamriseCrop,
+            3
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterWaterGleamriseCrop,
+            3
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterFertilizeGleamriseSoil
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterHarvestGleamriseCrop,
+            2
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterStartProcessor
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterCollectProcessor,
+            2
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterPlantMoonplumTree
+        );
+        _session.RecordGleamriseSeasonMilestone(
+            GleamriseSeasonGoalSystem.CounterHarvestMoonplum
+        );
+        _session.Inventory.Add(DataCatalog.GlimmerpodId, 2);
     }
 
     private void StartFarmPlaceablesPlaytest()
@@ -3786,6 +3860,38 @@ public sealed partial class Main : Node
         }
     }
 
+    private void OpenGleamriseSeasonGoals()
+    {
+        if (_gleamriseSeasonOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _gleamriseSeasonOverlay = new GleamriseSeasonOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _gleamriseSeasonOverlay.CloseRequested += CloseGleamriseSeasonGoals;
+        _gleamriseSeasonOverlay.GoalClaimed += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_gleamriseSeasonOverlay);
+    }
+
+    private void CloseGleamriseSeasonGoals()
+    {
+        FreeUi(_gleamriseSeasonOverlay);
+        _gleamriseSeasonOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
     private void OpenPause()
     {
         if (_paused)
@@ -3797,6 +3903,11 @@ public sealed partial class Main : Node
         SetWorldControls(false);
         _pauseOverlay = new PauseOverlay(_theme, _locale);
         _pauseOverlay.ResumeRequested += ClosePause;
+        _pauseOverlay.GleamriseGoalsRequested += () =>
+        {
+            ClosePause();
+            OpenGleamriseSeasonGoals();
+        };
         _pauseOverlay.LanguageRequested += () =>
         {
             ToggleLanguage();

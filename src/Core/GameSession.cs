@@ -29,6 +29,7 @@ public sealed class GameSession
     public CharacterEventSystem CharacterEvents { get; } = new();
     public ConstructionSystem Construction { get; } = new();
     public FarmingSkillSystem FarmingSkill { get; } = new();
+    public GleamriseSeasonGoalSystem GleamriseSeason { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -90,6 +91,7 @@ public sealed class GameSession
         CharacterEvents.Changed += NotifyChanged;
         Construction.Changed += NotifyChanged;
         FarmingSkill.Changed += NotifyChanged;
+        GleamriseSeason.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -114,6 +116,7 @@ public sealed class GameSession
         CharacterEvents.Reset();
         Construction.Reset();
         FarmingSkill.Reset();
+        GleamriseSeason.Reset(Clock.Day);
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -144,6 +147,7 @@ public sealed class GameSession
         CharacterEvents.Restore(save.CharacterEvents, save.Day);
         Construction.Restore(save.Construction);
         FarmingSkill.Restore(save.FarmingSkill);
+        GleamriseSeason.Restore(save.GleamriseSeason, save.Day);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -320,6 +324,7 @@ public sealed class GameSession
                     WateringCanWater--;
                     WaterChanged?.Invoke();
                     Quest.OnWatered(cropId);
+                    GleamriseSeason.RecordWateredCrop(cropId, Clock.Day);
                     farmingSkillAction = FarmingSkillAction.Water;
                 }
                 break;
@@ -353,6 +358,9 @@ public sealed class GameSession
                             item.Id == DataCatalog.GlowcombHiveId)
                         {
                             Orchard.EnsureBeehive(target);
+                            GleamriseSeason.RecordGlowcombHivePlaced(
+                                Clock.Day
+                            );
                         }
 
                         return placed;
@@ -380,6 +388,7 @@ public sealed class GameSession
                     );
                     if (result.Succeeded)
                     {
+                        GleamriseSeason.RecordMoonplumTreePlanted(Clock.Day);
                         farmingSkillAction = FarmingSkillAction.Plant;
                     }
 
@@ -392,6 +401,7 @@ public sealed class GameSession
                     if (result.Succeeded)
                     {
                         Inventory.Remove(item.Id, 1);
+                        GleamriseSeason.RecordFertilized(Clock.Day);
                     }
                     break;
                 }
@@ -413,6 +423,7 @@ public sealed class GameSession
                     Quest.OnPlanted(item.CropId);
                     Commission.RecordPlant(item.CropId);
                     WeeklyCommission.RecordPlant(item.CropId);
+                    GleamriseSeason.RecordPlant(item.CropId, Clock.Day);
                     ApplyCurrentWeatherTo(target);
                     farmingSkillAction = FarmingSkillAction.Plant;
                 }
@@ -428,6 +439,11 @@ public sealed class GameSession
             WeeklyCommission.RecordGather(
                 DataCatalog.BaseItemId(result.GrantedItemId),
                 result.GrantedItemCount
+            );
+            GleamriseSeason.RecordGatheredItem(
+                result.GrantedItemId,
+                result.GrantedItemCount,
+                Clock.Day
             );
         }
 
@@ -1890,6 +1906,7 @@ public sealed class GameSession
         }
 
         Coins -= item.BuyPrice;
+        GleamriseSeason.RecordPurchasedItem(itemId, Clock.Day);
         Changed?.Invoke();
         return ActionResult.Success(messageKey: successKey);
     }
@@ -1919,19 +1936,62 @@ public sealed class GameSession
         Shipping.ReclaimOne(itemId, Inventory);
 
     public ActionResult StartProcessing(string recipeId) =>
-        Processor.Start(recipeId, Inventory);
+        StartProcessing(ProcessorCatalog.MainMachineId, recipeId);
 
-    public ActionResult StartProcessing(string machineId, string recipeId) =>
-        Processor.Start(machineId, recipeId, Inventory);
+    public ActionResult StartProcessing(string machineId, string recipeId)
+    {
+        var result = Processor.Start(machineId, recipeId, Inventory);
+        if (result.Succeeded)
+        {
+            GleamriseSeason.RecordProcessorStarted(Clock.Day);
+        }
+
+        return result;
+    }
 
     public ActionResult CollectProcessedItem() =>
-        Processor.Collect(Inventory);
+        CollectProcessedItem(ProcessorCatalog.MainMachineId);
 
-    public ActionResult CollectProcessedItem(string machineId) =>
-        Processor.Collect(machineId, Inventory);
+    public ActionResult CollectProcessedItem(string machineId)
+    {
+        var result = Processor.Collect(machineId, Inventory);
+        if (result.Succeeded && result.GrantedItemId is not null)
+        {
+            GleamriseSeason.RecordProcessorCollected(
+                result.GrantedItemId,
+                result.GrantedItemCount,
+                Clock.Day
+            );
+        }
 
-    public ActionResult CollectAllProcessedItems() =>
-        Processor.CollectAllReady(Inventory);
+        return result;
+    }
+
+    public ActionResult CollectAllProcessedItems()
+    {
+        var readyOutputs = Processor.Machines.Values
+            .Where(machine => machine.IsReady)
+            .Select(machine =>
+                DataCatalog.ProcessorRecipe(machine.ActiveRecipeId)
+            )
+            .ToArray();
+        var result = Processor.CollectAllReady(Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        foreach (var recipe in readyOutputs)
+        {
+            GleamriseSeason.RecordProcessorCollected(
+                recipe.OutputItemId,
+                recipe.OutputCount,
+                Clock.Day
+            );
+        }
+
+        return result;
+    }
 
     public TargetPreview PreviewProcessorMachine(string machineId)
     {
@@ -1999,8 +2059,27 @@ public sealed class GameSession
         );
     }
 
-    public ActionResult CraftItem(string recipeId) =>
-        Crafting.Craft(recipeId, Inventory);
+    public ActionResult CraftItem(string recipeId)
+    {
+        var result = Crafting.Craft(recipeId, Inventory);
+        if (!result.Succeeded ||
+            !DataCatalog.CraftingRecipes.TryGetValue(
+                recipeId,
+                out var recipe
+            ))
+        {
+            return result;
+        }
+
+        if (recipe.OutputItemId == DataCatalog.GlowcombHiveId)
+        {
+            GleamriseSeason.RecordMilestone(
+                GleamriseSeasonGoalSystem.CounterPlaceGlowcombHive
+            );
+        }
+
+        return result;
+    }
 
     public ActionResult StoreInChest(GridPosition position, string itemId) =>
         Storage.StoreOne(position, itemId, Inventory);
@@ -2048,6 +2127,27 @@ public sealed class GameSession
     public ActionResult ClaimMailAttachment(string mailId) =>
         Mail.ClaimAttachment(mailId, Inventory);
 
+    public IReadOnlyList<GleamriseGoalSnapshot> GleamriseSeasonGoals() =>
+        GleamriseSeason.Snapshots(Clock.Day, Inventory);
+
+    public GleamriseGoalClaimResult ClaimGleamriseSeasonGoal(string goalId)
+    {
+        var result = GleamriseSeason.Claim(goalId, Clock.Day, Inventory);
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Coins += result.RewardCoins;
+        Changed?.Invoke();
+        return result;
+    }
+
+    public void RecordGleamriseSeasonMilestone(
+        string milestoneId,
+        int count = 1
+    ) => GleamriseSeason.RecordMilestone(milestoneId, count);
+
     public StarlightContributionResult ContributeToStarlightNode(
         string nodeId
     )
@@ -2085,6 +2185,7 @@ public sealed class GameSession
         Clock.StartNextDay();
         Commission.RefreshForDay(Clock.Day);
         WeeklyCommission.RefreshForDay(Clock.Day);
+        GleamriseSeason.RefreshForDay(Clock.Day);
         Mail.DeliverForDay(Clock.Day, Village);
         LastRespawnedResources = Resources.ResolveDay(
             Clock.Day,
@@ -2137,7 +2238,8 @@ public sealed class GameSession
         Mail = Mail.Capture(),
         CharacterEvents = CharacterEvents.Capture(),
         Construction = Construction.Capture(),
-        FarmingSkill = FarmingSkill.Capture()
+        FarmingSkill = FarmingSkill.Capture(),
+        GleamriseSeason = GleamriseSeason.Capture()
     };
 
     public ActionResult ChooseFarmingSpecialization(

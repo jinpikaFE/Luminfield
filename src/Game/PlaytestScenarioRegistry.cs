@@ -89,6 +89,7 @@ public enum PlaytestScenarioId
     Quality,
     OrchardHives,
     FarmingSpecialization,
+    GleamriseSeason,
     Farm
 }
 
@@ -378,6 +379,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.FarmingSpecialization,
             "--playtest-farming-specialization"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseSeason,
+            "--playtest-gleamrise-season"
         ),
         new(
             PlaytestScenarioId.OrchardHives,

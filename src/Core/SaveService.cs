@@ -432,6 +432,10 @@ public sealed class SaveService
         save.FarmingSkill = FarmingSkillSystem.NormalizeSave(
             save.FarmingSkill
         );
+        save.GleamriseSeason = GleamriseSeasonGoalSystem.NormalizeSave(
+            save.GleamriseSeason,
+            save.Day
+        );
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(
