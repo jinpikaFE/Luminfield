@@ -105,7 +105,7 @@ public sealed class CalendarAndWeatherTests
         Assert.Equal(GameSession.MaxEnergy - 2, session.Energy);
 
         session.Inventory.Add(DataCatalog.StarbudSeedId, 1);
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         Assert.True(session.UseSelected(position).Succeeded);
         session.EndDay();
         Assert.Equal(1, session.Farm.Tiles[position].WateredNights);
@@ -196,7 +196,7 @@ public sealed class FarmSystemTests
             var position = new GridPosition(12, 16);
             Assert.True(session.Farm.TryTill(position, session.Energy).Succeeded);
             Assert.True(session.Inventory.Add(crop.SeedItemId, 1));
-            session.Inventory.Select(5);
+            session.Inventory.Select(6);
             Assert.True(session.PreviewSelectedTarget(position).IsAvailable);
             Assert.True(session.UseSelected(position).Succeeded);
             Assert.Equal(cropId, session.Farm.Tiles[position].CropId);
@@ -846,7 +846,11 @@ public sealed class InventoryTests
         Assert.Equal(DataCatalog.MacheteId, inventory.Slots[2].ItemId);
         Assert.Equal(DataCatalog.WateringCanId, inventory.Slots[3].ItemId);
         Assert.Equal(DataCatalog.BucketId, inventory.Slots[4].ItemId);
-        Assert.All(inventory.Slots.Take(5), slot => Assert.Equal(1, slot.Count));
+        Assert.Equal(DataCatalog.FishingRodId, inventory.Slots[5].ItemId);
+        Assert.All(
+            inventory.Slots.Take(Inventory.StartingToolCount),
+            slot => Assert.Equal(1, slot.Count)
+        );
     }
 
     [Fact]
@@ -2415,7 +2419,7 @@ public sealed class QuestAndSessionTests
         }
         Assert.Equal(QuestStage.Plant, session.Quest.Stage);
 
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         foreach (var position in positions)
         {
             Assert.True(session.UseSelected(position).Succeeded);
@@ -2619,7 +2623,7 @@ public sealed class QuestAndSessionTests
         var needsBucket = session.PreviewSelectedTarget(water);
         Assert.Equal(TargetPreviewState.NeedsTool, needsBucket.State);
         Assert.Equal(TargetPreviewKind.Water, needsBucket.Kind);
-        Assert.Equal("target.need.bucket", needsBucket.LabelKey);
+        Assert.Equal("target.need.bucket_or_rod", needsBucket.LabelKey);
 
         session.Inventory.Select(4);
         var alreadyFull = session.PreviewSelectedTarget(water);
@@ -2633,6 +2637,222 @@ public sealed class QuestAndSessionTests
         var canDrawWater = session.PreviewSelectedTarget(water);
         Assert.True(canDrawWater.IsAvailable);
         Assert.Equal("target.action.draw_water", canDrawWater.LabelKey);
+    }
+
+    [Fact]
+    public void FishingRodCatchesStarterFishAtThreeWaterKinds()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Inventory.Select(5);
+
+        AssertStarterFish(
+            session,
+            new GridPosition(38, 21),
+            DataCatalog.PondglowMinnowId
+        );
+        AssertStarterFish(
+            session,
+            FindWaterSource(WorldBiome.CrystalVale),
+            DataCatalog.CrystalfinDaceId
+        );
+        AssertStarterFish(
+            session,
+            FindWaterSource(WorldBiome.MoonwaterWetlands),
+            DataCatalog.MoonwaterMinnowId
+        );
+    }
+
+    [Fact]
+    public void FishingPreviewActionAndSaveUseTheSameAtomicRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var water = new GridPosition(38, 21);
+        session.Inventory.Select(5);
+
+        var preview = session.PreviewSelectedTarget(water);
+        Assert.True(preview.IsAvailable);
+        Assert.Equal(TargetPreviewKind.Water, preview.Kind);
+        Assert.Equal("target.action.fish", preview.LabelKey);
+
+        var result = session.UseSelected(water);
+        Assert.True(result.Succeeded);
+        Assert.Equal(FishingSystem.CastEnergyCost, result.EnergyCost);
+        Assert.Equal(DataCatalog.PondglowMinnowId, result.GrantedItemId);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.PondglowMinnowId));
+        Assert.Contains(DataCatalog.PondglowMinnowId, session.Fishing.CaughtFishIds);
+        Assert.Equal(
+            GameSession.MaxEnergy - FishingSystem.CastEnergyCost,
+            session.Energy
+        );
+
+        var restored = new GameSession();
+        restored.Restore(session.Capture());
+        Assert.Contains(
+            DataCatalog.PondglowMinnowId,
+            restored.Fishing.CaughtFishIds
+        );
+
+        var energyBlockedSave = session.Capture();
+        energyBlockedSave.Player.Energy = FishingSystem.CastEnergyCost - 1;
+        var energyBlocked = new GameSession();
+        energyBlocked.Restore(energyBlockedSave);
+        energyBlocked.Inventory.Select(5);
+
+        Assert.Equal(
+            TargetPreviewState.Blocked,
+            energyBlocked.PreviewSelectedTarget(water).State
+        );
+        var tired = energyBlocked.UseSelected(water);
+        Assert.False(tired.Succeeded);
+        Assert.Equal("notice.no_energy", tired.MessageKey);
+        Assert.Equal(
+            FishingSystem.CastEnergyCost - 1,
+            energyBlocked.Energy
+        );
+
+        var full = new GameSession();
+        full.NewGame();
+        Assert.True(full.Inventory.Add(
+            DataCatalog.StarbudSeedId,
+            99 * (Inventory.SlotCount - Inventory.StartingToolCount)
+        ));
+        full.Inventory.Select(5);
+
+        var fullPreview = full.PreviewSelectedTarget(water);
+        Assert.Equal(TargetPreviewState.Blocked, fullPreview.State);
+        Assert.Equal("target.blocked.backpack_full", fullPreview.LabelKey);
+        var fullResult = full.UseSelected(water);
+        Assert.False(fullResult.Succeeded);
+        Assert.Equal("notice.inventory_full", fullResult.MessageKey);
+        Assert.Equal(GameSession.MaxEnergy, full.Energy);
+        Assert.Empty(full.Fishing.CaughtFishIds);
+
+        var notWater = session.UseSelected(new GridPosition(12, 16));
+        Assert.False(notWater.Succeeded);
+        Assert.Equal("notice.not_fishing_water", notWater.MessageKey);
+    }
+
+    [Fact]
+    public void FishingCollectionEntriesTrackCaughtProgress()
+    {
+        var session = new GameSession();
+        session.NewGame();
+
+        var initialEntries = session.Fishing.CollectionEntries();
+        Assert.Equal(DataCatalog.Fishes.Count, session.Fishing.TotalFishCount);
+        Assert.Equal(0, session.Fishing.CaughtCount);
+        Assert.All(initialEntries, entry => Assert.False(entry.Caught));
+
+        session.Inventory.Select(5);
+        var result = session.UseSelected(new GridPosition(38, 21));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, session.Fishing.CaughtCount);
+        var caughtEntries = session.Fishing.CollectionEntries();
+        var pondEntry = Assert.Single(caughtEntries, entry =>
+            entry.Fish.Id == DataCatalog.PondglowMinnowId
+        );
+        Assert.True(pondEntry.Caught);
+        Assert.Equal(
+            DataCatalog.Fishes.Count - 1,
+            caughtEntries.Count(entry => !entry.Caught)
+        );
+
+        var restored = new GameSession();
+        restored.Restore(session.Capture());
+        Assert.True(restored.Fishing.IsCaught(DataCatalog.PondglowMinnowId));
+        Assert.False(restored.Fishing.IsCaught(DataCatalog.CrystalfinDaceId));
+    }
+
+    [Fact]
+    public void FishingCatalogDefinesTwentyFourConditionedFish()
+    {
+        Assert.Equal(24, DataCatalog.Fishes.Count);
+        Assert.Equal(
+            DataCatalog.Fishes.Count,
+            DataCatalog.FishItemIds.Distinct(StringComparer.Ordinal).Count()
+        );
+
+        foreach (var waterKind in Enum.GetValues<FishingWaterKind>())
+        {
+            Assert.Equal(
+                8,
+                DataCatalog.Fishes.Values.Count(fish =>
+                    fish.WaterKind == waterKind
+                )
+            );
+        }
+
+        foreach (var fish in DataCatalog.Fishes.Values)
+        {
+            Assert.Equal(fish.Id, fish.ItemId);
+            Assert.Contains(fish.ItemId, DataCatalog.FishItemIds);
+            Assert.Contains(fish.ItemId, DataCatalog.SellableItemIds);
+            Assert.Contains(fish.ItemId, DataCatalog.StorableItemIds);
+            Assert.Equal(ItemKind.Fish, DataCatalog.Item(fish.ItemId).Kind);
+        }
+
+        Assert.Contains(DataCatalog.Fishes.Values, fish =>
+            fish.WeatherId == DataCatalog.RainWeatherId
+        );
+        Assert.Contains(DataCatalog.Fishes.Values, fish =>
+            fish.WeatherId == DataCatalog.StardustWindWeatherId
+        );
+        Assert.Contains(DataCatalog.Fishes.Values, fish =>
+            fish.SeasonIds is { Count: > 0 }
+        );
+        Assert.Contains(DataCatalog.Fishes.Values, fish =>
+            fish.StartMinute != GameClock.StartMinute ||
+            fish.EndMinute != GameClock.EndMinute
+        );
+    }
+
+    [Fact]
+    public void FishingSpecificConditionsOverrideCommonWaterFish()
+    {
+        var fishing = new FishingSystem();
+        var home = new GridPosition(38, 21);
+        var crystal = FindWaterSource(WorldBiome.CrystalVale);
+        var wetlands = FindWaterSource(WorldBiome.MoonwaterWetlands);
+
+        Assert.Equal(
+            DataCatalog.PondglowMinnowId,
+            fishing.PreviewCatch(
+                home,
+                1,
+                GameClock.StartMinute,
+                DataCatalog.ClearWeatherId
+            )?.Id
+        );
+        Assert.Equal(
+            DataCatalog.RainpetalLoachId,
+            fishing.PreviewCatch(
+                home,
+                2,
+                8 * 60,
+                DataCatalog.RainWeatherId
+            )?.Id
+        );
+        Assert.Equal(
+            DataCatalog.StardustPikeId,
+            fishing.PreviewCatch(
+                crystal,
+                4,
+                13 * 60,
+                DataCatalog.StardustWindWeatherId
+            )?.Id
+        );
+        Assert.Equal(
+            DataCatalog.RainveilLampreyId,
+            fishing.PreviewCatch(
+                wetlands,
+                15,
+                8 * 60,
+                DataCatalog.RainWeatherId
+            )?.Id
+        );
     }
 
     private static GridPosition FindWorldResource(WorldResourceKind kind)
@@ -2650,6 +2870,43 @@ public sealed class QuestAndSessionTests
         }
 
         throw new InvalidOperationException($"No world resource found for {kind}.");
+    }
+
+    private static GridPosition FindWaterSource(WorldBiome biome)
+    {
+        for (var y = FarmSystem.MapHeight; y < WorldDefinition.Height; y++)
+        {
+            for (var x = 1; x < WorldDefinition.Width - 1; x++)
+            {
+                var cell = new GridPosition(x, y);
+                if (WorldDefinition.GetBiome(cell) == biome &&
+                    WorldDefinition.IsWaterSource(cell))
+                {
+                    return cell;
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"No water source found for {biome}.");
+    }
+
+    private static void AssertStarterFish(
+        GameSession session,
+        GridPosition water,
+        string expectedFishId
+    )
+    {
+        var beforeEnergy = session.Energy;
+        var preview = session.PreviewSelectedTarget(water);
+        Assert.True(preview.IsAvailable);
+
+        var result = session.UseSelected(water);
+        Assert.True(result.Succeeded);
+        Assert.Equal(expectedFishId, result.GrantedItemId);
+        Assert.Equal(1, result.GrantedItemCount);
+        Assert.Contains(expectedFishId, session.Fishing.CaughtFishIds);
+        Assert.Equal(1, session.Inventory.Count(expectedFishId));
+        Assert.Equal(beforeEnergy - FishingSystem.CastEnergyCost, session.Energy);
     }
 }
 
@@ -2726,7 +2983,7 @@ public sealed class DailyCommissionTests
         session.NewGame();
         session.AcceptDailyCommission();
         session.Inventory.Add(DataCatalog.StarbudSeedId, 2);
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         var soil = new GridPosition(12, 16);
 
         Assert.False(session.UseSelected(soil).Succeeded);
@@ -2735,7 +2992,7 @@ public sealed class DailyCommissionTests
 
         session.Inventory.Select(1);
         Assert.True(session.UseSelected(soil).Succeeded);
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         Assert.True(session.UseSelected(soil).Succeeded);
         Assert.Equal(1, session.Commission.Progress);
 
@@ -2955,7 +3212,7 @@ public sealed class WeeklyCommissionTests
         session.NewGame();
         session.AcceptWeeklyCommission();
         Assert.True(session.Inventory.Add(DataCatalog.StarbudSeedId, 1));
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         var soil = new GridPosition(12, 16);
 
         Assert.False(session.UseSelected(soil).Succeeded);
@@ -2963,7 +3220,7 @@ public sealed class WeeklyCommissionTests
 
         session.Inventory.Select(1);
         Assert.True(session.UseSelected(soil).Succeeded);
-        session.Inventory.Select(5);
+        session.Inventory.Select(6);
         Assert.True(session.UseSelected(soil).Succeeded);
         Assert.Equal(1, session.WeeklyCommission.Progress);
         RecordStarbudPlanting(session, 2);
@@ -3006,7 +3263,7 @@ public sealed class WeeklyCommissionTests
         var seedStack = DataCatalog.Item(DataCatalog.StarbudSeedId).MaxStack;
         Assert.True(session.Inventory.Add(
             DataCatalog.StarbudSeedId,
-            18 * seedStack
+            (Inventory.SlotCount - Inventory.StartingToolCount - 1) * seedStack
         ));
         var before = session.Inventory.Capture()
             .Select(slot => (slot.ItemId, slot.Count))
@@ -8547,6 +8804,66 @@ public sealed class LocaleTests
     }
 
     [Fact]
+    public void FishingItemActionAndNoticeKeysAreBilingual()
+    {
+        var locale = new LocaleService();
+        locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
+        locale.LoadJson(
+            LocaleService.SimplifiedChinese,
+            ReadLocale("zh_CN.json")
+        );
+        var keys = DataCatalog.Fishes.Values
+            .SelectMany(fish => new[]
+            {
+                fish.NameKey,
+                DataCatalog.Item(fish.ItemId).NameKey
+            })
+            .Concat(new[]
+            {
+                DataCatalog.Item(DataCatalog.FishingRodId).NameKey,
+                "menu.fishing_collection",
+                "target.action.fish",
+                "target.need.bucket_or_rod",
+                "target.status.no_fish",
+                "notice.not_fishing_water",
+                "notice.fish_not_biting",
+                "notice.fish_caught",
+                "fishing.collection.title",
+                "fishing.collection.summary",
+                "fishing.collection.hint",
+                "fishing.collection.detail",
+                "fishing.collection.hidden_name",
+                "fishing.collection.hidden_detail",
+                "fishing.collection.caught",
+                "fishing.collection.unseen",
+                "fishing.water.homestead_pond",
+                "fishing.water.crystal_stream",
+                "fishing.water.moonwater_wetlands",
+                "fishing.condition.all_seasons",
+                "fishing.condition.seasoned",
+                "fishing.condition.any_time",
+                "fishing.condition.any_weather",
+                "fishing.condition.time",
+                "fishing.condition.weather",
+                "fishing.condition.weather_time"
+            })
+            .Distinct(StringComparer.Ordinal);
+
+        foreach (var language in new[]
+                 {
+                     LocaleService.English,
+                     LocaleService.SimplifiedChinese
+                 })
+        {
+            locale.SetLocale(language);
+            Assert.All(
+                keys,
+                key => Assert.False(locale.Tr(key).StartsWith('['))
+            );
+        }
+    }
+
+    [Fact]
     public void GleamriseFestivalKeysAreBilingual()
     {
         var locale = new LocaleService();
@@ -9862,6 +10179,7 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(DataCatalog.MacheteId, session.Inventory.Slots[2].ItemId);
         Assert.Equal(DataCatalog.WateringCanId, session.Inventory.Slots[3].ItemId);
         Assert.Equal(DataCatalog.BucketId, session.Inventory.Slots[4].ItemId);
+        Assert.Equal(DataCatalog.FishingRodId, session.Inventory.Slots[5].ItemId);
         Assert.Equal(5, session.Inventory.Count(DataCatalog.StarbudSeedId));
         Assert.Equal(1, session.Inventory.SelectedIndex);
     }

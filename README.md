@@ -221,7 +221,17 @@ with a permanent level-three specialization; the fourteen-day Gleamrise Goals
 panel; the Starlight Coop and first Starfeather Hen loop; and the day-seven
 Gleamrise Sowing Festival. The seasonal goals reset each Gleamrise year, store
 stable progress counters and claimed reward IDs, and leave unclaimed or
-unfinished objectives available without permanent punishment.
+unfinished objectives available without permanent punishment. Phase D has now
+started with the first basic fishing loop: slot 6 is fixed as the Starthread
+fishing rod, and casting at the homestead pond, Crystal Vale stream, or
+Moonwater Wetlands catches the first water-specific fish and records the stable
+fish ID in the collection save. The pause menu now opens the first Fish
+Collection panel, showing discovered progress, discovered fish water/condition
+hints, and shadow placeholders for unknown entries. The fish catalog now
+contains 24 original fish, eight per water kind, with time, weather, and season
+conditions. Dedicated 24-fish icons, the full line-control minigame, bait,
+bobbers, rod upgrades, crab pots, the wetland Starlight Pedestal, Firefly Tide
+night, and the fishing skill remain later Phase D increments.
 
 ## Tools and backpack
 
@@ -234,8 +244,13 @@ The eight-slot hotbar and the backpack are now separate:
 - The Dewglass watering can carries 12 measures of water.
 - The water bucket refills the watering can when aimed at a pond, stream, or
   wetland pool.
+- The Starthread fishing rod is fixed in slot 6. Cast at a pond, stream, or
+  wetland pool to spend 4 energy and catch one of 24 fish based on water kind,
+  time, weather, and season.
 - The full backpack contains 24 slots. Press `B` or `Tab` to inspect it; the
   first eight slots are the active hotbar.
+- The pause menu opens the Fish Collection, which tracks discovered fish and
+  keeps unknown entries as shadows.
 
 The target preview identifies the object in front of the player. Mint outlines
 mean `E` can perform the shown action, gold explains which tool is required,
@@ -452,6 +467,14 @@ Use `--playtest-gleamrise-festival` to inspect the day-seven festival gate,
 dedicated festival scene, sowing rite panel, exchange stall, and deterministic
 festival rewards.
 
+Use `--playtest-fishing` to start beside the homestead pond and inspect the
+slot-6 Starthread fishing rod icon, water cast preview, and basic fishing
+visual state.
+
+Use `--playtest-fishing-collection` to open a half-complete Fish Collection
+panel for visual QA of discovered rows, hidden shadows, the progress summary,
+and the pause-menu collection entry.
+
 Use `--playtest-village-rain-schedule` to open Sela's rainy-day workshop
 dialogue, and `--playtest-village-rainveil-schedule` to inspect Vessa's first
 Rainveil-day route and the season HUD. Both scenarios restore an explicit
@@ -545,6 +568,21 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-20 15:10:45 CST — Expanded the Phase D fish catalog to 24 original
+  fish, eight per water kind, and added time, weather, season conditions plus
+  specific-condition priority in casting; the collection now displays season
+  conditions. Added catalog and condition-priority tests. New fish currently
+  reuse their water-kind icon; dedicated 24-fish icons remain a later art
+  increment.
+- 2026-08-20 14:53:01 CST — Added the first Phase D Fish Collection entry:
+  pause-menu access, discovered progress, discovered fish water/condition
+  hints, hidden fish shadows, the `--playtest-fishing-collection` visual QA
+  entry, and regression tests.
+- 2026-08-20 14:24:38 CST — Started Phase D with the first basic fishing loop:
+  fixed Starthread fishing rod, three starter fish by water kind, deterministic
+  cast-to-backpack action, collection save state, bilingual preview/feedback,
+  generated icons, the `--playtest-fishing` screenshot entry, and regression
+  tests; the full line-control minigame and 24 fish remain later increments.
 - 2026-08-20 12:06:47 CST — Finalized Phase C documentation as 7/7 by splitting
   the mandatory scope into seven completed items, summarizing the fourteen-day
   goals, Starfeather Hen loop, and Gleamrise Sowing Festival, and removing stale

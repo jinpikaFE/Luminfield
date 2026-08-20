@@ -447,6 +447,13 @@ public sealed class SaveService
             save.Festival,
             save.Day
         );
+        save.Fishing ??= new FishingSave();
+        save.Fishing.CaughtFishIds ??= [];
+        save.Fishing.CaughtFishIds = save.Fishing.CaughtFishIds
+            .Where(fishId => DataCatalog.Fishes.ContainsKey(fishId))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

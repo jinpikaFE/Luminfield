@@ -32,6 +32,7 @@ public sealed class GameSession
     public FarmingSkillSystem FarmingSkill { get; } = new();
     public GleamriseSeasonGoalSystem GleamriseSeason { get; } = new();
     public FestivalSystem Festival { get; } = new();
+    public FishingSystem Fishing { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -98,6 +99,7 @@ public sealed class GameSession
         FarmingSkill.Changed += NotifyChanged;
         GleamriseSeason.Changed += NotifyChanged;
         Festival.Changed += NotifyChanged;
+        Fishing.Changed += NotifyChanged;
     }
 
     public void NewGame(string locale = LocaleService.SimplifiedChinese)
@@ -125,6 +127,7 @@ public sealed class GameSession
         FarmingSkill.Reset();
         GleamriseSeason.Reset(Clock.Day);
         Festival.Reset(Clock.Day);
+        Fishing.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -169,6 +172,7 @@ public sealed class GameSession
         FarmingSkill.Restore(save.FarmingSkill);
         GleamriseSeason.Restore(save.GleamriseSeason, save.Day);
         Festival.Restore(save.Festival, save.Day);
+        Fishing.Restore(save.Fishing);
         Resources.Restore(
             save.Resources,
             save.Day,
@@ -361,6 +365,8 @@ public sealed class GameSession
                 break;
             case DataCatalog.BucketId:
                 return RefillWateringCan(target);
+            case DataCatalog.FishingRodId:
+                return CastFishingLine(target);
             default:
                 var item = DataCatalog.Item(selected.ItemId);
                 if (item.Kind == ItemKind.Placeable)
@@ -868,26 +874,7 @@ public sealed class GameSession
 
         if (WorldDefinition.IsWaterSource(target))
         {
-            if (selectedId != DataCatalog.BucketId)
-            {
-                return TargetPreview.NeedsTool(
-                    target,
-                    TargetPreviewKind.Water,
-                    "target.need.bucket"
-                );
-            }
-
-            return WateringCanWater >= MaxWateringCanWater
-                ? TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Water,
-                    "target.status.water_full"
-                )
-                : TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.Water,
-                    "target.action.draw_water"
-                );
+            return PreviewWaterSource(target, selectedId);
         }
 
         if (DataCatalog.Items.TryGetValue(selectedId, out var previewItem) &&
@@ -1124,6 +1111,78 @@ public sealed class GameSession
                 TargetPreviewKind.Ground,
                 "target.action.till"
             );
+    }
+
+    private TargetPreview PreviewWaterSource(
+        GridPosition target,
+        string selectedId
+    )
+    {
+        if (selectedId == DataCatalog.BucketId)
+        {
+            if (WateringCanWater >= MaxWateringCanWater)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Water,
+                    "target.status.water_full"
+                );
+            }
+
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.Water,
+                "target.action.draw_water"
+            );
+        }
+
+        if (selectedId == DataCatalog.FishingRodId)
+        {
+            if (Energy < FishingSystem.CastEnergyCost)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Water,
+                    "target.blocked.no_energy"
+                );
+            }
+
+            var fish = Fishing.PreviewCatch(
+                target,
+                Clock.Day,
+                Clock.MinuteOfDay,
+                Weather.CurrentId
+            );
+            if (fish is null)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Water,
+                    "target.status.no_fish"
+                );
+            }
+
+            if (!Inventory.CanAdd(fish.ItemId, 1))
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.Water,
+                    "target.blocked.backpack_full"
+                );
+            }
+
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.Water,
+                "target.action.fish"
+            );
+        }
+
+        return TargetPreview.NeedsTool(
+            target,
+            TargetPreviewKind.Water,
+            "target.need.bucket_or_rod"
+        );
     }
 
     private TargetPreview PreviewFruitTree(
@@ -1645,6 +1704,36 @@ public sealed class GameSession
         WaterChanged?.Invoke();
         Changed?.Invoke();
         return ActionResult.Success(messageKey: "notice.water_refilled");
+    }
+
+    private ActionResult CastFishingLine(GridPosition target)
+    {
+        if (!WorldDefinition.IsWaterSource(target))
+        {
+            return ActionResult.Fail("notice.not_fishing_water");
+        }
+
+        if (Energy < FishingSystem.CastEnergyCost)
+        {
+            return ActionResult.Fail("notice.no_energy");
+        }
+
+        var result = Fishing.TryCatch(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            Weather.CurrentId,
+            Inventory
+        );
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Energy = Math.Max(0, Energy - result.EnergyCost);
+        EnergyChanged?.Invoke();
+        Changed?.Invoke();
+        return result;
     }
 
     public bool InteractWithMira()
@@ -2543,7 +2632,8 @@ public sealed class GameSession
         Construction = Construction.Capture(),
         FarmingSkill = FarmingSkill.Capture(),
         GleamriseSeason = GleamriseSeason.Capture(),
-        Festival = Festival.Capture()
+        Festival = Festival.Capture(),
+        Fishing = Fishing.Capture()
     };
 
     public ActionResult ChooseFarmingSpecialization(

@@ -208,7 +208,7 @@ public static class WorldDefinition
 
         if (GetBiome(cell) == WorldBiome.CrystalVale)
         {
-            var streamX = 51 + (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
+            var streamX = 83 + (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
             return Math.Abs(cell.X - streamX) <= 2;
         }
 

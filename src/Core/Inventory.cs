@@ -4,7 +4,7 @@ public sealed class Inventory
 {
     public const int HotbarSlotCount = 8;
     public const int SlotCount = 24;
-    public const int StartingToolCount = 5;
+    public const int StartingToolCount = 6;
 
     private static readonly string[] StartingTools =
     [
@@ -12,7 +12,8 @@ public sealed class Inventory
         DataCatalog.ShovelId,
         DataCatalog.MacheteId,
         DataCatalog.WateringCanId,
-        DataCatalog.BucketId
+        DataCatalog.BucketId,
+        DataCatalog.FishingRodId
     ];
 
     private readonly List<InventorySlot> _slots =

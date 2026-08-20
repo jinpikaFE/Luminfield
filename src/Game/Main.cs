@@ -38,6 +38,7 @@ public sealed partial class Main : Node
     private StorageOverlay? _storageOverlay;
     private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
+    private FishingCollectionOverlay? _fishingCollectionOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
     private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FadeTransition? _fadeTransition;
@@ -117,7 +118,7 @@ public sealed partial class Main : Node
 
     private async void CapturePlaytest(string resourcePath)
     {
-        for (var frame = 0; frame < 12; frame++)
+        for (var frame = 0; frame < 36; frame++)
         {
             await ToSignal(
                 GetTree(),
@@ -265,6 +266,14 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _fishingCollectionOverlay is not null)
+        {
+            CloseFishingCollection();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Backpack) && !IsInputBlocked)
         {
             OpenBackpack();
@@ -293,6 +302,7 @@ public sealed partial class Main : Node
             _storageOverlay is null &&
             _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
+            _fishingCollectionOverlay is null &&
             _farmingSpecializationOverlay is null &&
             _gleamriseSeasonOverlay is null &&
             _fadeTransition is null)
@@ -371,6 +381,7 @@ public sealed partial class Main : Node
         _storageOverlay is not null ||
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
+        _fishingCollectionOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
         _fadeTransition is not null;
@@ -391,6 +402,7 @@ public sealed partial class Main : Node
         _storageOverlay is null &&
         _nightlySummaryOverlay is null &&
         _backpackOverlay is null &&
+        _fishingCollectionOverlay is null &&
         _farmingSpecializationOverlay is null &&
         _gleamriseSeasonOverlay is null &&
         _fadeTransition is null;
@@ -434,6 +446,8 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay = null;
         FreeUi(_backpackOverlay);
         _backpackOverlay = null;
+        FreeUi(_fishingCollectionOverlay);
+        _fishingCollectionOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
         _farmingSpecializationOverlay = null;
         FreeUi(_gleamriseSeasonOverlay);
@@ -567,6 +581,9 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.Gate] = StartGatePlaytest,
                 [PlaytestScenarioId.Backpack] = StartBackpackPlaytest,
                 [PlaytestScenarioId.Resource] = StartResourcePlaytest,
+                [PlaytestScenarioId.Fishing] = StartFishingPlaytest,
+                [PlaytestScenarioId.FishingCollection] =
+                    StartFishingCollectionPlaytest,
                 [PlaytestScenarioId.Target] = StartTargetPreviewPlaytest,
                 [PlaytestScenarioId.PhaseA] = StartPhaseAPlaytest,
                 [PlaytestScenarioId.PhaseASummary] =
@@ -2578,6 +2595,36 @@ public sealed partial class Main : Node
         ShowFarm(false);
     }
 
+    private void StartFishingPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.SetPlayerState(38 * 16 + 8, 20 * 16 + 8, false);
+        _session.Inventory.Select(5);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartFishingCollectionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Fishing.CaughtFishIds =
+        [
+            DataCatalog.PondglowMinnowId,
+            DataCatalog.MoonwaterMinnowId
+        ];
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenFishingCollection).CallDeferred();
+    }
+
     private void StartTargetPreviewPlaytest()
     {
         FreeUi(_title);
@@ -3179,6 +3226,7 @@ public sealed partial class Main : Node
             DataCatalog.MacheteId => PixelSound.Harvest,
             DataCatalog.WateringCanId => PixelSound.Water,
             DataCatalog.BucketId => PixelSound.Water,
+            DataCatalog.FishingRodId => PixelSound.Water,
             _ => PixelSound.Chime
         };
     }
@@ -4118,6 +4166,11 @@ public sealed partial class Main : Node
             ClosePause();
             OpenGleamriseSeasonGoals();
         };
+        _pauseOverlay.FishingCollectionRequested += () =>
+        {
+            ClosePause();
+            OpenFishingCollection();
+        };
         _pauseOverlay.LanguageRequested += () =>
         {
             ToggleLanguage();
@@ -4141,6 +4194,33 @@ public sealed partial class Main : Node
         _paused = false;
         FreeUi(_pauseOverlay);
         _pauseOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFishingCollection()
+    {
+        if (_fishingCollectionOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _fishingCollectionOverlay = new FishingCollectionOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _fishingCollectionOverlay.CloseRequested += CloseFishingCollection;
+        _uiLayer.AddChild(_fishingCollectionOverlay);
+    }
+
+    private void CloseFishingCollection()
+    {
+        FreeUi(_fishingCollectionOverlay);
+        _fishingCollectionOverlay = null;
         if (CanRestoreWorldControls)
         {
             SetWorldControls(true);

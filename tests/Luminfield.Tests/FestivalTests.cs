@@ -266,7 +266,8 @@ public sealed class FestivalTests
             DataCatalog.ShovelId,
             DataCatalog.MacheteId,
             DataCatalog.WateringCanId,
-            DataCatalog.BucketId
+            DataCatalog.BucketId,
+            DataCatalog.FishingRodId
         };
         foreach (var itemId in DataCatalog.Items.Keys)
         {

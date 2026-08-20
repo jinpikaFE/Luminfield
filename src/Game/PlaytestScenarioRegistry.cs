@@ -58,6 +58,8 @@ public enum PlaytestScenarioId
     Gate,
     Backpack,
     Resource,
+    Fishing,
+    FishingCollection,
     Target,
     PhaseA,
     PhaseASummary,
@@ -280,6 +282,11 @@ public sealed class PlaytestScenarioRegistry
         new(PlaytestScenarioId.Gate, "--playtest-gate"),
         new(PlaytestScenarioId.Backpack, "--playtest-backpack"),
         new(PlaytestScenarioId.Resource, "--playtest-resource"),
+        new(PlaytestScenarioId.Fishing, "--playtest-fishing"),
+        new(
+            PlaytestScenarioId.FishingCollection,
+            "--playtest-fishing-collection"
+        ),
         new(PlaytestScenarioId.Target, "--playtest-target"),
         new(PlaytestScenarioId.PhaseA, "--playtest-phase-a"),
         new(

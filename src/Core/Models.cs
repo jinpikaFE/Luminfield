@@ -349,6 +349,11 @@ public sealed class FestivalSave
     public List<string> CompletedStageIds { get; set; } = [];
 }
 
+public sealed class FishingSave
+{
+    public List<string> CaughtFishIds { get; set; } = [];
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -379,6 +384,7 @@ public sealed class GameSaveV1
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
     public AnimalSave Animals { get; set; } = new();
     public FestivalSave Festival { get; set; } = new();
+    public FishingSave Fishing { get; set; } = new();
 }
 
 public sealed record ActionResult(

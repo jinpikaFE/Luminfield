@@ -694,6 +694,8 @@ internal sealed partial class HotbarSlotContent : Control
         GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
     private static readonly Texture2D ToolIcons =
         GD.Load<Texture2D>("res://assets/generated/tool_backpack_icons_chroma.png");
+    private static readonly Texture2D FishingIcons =
+        GD.Load<Texture2D>("res://assets/generated/fishing_icons.png");
     private const float ToolIconCell = 443.5f;
 
     private readonly Label _key;
@@ -829,6 +831,11 @@ internal sealed partial class HotbarSlotContent : Control
         }
 
         var visualItemId = DataCatalog.BaseItemId(itemId);
+        if (TryFishingIcon(visualItemId, out texture, out region))
+        {
+            return true;
+        }
+
         texture = visualItemId switch
         {
             DataCatalog.HandId or
@@ -869,6 +876,40 @@ internal sealed partial class HotbarSlotContent : Control
         ToolIconCell,
         ToolIconCell
     );
+
+    private static bool TryFishingIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = FishingIcons;
+        if (itemId == DataCatalog.FishingRodId)
+        {
+            region = new Rect2(0, 0, 380, 430);
+            return true;
+        }
+
+        if (itemId == "__fish_shadow__")
+        {
+            region = new Rect2(430, 470, 520, 410);
+            return true;
+        }
+
+        if (!DataCatalog.Fishes.TryGetValue(itemId, out var fish))
+        {
+            region = default;
+            return false;
+        }
+
+        region = fish.WaterKind switch
+        {
+            FishingWaterKind.CrystalStream => new Rect2(880, 90, 390, 340),
+            FishingWaterKind.MoonwaterWetlands => new Rect2(1280, 80, 494, 350),
+            _ => new Rect2(430, 90, 390, 340)
+        };
+        return region.Size != Vector2.Zero;
+    }
 }
 
 public sealed partial class BackpackOverlay : FullScreenUi
@@ -2031,6 +2072,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly Label _title;
     private readonly Button _resume;
     private readonly Button _gleamriseGoals;
+    private readonly Button _fishingCollection;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2042,28 +2084,31 @@ public sealed partial class PauseOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 220) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 252) };
         center.AddChild(panel);
         var column = new VBoxContainer
         {
             Alignment = BoxContainer.AlignmentMode.Center
         };
-        column.AddThemeConstantOverride("separation", 12);
+        column.AddThemeConstantOverride("separation", 10);
         panel.AddChild(column);
         _title = ThemeFactory.Label(size: 24, color: ThemeFactory.Mint);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
         _resume = ThemeFactory.Button("");
         _gleamriseGoals = ThemeFactory.Button("");
+        _fishingCollection = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
         column.AddChild(_resume);
         column.AddChild(_gleamriseGoals);
+        column.AddChild(_fishingCollection);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
         _resume.Pressed += () => ResumeRequested?.Invoke();
         _gleamriseGoals.Pressed += () => GleamriseGoalsRequested?.Invoke();
+        _fishingCollection.Pressed += () => FishingCollectionRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2072,6 +2117,7 @@ public sealed partial class PauseOverlay : FullScreenUi
 
     public event Action? ResumeRequested;
     public event Action? GleamriseGoalsRequested;
+    public event Action? FishingCollectionRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -2080,6 +2126,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _title.Text = _locale.Tr("menu.pause");
         _resume.Text = _locale.Tr("menu.resume");
         _gleamriseGoals.Text = _locale.Tr("menu.gleamrise_goals");
+        _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }

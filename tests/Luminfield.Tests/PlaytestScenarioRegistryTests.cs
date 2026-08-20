@@ -186,6 +186,11 @@ public sealed class PlaytestScenarioRegistryTests
         ("--playtest-gate", PlaytestScenarioId.Gate),
         ("--playtest-backpack", PlaytestScenarioId.Backpack),
         ("--playtest-resource", PlaytestScenarioId.Resource),
+        ("--playtest-fishing", PlaytestScenarioId.Fishing),
+        (
+            "--playtest-fishing-collection",
+            PlaytestScenarioId.FishingCollection
+        ),
         ("--playtest-target", PlaytestScenarioId.Target),
         ("--playtest-phase-a", PlaytestScenarioId.PhaseA),
         (

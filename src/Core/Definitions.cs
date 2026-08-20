@@ -6,6 +6,7 @@ public enum ItemKind
     Seed,
     Sapling,
     Produce,
+    Fish,
     Fertilizer,
     Artisan,
     Resource,
@@ -238,6 +239,60 @@ public sealed record FruitTreeDefinition(
         );
 }
 
+public enum FishingWaterKind
+{
+    HomesteadPond,
+    CrystalStream,
+    MoonwaterWetlands
+}
+
+public sealed record FishDefinition(
+    string Id,
+    string ItemId,
+    FishingWaterKind WaterKind,
+    string NameKey,
+    IReadOnlyList<string>? SeasonIds = null,
+    int StartMinute = GameClock.StartMinute,
+    int EndMinute = GameClock.EndMinute,
+    string? WeatherId = null
+)
+{
+    public bool IsAvailable(int day, int minuteOfDay, string weatherId) =>
+        minuteOfDay >= StartMinute &&
+        minuteOfDay <= EndMinute &&
+        (SeasonIds is not { Count: > 0 } ||
+            SeasonIds.Contains(
+                CalendarSystem.SeasonId(day),
+                StringComparer.Ordinal
+            )) &&
+        (WeatherId is null || WeatherId == weatherId);
+
+    public int AvailabilitySpecificity
+    {
+        get
+        {
+            var score = 0;
+            if (SeasonIds is { Count: > 0 })
+            {
+                score += 1;
+            }
+
+            if (WeatherId is not null)
+            {
+                score += 1;
+            }
+
+            if (StartMinute != GameClock.StartMinute ||
+                EndMinute != GameClock.EndMinute)
+            {
+                score += 1;
+            }
+
+            return score;
+        }
+    }
+}
+
 public static class DataCatalog
 {
     public const string LegacyHoeId = "hoe";
@@ -246,6 +301,7 @@ public static class DataCatalog
     public const string MacheteId = "machete";
     public const string WateringCanId = "watering_can";
     public const string BucketId = "water_bucket";
+    public const string FishingRodId = "fishing_rod";
     public const string StarbudSeedId = "starbud_seed";
     public const string StarbudId = "starbud";
     public const string StarbudLuminousId = "starbud_luminous";
@@ -317,6 +373,30 @@ public static class DataCatalog
     public const string GlowcustardId = "glowcustard";
     public const string GleamriseFestivalTokenId =
         "gleamrise_festival_token";
+    public const string PondglowMinnowId = "pondglow_minnow";
+    public const string ReedwhisperBreamId = "reedwhisper_bream";
+    public const string LanternscaleCarpId = "lanternscale_carp";
+    public const string SunveilGudgeonId = "sunveil_gudgeon";
+    public const string RainpetalLoachId = "rainpetal_loach";
+    public const string DuskglassEelId = "duskglass_eel";
+    public const string StarharvestKoiId = "starharvest_koi";
+    public const string LongnightKoiId = "longnight_koi";
+    public const string CrystalfinDaceId = "crystalfin_dace";
+    public const string QuartzscaleTroutId = "quartzscale_trout";
+    public const string ShardbackPerchId = "shardback_perch";
+    public const string StarlitCharId = "starlit_char";
+    public const string MistglassSmeltId = "mistglass_smelt";
+    public const string StardustPikeId = "stardust_pike";
+    public const string StarharvestChubId = "starharvest_chub";
+    public const string LongnightGlowlingId = "longnight_glowling";
+    public const string MoonwaterMinnowId = "moonwater_minnow";
+    public const string MarshveilKilliId = "marshveil_killi";
+    public const string SilverreedMudfishId = "silverreed_mudfish";
+    public const string MooncapGobyId = "mooncap_goby";
+    public const string RainveilLampreyId = "rainveil_lamprey";
+    public const string StardustRayId = "stardust_ray";
+    public const string StarharvestOrbfinId = "starharvest_orbfin";
+    public const string LongnightWispfishId = "longnight_wispfish";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
@@ -357,6 +437,7 @@ public static class DataCatalog
             [MacheteId] = new(MacheteId, ItemKind.Tool, 1, "item.machete"),
             [WateringCanId] = new(WateringCanId, ItemKind.Tool, 1, "item.watering_can"),
             [BucketId] = new(BucketId, ItemKind.Tool, 1, "item.water_bucket"),
+            [FishingRodId] = new(FishingRodId, ItemKind.Tool, 1, "item.fishing_rod"),
             [StarbudSeedId] = new(
                 StarbudSeedId,
                 ItemKind.Seed,
@@ -893,6 +974,174 @@ public static class DataCatalog
                 ItemKind.Resource,
                 99,
                 "item.gleamrise_festival_token"
+            ),
+            [PondglowMinnowId] = new(
+                PondglowMinnowId,
+                ItemKind.Fish,
+                99,
+                "item.pondglow_minnow",
+                SellPrice: 34
+            ),
+            [ReedwhisperBreamId] = new(
+                ReedwhisperBreamId,
+                ItemKind.Fish,
+                99,
+                "item.reedwhisper_bream",
+                SellPrice: 42
+            ),
+            [LanternscaleCarpId] = new(
+                LanternscaleCarpId,
+                ItemKind.Fish,
+                99,
+                "item.lanternscale_carp",
+                SellPrice: 54
+            ),
+            [SunveilGudgeonId] = new(
+                SunveilGudgeonId,
+                ItemKind.Fish,
+                99,
+                "item.sunveil_gudgeon",
+                SellPrice: 46
+            ),
+            [RainpetalLoachId] = new(
+                RainpetalLoachId,
+                ItemKind.Fish,
+                99,
+                "item.rainpetal_loach",
+                SellPrice: 66
+            ),
+            [DuskglassEelId] = new(
+                DuskglassEelId,
+                ItemKind.Fish,
+                99,
+                "item.duskglass_eel",
+                SellPrice: 82
+            ),
+            [StarharvestKoiId] = new(
+                StarharvestKoiId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_koi",
+                SellPrice: 92
+            ),
+            [LongnightKoiId] = new(
+                LongnightKoiId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_koi",
+                SellPrice: 104
+            ),
+            [CrystalfinDaceId] = new(
+                CrystalfinDaceId,
+                ItemKind.Fish,
+                99,
+                "item.crystalfin_dace",
+                SellPrice: 48
+            ),
+            [QuartzscaleTroutId] = new(
+                QuartzscaleTroutId,
+                ItemKind.Fish,
+                99,
+                "item.quartzscale_trout",
+                SellPrice: 58
+            ),
+            [ShardbackPerchId] = new(
+                ShardbackPerchId,
+                ItemKind.Fish,
+                99,
+                "item.shardback_perch",
+                SellPrice: 64
+            ),
+            [StarlitCharId] = new(
+                StarlitCharId,
+                ItemKind.Fish,
+                99,
+                "item.starlit_char",
+                SellPrice: 74
+            ),
+            [MistglassSmeltId] = new(
+                MistglassSmeltId,
+                ItemKind.Fish,
+                99,
+                "item.mistglass_smelt",
+                SellPrice: 76
+            ),
+            [StardustPikeId] = new(
+                StardustPikeId,
+                ItemKind.Fish,
+                99,
+                "item.stardust_pike",
+                SellPrice: 96
+            ),
+            [StarharvestChubId] = new(
+                StarharvestChubId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_chub",
+                SellPrice: 90
+            ),
+            [LongnightGlowlingId] = new(
+                LongnightGlowlingId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_glowling",
+                SellPrice: 108
+            ),
+            [MoonwaterMinnowId] = new(
+                MoonwaterMinnowId,
+                ItemKind.Fish,
+                99,
+                "item.moonwater_minnow",
+                SellPrice: 56
+            ),
+            [MarshveilKilliId] = new(
+                MarshveilKilliId,
+                ItemKind.Fish,
+                99,
+                "item.marshveil_killi",
+                SellPrice: 62
+            ),
+            [SilverreedMudfishId] = new(
+                SilverreedMudfishId,
+                ItemKind.Fish,
+                99,
+                "item.silverreed_mudfish",
+                SellPrice: 68
+            ),
+            [MooncapGobyId] = new(
+                MooncapGobyId,
+                ItemKind.Fish,
+                99,
+                "item.mooncap_goby",
+                SellPrice: 72
+            ),
+            [RainveilLampreyId] = new(
+                RainveilLampreyId,
+                ItemKind.Fish,
+                99,
+                "item.rainveil_lamprey",
+                SellPrice: 88
+            ),
+            [StardustRayId] = new(
+                StardustRayId,
+                ItemKind.Fish,
+                99,
+                "item.stardust_ray",
+                SellPrice: 112
+            ),
+            [StarharvestOrbfinId] = new(
+                StarharvestOrbfinId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_orbfin",
+                SellPrice: 98
+            ),
+            [LongnightWispfishId] = new(
+                LongnightWispfishId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_wispfish",
+                SellPrice: 118
             )
         };
 
@@ -943,6 +1192,30 @@ public static class DataCatalog
         StarhoneyId,
         StarfeatherEggId,
         GlowcustardId,
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId,
         LumenwoodId,
         CrystalShardId
     ];
@@ -998,6 +1271,34 @@ public static class DataCatalog
     public static readonly IReadOnlyList<string> SaplingItemIds =
     [
         MoonplumSaplingId
+    ];
+
+    public static readonly IReadOnlyList<string> FishItemIds =
+    [
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId
     ];
 
     public static readonly IReadOnlyList<string> QualityProduceItemIds =
@@ -1097,6 +1398,30 @@ public static class DataCatalog
         StarfeatherEggId,
         GlowcustardId,
         GleamriseFestivalTokenId,
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId,
         LumenwoodId,
         CrystalShardId,
         StarwovenChestId,
@@ -1161,6 +1486,204 @@ public static class DataCatalog
                 StardustWindWeatherId,
                 "weather.stardust_wind",
                 2
+            )
+        };
+
+    public static readonly IReadOnlyDictionary<string, FishDefinition> Fishes =
+        new Dictionary<string, FishDefinition>(StringComparer.Ordinal)
+        {
+            [PondglowMinnowId] = new(
+                PondglowMinnowId,
+                PondglowMinnowId,
+                FishingWaterKind.HomesteadPond,
+                "fish.pondglow_minnow"
+            ),
+            [ReedwhisperBreamId] = new(
+                ReedwhisperBreamId,
+                ReedwhisperBreamId,
+                FishingWaterKind.HomesteadPond,
+                "fish.reedwhisper_bream",
+                StartMinute: 10 * 60,
+                EndMinute: 15 * 60
+            ),
+            [LanternscaleCarpId] = new(
+                LanternscaleCarpId,
+                LanternscaleCarpId,
+                FishingWaterKind.HomesteadPond,
+                "fish.lanternscale_carp",
+                StartMinute: 15 * 60,
+                EndMinute: 20 * 60
+            ),
+            [SunveilGudgeonId] = new(
+                SunveilGudgeonId,
+                SunveilGudgeonId,
+                FishingWaterKind.HomesteadPond,
+                "fish.sunveil_gudgeon",
+                [CalendarSystem.GleamriseSeasonId],
+                StartMinute: 12 * 60,
+                EndMinute: 18 * 60
+            ),
+            [RainpetalLoachId] = new(
+                RainpetalLoachId,
+                RainpetalLoachId,
+                FishingWaterKind.HomesteadPond,
+                "fish.rainpetal_loach",
+                WeatherId: RainWeatherId
+            ),
+            [DuskglassEelId] = new(
+                DuskglassEelId,
+                DuskglassEelId,
+                FishingWaterKind.HomesteadPond,
+                "fish.duskglass_eel",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [StarharvestKoiId] = new(
+                StarharvestKoiId,
+                StarharvestKoiId,
+                FishingWaterKind.HomesteadPond,
+                "fish.starharvest_koi",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: 8 * 60,
+                EndMinute: 18 * 60
+            ),
+            [LongnightKoiId] = new(
+                LongnightKoiId,
+                LongnightKoiId,
+                FishingWaterKind.HomesteadPond,
+                "fish.longnight_koi",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [CrystalfinDaceId] = new(
+                CrystalfinDaceId,
+                CrystalfinDaceId,
+                FishingWaterKind.CrystalStream,
+                "fish.crystalfin_dace"
+            ),
+            [QuartzscaleTroutId] = new(
+                QuartzscaleTroutId,
+                QuartzscaleTroutId,
+                FishingWaterKind.CrystalStream,
+                "fish.quartzscale_trout",
+                StartMinute: 10 * 60,
+                EndMinute: 15 * 60
+            ),
+            [ShardbackPerchId] = new(
+                ShardbackPerchId,
+                ShardbackPerchId,
+                FishingWaterKind.CrystalStream,
+                "fish.shardback_perch",
+                StartMinute: 14 * 60,
+                EndMinute: 19 * 60
+            ),
+            [StarlitCharId] = new(
+                StarlitCharId,
+                StarlitCharId,
+                FishingWaterKind.CrystalStream,
+                "fish.starlit_char",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [MistglassSmeltId] = new(
+                MistglassSmeltId,
+                MistglassSmeltId,
+                FishingWaterKind.CrystalStream,
+                "fish.mistglass_smelt",
+                WeatherId: RainWeatherId
+            ),
+            [StardustPikeId] = new(
+                StardustPikeId,
+                StardustPikeId,
+                FishingWaterKind.CrystalStream,
+                "fish.stardust_pike",
+                StartMinute: 12 * 60,
+                EndMinute: GameClock.EndMinute,
+                WeatherId: StardustWindWeatherId
+            ),
+            [StarharvestChubId] = new(
+                StarharvestChubId,
+                StarharvestChubId,
+                FishingWaterKind.CrystalStream,
+                "fish.starharvest_chub",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: GameClock.StartMinute,
+                EndMinute: 14 * 60
+            ),
+            [LongnightGlowlingId] = new(
+                LongnightGlowlingId,
+                LongnightGlowlingId,
+                FishingWaterKind.CrystalStream,
+                "fish.longnight_glowling",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [MoonwaterMinnowId] = new(
+                MoonwaterMinnowId,
+                MoonwaterMinnowId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.moonwater_minnow"
+            ),
+            [MarshveilKilliId] = new(
+                MarshveilKilliId,
+                MarshveilKilliId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.marshveil_killi",
+                StartMinute: 10 * 60,
+                EndMinute: 16 * 60
+            ),
+            [SilverreedMudfishId] = new(
+                SilverreedMudfishId,
+                SilverreedMudfishId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.silverreed_mudfish",
+                StartMinute: 14 * 60,
+                EndMinute: 20 * 60
+            ),
+            [MooncapGobyId] = new(
+                MooncapGobyId,
+                MooncapGobyId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.mooncap_goby",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [RainveilLampreyId] = new(
+                RainveilLampreyId,
+                RainveilLampreyId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.rainveil_lamprey",
+                [CalendarSystem.RainveilSeasonId],
+                WeatherId: RainWeatherId
+            ),
+            [StardustRayId] = new(
+                StardustRayId,
+                StardustRayId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.stardust_ray",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute,
+                WeatherId: StardustWindWeatherId
+            ),
+            [StarharvestOrbfinId] = new(
+                StarharvestOrbfinId,
+                StarharvestOrbfinId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.starharvest_orbfin",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: 10 * 60,
+                EndMinute: 18 * 60
+            ),
+            [LongnightWispfishId] = new(
+                LongnightWispfishId,
+                LongnightWispfishId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.longnight_wispfish",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
             )
         };
 
