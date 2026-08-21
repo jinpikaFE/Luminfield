@@ -12,7 +12,15 @@ public static class NpcNavigationMap
             [PlayerLocationIds.StarweaverTeaHouse] = new(19, 18),
             [PlayerLocationIds.TwilightEmporium] = new(19, 18),
             [PlayerLocationIds.StarlightPost] = new(19, 18),
-            [PlayerLocationIds.StarfallWatch] = new(19, 18)
+            [PlayerLocationIds.StarfallWatch] = new(19, 18),
+            [PlayerLocationIds.StarharvestMarket] =
+                StarharvestMarketLayout.SafeArrivalCell,
+            [PlayerLocationIds.GleamrisePlantingFestival] =
+                GleamrisePlantingFestivalLayout.SafeArrivalCell,
+            [PlayerLocationIds.LongnightLanternFeast] =
+                LongnightLanternFeastLayout.SafeArrivalCell,
+            [PlayerLocationIds.FireflyTide] =
+                FireflyTideLayout.SafeArrivalCell
         };
 
     private static readonly IReadOnlyDictionary<string, GridPosition>
@@ -25,7 +33,15 @@ public static class NpcNavigationMap
             [PlayerLocationIds.StarweaverTeaHouse] = new(107, 43),
             [PlayerLocationIds.TwilightEmporium] = new(110, 62),
             [PlayerLocationIds.StarlightPost] = new(77, 42),
-            [PlayerLocationIds.StarfallWatch] = new(77, 55)
+            [PlayerLocationIds.StarfallWatch] = new(77, 55),
+            [PlayerLocationIds.StarharvestMarket] =
+                StarharvestMarketLayout.WorldReturnCell,
+            [PlayerLocationIds.GleamrisePlantingFestival] =
+                GleamrisePlantingFestivalLayout.WorldReturnCell,
+            [PlayerLocationIds.LongnightLanternFeast] =
+                LongnightLanternFeastLayout.WorldReturnCell,
+            [PlayerLocationIds.FireflyTide] =
+                FireflyTideLayout.WorldReturnCell
         };
 
     public static bool IsWalkableGeometry(
@@ -72,6 +88,26 @@ public static class NpcNavigationMap
         if (locationId == PlayerLocationIds.StarfallWatch)
         {
             return !IsWatchFurniture(cell);
+        }
+
+        if (locationId == PlayerLocationIds.StarharvestMarket)
+        {
+            return StarharvestMarketLayout.IsWalkable(cell);
+        }
+
+        if (locationId == PlayerLocationIds.GleamrisePlantingFestival)
+        {
+            return GleamrisePlantingFestivalLayout.IsWalkable(cell);
+        }
+
+        if (locationId == PlayerLocationIds.LongnightLanternFeast)
+        {
+            return LongnightLanternFeastLayout.IsWalkable(cell);
+        }
+
+        if (locationId == PlayerLocationIds.FireflyTide)
+        {
+            return FireflyTideLayout.IsWalkable(cell);
         }
 
         return false;
@@ -129,6 +165,26 @@ public static class NpcNavigationMap
             return cell == VillageCatalog.StarfallWatchExitCell;
         }
 
+        if (locationId == PlayerLocationIds.StarharvestMarket)
+        {
+            return cell == StarharvestMarketLayout.ExitCell;
+        }
+
+        if (locationId == PlayerLocationIds.GleamrisePlantingFestival)
+        {
+            return cell == GleamrisePlantingFestivalLayout.ExitCell;
+        }
+
+        if (locationId == PlayerLocationIds.LongnightLanternFeast)
+        {
+            return cell == LongnightLanternFeastLayout.ExitCell;
+        }
+
+        if (locationId == PlayerLocationIds.FireflyTide)
+        {
+            return cell == FireflyTideLayout.ExitCell;
+        }
+
         return false;
     }
 
@@ -162,7 +218,7 @@ public static class NpcNavigationMap
     }
 
     private static bool IsArchiveFurniture(GridPosition cell) =>
-        (cell.X is >= 16 and <= 23 && cell.Y is >= 8 and <= 11) ||
+        VillageCatalog.IsMoonlitArchiveDeskCell(cell) ||
         (cell.X is >= 15 and <= 24 && cell.Y is >= 3 and <= 6) ||
         cell.X is >= 2 and <= 5 ||
         cell.X is >= 34 and <= 37 ||
@@ -759,7 +815,9 @@ public sealed class NpcScheduleSystem
     }
 
     private static IEnumerable<VillageNpcDefinition> OrderedDefinitions() =>
-        VillageCatalog.Npcs.Values.OrderBy(definition => definition.AtlasRow);
+        VillageCatalog.Npcs.Values
+            .OrderBy(definition => definition.ScheduleOrder)
+            .ThenBy(definition => definition.Id, StringComparer.Ordinal);
 
     private void EnsurePureTimeline(
         int day,

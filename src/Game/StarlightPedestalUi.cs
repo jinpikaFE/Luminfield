@@ -16,6 +16,8 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     private readonly GameSession _session;
     private readonly LocaleService _locale;
+    private readonly string _pedestalId;
+    private readonly StarlightPedestalDefinition _pedestal;
     private readonly Label _title;
     private readonly Label _region;
     private readonly Label _overall;
@@ -23,16 +25,20 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
     private readonly Label _rewardTitle;
     private readonly Label _rewardDescription;
     private readonly Label _notice;
+    private readonly Button _activate;
     private readonly Button _close;
 
     public StarlightPedestalOverlay(
         Theme theme,
         GameSession session,
-        LocaleService locale
+        LocaleService locale,
+        string pedestalId
     ) : base(theme)
     {
         _session = session;
         _locale = locale;
+        _pedestalId = pedestalId;
+        _pedestal = session.Starlight.Definition(pedestalId);
         AddChild(Dim(new Color(0.008f, 0.014f, 0.065f, 0.87f)));
 
         var center = new CenterContainer();
@@ -64,7 +70,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         };
         header.AddThemeConstantOverride("separation", 8);
         header.AddChild(Icon(
-            GeneratedArt.CreateStarlightNodeSealIcon(),
+            NodeSealTexture(pedestalId),
             new Vector2(44, 40)
         ));
 
@@ -84,10 +90,23 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         header.AddChild(_overall);
         column.AddChild(header);
 
-        foreach (var node in session.Starlight.Current.Nodes)
+        var nodeScroll = new ScrollContainer
         {
-            column.AddChild(BuildNode(node));
+            CustomMinimumSize = new Vector2(510, 150),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+        };
+        var nodeColumn = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        nodeColumn.AddThemeConstantOverride("separation", 4);
+        foreach (var node in _pedestal.Nodes)
+        {
+            nodeColumn.AddChild(BuildNode(node));
         }
+        nodeScroll.AddChild(nodeColumn);
+        column.AddChild(nodeScroll);
 
         var rewardPanel = new PanelContainer
         {
@@ -106,7 +125,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         var rewardRow = new HBoxContainer();
         rewardRow.AddThemeConstantOverride("separation", 7);
         rewardRow.AddChild(Icon(
-            GeneratedArt.CreateWoodlandRenewalIcon(),
+            RewardTexture(pedestalId),
             new Vector2(36, 36)
         ));
         var rewardText = new VBoxContainer
@@ -131,11 +150,22 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         _notice.CustomMinimumSize = new Vector2(510, 12);
         column.AddChild(_notice);
 
+        var actions = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center
+        };
+        actions.AddThemeConstantOverride("separation", 8);
+        column.AddChild(actions);
+
+        _activate = ThemeFactory.Button("");
+        _activate.CustomMinimumSize = new Vector2(206, 24);
+        _activate.Pressed += Activate;
+        actions.AddChild(_activate);
+
         _close = ThemeFactory.Button("");
         _close.CustomMinimumSize = new Vector2(166, 24);
-        _close.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         _close.Pressed += () => CloseRequested?.Invoke();
-        column.AddChild(_close);
+        actions.AddChild(_close);
 
         session.Changed += RefreshText;
         locale.LocaleChanged += RefreshText;
@@ -148,22 +178,37 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     public void RefreshText()
     {
-        var pedestal = _session.Starlight.Current;
-        _title.Text = _locale.Tr(pedestal.NameKey);
-        _region.Text = _locale.Tr(pedestal.RegionKey);
-        _overall.Text = _session.Starlight.RewardUnlocked
+        _title.Text = _locale.Tr(_pedestal.NameKey);
+        _region.Text = _locale.Tr(_pedestal.RegionKey);
+        _overall.Text = _session.Starlight.IsRewardUnlocked(_pedestalId)
             ? _locale.Tr("starlight.state.restored")
             : _locale.Tr(
                 "starlight.state.progress",
-                _session.Starlight.CompletedNodeCount,
-                pedestal.Nodes.Count
+                _session.CompletedStarlightNodeCount(_pedestalId),
+                _pedestal.Nodes.Count
             );
         _close.Text = _locale.Tr("menu.back");
+        var activation = _session.CheckActivateStarlightPedestal(
+            _pedestalId,
+            StarlightSpatialCatalog.ForPedestal(_pedestalId).Cell
+        );
+        _activate.Visible = _pedestal.RequiresManualActivation &&
+            !_session.Starlight.IsRewardUnlocked(_pedestalId);
+        _activate.Disabled = !activation.Succeeded;
+        _activate.Text = _locale.Tr(
+            activation.Succeeded
+                ? "starlight.action.activate"
+                : "starlight.action.activation_locked"
+        );
 
         foreach (var row in _rows)
         {
-            var progress = _session.Starlight.Progress(row.Definition.Id);
-            var complete = _session.Starlight.IsNodeComplete(
+            var progress = _session.StarlightNodeProgress(
+                _pedestalId,
+                row.Definition.Id
+            );
+            var complete = _session.IsStarlightNodeComplete(
+                _pedestalId,
                 row.Definition.Id
             );
             row.Title.Text = _locale.Tr(row.Definition.TitleKey);
@@ -182,22 +227,34 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
                 continue;
             }
 
+            if (row.Definition.SourceKind !=
+                StarlightNodeSourceKind.Inventory)
+            {
+                row.Action.Disabled = true;
+                row.Action.Text = _locale.Tr(
+                    row.Definition.SourceKind ==
+                        StarlightNodeSourceKind.FestivalResults
+                            ? "starlight.node.action.festival_missing"
+                            : "starlight.node.action.milestone_missing"
+                );
+                continue;
+            }
+
             row.Action.Disabled = false;
-            row.Action.Text = _session.Starlight.CanContribute(
-                row.Definition.Id,
-                _session.Inventory
+            row.Action.Text = _session.CanContributeToStarlightNode(
+                _pedestalId,
+                row.Definition.Id
             )
                 ? _locale.Tr("starlight.node.action.contribute")
                 : _locale.Tr("starlight.node.action.missing");
         }
 
-        _rewardTitle.Text = _session.Starlight.RewardUnlocked
+        _rewardTitle.Text = _session.Starlight.IsRewardUnlocked(_pedestalId)
             ? _locale.Tr("starlight.reward.unlocked")
-            : _locale.Tr(pedestal.RewardTitleKey);
+            : _locale.Tr(_pedestal.RewardTitleKey);
         _rewardDescription.Text = _locale.Tr(
-            pedestal.RewardDescriptionKey,
-            WorldResourceSystem.TreeRespawnDays,
-            WorldResourceSystem.RenewedWoodlandTreeRespawnDays
+            _pedestal.RewardDescriptionKey,
+            RewardDescriptionArgs()
         );
     }
 
@@ -268,7 +325,14 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     private string Description(StarlightNodeDefinition definition)
     {
-        if (definition.Id == DataCatalog.WoodlandHarvestNodeId)
+        if (definition.SourceKind ==
+            StarlightNodeSourceKind.FestivalResults)
+        {
+            return _locale.Tr(definition.DescriptionKey);
+        }
+
+        if (definition.Id is DataCatalog.WoodlandHarvestNodeId or
+            DataCatalog.HomesteadHarvestNodeId)
         {
             return _locale.Tr(definition.DescriptionKey);
         }
@@ -284,7 +348,24 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     private void Contribute(string nodeId)
     {
-        var result = _session.ContributeToStarlightNode(nodeId);
+        var result = _session.ContributeToStarlightNode(
+            _pedestalId,
+            nodeId
+        );
+        _notice.Text = _locale.Tr(result.MessageKey);
+        if (result.Succeeded)
+        {
+            StarlightChanged?.Invoke();
+        }
+        RefreshText();
+    }
+
+    private void Activate()
+    {
+        var result = _session.ActivateStarlightPedestal(
+            _pedestalId,
+            StarlightSpatialCatalog.ForPedestal(_pedestalId).Cell
+        );
         _notice.Text = _locale.Tr(result.MessageKey);
         if (result.Succeeded)
         {
@@ -301,5 +382,52 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
         MouseFilter = MouseFilterEnum.Ignore
+    };
+
+    private static Texture2D NodeSealTexture(string pedestalId) =>
+        pedestalId switch
+        {
+            DataCatalog.HomesteadStarlightId =>
+                HomesteadStarlightArt.NodeSealTexture(),
+            DataCatalog.MeadowStarlightId =>
+                MeadowStarlightArt.NodeSealTexture(),
+            DataCatalog.MoonwaterStarlightId =>
+                MoonwaterStarlightArt.NodeSealTexture(),
+            DataCatalog.CrystalValeStarlightId =>
+                CrystalValeStarlightArt.NodeSealTexture(),
+            DataCatalog.StarfallRuinsStarlightId =>
+                StarfallRuinsArt.RuinsStarlightNodeTexture(),
+            _ => GeneratedArt.CreateStarlightNodeSealIcon()
+        };
+
+    private static Texture2D RewardTexture(string pedestalId) =>
+        pedestalId switch
+        {
+            DataCatalog.HomesteadStarlightId =>
+                HomesteadStarlightArt.IrrigationBlessingTexture(),
+            DataCatalog.MeadowStarlightId =>
+                MeadowStarlightArt.PollinationBlessingTexture(),
+            DataCatalog.MoonwaterStarlightId =>
+                MoonwaterStarlightArt.TideBlessingTexture(),
+            DataCatalog.CrystalValeStarlightId =>
+                CrystalValeStarlightArt.PassageRewardTexture(),
+            DataCatalog.StarfallRuinsStarlightId =>
+                StarfallRuinsArt.SixfoldConvergenceTexture(),
+            _ => GeneratedArt.CreateWoodlandRenewalIcon()
+        };
+
+    private object[] RewardDescriptionArgs() => _pedestalId switch
+    {
+        DataCatalog.WoodlandStarlightId =>
+        [
+            WorldResourceSystem.TreeRespawnDays,
+            WorldResourceSystem.RenewedWoodlandTreeRespawnDays
+        ],
+        DataCatalog.MeadowStarlightId =>
+        [
+            OrchardSystem.BeehivePollinationRange,
+            OrchardSystem.FarReachingBeehivePollinationRange
+        ],
+        _ => []
     };
 }

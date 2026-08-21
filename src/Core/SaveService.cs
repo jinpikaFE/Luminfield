@@ -107,6 +107,19 @@ public sealed class SaveService
             save.Player.LocationId,
             save.Player.InsideCottage
         );
+        if (FestivalSpatialCatalog.TryByLocationId(
+                save.Player.LocationId,
+                out var festivalSpatial
+            ) && !FestivalCatalog.IsOpen(
+                festivalSpatial.FestivalId,
+                save.Day,
+                save.MinuteOfDay
+            ))
+        {
+            save.Player.LocationId = PlayerLocationIds.World;
+            save.Player.X = festivalSpatial.WorldReturnCell.X * 16 + 8;
+            save.Player.Y = festivalSpatial.WorldReturnCell.Y * 16 + 8;
+        }
         save.Player.InsideCottage =
             save.Player.LocationId == PlayerLocationIds.Cottage;
         save.Player.Energy = Math.Clamp(save.Player.Energy, 0, GameSession.MaxEnergy);
@@ -126,6 +139,17 @@ public sealed class SaveService
         save.Player.Y = float.IsFinite(save.Player.Y)
             ? Math.Clamp(save.Player.Y, 8, WorldDefinition.Height * 16 - 8)
             : GameSession.NewGamePlayerY;
+        if (save.Player.LocationId == PlayerLocationIds.CrystalGrottoSurvey &&
+            !CrystalGrottoSurveyLayout.IsWalkable(new GridPosition(
+                (int)MathF.Floor(save.Player.X / 16),
+                (int)MathF.Floor(save.Player.Y / 16)
+            )))
+        {
+            save.Player.X =
+                CrystalGrottoSurveyLayout.SafeArrivalCell.X * 16 + 8;
+            save.Player.Y =
+                CrystalGrottoSurveyLayout.SafeArrivalCell.Y * 16 + 8;
+        }
         save.Inventory ??= [];
         foreach (var slot in save.Inventory)
         {
@@ -191,6 +215,23 @@ public sealed class SaveService
                 tile.ResonanceItemId = null;
             }
         }
+        save.Greenhouse ??= new GreenhouseSave();
+        save.Greenhouse.Tiles ??= [];
+        save.Greenhouse.Tiles = save.Greenhouse.Tiles
+            .Where(tile =>
+                tile is not null &&
+                GreenhouseLayout.IsPlantingBed(tile.Position)
+            )
+            .GroupBy(tile => tile.Position)
+            .Select(group => group.First())
+            .OrderBy(tile => tile.Y)
+            .ThenBy(tile => tile.X)
+            .ToList();
+        foreach (var tile in save.Greenhouse.Tiles)
+        {
+            NormalizeGreenhouseTile(tile);
+        }
+        save.Kitchen = KitchenSystem.NormalizeSave(save.Kitchen);
         save.Quest ??= new QuestSave();
         save.Coins = Math.Max(0, save.Coins);
         save.Processor ??= new ProcessorSave();
@@ -307,6 +348,15 @@ public sealed class SaveService
         save.Resources.RemovedNodes = save.Resources.DepletedNodes
             .Select(entry => entry.NodeId)
             .ToList();
+        save.Mining = MiningSystem.NormalizeSave(save.Mining);
+        save.ToolProgression = ToolProgressionSystem.NormalizeSave(
+            save.ToolProgression
+        );
+        save.Combat = CombatSystem.NormalizeSave(save.Combat);
+        save.StarfallRuinsTrial =
+            StarfallRuinsTrialSystem.NormalizeSave(
+                save.StarfallRuinsTrial
+            );
         save.Weather ??= new WeatherSave();
         var weatherMatchesDay = save.Weather.Day == save.Day;
         save.Weather.Day = save.Day;
@@ -322,15 +372,37 @@ public sealed class SaveService
         )
             ? save.Weather.ForecastId
             : WeatherSystem.WeatherForDay(save.Day + 1);
+        save.Forage = ForageSystem.NormalizeSave(
+            save.Forage,
+            save.Day,
+            save.Weather.CurrentId
+        );
+        save.Fishing ??= new FishingSave();
+        save.Fishing.CaughtFishIds ??= [];
+        save.Fishing.CaughtFishIds = save.Fishing.CaughtFishIds
+            .Where(DataCatalog.Fishes.ContainsKey)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        save.Fishing.ClaimedRewardIds ??= [];
+        save.Fishing.ClaimedRewardIds = save.Fishing.ClaimedRewardIds
+            .Where(FishingSystem.IsCollectionRewardId)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
         save.Shipping ??= new ShippingSave();
-        save.Shipping.Pending = NormalizeShippingEntries(save.Shipping.Pending);
+        save.Shipping.Pending = NormalizeShippingEntries(
+            save.Shipping.Pending,
+            preserveUnitPrice: false
+        );
         save.Shipping.LastSettlement ??= new ShippingSettlementSave();
         save.Shipping.LastSettlement.Day = Math.Max(
             0,
             Math.Min(save.Shipping.LastSettlement.Day, save.Day)
         );
         save.Shipping.LastSettlement.Entries = NormalizeShippingEntries(
-            save.Shipping.LastSettlement.Entries
+            save.Shipping.LastSettlement.Entries,
+            preserveUnitPrice: true
         );
         save.Storage ??= new StorageSave();
         save.Storage.Chests ??= [];
@@ -359,6 +431,16 @@ public sealed class SaveService
             .OrderBy(chest => chest.Y)
             .ThenBy(chest => chest.X)
             .ToList();
+        if (save.Inventory.Any(slot =>
+                slot.ItemId == DataCatalog.MoonsteelShortbladeId &&
+                slot.Count > 0
+            ) || save.Storage.Chests.Any(chest => chest.Items.Any(slot =>
+                slot.ItemId == DataCatalog.MoonsteelShortbladeId &&
+                slot.Count > 0
+            )))
+        {
+            save.StarfallRuinsTrial.WeaponClaimed = true;
+        }
         save.FarmObjects ??= new FarmObjectSave();
         save.FarmObjects.Objects ??= [];
         var occupiedStorageCells = save.Storage.Chests
@@ -419,8 +501,87 @@ public sealed class SaveService
             save.WeeklyCommission,
             save.Day
         );
-        save.Starlight = StarlightSystem.NormalizeSave(save.Starlight);
+        save.Festival = FestivalSystem.NormalizeSave(save.Festival);
         save.Village = VillageSystem.NormalizeSave(save.Village);
+        save.Collection = CollectionSystem.NormalizeSave(
+            save.Collection,
+            CollectionSystem.LegacyEvidenceItemIds(save)
+        );
+        var starlightMilestones = MiningSystem.CompletedMilestoneIds(
+                save.Mining
+            )
+            .Concat(ToolProgressionSystem.CompletedMilestoneIds(
+                save.ToolProgression
+            ))
+            .Concat(StarfallRuinsTrialSystem.CompletedMilestoneIds(
+                save.StarfallRuinsTrial
+            ))
+            .Concat(save.Collection.DonatedEntryIds)
+            .Concat(save.Collection.DiscoveredEntryIds.Where(entryId =>
+                CompendiumCatalog.Entries.TryGetValue(entryId, out var entry) &&
+                entry.CategoryId == CollectionCategoryIds.Enemies
+            ))
+            .ToHashSet(StringComparer.Ordinal);
+        if (save.Village.Relationships.Any(relationship =>
+                relationship.NpcId == VillageCatalog.KaelId &&
+                relationship.Points >= 60
+            ))
+        {
+            starlightMilestones.Add(
+                DataCatalog.KaelTrustedRelationshipMilestoneId
+            );
+        }
+        if (save.Village.Relationships.Any(relationship =>
+                relationship.NpcId == VillageCatalog.LioraId &&
+                relationship.Points >= 60
+            ))
+        {
+            starlightMilestones.Add(
+                DataCatalog.LioraTrustedRelationshipMilestoneId
+            );
+        }
+        save.Starlight = StarlightSystem.NormalizeSave(
+            save.Starlight,
+            new StarlightProgressContext(
+                save.Festival.Results
+                    .Select(result => result.FestivalId)
+                    .Where(FestivalCatalog.Festivals.ContainsKey)
+                    .ToHashSet(StringComparer.Ordinal),
+                starlightMilestones
+            )
+        );
+        if (save.Player.LocationId == PlayerLocationIds.StarfallRuinsTrial)
+        {
+            var passageUnlocked = save.Starlight.Pedestals.Any(state =>
+                state.PedestalId == DataCatalog.CrystalValeStarlightId &&
+                state.RewardUnlocked
+            );
+            if (!passageUnlocked)
+            {
+                save.Player.LocationId = PlayerLocationIds.World;
+                save.Player.X =
+                    StarfallRuinsTrialLayout.WorldReturnCell.X * 16 + 8;
+                save.Player.Y =
+                    StarfallRuinsTrialLayout.WorldReturnCell.Y * 16 + 8;
+            }
+            else
+            {
+                var playerCell = new GridPosition(
+                    (int)MathF.Floor(save.Player.X / 16),
+                    (int)MathF.Floor(save.Player.Y / 16)
+                );
+                if (!StarfallRuinsTrialSystem.IsCellAccessible(
+                        save.StarfallRuinsTrial,
+                        playerCell
+                    ))
+                {
+                    save.Player.X =
+                        StarfallRuinsTrialLayout.SafeArrivalCell.X * 16 + 8;
+                    save.Player.Y =
+                        StarfallRuinsTrialLayout.SafeArrivalCell.Y * 16 + 8;
+                }
+            }
+        }
         save.Mail = MailSystem.NormalizeSave(save.Mail);
         save.CharacterEvents = CharacterEventSystem.NormalizeSave(
             save.CharacterEvents,
@@ -429,13 +590,76 @@ public sealed class SaveService
         save.Construction = ConstructionSystem.NormalizeSave(
             save.Construction
         );
+        save.Animals = AnimalSystem.NormalizeSave(save.Animals, save.Day);
+        if (AnimalBuildingSpatialCatalog.TryByLocationId(
+                save.Player.LocationId,
+                out var animalBuildingSpatial
+            ) &&
+            AnimalCatalog.TryBuilding(
+                animalBuildingSpatial.BuildingId,
+                out var animalBuilding
+            ) &&
+            !save.Construction.Projects.Any(project =>
+                project.ProjectId == animalBuilding.ConstructionProjectId &&
+                project.Completed
+            ))
+        {
+            save.Player.LocationId = PlayerLocationIds.World;
+            save.Player.X = animalBuildingSpatial.WorldReturnCell.X * 16 + 8;
+            save.Player.Y = animalBuildingSpatial.WorldReturnCell.Y * 16 + 8;
+        }
         save.FarmingSkill = FarmingSkillSystem.NormalizeSave(
             save.FarmingSkill
         );
     }
 
+    private static void NormalizeGreenhouseTile(FarmTileState tile)
+    {
+        if (!tile.Tilled)
+        {
+            tile.Watered = false;
+            tile.FertilizerId = null;
+            tile.CropId = null;
+            tile.WateredNights = 0;
+            tile.QualityRoll = -1;
+            tile.PlantedDay = 0;
+            tile.ResonanceItemId = null;
+            return;
+        }
+
+        if (tile.FertilizerId != DataCatalog.StarsoilFertilizerId)
+        {
+            tile.FertilizerId = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(tile.CropId) ||
+            !DataCatalog.Crops.ContainsKey(tile.CropId))
+        {
+            tile.CropId = null;
+            tile.WateredNights = 0;
+            tile.QualityRoll = -1;
+            tile.PlantedDay = 0;
+            tile.ResonanceItemId = null;
+            return;
+        }
+
+        var crop = DataCatalog.Crop(tile.CropId);
+        tile.WateredNights = Math.Clamp(
+            tile.WateredNights,
+            0,
+            crop.MatureAfterWateredNights
+        );
+        tile.QualityRoll = Math.Clamp(tile.QualityRoll, 0, 99);
+        tile.PlantedDay = Math.Max(1, tile.PlantedDay);
+        if (!crop.AllowsResonanceItem(tile.ResonanceItemId))
+        {
+            tile.ResonanceItemId = null;
+        }
+    }
+
     private static List<ShippingEntrySave> NormalizeShippingEntries(
-        IEnumerable<ShippingEntrySave>? entries
+        IEnumerable<ShippingEntrySave>? entries,
+        bool preserveUnitPrice
     ) => (entries ?? [])
         .Where(entry =>
             entry.Count > 0 &&
@@ -449,10 +673,31 @@ public sealed class SaveService
             Count = Math.Min(
                 group.Sum(entry => entry.Count),
                 Inventory.SlotCount * 99
-            )
+            ),
+            UnitPrice = preserveUnitPrice
+                ? NormalizeHistoricalShippingUnitPrice(group.Key, group)
+                : 0
         })
             .OrderBy(entry => entry.ItemId, StringComparer.Ordinal)
             .ToList();
+
+    private static int NormalizeHistoricalShippingUnitPrice(
+        string itemId,
+        IEnumerable<ShippingEntrySave> entries
+    )
+    {
+        var basePrice = DataCatalog.Item(itemId).SellPrice;
+        var appraisalPrice = CompendiumCatalog.ArtisanEntries.Any(entry =>
+            entry.ItemId == itemId
+        )
+            ? Math.Max(1, (basePrice * 11 + 9) / 10)
+            : basePrice;
+        var savedPrice = entries.Select(entry => entry.UnitPrice)
+            .FirstOrDefault(price =>
+                price == basePrice || price == appraisalPrice
+            );
+        return savedPrice > 0 ? savedPrice : basePrice;
+    }
 
     private static List<InventorySlot> NormalizeStorageItems(
         IEnumerable<InventorySlot>? slots

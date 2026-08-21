@@ -7,14 +7,119 @@ public enum PlaytestScenarioId
     CottageUpgradeReady,
     CottageUpgradeInProgress,
     CottageUpgradeCompleted,
+    CottageSecondUpgradeReady,
+    CottageSecondUpgradeInProgress,
+    CottageKitchen,
+    CottageKitchenPanel,
+    CottagePantry,
+    CottagePantryPanel,
+    CottageMealsEnglish,
+    HomesteadWorkshopReady,
+    HomesteadWorkshopInProgress,
+    HomesteadWorkshopCompleted,
+    GreenhouseReady,
+    GreenhouseInProgress,
+    GreenhouseExteriorCompleted,
+    GreenhouseCompleted,
+    GreenhouseCistern,
+    StarfeatherCoopReady,
+    StarfeatherCoopInProgress,
+    StarfeatherCoopGrazing,
+    StarfeatherCoopChick,
+    StarfeatherCoopAdult,
+    StarfeatherCoopNestBlockedEnglish,
+    MoonfleeceBarnReady,
+    MoonfleeceBarnInProgress,
+    MoonfleeceBarnGrazing,
+    MoonfleeceBarnJuvenile,
+    MoonfleeceBarnRackBlockedEnglish,
+    DewhornGrazing,
+    DewhornMilkingBlockedEnglish,
+    LivestockAutomationConsole,
+    LivestockAutomationPanel,
+    LivestockAutomationPanelEnglish,
+    LivestockAutomationConstruction,
     Crops,
     GleamriseCrops,
+    RainveilCrops,
+    StarharvestCrops,
+    StarharvestMarketGate,
+    StarharvestMarket,
+    StarharvestMarketShowcase,
+    StarharvestMarketResult,
+    StarharvestMarketShop,
+    StarharvestMarketShowcaseEnglish,
+    GleamriseFestivalGate,
+    GleamriseFestival,
+    GleamriseFestivalChallenge,
+    GleamriseFestivalResult,
+    GleamriseFestivalExchange,
+    GleamriseFestivalChallengeEnglish,
+    LongnightFeastGate,
+    LongnightFeast,
+    LongnightFeastActivity,
+    LongnightFeastResult,
+    LongnightFeastStall,
+    LongnightFeastActivityEnglish,
+    LongnightFeastWrongTool,
+    FireflyTideGate,
+    FireflyTide,
+    FireflyTideActivity,
+    FireflyTideResult,
+    FireflyTideShop,
+    FireflyTideActivityEnglish,
+    FireflyTideWrongTool,
+    LongnightHomestead,
+    LongnightEmporium,
+    LongnightSnowForecast,
+    LongnightSnow,
+    LongnightSnowIndoor,
+    LongnightSnowClear,
     Economy,
     Processor,
     MultiProcessorBatch,
     ArchiveGift,
     Archive,
     ArchiveDoor,
+    CropCodexDesk,
+    CropCodexPartial,
+    CropCodexRewardReady,
+    CropCodexRewardClaimedEnglish,
+    CropCodexWrongTool,
+    CropCodexDiscountShop,
+    CookingCodexUnknown,
+    CookingCodexPartial,
+    CookingCodexRewardReady,
+    CookingCodexRewardClaimedEnglish,
+    CookingCodexRewardMealsEnglish,
+    ArtisanCodexUnknown,
+    ArtisanCodexPartial,
+    ArtisanCodexRewardReady,
+    ArtisanCodexRewardClaimedEnglish,
+    ArtisanCodexRewardShippingEnglish,
+    SeasonalForage,
+    SeasonalForageWrongTool,
+    SeasonalForageStardustMap,
+    ForageCodexPartial,
+    ForageCodexRewardReady,
+    ForageCodexRewardClaimedEnglish,
+    Fishing,
+    FishingCollection,
+    FishCodexPartial,
+    FishCodexCompleteEnglish,
+    CrystalGrottoEntry,
+    CrystalGrottoBasic,
+    CrystalGrottoUpgrade,
+    CrystalGrottoDeep,
+    MineralCodexCompleteEnglish,
+    CrystalValeStarlightPanel,
+    CrystalValeStarlightRestored,
+    StarfallRuinsEntry,
+    StarfallRuinsCombat,
+    StarfallRuinsArtifacts,
+    ArtifactCodexDonationEnglish,
+    StarfallRuinsStarlightPanel,
+    StarfallRuinsStarlightRestored,
     LioraEventOne,
     LioraEventTwo,
     TaviEventOne,
@@ -27,6 +132,19 @@ public enum PlaytestScenarioId
     SelaEventTwo,
     OrinEventOne,
     OrinEventTwo,
+    ElowenEventOne,
+    ElowenEventTwo,
+    VessaEventOne,
+    VessaEventTwo,
+    VessaEventWrongTool,
+    RelationshipMailsEnglish,
+    VillageExpansionWave3,
+    VillageExpansionWave3Indoor,
+    VillageExpansionWave3DialogueEnglish,
+    VillageExpansionWave3WrongTool,
+    YvaraEventOne,
+    YvaraEventTwo,
+    Wave3RelationshipMailsEnglish,
     WorkshopTavi,
     Workshop,
     WorkshopDoor,
@@ -49,11 +167,20 @@ public enum PlaytestScenarioId
     VillageDialogue,
     SelaDialogue,
     VillageExpansion,
+    VillageExpansionArchive,
+    VillageExpansionDialogueEnglish,
+    VillageExpansionWrongTool,
     NpcPathfinding,
     VillageRestdayEnglish,
     VillageRainSchedule,
     VillageRainveilSchedule,
     Village,
+    WorldAspectBoundary,
+    RainveilWorldAspect,
+    StarharvestWorldAspect,
+    LongnightWorldAspect,
+    RainveilWorldTreeRain,
+    StarharvestWorldCrystalStardust,
     World,
     Gate,
     Backpack,
@@ -83,6 +210,17 @@ public enum PlaytestScenarioId
     StarlightPanel,
     StarlightRestored,
     StarlightRestoredEnglish,
+    HomesteadStarlightDormant,
+    HomesteadStarlightWrongTool,
+    HomesteadStarlightRestored,
+    HomesteadStarlightPanel,
+    HomesteadStarlightPanelEnglish,
+    MeadowStarlightDormant,
+    MeadowStarlightRestored,
+    MeadowStarlightPanel,
+    MeadowStarlightPanelEnglish,
+    MeadowPollination,
+    MoonwaterStarlightPanel,
     QualityCrafting,
     QualityBackpackEnglish,
     QualityBackpack,
@@ -115,10 +253,274 @@ public sealed class PlaytestScenarioRegistry
             PlaytestScenarioId.CottageUpgradeCompleted,
             "--playtest-cottage-upgrade-completed"
         ),
+        new(
+            PlaytestScenarioId.CottageSecondUpgradeReady,
+            "--playtest-cottage-second-upgrade-ready"
+        ),
+        new(
+            PlaytestScenarioId.CottageSecondUpgradeInProgress,
+            "--playtest-cottage-second-upgrade-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.CottageKitchen,
+            "--playtest-cottage-kitchen"
+        ),
+        new(
+            PlaytestScenarioId.CottageKitchenPanel,
+            "--playtest-cottage-kitchen-panel"
+        ),
+        new(
+            PlaytestScenarioId.CottagePantry,
+            "--playtest-cottage-pantry"
+        ),
+        new(
+            PlaytestScenarioId.CottagePantryPanel,
+            "--playtest-cottage-pantry-panel"
+        ),
+        new(
+            PlaytestScenarioId.CottageMealsEnglish,
+            "--playtest-cottage-meals-en"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadWorkshopReady,
+            "--playtest-homestead-workshop-ready"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadWorkshopInProgress,
+            "--playtest-homestead-workshop-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadWorkshopCompleted,
+            "--playtest-homestead-workshop-completed"
+        ),
+        new(
+            PlaytestScenarioId.GreenhouseReady,
+            "--playtest-greenhouse-ready"
+        ),
+        new(
+            PlaytestScenarioId.GreenhouseInProgress,
+            "--playtest-greenhouse-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.GreenhouseExteriorCompleted,
+            "--playtest-greenhouse-exterior-completed"
+        ),
+        new(
+            PlaytestScenarioId.GreenhouseCompleted,
+            "--playtest-greenhouse-completed"
+        ),
+        new(
+            PlaytestScenarioId.GreenhouseCistern,
+            "--playtest-greenhouse-cistern"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopReady,
+            "--playtest-starfeather-coop-ready"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopInProgress,
+            "--playtest-starfeather-coop-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopGrazing,
+            "--playtest-starfeather-coop-grazing"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopChick,
+            "--playtest-starfeather-coop-chick"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopAdult,
+            "--playtest-starfeather-coop-adult"
+        ),
+        new(
+            PlaytestScenarioId.StarfeatherCoopNestBlockedEnglish,
+            "--playtest-starfeather-coop-nest-blocked-en"
+        ),
+        new(
+            PlaytestScenarioId.MoonfleeceBarnReady,
+            "--playtest-moonfleece-barn-ready"
+        ),
+        new(
+            PlaytestScenarioId.MoonfleeceBarnInProgress,
+            "--playtest-moonfleece-barn-in-progress"
+        ),
+        new(
+            PlaytestScenarioId.MoonfleeceBarnGrazing,
+            "--playtest-moonfleece-barn-grazing"
+        ),
+        new(
+            PlaytestScenarioId.MoonfleeceBarnJuvenile,
+            "--playtest-moonfleece-barn-juvenile"
+        ),
+        new(
+            PlaytestScenarioId.MoonfleeceBarnRackBlockedEnglish,
+            "--playtest-moonfleece-barn-rack-blocked-en"
+        ),
+        new(
+            PlaytestScenarioId.DewhornGrazing,
+            "--playtest-dewhorn-grazing"
+        ),
+        new(
+            PlaytestScenarioId.DewhornMilkingBlockedEnglish,
+            "--playtest-dewhorn-milking-blocked-en"
+        ),
+        new(
+            PlaytestScenarioId.LivestockAutomationConsole,
+            "--playtest-livestock-automation-console"
+        ),
+        new(
+            PlaytestScenarioId.LivestockAutomationPanel,
+            "--playtest-livestock-automation-panel"
+        ),
+        new(
+            PlaytestScenarioId.LivestockAutomationPanelEnglish,
+            "--playtest-livestock-automation-panel-en"
+        ),
+        new(
+            PlaytestScenarioId.LivestockAutomationConstruction,
+            "--playtest-livestock-automation-construction"
+        ),
         new(PlaytestScenarioId.Crops, "--playtest-crops"),
         new(
             PlaytestScenarioId.GleamriseCrops,
             "--playtest-gleamrise-crops"
+        ),
+        new(
+            PlaytestScenarioId.RainveilCrops,
+            "--playtest-rainveil-crops"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestCrops,
+            "--playtest-starharvest-crops"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarketGate,
+            "--playtest-starharvest-market-gate"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarket,
+            "--playtest-starharvest-market"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarketShowcase,
+            "--playtest-starharvest-market-showcase"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarketResult,
+            "--playtest-starharvest-market-result"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarketShop,
+            "--playtest-starharvest-market-shop"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestMarketShowcaseEnglish,
+            "--playtest-starharvest-market-showcase-en"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestivalGate,
+            "--playtest-gleamrise-festival-gate"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestival,
+            "--playtest-gleamrise-festival"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestivalChallenge,
+            "--playtest-gleamrise-festival-challenge"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestivalResult,
+            "--playtest-gleamrise-festival-result"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestivalExchange,
+            "--playtest-gleamrise-festival-exchange"
+        ),
+        new(
+            PlaytestScenarioId.GleamriseFestivalChallengeEnglish,
+            "--playtest-gleamrise-festival-challenge-en"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastGate,
+            "--playtest-longnight-feast-gate"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeast,
+            "--playtest-longnight-feast"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastActivity,
+            "--playtest-longnight-feast-activity"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastResult,
+            "--playtest-longnight-feast-result"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastStall,
+            "--playtest-longnight-feast-stall"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastActivityEnglish,
+            "--playtest-longnight-feast-activity-en"
+        ),
+        new(
+            PlaytestScenarioId.LongnightFeastWrongTool,
+            "--playtest-longnight-feast-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideGate,
+            "--playtest-firefly-tide-gate"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTide,
+            "--playtest-firefly-tide"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideActivity,
+            "--playtest-firefly-tide-activity"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideResult,
+            "--playtest-firefly-tide-result"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideShop,
+            "--playtest-firefly-tide-shop"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideActivityEnglish,
+            "--playtest-firefly-tide-activity-en"
+        ),
+        new(
+            PlaytestScenarioId.FireflyTideWrongTool,
+            "--playtest-firefly-tide-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.LongnightHomestead,
+            "--playtest-longnight-homestead"
+        ),
+        new(
+            PlaytestScenarioId.LongnightEmporium,
+            "--playtest-longnight-emporium"
+        ),
+        new(
+            PlaytestScenarioId.LongnightSnowForecast,
+            "--playtest-longnight-snow-forecast"
+        ),
+        new(
+            PlaytestScenarioId.LongnightSnow,
+            "--playtest-longnight-snow"
+        ),
+        new(
+            PlaytestScenarioId.LongnightSnowIndoor,
+            "--playtest-longnight-snow-indoor"
+        ),
+        new(
+            PlaytestScenarioId.LongnightSnowClear,
+            "--playtest-longnight-snow-clear"
         ),
         new(PlaytestScenarioId.Economy, "--playtest-economy"),
         new(PlaytestScenarioId.Processor, "--playtest-processor"),
@@ -129,6 +531,159 @@ public sealed class PlaytestScenarioRegistry
         new(PlaytestScenarioId.ArchiveGift, "--playtest-archive-gift"),
         new(PlaytestScenarioId.Archive, "--playtest-archive"),
         new(PlaytestScenarioId.ArchiveDoor, "--playtest-archive-door"),
+        new(
+            PlaytestScenarioId.CropCodexDesk,
+            "--playtest-crop-codex-desk"
+        ),
+        new(
+            PlaytestScenarioId.CropCodexPartial,
+            "--playtest-crop-codex-partial"
+        ),
+        new(
+            PlaytestScenarioId.CropCodexRewardReady,
+            "--playtest-crop-codex-reward-ready"
+        ),
+        new(
+            PlaytestScenarioId.CropCodexRewardClaimedEnglish,
+            "--playtest-crop-codex-reward-claimed-en"
+        ),
+        new(
+            PlaytestScenarioId.CropCodexWrongTool,
+            "--playtest-crop-codex-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.CropCodexDiscountShop,
+            "--playtest-crop-codex-discount-shop"
+        ),
+        new(
+            PlaytestScenarioId.CookingCodexUnknown,
+            "--playtest-cooking-codex-unknown"
+        ),
+        new(
+            PlaytestScenarioId.CookingCodexPartial,
+            "--playtest-cooking-codex-partial"
+        ),
+        new(
+            PlaytestScenarioId.CookingCodexRewardReady,
+            "--playtest-cooking-codex-reward-ready"
+        ),
+        new(
+            PlaytestScenarioId.CookingCodexRewardClaimedEnglish,
+            "--playtest-cooking-codex-reward-claimed-en"
+        ),
+        new(
+            PlaytestScenarioId.CookingCodexRewardMealsEnglish,
+            "--playtest-cooking-codex-reward-meals-en"
+        ),
+        new(
+            PlaytestScenarioId.ArtisanCodexUnknown,
+            "--playtest-artisan-codex-unknown"
+        ),
+        new(
+            PlaytestScenarioId.ArtisanCodexPartial,
+            "--playtest-artisan-codex-partial"
+        ),
+        new(
+            PlaytestScenarioId.ArtisanCodexRewardReady,
+            "--playtest-artisan-codex-reward-ready"
+        ),
+        new(
+            PlaytestScenarioId.ArtisanCodexRewardClaimedEnglish,
+            "--playtest-artisan-codex-reward-claimed-en"
+        ),
+        new(
+            PlaytestScenarioId.ArtisanCodexRewardShippingEnglish,
+            "--playtest-artisan-codex-reward-shipping-en"
+        ),
+        new(
+            PlaytestScenarioId.SeasonalForage,
+            "--playtest-seasonal-forage"
+        ),
+        new(
+            PlaytestScenarioId.SeasonalForageWrongTool,
+            "--playtest-seasonal-forage-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.SeasonalForageStardustMap,
+            "--playtest-seasonal-forage-stardust-map"
+        ),
+        new(
+            PlaytestScenarioId.ForageCodexPartial,
+            "--playtest-forage-codex-partial"
+        ),
+        new(
+            PlaytestScenarioId.ForageCodexRewardReady,
+            "--playtest-forage-codex-reward-ready"
+        ),
+        new(
+            PlaytestScenarioId.ForageCodexRewardClaimedEnglish,
+            "--playtest-forage-codex-reward-claimed-en"
+        ),
+        new(PlaytestScenarioId.Fishing, "--playtest-fishing"),
+        new(
+            PlaytestScenarioId.FishingCollection,
+            "--playtest-fishing-collection"
+        ),
+        new(
+            PlaytestScenarioId.FishCodexPartial,
+            "--playtest-fish-codex-partial"
+        ),
+        new(
+            PlaytestScenarioId.FishCodexCompleteEnglish,
+            "--playtest-fish-codex-complete-en"
+        ),
+        new(
+            PlaytestScenarioId.CrystalGrottoEntry,
+            "--playtest-crystal-grotto-entry"
+        ),
+        new(
+            PlaytestScenarioId.CrystalGrottoBasic,
+            "--playtest-crystal-grotto-basic"
+        ),
+        new(
+            PlaytestScenarioId.CrystalGrottoUpgrade,
+            "--playtest-crystal-grotto-upgrade"
+        ),
+        new(
+            PlaytestScenarioId.CrystalGrottoDeep,
+            "--playtest-crystal-grotto-deep"
+        ),
+        new(
+            PlaytestScenarioId.MineralCodexCompleteEnglish,
+            "--playtest-mineral-codex-complete-en"
+        ),
+        new(
+            PlaytestScenarioId.CrystalValeStarlightPanel,
+            "--playtest-crystal-vale-starlight-panel"
+        ),
+        new(
+            PlaytestScenarioId.CrystalValeStarlightRestored,
+            "--playtest-crystal-vale-starlight-restored"
+        ),
+        new(
+            PlaytestScenarioId.StarfallRuinsEntry,
+            "--playtest-starfall-ruins-entry"
+        ),
+        new(
+            PlaytestScenarioId.StarfallRuinsCombat,
+            "--playtest-starfall-ruins-combat"
+        ),
+        new(
+            PlaytestScenarioId.StarfallRuinsArtifacts,
+            "--playtest-starfall-ruins-artifacts"
+        ),
+        new(
+            PlaytestScenarioId.ArtifactCodexDonationEnglish,
+            "--playtest-artifact-codex-donation-en"
+        ),
+        new(
+            PlaytestScenarioId.StarfallRuinsStarlightPanel,
+            "--playtest-starfall-ruins-starlight-panel"
+        ),
+        new(
+            PlaytestScenarioId.StarfallRuinsStarlightRestored,
+            "--playtest-starfall-ruins-starlight-restored"
+        ),
         new(
             PlaytestScenarioId.LioraEventOne,
             "--playtest-liora-event-one"
@@ -176,6 +731,58 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.OrinEventTwo,
             "--playtest-orin-event-two"
+        ),
+        new(
+            PlaytestScenarioId.ElowenEventOne,
+            "--playtest-elowen-event-one"
+        ),
+        new(
+            PlaytestScenarioId.ElowenEventTwo,
+            "--playtest-elowen-event-two"
+        ),
+        new(
+            PlaytestScenarioId.VessaEventOne,
+            "--playtest-vessa-event-one"
+        ),
+        new(
+            PlaytestScenarioId.VessaEventTwo,
+            "--playtest-vessa-event-two"
+        ),
+        new(
+            PlaytestScenarioId.VessaEventWrongTool,
+            "--playtest-vessa-event-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.RelationshipMailsEnglish,
+            "--playtest-relationship-mails-en"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionWave3,
+            "--playtest-village-expansion-wave-3"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionWave3Indoor,
+            "--playtest-village-expansion-wave-3-indoor"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionWave3DialogueEnglish,
+            "--playtest-village-expansion-wave-3-dialogue-en"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionWave3WrongTool,
+            "--playtest-village-expansion-wave-3-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.YvaraEventOne,
+            "--playtest-yvara-event-one"
+        ),
+        new(
+            PlaytestScenarioId.YvaraEventTwo,
+            "--playtest-yvara-event-two"
+        ),
+        new(
+            PlaytestScenarioId.Wave3RelationshipMailsEnglish,
+            "--playtest-wave-3-relationship-mails-en"
         ),
         new(
             PlaytestScenarioId.WorkshopTavi,
@@ -257,6 +864,18 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-village-expansion"
         ),
         new(
+            PlaytestScenarioId.VillageExpansionArchive,
+            "--playtest-village-expansion-archive"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionDialogueEnglish,
+            "--playtest-village-expansion-dialogue-en"
+        ),
+        new(
+            PlaytestScenarioId.VillageExpansionWrongTool,
+            "--playtest-village-expansion-wrong-tool"
+        ),
+        new(
             PlaytestScenarioId.NpcPathfinding,
             "--playtest-npc-pathfinding"
         ),
@@ -273,6 +892,30 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-village-rainveil-schedule"
         ),
         new(PlaytestScenarioId.Village, "--playtest-village"),
+        new(
+            PlaytestScenarioId.WorldAspectBoundary,
+            "--playtest-world-aspect-boundary"
+        ),
+        new(
+            PlaytestScenarioId.RainveilWorldAspect,
+            "--playtest-rainveil-world-aspect"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestWorldAspect,
+            "--playtest-starharvest-world-aspect"
+        ),
+        new(
+            PlaytestScenarioId.LongnightWorldAspect,
+            "--playtest-longnight-world-aspect"
+        ),
+        new(
+            PlaytestScenarioId.RainveilWorldTreeRain,
+            "--playtest-rainveil-world-tree-rain"
+        ),
+        new(
+            PlaytestScenarioId.StarharvestWorldCrystalStardust,
+            "--playtest-starharvest-world-crystal-stardust"
+        ),
         new(PlaytestScenarioId.World, "--playtest-world"),
         new(PlaytestScenarioId.Gate, "--playtest-gate"),
         new(PlaytestScenarioId.Backpack, "--playtest-backpack"),
@@ -361,6 +1004,50 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarlightRestoredEnglish,
             "--playtest-starlight-restored-en"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadStarlightDormant,
+            "--playtest-homestead-starlight-dormant"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadStarlightWrongTool,
+            "--playtest-homestead-starlight-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadStarlightRestored,
+            "--playtest-homestead-starlight-restored"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadStarlightPanel,
+            "--playtest-homestead-starlight-panel"
+        ),
+        new(
+            PlaytestScenarioId.HomesteadStarlightPanelEnglish,
+            "--playtest-homestead-starlight-panel-en"
+        ),
+        new(
+            PlaytestScenarioId.MeadowStarlightDormant,
+            "--playtest-meadow-starlight-dormant"
+        ),
+        new(
+            PlaytestScenarioId.MeadowStarlightRestored,
+            "--playtest-meadow-starlight-restored"
+        ),
+        new(
+            PlaytestScenarioId.MeadowStarlightPanel,
+            "--playtest-meadow-starlight-panel"
+        ),
+        new(
+            PlaytestScenarioId.MeadowStarlightPanelEnglish,
+            "--playtest-meadow-starlight-panel-en"
+        ),
+        new(
+            PlaytestScenarioId.MeadowPollination,
+            "--playtest-meadow-pollination"
+        ),
+        new(
+            PlaytestScenarioId.MoonwaterStarlightPanel,
+            "--playtest-moonwater-starlight-panel"
         ),
         new(
             PlaytestScenarioId.QualityCrafting,

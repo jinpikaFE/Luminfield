@@ -5,7 +5,10 @@ public enum FarmingSkillAction
     Till,
     Plant,
     Water,
-    Harvest
+    Harvest,
+    FeedAnimal,
+    PetAnimal,
+    CollectAnimalProduct
 }
 
 public sealed record FarmingSkillLevelDefinition(
@@ -47,7 +50,19 @@ public static class FarmingSkillCatalog
         [FarmingSkillAction.Till] = new(FarmingSkillAction.Till, 2),
         [FarmingSkillAction.Plant] = new(FarmingSkillAction.Plant, 3),
         [FarmingSkillAction.Water] = new(FarmingSkillAction.Water, 1),
-        [FarmingSkillAction.Harvest] = new(FarmingSkillAction.Harvest, 8)
+        [FarmingSkillAction.Harvest] = new(FarmingSkillAction.Harvest, 8),
+        [FarmingSkillAction.FeedAnimal] = new(
+            FarmingSkillAction.FeedAnimal,
+            1
+        ),
+        [FarmingSkillAction.PetAnimal] = new(
+            FarmingSkillAction.PetAnimal,
+            1
+        ),
+        [FarmingSkillAction.CollectAnimalProduct] = new(
+            FarmingSkillAction.CollectAnimalProduct,
+            4
+        )
     };
 
     public static readonly IReadOnlyDictionary<

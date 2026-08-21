@@ -60,6 +60,24 @@ public sealed class WeatherSystem
         DataCatalog.ClearWeatherId
     ];
 
+    private static readonly string[] LongnightPattern =
+    [
+        DataCatalog.LongnightSnowWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.StardustWindWeatherId,
+        DataCatalog.LongnightSnowWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.LongnightSnowWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.StardustWindWeatherId,
+        DataCatalog.LongnightSnowWeatherId,
+        DataCatalog.ClearWeatherId,
+        DataCatalog.ClearWeatherId
+    ];
+
     public int Day { get; private set; } = 1;
     public string CurrentId { get; private set; } = DataCatalog.ClearWeatherId;
     public string ForecastId { get; private set; } = DataCatalog.RainWeatherId;
@@ -80,9 +98,11 @@ public sealed class WeatherSystem
         CurrentId = save?.Day == day && IsKnown(save.CurrentId)
             ? save.CurrentId
             : WeatherForDay(day);
-        ForecastId = save?.Day == day && IsKnown(save.ForecastId)
-            ? save.ForecastId
-            : WeatherForDay(day + 1);
+        ForecastId = IsLongnightSnowDay(day + 1)
+            ? WeatherForDay(day + 1)
+            : save?.Day == day && IsKnown(save.ForecastId)
+                ? save.ForecastId
+                : WeatherForDay(day + 1);
         Changed?.Invoke();
     }
 
@@ -101,10 +121,24 @@ public sealed class WeatherSystem
     public static string WeatherForDay(int day)
     {
         var normalizedDay = Math.Max(1, day);
+        if (CalendarSystem.SeasonId(normalizedDay) ==
+            CalendarSystem.LongnightSeasonId)
+        {
+            return LongnightPattern[
+                CalendarSystem.SeasonDay(normalizedDay) - 1
+            ];
+        }
+
         var week = (normalizedDay - 1) / CalendarSystem.DaysPerWeek;
         var index = (normalizedDay - 1 + week * 2) % WeeklyPattern.Length;
         return WeeklyPattern[index];
     }
+
+    public static bool IsLongnightSnowDay(int day) =>
+        CalendarSystem.SeasonId(Math.Max(1, day)) ==
+            CalendarSystem.LongnightSeasonId &&
+        LongnightPattern[CalendarSystem.SeasonDay(Math.Max(1, day)) - 1] ==
+            DataCatalog.LongnightSnowWeatherId;
 
     private void SetDay(int day)
     {

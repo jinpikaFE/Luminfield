@@ -3,7 +3,7 @@ set -eu
 
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h}"
-TOOLS_ROOT="/Users/edy/.codex/tools/luminfield"
+TOOLS_ROOT="${LUMINFIELD_TOOLS:-${HOME}/.codex/tools/luminfield}"
 DOTNET_ROOT_LOCAL="$TOOLS_ROOT/dotnet"
 GODOT_BIN="$TOOLS_ROOT/godot/Godot_mono.app/Contents/MacOS/Godot"
 

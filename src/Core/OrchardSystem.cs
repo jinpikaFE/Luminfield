@@ -43,6 +43,7 @@ public sealed class BeehiveState
 public sealed class OrchardSystem
 {
     public const int BeehivePollinationRange = 4;
+    public const int FarReachingBeehivePollinationRange = 6;
     public const int BeehiveProductionNights = 2;
 
     private readonly Dictionary<GridPosition, FruitTreeState> _fruitTrees = [];
@@ -101,6 +102,7 @@ public sealed class OrchardSystem
 
         if (WorldDefinition.IsBlocked(position) ||
             FarmLayout.IsStaticBlocked(position) ||
+            FarmLayout.IsAnimalBuildingProtectedCell(position) ||
             farm.IsReserved(position) ||
             farm.Tiles.ContainsKey(position))
         {
@@ -197,10 +199,14 @@ public sealed class OrchardSystem
         Changed?.Invoke(position);
     }
 
-    public bool HasPollinationSource(GridPosition beehivePosition) =>
+    public bool HasPollinationSource(
+        GridPosition beehivePosition,
+        int pollinationRange = BeehivePollinationRange
+    ) =>
         _fruitTrees.Values.Any(tree =>
             tree.IsMature &&
-            Distance(tree.Position, beehivePosition) <= BeehivePollinationRange
+            Distance(tree.Position, beehivePosition) <=
+                Math.Max(0, pollinationRange)
         );
 
     public ActionResult TryCollectHoney(
@@ -236,7 +242,10 @@ public sealed class OrchardSystem
         );
     }
 
-    public void ResolveNight(FarmObjectSystem farmObjects)
+    public void ResolveNight(
+        FarmObjectSystem farmObjects,
+        int pollinationRange = BeehivePollinationRange
+    )
     {
         var changed = new HashSet<GridPosition>(
             SynchronizeBeehives(farmObjects)
@@ -252,7 +261,7 @@ public sealed class OrchardSystem
 
         foreach (var hive in _beehives.Values)
         {
-            if (ResolveBeehiveNight(hive))
+            if (ResolveBeehiveNight(hive, pollinationRange))
             {
                 changed.Add(hive.Position);
             }
@@ -492,14 +501,17 @@ public sealed class OrchardSystem
         return true;
     }
 
-    private bool ResolveBeehiveNight(BeehiveState hive)
+    private bool ResolveBeehiveNight(
+        BeehiveState hive,
+        int pollinationRange
+    )
     {
         if (hive.HasHoney)
         {
             return false;
         }
 
-        if (!HasPollinationSource(hive.Position))
+        if (!HasPollinationSource(hive.Position, pollinationRange))
         {
             if (hive.ProgressNights == 0)
             {

@@ -12,11 +12,25 @@ public static class PlayerLocationIds
     public const string TwilightEmporium = "twilight_emporium";
     public const string StarlightPost = "starlight_post";
     public const string StarfallWatch = "starfall_watch";
+    public const string Greenhouse = "greenhouse";
+    public const string StarfeatherCoop = "starfeather_coop";
+    public const string MoonfleeceBarn = "moonfleece_barn";
+    public const string StarharvestMarket = "starharvest_market";
+    public const string GleamrisePlantingFestival =
+        "gleamrise_planting_festival";
+    public const string LongnightLanternFeast =
+        "longnight_lantern_feast";
+    public const string FireflyTide = "firefly_tide";
+    public const string CrystalGrottoSurvey = "crystal_grotto_survey";
+    public const string StarfallRuinsTrial = "starfall_ruins_trial";
 
     public static bool IsValid(string? locationId) =>
         locationId is World or Cottage or MoonlitArchive or
             MoonstoneWorkshop or StarweaverTeaHouse or TwilightEmporium or
-            StarlightPost or StarfallWatch;
+            StarlightPost or StarfallWatch or Greenhouse or
+            StarfeatherCoop or MoonfleeceBarn or StarharvestMarket or
+            GleamrisePlantingFestival or LongnightLanternFeast or
+            FireflyTide or CrystalGrottoSurvey or StarfallRuinsTrial;
 
     public static string Normalize(
         string? locationId,
@@ -140,6 +154,46 @@ public sealed class ResourceDepletionSave
     public int RemovedDay { get; set; } = 1;
 }
 
+public sealed class MiningSave
+{
+    public List<string> DepletedVeinIds { get; set; } = [];
+    public int DeepestRoomReached { get; set; }
+}
+
+public sealed class ToolProgressionSave
+{
+    public List<ToolProgressionEntrySave> Tools { get; set; } = [];
+}
+
+public sealed class ToolProgressionEntrySave
+{
+    public string ToolId { get; set; } = string.Empty;
+    public string TierId { get; set; } = string.Empty;
+    public string ActiveUpgradeId { get; set; } = string.Empty;
+    public int RemainingNights { get; set; }
+}
+
+public sealed class ForageSave
+{
+    public int ResolvedDay { get; set; } = 1;
+    public List<ForageSpawnSave> Spawns { get; set; } = [];
+}
+
+public sealed class ForageSpawnSave
+{
+    public string SlotId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int X { get; set; }
+    public int Y { get; set; }
+    public bool Collected { get; set; }
+}
+
+public sealed class FishingSave
+{
+    public List<string> CaughtFishIds { get; set; } = [];
+    public List<string> ClaimedRewardIds { get; set; } = [];
+}
+
 public sealed class WeatherSave
 {
     public int Day { get; set; }
@@ -151,6 +205,7 @@ public sealed class ShippingEntrySave
 {
     public string ItemId { get; set; } = string.Empty;
     public int Count { get; set; }
+    public int UnitPrice { get; set; }
 }
 
 public sealed class ShippingSettlementSave
@@ -250,6 +305,15 @@ public sealed class StarlightSave
     public bool Discovered { get; set; }
     public bool RewardUnlocked { get; set; }
     public List<StarlightNodeSave> Nodes { get; set; } = [];
+    public List<StarlightPedestalSave> Pedestals { get; set; } = [];
+}
+
+public sealed class StarlightPedestalSave
+{
+    public string PedestalId { get; set; } = string.Empty;
+    public bool Discovered { get; set; }
+    public bool RewardUnlocked { get; set; }
+    public List<StarlightNodeSave> Nodes { get; set; } = [];
 }
 
 public sealed class VillageSave
@@ -295,12 +359,126 @@ public sealed class ConstructionSave
     public string ProjectId { get; set; } = string.Empty;
     public int RemainingNights { get; set; }
     public bool Completed { get; set; }
+    public List<ConstructionProjectSave> Projects { get; set; } = [];
+}
+
+public sealed class ConstructionProjectSave
+{
+    public string ProjectId { get; set; } = string.Empty;
+    public int RemainingNights { get; set; }
+    public bool Completed { get; set; }
+}
+
+public sealed class GreenhouseSave
+{
+    public List<FarmTileState> Tiles { get; set; } = [];
+}
+
+public sealed class KitchenSave
+{
+    public List<InventorySlot> PantryItems { get; set; } = [];
+}
+
+public sealed class AnimalSave
+{
+    public List<AnimalEntrySave> Animals { get; set; } = [];
+    public List<AnimalBuildingAutomationSave> Automation { get; set; } = [];
+}
+
+public sealed class AnimalBuildingAutomationSave
+{
+    public string BuildingId { get; set; } = string.Empty;
+    public int StoredFeed { get; set; }
+    public List<ShippingEntrySave> StoredProducts { get; set; } = [];
+    public int LastResolvedDay { get; set; }
+    public int LastAutoFedCount { get; set; }
+    public int LastAutoCollectedCount { get; set; }
+    public string LastFeedStatusId { get; set; } = string.Empty;
+    public string LastCollectionStatusId { get; set; } = string.Empty;
+}
+
+public sealed class AnimalEntrySave
+{
+    public string InstanceId { get; set; } = string.Empty;
+    public string SpeciesId { get; set; } = string.Empty;
+    public string BuildingId { get; set; } = string.Empty;
+    public int AgeNights { get; set; }
+    public int Mood { get; set; } = AnimalSystem.InitialMood;
+    public int LastFedDay { get; set; }
+    public int LastPettedDay { get; set; }
+    public int ProductionProgress { get; set; }
+    public string PendingProductItemId { get; set; } = string.Empty;
 }
 
 public sealed class FarmingSkillSave
 {
     public int Experience { get; set; }
     public string SpecializationId { get; set; } = string.Empty;
+}
+
+public sealed class FestivalYearResultSave
+{
+    public string FestivalId { get; set; } = string.Empty;
+    public int Year { get; set; } = 1;
+    public List<string> ItemIds { get; set; } = [];
+    public int Score { get; set; }
+    public string AwardId { get; set; } = string.Empty;
+    public int AuctionCoins { get; set; }
+    public List<FestivalPlotPlantingSave> Plantings { get; set; } = [];
+    public string GiftItemId { get; set; } = string.Empty;
+    public string GiftRewardItemId { get; set; } = string.Empty;
+    public string RitualId { get; set; } = string.Empty;
+}
+
+public sealed class FestivalPlotPlantingSave
+{
+    public string PlotId { get; set; } = string.Empty;
+    public string SeedItemId { get; set; } = string.Empty;
+}
+
+public sealed class FestivalPlantingAttemptSave
+{
+    public string FestivalId { get; set; } = string.Empty;
+    public int Year { get; set; } = 1;
+    public int StartedMinute { get; set; }
+    public List<string> SelectedSeedItemIds { get; set; } = [];
+    public string ActiveSeedItemId { get; set; } = string.Empty;
+    public List<FestivalPlotPlantingSave> Plantings { get; set; } = [];
+}
+
+public sealed class FestivalCurrencySave
+{
+    public string CurrencyId { get; set; } = string.Empty;
+    public int Balance { get; set; }
+}
+
+public sealed class FestivalSave
+{
+    public int Scrip { get; set; }
+    public List<FestivalYearResultSave> Results { get; set; } = [];
+    public List<FestivalPlantingAttemptSave> PlantingAttempts { get; set; } = [];
+    public List<FestivalCurrencySave> CurrencyBalances { get; set; } = [];
+}
+
+public sealed class CollectionSave
+{
+    public bool Initialized { get; set; }
+    public List<string> InitializedCategoryIds { get; set; } = [];
+    public List<string> DiscoveredEntryIds { get; set; } = [];
+    public List<string> DonatedEntryIds { get; set; } = [];
+    public List<string> ClaimedRewardIds { get; set; } = [];
+}
+
+public sealed class CombatSave
+{
+    public int CurrentHealth { get; set; } = CombatSystem.MaxHealth;
+}
+
+public sealed class StarfallRuinsTrialSave
+{
+    public bool WeaponClaimed { get; set; }
+    public List<string> ClearedRoomIds { get; set; } = [];
+    public List<string> RecoveredArtifactIds { get; set; } = [];
 }
 
 public sealed class GameSaveV1
@@ -312,11 +490,20 @@ public sealed class GameSaveV1
     public PlayerSave Player { get; set; } = new();
     public List<InventorySlot> Inventory { get; set; } = [];
     public List<FarmTileState> FarmTiles { get; set; } = [];
+    public GreenhouseSave Greenhouse { get; set; } = new();
+    public KitchenSave Kitchen { get; set; } = new();
+    public AnimalSave Animals { get; set; } = new();
     public QuestSave Quest { get; set; } = new();
     public int Coins { get; set; } = GameSession.NewGameCoins;
     public ProcessorSave Processor { get; set; } = new();
     public ExplorationSave Exploration { get; set; } = new();
     public ResourceSave Resources { get; set; } = new();
+    public MiningSave Mining { get; set; } = new();
+    public ToolProgressionSave ToolProgression { get; set; } = new();
+    public CombatSave Combat { get; set; } = new();
+    public StarfallRuinsTrialSave StarfallRuinsTrial { get; set; } = new();
+    public ForageSave Forage { get; set; } = new();
+    public FishingSave Fishing { get; set; } = new();
     public WeatherSave Weather { get; set; } = new();
     public ShippingSave Shipping { get; set; } = new();
     public StorageSave Storage { get; set; } = new();
@@ -330,6 +517,8 @@ public sealed class GameSaveV1
     public CharacterEventSave CharacterEvents { get; set; } = new();
     public ConstructionSave Construction { get; set; } = new();
     public FarmingSkillSave FarmingSkill { get; set; } = new();
+    public FestivalSave Festival { get; set; } = new();
+    public CollectionSave Collection { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -368,6 +557,13 @@ public enum TargetPreviewKind
     Crop,
     Tree,
     Crystal,
+    MineralVein,
+    CrystalGrottoPortal,
+    CrystalGrottoExit,
+    ToolUpgradeBench,
+    MineDepthAnchor,
+    GrottoSeal,
+    Forage,
     Water,
     Landmark,
     StarlightPedestal,
@@ -375,6 +571,11 @@ public enum TargetPreviewKind
     Character,
     Door,
     Station,
+    ArchiveResearchDesk,
+    HomesteadWorkshop,
+    GreenhousePortal,
+    GreenhouseExit,
+    Cistern,
     CommissionBoard,
     StorageChest,
     Path,
@@ -384,7 +585,41 @@ public enum TargetPreviewKind
     FruitTree,
     Beehive,
     Bed,
-    KitchenReserve
+    KitchenReserve,
+    KitchenStation,
+    IngredientPantry,
+    FestivalPortal,
+    FestivalExit,
+    FestivalExhibit,
+    FestivalBidBoard,
+    FestivalShop,
+    FestivalPlantingPlot,
+    FestivalSeedRack,
+    FestivalSeedExchange,
+    FestivalFeastTable,
+    FestivalGiftExchange,
+    FestivalRitual,
+    FestivalLanternLaunch,
+    FestivalFishBasin,
+    FestivalTideAltar,
+    AnimalBuildingPortal,
+    AnimalBuildingExit,
+    AnimalFeedTrough,
+    AnimalNest,
+    Animal,
+    MoonfleeceBarnPortal,
+    MoonfleeceBarnExit,
+    AnimalProductStation,
+    MoonfleeceSheep,
+    DewhornMilkingStation,
+    Dewhorn,
+    AnimalAutomationStation,
+    StarfallRuinsPortal,
+    StarfallRuinsExit,
+    RuinsWeaponRack,
+    RuinsEnemy,
+    RuinsArtifact,
+    RuinsSeal
 }
 
 public sealed record TargetPreview(

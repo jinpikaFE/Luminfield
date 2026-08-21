@@ -212,11 +212,12 @@ internal sealed partial class TwilightEmporiumNpcLayer : Node2D
                      _session.PlayerCell
                  ))
         {
-            var source = GeneratedArt.VillageNpcRegion(
-                npc.Definition.AtlasRow,
+            var art = NpcArtCatalog.Resolve(
+                npc.Definition.Id,
                 npc.Facing
             );
-            var height = npc.Definition.AtlasRow == 0 ? 54f : 52f;
+            var source = art.Region;
+            var height = art.TargetHeight;
             var width = height * source.Size.X / source.Size.Y;
             var anchor = new Vector2(
                 npc.Position.X * 16 + 8,
@@ -228,7 +229,7 @@ internal sealed partial class TwilightEmporiumNpcLayer : Node2D
                 new Color(0.01f, 0.03f, 0.08f, 0.44f)
             );
             DrawTextureRectRegion(
-                GeneratedArt.VillageNpcTexture(npc.Definition.AtlasRow),
+                art.Texture,
                 new Rect2(
                     anchor - new Vector2(width / 2, height),
                     new Vector2(width, height)

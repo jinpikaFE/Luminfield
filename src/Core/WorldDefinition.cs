@@ -36,6 +36,23 @@ public static class WorldDefinition
     public const int ChunkRows = Height / ChunkSize;
     public const string WoodlandStarlightLandmarkId = "woods_lantern";
     public static readonly GridPosition WoodlandStarlightCell = new(34, 72);
+    public const string MeadowStarlightLandmarkId =
+        "meadow_starlight";
+    public static readonly GridPosition MeadowStarlightCell = new(70, 61);
+    public static readonly GridArea MeadowStarlightReservedArea =
+        new(68, 57, 72, 61);
+    public const string MoonwaterStarlightLandmarkId = "wetland_monolith";
+    public static readonly GridPosition MoonwaterStarlightCell = new(164, 43);
+    public const string CrystalWellLandmarkId = "crystal_well";
+    public static readonly GridPosition CrystalWellCell = new(77, 84);
+    public const string FireflyTideGateLandmarkId =
+        "firefly_tide_gate";
+    public static readonly GridPosition FireflyTideGateCell = new(162, 60);
+    public const string StarfallRuinsStarlightLandmarkId = "ruins_pillar";
+    public static readonly GridPosition StarfallRuinsStarlightCell =
+        new(121, 105);
+    public const string StarfallRuinsTrialGateLandmarkId =
+        "starfall_ruins_trial_gate";
 
     public static readonly IReadOnlyList<WorldLandmark> Landmarks =
     [
@@ -46,14 +63,47 @@ public static class WorldDefinition
             "world.landmark.woods_lantern"
         ),
         new(
+            MeadowStarlightLandmarkId,
+            MeadowStarlightCell,
+            -1,
+            "world.landmark.meadow_starlight"
+        ),
+        new(
             VillageCatalog.VillageGateLandmarkId,
             VillageCatalog.VillageGateCell,
             -1,
             "world.landmark.village_gate"
         ),
-        new("crystal_well", new GridPosition(77, 84), 9, "world.landmark.crystal_well"),
-        new("wetland_monolith", new GridPosition(164, 43), 15, "world.landmark.wetland_monolith"),
-        new("ruins_pillar", new GridPosition(121, 105), 7, "world.landmark.ruins_pillar"),
+        new(
+            CrystalWellLandmarkId,
+            CrystalWellCell,
+            9,
+            "world.landmark.crystal_well"
+        ),
+        new(
+            MoonwaterStarlightLandmarkId,
+            MoonwaterStarlightCell,
+            15,
+            "world.landmark.wetland_monolith"
+        ),
+        new(
+            FireflyTideGateLandmarkId,
+            FireflyTideGateCell,
+            -1,
+            "world.landmark.firefly_tide_gate"
+        ),
+        new(
+            StarfallRuinsStarlightLandmarkId,
+            StarfallRuinsStarlightCell,
+            7,
+            "world.landmark.ruins_pillar"
+        ),
+        new(
+            StarfallRuinsTrialGateLandmarkId,
+            StarfallRuinsTrialLayout.WorldEntryCell,
+            -1,
+            "world.landmark.starfall_ruins_trial_gate"
+        ),
         new("southern_cache", new GridPosition(173, 104), 12, "world.landmark.southern_cache")
     ];
 
@@ -208,7 +258,7 @@ public static class WorldDefinition
 
         if (GetBiome(cell) == WorldBiome.CrystalVale)
         {
-            var streamX = 51 + (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
+            var streamX = 83 + (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
             return Math.Abs(cell.X - streamX) <= 2;
         }
 
@@ -226,9 +276,32 @@ public static class WorldDefinition
     public static bool IsWoodlandStarlightCell(GridPosition cell) =>
         cell == WoodlandStarlightCell;
 
+    public static bool IsMeadowStarlightCell(GridPosition cell) =>
+        cell == MeadowStarlightCell;
+
+    public static bool IsMoonwaterStarlightCell(GridPosition cell) =>
+        cell == MoonwaterStarlightCell;
+
+    public static bool IsFireflyTideGateCell(GridPosition cell) =>
+        cell == FireflyTideGateCell;
+
+    public static bool IsCrystalGrottoSurveyEntryCell(GridPosition cell) =>
+        cell == CrystalGrottoSurveyLayout.WorldEntryCell;
+
+    public static bool IsStarfallRuinsTrialEntryCell(GridPosition cell) =>
+        cell == StarfallRuinsTrialLayout.WorldEntryCell;
+
+    public static bool IsMeadowStarlightReservedCell(GridPosition cell) =>
+        MeadowStarlightReservedArea.Contains(cell);
+
     public static int PropAtlasIndex(GridPosition cell)
     {
         if (!IsInBounds(cell) || IsHomeCell(cell))
+        {
+            return -1;
+        }
+
+        if (IsMeadowStarlightReservedCell(cell))
         {
             return -1;
         }
@@ -336,6 +409,26 @@ public static class WorldDefinition
             return true;
         }
 
+        if (IsMeadowStarlightCell(cell))
+        {
+            return true;
+        }
+
+        if (IsFireflyTideGateCell(cell))
+        {
+            return true;
+        }
+
+        if (IsCrystalGrottoSurveyEntryCell(cell))
+        {
+            return true;
+        }
+
+        if (IsStarfallRuinsTrialEntryCell(cell))
+        {
+            return true;
+        }
+
         var prop = PropAtlasIndex(cell);
         return prop is 0 or 1 or 2 or 3 or 6 or 7 or 8 or 9 or 11 or 12 or 15;
     }
@@ -345,6 +438,7 @@ public static class WorldDefinition
         if (!IsInBounds(cell) ||
             IsBoundaryCell(cell) ||
             IsHomeCell(cell) ||
+            IsMeadowStarlightReservedCell(cell) ||
             LandmarkAt(cell) is not null)
         {
             return WorldResourceKind.None;

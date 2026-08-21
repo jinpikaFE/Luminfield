@@ -7,19 +7,29 @@ internal sealed partial class WorldChunkStreamer : Node2D
 {
     private readonly GameSession _session;
     private readonly Dictionary<ChunkPosition, WorldChunk> _loaded = [];
+    private WorldSeasonVisualProfile _seasonVisual;
+    private Texture2D _seasonPropAtlas;
     private ChunkPosition? _currentChunk;
     private WorldBiome? _currentBiome;
 
     public WorldChunkStreamer(GameSession session)
     {
         _session = session;
+        _seasonVisual = WorldSeasonVisualCatalog.ForDay(session.Clock.Day);
+        _seasonPropAtlas = LoadPropAtlas(_seasonVisual);
         ZIndex = -95;
+        session.Clock.TimeChanged += RefreshSeasonVisual;
     }
 
     public int LoadedChunkCount => _loaded.Count;
     public IReadOnlyCollection<ChunkPosition> LoadedChunks => _loaded.Keys;
 
     public event Action<string>? RegionEntered;
+
+    public override void _ExitTree()
+    {
+        _session.Clock.TimeChanged -= RefreshSeasonVisual;
+    }
 
     public void UpdatePlayer(Vector2 worldPosition)
     {
@@ -61,7 +71,12 @@ internal sealed partial class WorldChunkStreamer : Node2D
                 continue;
             }
 
-            var node = new WorldChunk(chunk, _session);
+            var node = new WorldChunk(
+                chunk,
+                _session,
+                _seasonVisual,
+                _seasonPropAtlas
+            );
             _loaded[chunk] = node;
             AddChild(node);
         }
@@ -72,19 +87,64 @@ internal sealed partial class WorldChunkStreamer : Node2D
             _loaded.Remove(chunk);
         }
     }
+
+    private void RefreshSeasonVisual()
+    {
+        var next = WorldSeasonVisualCatalog.ForDay(_session.Clock.Day);
+        if (next.Variant == _seasonVisual.Variant)
+        {
+            return;
+        }
+
+        var atlas = LoadPropAtlas(next);
+        _seasonVisual = next;
+        _seasonPropAtlas = atlas;
+        foreach (var chunk in _loaded.Values)
+        {
+            chunk.ApplySeasonVisual(next, atlas);
+        }
+    }
+
+    private static Texture2D LoadPropAtlas(
+        WorldSeasonVisualProfile profile
+    ) => GD.Load<Texture2D>(profile.PropAtlasTexturePath);
 }
 
 internal sealed partial class WorldChunk : Node2D
 {
-    public WorldChunk(ChunkPosition chunk, GameSession session)
+    private readonly WorldChunkGround _ground;
+    private readonly WorldChunkProps _props;
+
+    public WorldChunk(
+        ChunkPosition chunk,
+        GameSession session,
+        WorldSeasonVisualProfile seasonVisual,
+        Texture2D seasonPropAtlas
+    )
     {
         Position = new Vector2(
             chunk.X * WorldDefinition.ChunkSize * 16,
             chunk.Y * WorldDefinition.ChunkSize * 16
         );
-        AddChild(new WorldChunkGround(chunk));
-        AddChild(new WorldChunkProps(chunk, session));
+        _ground = new WorldChunkGround(chunk, seasonVisual);
+        _props = new WorldChunkProps(
+            chunk,
+            session,
+            seasonPropAtlas
+        );
+        AddChild(_ground);
+        AddChild(_props);
+        AddChild(new WorldChunkForage(chunk, session));
         AddChild(new WorldVillageChunk(chunk, session));
+    }
+
+    public void ApplySeasonVisual(
+        WorldSeasonVisualProfile profile,
+        Texture2D propAtlas
+    )
+    {
+        _ground.SetVisual(profile);
+        _props.SetVisual(profile, propAtlas);
     }
 }
 
@@ -95,12 +155,28 @@ internal sealed partial class WorldChunkGround : Node2D
         GD.Load<Texture2D>("res://assets/generated/moonstone_path_tiles.png");
 
     private readonly ChunkPosition _chunk;
+    private WorldSeasonVisualProfile _visual;
 
-    public WorldChunkGround(ChunkPosition chunk)
+    public WorldChunkGround(
+        ChunkPosition chunk,
+        WorldSeasonVisualProfile visual
+    )
     {
         _chunk = chunk;
+        _visual = visual;
         ZIndex = -2;
         TextureFilter = TextureFilterEnum.Nearest;
+    }
+
+    public void SetVisual(WorldSeasonVisualProfile visual)
+    {
+        if (_visual.Variant == visual.Variant)
+        {
+            return;
+        }
+
+        _visual = visual;
+        QueueRedraw();
     }
 
     public override void _Draw()
@@ -122,7 +198,10 @@ internal sealed partial class WorldChunkGround : Node2D
                 var rect = new Rect2(origin, new Vector2(16, 16));
                 var hash = WorldDefinition.Hash(cell.X, cell.Y);
                 var biome = WorldDefinition.GetBiome(cell);
-                DrawRect(rect, GroundColor(biome, hash));
+                DrawRect(
+                    rect,
+                    GroundColor(biome, hash) * _visual.GroundModulate
+                );
 
                 if (WorldDefinition.IsWater(cell))
                 {
@@ -142,11 +221,14 @@ internal sealed partial class WorldChunkGround : Node2D
 
     private void DrawWater(Vector2 origin, uint hash)
     {
-        DrawRect(new Rect2(origin, new Vector2(16, 16)), new Color("#0b4965"));
+        DrawRect(
+            new Rect2(origin, new Vector2(16, 16)),
+            new Color("#0b4965") * _visual.WaterModulate
+        );
         DrawLine(
             origin + new Vector2(2 + hash % 4, 5),
             origin + new Vector2(11 + hash % 3, 5),
-            new Color("#2ca5ad"),
+            new Color("#2ca5ad") * _visual.WaterModulate,
             1
         );
         if (hash % 3 == 0)
@@ -154,7 +236,7 @@ internal sealed partial class WorldChunkGround : Node2D
             DrawLine(
                 origin + new Vector2(5, 11),
                 origin + new Vector2(14, 11),
-                new Color("#65d9c3"),
+                new Color("#65d9c3") * _visual.WaterModulate,
                 1
             );
         }
@@ -173,7 +255,7 @@ internal sealed partial class WorldChunkGround : Node2D
             PathAtlas,
             new Rect2(origin, new Vector2(16, 16)),
             source,
-            new Color(0.84f, 0.86f, 1f, 1f)
+            _visual.PathModulate
         );
     }
 
@@ -192,13 +274,13 @@ internal sealed partial class WorldChunkGround : Node2D
             DrawLine(
                 origin + new Vector2(5, 13),
                 origin + new Vector2(4, 8),
-                accent,
+                accent * _visual.DetailModulate,
                 1
             );
             DrawLine(
                 origin + new Vector2(9, 14),
                 origin + new Vector2(10, 10),
-                accent,
+                accent * _visual.DetailModulate,
                 1
             );
         }
@@ -208,7 +290,9 @@ internal sealed partial class WorldChunkGround : Node2D
             DrawCircle(
                 origin + new Vector2(3 + hash % 10, 3 + (hash >> 4) % 9),
                 1,
-                hash % 2 == 0 ? ThemeFactory.Mint : ThemeFactory.Violet
+                (hash % 2 == 0
+                    ? ThemeFactory.Mint
+                    : ThemeFactory.Violet) * _visual.DetailModulate
             );
         }
     }
@@ -237,22 +321,35 @@ internal sealed partial class WorldChunkGround : Node2D
 
 internal sealed partial class WorldChunkProps : Node2D
 {
-    private const float AtlasCell = 313.5f;
-    private static readonly Texture2D Atlas =
-        GD.Load<Texture2D>("res://assets/generated/exploration_props_chroma.png");
+    private const float AtlasCell =
+        WorldSeasonVisualCatalog.PropAtlasCellSize;
 
     private readonly ChunkPosition _chunk;
     private readonly GameSession _session;
+    private Texture2D _atlas;
 
-    public WorldChunkProps(ChunkPosition chunk, GameSession session)
+    public WorldChunkProps(
+        ChunkPosition chunk,
+        GameSession session,
+        Texture2D atlas
+    )
     {
         _chunk = chunk;
         _session = session;
+        _atlas = atlas;
         ZIndex = 3;
         TextureFilter = TextureFilterEnum.Nearest;
-        Material = GeneratedArt.CreateChromaKeyMaterial();
         session.Resources.Changed += OnResourceChanged;
         session.Starlight.Changed += OnStarlightChanged;
+    }
+
+    public void SetVisual(
+        WorldSeasonVisualProfile profile,
+        Texture2D atlas
+    )
+    {
+        _atlas = atlas;
+        QueueRedraw();
     }
 
     public override void _Draw()
@@ -268,6 +365,48 @@ internal sealed partial class WorldChunkProps : Node2D
                 if (WorldDefinition.IsWoodlandStarlightCell(cell))
                 {
                     DrawWoodlandStarlight(localX, localY);
+                    continue;
+                }
+
+                if (WorldDefinition.IsMeadowStarlightCell(cell))
+                {
+                    DrawMeadowStarlight(localX, localY);
+                    continue;
+                }
+
+                if (WorldDefinition.IsMoonwaterStarlightCell(cell))
+                {
+                    DrawMoonwaterStarlight(localX, localY);
+                    continue;
+                }
+
+                if (cell == WorldDefinition.CrystalWellCell)
+                {
+                    DrawCrystalValeStarlight(localX, localY);
+                    continue;
+                }
+
+                if (cell == WorldDefinition.StarfallRuinsStarlightCell)
+                {
+                    DrawStarfallRuinsStarlight(localX, localY);
+                    continue;
+                }
+
+                if (WorldDefinition.IsCrystalGrottoSurveyEntryCell(cell))
+                {
+                    DrawCrystalGrottoEntrance(localX, localY);
+                    continue;
+                }
+
+                if (WorldDefinition.IsStarfallRuinsTrialEntryCell(cell))
+                {
+                    DrawStarfallRuinsTrialGate(localX, localY);
+                    continue;
+                }
+
+                if (WorldDefinition.IsFireflyTideGateCell(cell))
+                {
+                    DrawFireflyTideGate(localX, localY);
                     continue;
                 }
 
@@ -289,7 +428,7 @@ internal sealed partial class WorldChunkProps : Node2D
                     AtlasCell,
                     AtlasCell
                 );
-                DrawTextureRectRegion(Atlas, destination, source);
+                DrawTextureRectRegion(_atlas, destination, source);
             }
         }
     }
@@ -310,9 +449,8 @@ internal sealed partial class WorldChunkProps : Node2D
 
     private void OnStarlightChanged()
     {
-        if (WorldDefinition.GetChunk(
-                WorldDefinition.WoodlandStarlightCell
-            ) == _chunk)
+        if (StarlightSpatialCatalog.Pedestals.Any(definition =>
+                WorldDefinition.GetChunk(definition.Cell) == _chunk))
         {
             QueueRedraw();
         }
@@ -333,6 +471,130 @@ internal sealed partial class WorldChunkProps : Node2D
         DrawTextureRectRegion(
             GeneratedArt.WoodlandStarlightTexture,
             destination,
+            source
+        );
+    }
+
+    private void DrawMeadowStarlight(int localX, int localY)
+    {
+        var source = MeadowStarlightArt.PedestalRegion(
+            _session.Starlight.MeadowPollinationUnlocked
+        );
+        const float height = 78f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        var destination = new Rect2(
+            anchor - new Vector2(width / 2, height),
+            new Vector2(width, height)
+        );
+        DrawTextureRectRegion(
+            MeadowStarlightArt.Atlas,
+            destination,
+            source
+        );
+    }
+
+    private void DrawMoonwaterStarlight(int localX, int localY)
+    {
+        var source = MoonwaterStarlightArt.PedestalRegion(
+            _session.Starlight.MoonwaterTideUnlocked
+        );
+        const float height = 78f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        var destination = new Rect2(
+            anchor - new Vector2(width / 2, height),
+            new Vector2(width, height)
+        );
+        DrawTextureRectRegion(
+            MoonwaterStarlightArt.Atlas,
+            destination,
+            source
+        );
+    }
+
+    private void DrawCrystalValeStarlight(int localX, int localY)
+    {
+        var source = CrystalValeStarlightArt.PedestalRegion(
+            _session.Starlight.CrystalRuinsPassageUnlocked
+        );
+        const float height = 78f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        DrawTextureRectRegion(
+            CrystalValeStarlightArt.Atlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawStarfallRuinsStarlight(int localX, int localY)
+    {
+        var source = StarfallRuinsArt.RuinsStarlightRegion(
+            _session.Starlight.StarfallSixfoldConvergenceUnlocked
+        );
+        const float height = 78f;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        DrawTextureRectRegion(
+            StarfallRuinsArt.StarlightAtlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawCrystalGrottoEntrance(int localX, int localY)
+    {
+        const float height = 64f;
+        var source = CrystalGrottoArt.EntranceRegion;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        DrawTextureRectRegion(
+            CrystalGrottoArt.Atlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawStarfallRuinsTrialGate(int localX, int localY)
+    {
+        const float height = 64f;
+        var source = StarfallRuinsArt.TrialGateRegion(
+            _session.Starlight.CrystalRuinsPassageUnlocked
+        );
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        DrawTextureRectRegion(
+            StarfallRuinsArt.ArtifactAtlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+    }
+
+    private void DrawFireflyTideGate(int localX, int localY)
+    {
+        const float height = 76f;
+        var source = FireflyTideArt.TideAltarRegion;
+        var width = height * source.Size.X / source.Size.Y;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        DrawTextureRectRegion(
+            FireflyTideArt.Atlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
             source
         );
     }
@@ -495,11 +757,12 @@ internal sealed partial class WorldVillageChunk : Node2D
 
     private void DrawNpc(VillageNpcState npc)
     {
-        var source = GeneratedArt.VillageNpcRegion(
-            npc.Definition.AtlasRow,
-            npc.Facing
-        );
-        var height = npc.Definition.AtlasRow == 0 ? 54f : 52f;
+            var art = NpcArtCatalog.Resolve(
+                npc.Definition.Id,
+                npc.Facing
+            );
+            var source = art.Region;
+            var height = art.TargetHeight;
         var width = height * source.Size.X / source.Size.Y;
         var anchor = LocalAnchor(npc.Position);
         DrawCircle(
@@ -508,7 +771,7 @@ internal sealed partial class WorldVillageChunk : Node2D
             new Color(0.01f, 0.03f, 0.08f, 0.44f)
         );
         DrawTextureRectRegion(
-            GeneratedArt.VillageNpcTexture(npc.Definition.AtlasRow),
+                art.Texture,
             new Rect2(
                 anchor - new Vector2(width / 2, height),
                 new Vector2(width, height)

@@ -9,6 +9,7 @@ public sealed record TwilightEmporiumAccessCheck(
 public static class TwilightEmporiumSystem
 {
     public const int StockSize = 4;
+    public const string MeadowFodderOfferId = "emporium_meadow_fodder";
 
     public static TwilightEmporiumAccessCheck CheckAccess(
         int day,
@@ -42,14 +43,35 @@ public static class TwilightEmporiumSystem
 
     public static IReadOnlyList<string> StockForDay(int day)
     {
-        var weekOffset = CalendarSystem.WeekNumber(day) - 1;
+        var weekOffset = (CalendarSystem.SeasonDay(day) - 1) /
+            CalendarSystem.DaysPerWeek;
+        var seasonId = CalendarSystem.SeasonId(day);
+        if (seasonId == CalendarSystem.LongnightSeasonId)
+        {
+            var longnightStart = weekOffset * StockSize;
+            return Enumerable.Range(0, StockSize)
+                .Select(index => DataCatalog.LongnightGreenhouseSeedItemIds[
+                    (longnightStart + index) %
+                    DataCatalog.LongnightGreenhouseSeedItemIds.Count
+                ])
+                .ToArray();
+        }
+
         var availableSeeds = DataCatalog.SeedItemIdsForDay(day);
         var start = CalendarSystem.SeasonIndex(day) * 2 + weekOffset;
-        if (CalendarSystem.SeasonId(day) ==
-            CalendarSystem.GleamriseSeasonId)
+        var seasonalSeeds = availableSeeds.Where(itemId =>
         {
-            var gleamriseCropCount = 4;
-            start = availableSeeds.Count - gleamriseCropCount + weekOffset * 2;
+            var cropId = DataCatalog.Item(itemId).CropId;
+            return cropId is not null &&
+                DataCatalog.Crop(cropId).SeasonIds?.Contains(
+                    seasonId,
+                    StringComparer.Ordinal
+                ) == true;
+        }).ToArray();
+        if (seasonalSeeds.Length >= StockSize)
+        {
+            availableSeeds = seasonalSeeds;
+            start = weekOffset * 2;
         }
 
         start %= availableSeeds.Count;

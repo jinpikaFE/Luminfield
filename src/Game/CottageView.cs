@@ -9,6 +9,10 @@ public sealed partial class CottageView : Node2D
     public static readonly GridPosition DoorCell = CottageLayout.DoorCell;
     public static readonly GridPosition KitchenReserveCell =
         CottageLayout.KitchenReserveCell;
+    public static readonly GridPosition KitchenStationCell =
+        CottageLayout.KitchenStationCell;
+    public static readonly GridPosition IngredientPantryCell =
+        CottageLayout.IngredientPantryCell;
 
     private readonly GameSession _session;
     private readonly PlayerController _player;
@@ -33,7 +37,7 @@ public sealed partial class CottageView : Node2D
         AddChild(_player);
         AddChild(new CottageInteractionHints(
             () => _player.CurrentCell,
-            () => _session.Construction.IsCompleted
+            () => _session.CottageUpgradeLevel
         ));
 
         _cursor = new TargetCursor(ResolveTargetPreview, locale) { ZIndex = 20 };
@@ -53,6 +57,8 @@ public sealed partial class CottageView : Node2D
     public event Action? SleepRequested;
     public event Action? ExitRequested;
     public event Action<GridPosition>? KitchenReserveRequested;
+    public event Action<GridPosition>? KitchenRequested;
+    public event Action<GridPosition>? IngredientPantryRequested;
     public event Action? StepRequested
     {
         add => _player.Stepped += value;
@@ -74,7 +80,14 @@ public sealed partial class CottageView : Node2D
             return _session.PreviewSelectedTarget(DoorCell);
         }
 
-        if (_session.Construction.IsCompleted &&
+        if (_session.CottageUpgradeLevel == 2 &&
+            (CottageLayout.IsKitchenStationArea(target) ||
+             CottageLayout.IsIngredientPantryArea(target)))
+        {
+            return _session.PreviewSelectedTarget(target);
+        }
+
+        if (_session.CottageUpgradeLevel == 1 &&
             CottageLayout.IsKitchenReserveArea(target))
         {
             return _session.PreviewSelectedTarget(target);
@@ -105,7 +118,17 @@ public sealed partial class CottageView : Node2D
                 ExitRequested?.Invoke();
             }
         }
-        else if (_session.Construction.IsCompleted &&
+        else if (_session.CottageUpgradeLevel == 2 &&
+            CottageLayout.IsKitchenStationArea(target))
+        {
+            KitchenRequested?.Invoke(target);
+        }
+        else if (_session.CottageUpgradeLevel == 2 &&
+            CottageLayout.IsIngredientPantryArea(target))
+        {
+            IngredientPantryRequested?.Invoke(target);
+        }
+        else if (_session.CottageUpgradeLevel == 1 &&
             CottageLayout.IsKitchenReserveArea(target))
         {
             KitchenReserveRequested?.Invoke(target);
@@ -156,16 +179,16 @@ public sealed partial class CottageView : Node2D
 internal sealed partial class CottageInteractionHints : Node2D
 {
     private readonly Func<GridPosition> _playerCell;
-    private readonly Func<bool> _hasKitchenReserve;
+    private readonly Func<int> _upgradeLevel;
     private double _time;
 
     public CottageInteractionHints(
         Func<GridPosition> playerCell,
-        Func<bool> hasKitchenReserve
+        Func<int> upgradeLevel
     )
     {
         _playerCell = playerCell;
-        _hasKitchenReserve = hasKitchenReserve;
+        _upgradeLevel = upgradeLevel;
         ZIndex = 18;
     }
 
@@ -188,7 +211,7 @@ internal sealed partial class CottageInteractionHints : Node2D
             Math.Abs(player.X - CottageView.DoorCell.X) + Math.Abs(player.Y - CottageView.DoorCell.Y) <= 3,
             ThemeFactory.Gold
         );
-        if (_hasKitchenReserve())
+        if (_upgradeLevel() == 1)
         {
             DrawHint(
                 new Vector2(
@@ -197,6 +220,25 @@ internal sealed partial class CottageInteractionHints : Node2D
                 ),
                 CottageLayout.IsAdjacentToKitchenReserve(player),
                 ThemeFactory.Mint
+            );
+        }
+        else if (_upgradeLevel() == 2)
+        {
+            DrawHint(
+                new Vector2(
+                    CottageView.KitchenStationCell.X * 16 + 8,
+                    CottageView.KitchenStationCell.Y * 16 + 8
+                ),
+                CottageLayout.IsAdjacentToKitchenStation(player),
+                ThemeFactory.Mint
+            );
+            DrawHint(
+                new Vector2(
+                    CottageView.IngredientPantryCell.X * 16 + 8,
+                    CottageView.IngredientPantryCell.Y * 16 + 8
+                ),
+                CottageLayout.IsAdjacentToIngredientPantry(player),
+                ThemeFactory.Gold
             );
         }
     }

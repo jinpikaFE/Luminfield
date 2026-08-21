@@ -55,7 +55,8 @@ public sealed record NpcScheduleEntry(
     IReadOnlyList<int> WeekdayIndices,
     IReadOnlyList<string>? WeatherIds = null,
     IReadOnlyList<string>? SeasonIds = null,
-    int Priority = 0
+    int Priority = 0,
+    IReadOnlyList<string>? FestivalIds = null
 )
 {
     public bool Matches(int day, int minuteOfDay) => Matches(
@@ -87,10 +88,18 @@ public sealed record NpcScheduleEntry(
             return false;
         }
 
-        return SeasonIds is not { Count: > 0 } ||
-            SeasonIds.Contains(
+        if (SeasonIds is { Count: > 0 } &&
+            !SeasonIds.Contains(
                 CalendarSystem.SeasonId(day),
                 StringComparer.Ordinal
+            ))
+        {
+            return false;
+        }
+
+        return FestivalIds is not { Count: > 0 } ||
+            FestivalIds.Any(festivalId =>
+                FestivalCatalog.OccursOnDay(festivalId, day)
             );
     }
 }
@@ -100,7 +109,7 @@ public sealed record VillageNpcDefinition(
     string NameKey,
     string RoleKey,
     string IntroductionKey,
-    int AtlasRow,
+    int ScheduleOrder,
     IReadOnlyList<string> LovedGiftIds,
     IReadOnlyList<ItemKind> LikedGiftKinds,
     IReadOnlyList<ItemKind> DislikedGiftKinds,
@@ -141,6 +150,7 @@ public static class VillageCatalog
     public const int SeasonSchedulePriority = 10;
     public const int WeatherSchedulePriority = 20;
     public const int RestdaySchedulePriority = 100;
+    public const int FestivalSchedulePriority = 200;
     public const string LioraId = "liora";
     public const string TaviId = "tavi";
     public const string NemiId = "nemi";
@@ -149,6 +159,14 @@ public static class VillageCatalog
     public const string VessaId = "vessa";
     public const string OrinId = "orin";
     public const string KaelId = "kael";
+    public const string HaldenId = "halden";
+    public const string MaveaId = "mavea";
+    public const string SivrenId = "sivren";
+    public const string DorrikId = "dorrik";
+    public const string YvaraId = "yvara";
+    public const string BrialId = "brial";
+    public const string PavriId = "pavri";
+    public const string RovenId = "roven";
     public const string VillageGateLandmarkId = "lumen_village_gate";
     public const string MoonlitArchiveLandmarkId = "moonlit_archive";
     public const string MoonstoneWorkshopLandmarkId =
@@ -165,6 +183,8 @@ public static class VillageCatalog
     public static readonly GridPosition MoonlitArchiveDoorCell = new(86, 41);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
     public static readonly GridPosition MoonlitArchiveDeskCell = new(20, 9);
+    public static readonly GridArea MoonlitArchiveDeskArea =
+        new(16, 8, 23, 11);
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
         new(85, 54);
     public static readonly GridPosition MoonstoneWorkshopExitCell =
@@ -207,6 +227,25 @@ public static class VillageCatalog
     public const int StarlightPostCloseMinute = 19 * 60;
     public const int StarfallWatchOpenMinute = 6 * 60;
     public const int StarfallWatchCloseMinute = 20 * 60;
+
+    public static bool IsMoonlitArchiveDeskCell(GridPosition cell) =>
+        MoonlitArchiveDeskArea.Contains(cell);
+
+    public static bool IsAdjacentToMoonlitArchiveDesk(GridPosition cell)
+    {
+        var nearestX = Math.Clamp(
+            cell.X,
+            MoonlitArchiveDeskArea.MinX,
+            MoonlitArchiveDeskArea.MaxX
+        );
+        var nearestY = Math.Clamp(
+            cell.Y,
+            MoonlitArchiveDeskArea.MinY,
+            MoonlitArchiveDeskArea.MaxY
+        );
+        return Math.Abs(cell.X - nearestX) +
+            Math.Abs(cell.Y - nearestY) <= 1;
+    }
 
     public static readonly IReadOnlyList<VillageLandmarkDefinition> Landmarks =
     [
@@ -311,6 +350,14 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Artisan],
                 [ItemKind.Fertilizer, ItemKind.Placeable],
                 [
+                    GleamriseFestivalSlot(LioraId, NpcFacing.Down),
+                    LongnightFestivalSlot(LioraId, NpcFacing.Down),
+                    FireflyFestivalSlot(LioraId, NpcFacing.Down),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[LioraId],
+                        NpcFacing.Down,
+                        LioraId
+                    ),
                     SeasonSlot(
                         13,
                         17,
@@ -372,6 +419,14 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Artisan],
                 [ItemKind.Seed, ItemKind.Fertilizer],
                 [
+                    GleamriseFestivalSlot(TaviId, NpcFacing.Right),
+                    LongnightFestivalSlot(TaviId, NpcFacing.Left),
+                    FireflyFestivalSlot(TaviId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[TaviId],
+                        NpcFacing.Right,
+                        TaviId
+                    ),
                     WeatherSlot(
                         13,
                         16,
@@ -433,6 +488,14 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Seed],
                 [ItemKind.Resource, ItemKind.Placeable],
                 [
+                    GleamriseFestivalSlot(NemiId, NpcFacing.Left),
+                    LongnightFestivalSlot(NemiId, NpcFacing.Right),
+                    FireflyFestivalSlot(NemiId, NpcFacing.Right),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[NemiId],
+                        NpcFacing.Left,
+                        NemiId
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -503,6 +566,14 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Placeable],
                 [ItemKind.Seed, ItemKind.Fertilizer],
                 [
+                    GleamriseFestivalSlot(SelaId, NpcFacing.Right),
+                    LongnightFestivalSlot(SelaId, NpcFacing.Left),
+                    FireflyFestivalSlot(SelaId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[SelaId],
+                        NpcFacing.Right,
+                        SelaId
+                    ),
                     WeatherSlot(
                         13,
                         17,
@@ -564,6 +635,14 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Artisan],
                 [ItemKind.Placeable, ItemKind.Resource],
                 [
+                    GleamriseFestivalSlot(ElowenId, NpcFacing.Left),
+                    LongnightFestivalSlot(ElowenId, NpcFacing.Right),
+                    FireflyFestivalSlot(ElowenId, NpcFacing.Right),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[ElowenId],
+                        NpcFacing.Left,
+                        ElowenId
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -625,6 +704,14 @@ public static class VillageCatalog
                 [ItemKind.Produce, ItemKind.Seed],
                 [ItemKind.Placeable, ItemKind.Fertilizer],
                 [
+                    GleamriseFestivalSlot(VessaId, NpcFacing.Up),
+                    LongnightFestivalSlot(VessaId, NpcFacing.Left),
+                    FireflyFestivalSlot(VessaId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[VessaId],
+                        NpcFacing.Up,
+                        VessaId
+                    ),
                     SeasonSlot(
                         13,
                         18,
@@ -686,6 +773,14 @@ public static class VillageCatalog
                 [ItemKind.Artisan, ItemKind.Produce],
                 [ItemKind.Fertilizer, ItemKind.Resource],
                 [
+                    GleamriseFestivalSlot(OrinId, NpcFacing.Left),
+                    LongnightFestivalSlot(OrinId, NpcFacing.Right),
+                    FireflyFestivalSlot(OrinId, NpcFacing.Right),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[OrinId],
+                        NpcFacing.Left,
+                        OrinId
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -763,6 +858,14 @@ public static class VillageCatalog
                 [ItemKind.Resource, ItemKind.Placeable],
                 [ItemKind.Seed, ItemKind.Artisan],
                 [
+                    GleamriseFestivalSlot(KaelId, NpcFacing.Up),
+                    LongnightFestivalSlot(KaelId, NpcFacing.Left),
+                    FireflyFestivalSlot(KaelId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[KaelId],
+                        NpcFacing.Up,
+                        KaelId
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -807,6 +910,577 @@ public static class VillageCatalog
                         new GridPosition(99, 43),
                         NpcFacing.Left,
                         "village.npc.kael.evening"
+                    )
+                ]
+            ),
+            [HaldenId] = new(
+                HaldenId,
+                "village.npc.halden.name",
+                "village.npc.halden.role",
+                "village.npc.halden.intro",
+                8,
+                [
+                    DataCatalog.StarfeatherEggId,
+                    DataCatalog.MoonfleeceId,
+                    DataCatalog.DewhornMilkId
+                ],
+                [ItemKind.AnimalFeed, ItemKind.AnimalProduct],
+                [ItemKind.Resource, ItemKind.Placeable],
+                [
+                    GleamriseFestivalSlot(HaldenId, NpcFacing.Right),
+                    LongnightFestivalSlot(HaldenId, NpcFacing.Right),
+                    FireflyFestivalSlot(HaldenId, NpcFacing.Right),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[HaldenId],
+                        NpcFacing.Right,
+                        HaldenId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(27, 13),
+                        NpcFacing.Left,
+                        "village.npc.halden.weather_longnight_snow",
+                        DataCatalog.LongnightSnowWeatherId
+                    ),
+                    Slot(
+                        6,
+                        18,
+                        new GridPosition(104, 49),
+                        NpcFacing.Down,
+                        "village.npc.halden.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(99, 58),
+                        NpcFacing.Up,
+                        "village.npc.halden.morning"
+                    ),
+                    Slot(
+                        9,
+                        13,
+                        new GridPosition(109, 51),
+                        NpcFacing.Left,
+                        "village.npc.halden.stocktake"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(101, 51),
+                        NpcFacing.Left,
+                        "village.npc.halden.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(99, 59),
+                        NpcFacing.Up,
+                        "village.npc.halden.evening"
+                    )
+                ]
+            ),
+            [MaveaId] = new(
+                MaveaId,
+                "village.npc.mavea.name",
+                "village.npc.mavea.role",
+                "village.npc.mavea.intro",
+                9,
+                [
+                    DataCatalog.MoonmistStewId,
+                    DataCatalog.SunvaultHashId,
+                    DataCatalog.StarhoneyCustardId,
+                    DataCatalog.LanternrootBrothId
+                ],
+                [ItemKind.Artisan, ItemKind.AnimalProduct],
+                [ItemKind.Resource, ItemKind.Placeable],
+                [
+                    GleamriseFestivalSlot(MaveaId, NpcFacing.Left),
+                    LongnightFestivalSlot(MaveaId, NpcFacing.Left),
+                    FireflyFestivalSlot(MaveaId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[MaveaId],
+                        NpcFacing.Left,
+                        MaveaId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(25, 13),
+                        NpcFacing.Right,
+                        "village.npc.mavea.season_longnight",
+                        CalendarSystem.LongnightSeasonId
+                    ),
+                    Slot(
+                        10,
+                        18,
+                        new GridPosition(100, 52),
+                        NpcFacing.Up,
+                        "village.npc.mavea.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(110, 51),
+                        NpcFacing.Down,
+                        "village.npc.mavea.morning"
+                    ),
+                    TeaHouseSlot(
+                        9,
+                        13,
+                        new GridPosition(13, 10),
+                        NpcFacing.Right,
+                        "village.npc.mavea.tea_house"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(106, 44),
+                        NpcFacing.Left,
+                        "village.npc.mavea.plaza"
+                    ),
+                    TeaHouseSlot(
+                        18,
+                        21,
+                        new GridPosition(27, 10),
+                        NpcFacing.Left,
+                        "village.npc.mavea.evening"
+                    ),
+                    Slot(
+                        21,
+                        23,
+                        new GridPosition(109, 44),
+                        NpcFacing.Left,
+                        "village.npc.mavea.close"
+                    )
+                ]
+            ),
+            [SivrenId] = new(
+                SivrenId,
+                "village.npc.sivren.name",
+                "village.npc.sivren.role",
+                "village.npc.sivren.intro",
+                10,
+                [
+                    DataCatalog.CloudleafTeaId,
+                    DataCatalog.CrownstarSaffronId,
+                    DataCatalog.CrystalShardId
+                ],
+                [ItemKind.Artisan, ItemKind.Produce],
+                [ItemKind.AnimalFeed, ItemKind.Fertilizer],
+                [
+                    GleamriseFestivalSlot(SivrenId, NpcFacing.Down),
+                    LongnightFestivalSlot(SivrenId, NpcFacing.Down),
+                    FireflyFestivalSlot(SivrenId, NpcFacing.Down),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[SivrenId],
+                        NpcFacing.Down,
+                        SivrenId
+                    ),
+                    WeatherSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonlitArchive,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.sivren.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(92, 49),
+                        NpcFacing.Right,
+                        "village.npc.sivren.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(86, 43),
+                        NpcFacing.Down,
+                        "village.npc.sivren.morning"
+                    ),
+                    ArchiveSlot(
+                        9,
+                        17,
+                        new GridPosition(27, 9),
+                        NpcFacing.Left,
+                        "village.npc.sivren.archive"
+                    ),
+                    Slot(
+                        17,
+                        23,
+                        new GridPosition(91, 43),
+                        NpcFacing.Right,
+                        "village.npc.sivren.evening"
+                    )
+                ]
+            ),
+            [DorrikId] = new(
+                DorrikId,
+                "village.npc.dorrik.name",
+                "village.npc.dorrik.role",
+                "village.npc.dorrik.intro",
+                11,
+                [
+                    DataCatalog.MoonstonePathId,
+                    DataCatalog.StarwoodFenceId,
+                    DataCatalog.DewfallSprinklerId
+                ],
+                [ItemKind.Placeable, ItemKind.Resource],
+                [ItemKind.Seed, ItemKind.Fertilizer],
+                [
+                    GleamriseFestivalSlot(DorrikId, NpcFacing.Up),
+                    LongnightFestivalSlot(DorrikId, NpcFacing.Up),
+                    FireflyFestivalSlot(DorrikId, NpcFacing.Up),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[DorrikId],
+                        NpcFacing.Up,
+                        DorrikId
+                    ),
+                    WeatherSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(27, 14),
+                        NpcFacing.Left,
+                        "village.npc.dorrik.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
+                    ),
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(99, 51),
+                        NpcFacing.Down,
+                        "village.npc.dorrik.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(88, 55),
+                        NpcFacing.Down,
+                        "village.npc.dorrik.morning"
+                    ),
+                    WorkshopSlot(
+                        9,
+                        13,
+                        new GridPosition(27, 10),
+                        NpcFacing.Left,
+                        "village.npc.dorrik.workshop"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(98, 55),
+                        NpcFacing.Up,
+                        "village.npc.dorrik.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(88, 54),
+                        NpcFacing.Down,
+                        "village.npc.dorrik.evening"
+                    )
+                ]
+            ),
+            [YvaraId] = new(
+                YvaraId,
+                "village.npc.yvara.name",
+                "village.npc.yvara.role",
+                "village.npc.yvara.intro",
+                12,
+                [
+                    DataCatalog.StarsoilFertilizerId,
+                    DataCatalog.MoonplumSaplingId,
+                    DataCatalog.RainveilLotusSeedId
+                ],
+                [ItemKind.Seed, ItemKind.Sapling],
+                [ItemKind.AnimalProduct, ItemKind.Placeable],
+                [
+                    GleamriseFestivalSlot(YvaraId, NpcFacing.Right),
+                    LongnightFestivalSlot(YvaraId, NpcFacing.Right),
+                    FireflyFestivalSlot(YvaraId, NpcFacing.Right),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[YvaraId],
+                        NpcFacing.Right,
+                        YvaraId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.MoonlitArchive,
+                        new GridPosition(26, 12),
+                        NpcFacing.Left,
+                        "village.npc.yvara.season_longnight",
+                        CalendarSystem.LongnightSeasonId
+                    ),
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(106, 54),
+                        NpcFacing.Left,
+                        "village.npc.yvara.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        10,
+                        new GridPosition(109, 61),
+                        NpcFacing.Left,
+                        "village.npc.yvara.morning"
+                    ),
+                    EmporiumSlot(
+                        10,
+                        13,
+                        new GridPosition(26, 10),
+                        NpcFacing.Left,
+                        "village.npc.yvara.emporium"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(105, 54),
+                        NpcFacing.Left,
+                        "village.npc.yvara.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(107, 44),
+                        NpcFacing.Left,
+                        "village.npc.yvara.evening"
+                    )
+                ]
+            ),
+            [BrialId] = new(
+                BrialId,
+                "village.npc.brial.name",
+                "village.npc.brial.role",
+                "village.npc.brial.intro",
+                13,
+                [
+                    DataCatalog.MoonplumId,
+                    DataCatalog.StarhoneyId,
+                    DataCatalog.DawnlaceId
+                ],
+                [ItemKind.Produce, ItemKind.Artisan],
+                [ItemKind.Resource, ItemKind.Fertilizer],
+                [
+                    GleamriseFestivalSlot(BrialId, NpcFacing.Left),
+                    LongnightFestivalSlot(BrialId, NpcFacing.Left),
+                    FireflyFestivalSlot(BrialId, NpcFacing.Left),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[BrialId],
+                        NpcFacing.Left,
+                        BrialId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(25, 13),
+                        NpcFacing.Right,
+                        "village.npc.brial.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(108, 54),
+                        NpcFacing.Left,
+                        "village.npc.brial.season_gleamrise",
+                        CalendarSystem.GleamriseSeasonId
+                    ),
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(108, 51),
+                        NpcFacing.Left,
+                        "village.npc.brial.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(108, 54),
+                        NpcFacing.Left,
+                        "village.npc.brial.morning"
+                    ),
+                    TeaHouseSlot(
+                        9,
+                        13,
+                        new GridPosition(27, 13),
+                        NpcFacing.Left,
+                        "village.npc.brial.tea_house"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(106, 51),
+                        NpcFacing.Left,
+                        "village.npc.brial.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(105, 51),
+                        NpcFacing.Right,
+                        "village.npc.brial.evening"
+                    )
+                ]
+            ),
+            [PavriId] = new(
+                PavriId,
+                "village.npc.pavri.name",
+                "village.npc.pavri.role",
+                "village.npc.pavri.intro",
+                14,
+                [
+                    DataCatalog.MoonfleeceId,
+                    DataCatalog.CloudleafTeaId,
+                    DataCatalog.StarhoneyCustardId
+                ],
+                [ItemKind.AnimalProduct, ItemKind.Artisan],
+                [ItemKind.Seed, ItemKind.Fertilizer],
+                [
+                    GleamriseFestivalSlot(PavriId, NpcFacing.Up),
+                    LongnightFestivalSlot(PavriId, NpcFacing.Up),
+                    FireflyFestivalSlot(PavriId, NpcFacing.Up),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[PavriId],
+                        NpcFacing.Up,
+                        PavriId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(13, 14),
+                        NpcFacing.Right,
+                        "village.npc.pavri.weather_longnight_snow",
+                        DataCatalog.LongnightSnowWeatherId
+                    ),
+                    TeaHouseSlot(
+                        9,
+                        18,
+                        new GridPosition(25, 13),
+                        NpcFacing.Right,
+                        "village.npc.pavri.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(87, 54),
+                        NpcFacing.Right,
+                        "village.npc.pavri.morning"
+                    ),
+                    WorkshopSlot(
+                        9,
+                        13,
+                        new GridPosition(13, 12),
+                        NpcFacing.Right,
+                        "village.npc.pavri.workshop"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(91, 54),
+                        NpcFacing.Right,
+                        "village.npc.pavri.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(91, 53),
+                        NpcFacing.Left,
+                        "village.npc.pavri.evening"
+                    )
+                ]
+            ),
+            [RovenId] = new(
+                RovenId,
+                "village.npc.roven.name",
+                "village.npc.roven.role",
+                "village.npc.roven.intro",
+                15,
+                [
+                    DataCatalog.MoonstonePathId,
+                    DataCatalog.StarlightTorchId,
+                    DataCatalog.LanternrootBrothId
+                ],
+                [ItemKind.Placeable, ItemKind.CookedDish],
+                [ItemKind.Fertilizer, ItemKind.AnimalFeed],
+                [
+                    GleamriseFestivalSlot(RovenId, NpcFacing.Up),
+                    LongnightFestivalSlot(RovenId, NpcFacing.Up),
+                    FireflyFestivalSlot(RovenId, NpcFacing.Up),
+                    FestivalSlot(
+                        StarharvestMarketLayout.NpcAnchors[RovenId],
+                        NpcFacing.Up,
+                        RovenId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarfallWatch,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.roven.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
+                    ),
+                    SeasonSlot(
+                        18,
+                        23,
+                        PlayerLocationIds.World,
+                        new GridPosition(82, 54),
+                        NpcFacing.Up,
+                        "village.npc.roven.season_longnight",
+                        CalendarSystem.LongnightSeasonId
+                    ),
+                    Slot(
+                        9,
+                        18,
+                        new GridPosition(104, 54),
+                        NpcFacing.Left,
+                        "village.npc.roven.restday",
+                        CalendarSystem.LanternrestWeekdayIndex
+                    ),
+                    Slot(
+                        6,
+                        9,
+                        new GridPosition(82, 42),
+                        NpcFacing.Right,
+                        "village.npc.roven.morning"
+                    ),
+                    PostSlot(
+                        9,
+                        13,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.roven.starlight_post"
+                    ),
+                    Slot(
+                        13,
+                        18,
+                        new GridPosition(94, 54),
+                        NpcFacing.Right,
+                        "village.npc.roven.plaza"
+                    ),
+                    Slot(
+                        18,
+                        23,
+                        new GridPosition(82, 54),
+                        NpcFacing.Up,
+                        "village.npc.roven.evening"
                     )
                 ]
             )
@@ -1111,6 +1785,79 @@ public static class VillageCatalog
         [seasonId],
         SeasonSchedulePriority
     );
+
+    private static NpcScheduleEntry FestivalSlot(
+        GridPosition position,
+        NpcFacing facing,
+        string npcId
+    ) => new(
+        // Stage festival projections at the daily simulation origin so all
+        // villagers are already at their unique anchors before the 10:00
+        // player gate opens. Starting later would funnel all actors through
+        // one arrival cell and leave them queued at the entrance.
+        GameClock.StartMinute,
+        18 * 60,
+        PlayerLocationIds.StarharvestMarket,
+        position,
+        facing,
+        $"festival.starharvest.dialogue.{npcId}",
+        [],
+        [],
+        [],
+        FestivalSchedulePriority,
+        [FestivalCatalog.StarharvestMarketFestivalId]
+    );
+
+    private static NpcScheduleEntry GleamriseFestivalSlot(
+        string npcId,
+        NpcFacing facing
+    ) => new(
+        GameClock.StartMinute,
+        FestivalCatalog.GleamrisePlanting.CloseMinute,
+        PlayerLocationIds.GleamrisePlantingFestival,
+        GleamrisePlantingFestivalLayout.NpcAnchors[npcId],
+        facing,
+        $"festival.gleamrise.dialogue.{npcId}",
+        [],
+        [],
+        [],
+        FestivalSchedulePriority,
+        [FestivalCatalog.GleamrisePlantingFestivalId]
+    );
+
+    private static NpcScheduleEntry LongnightFestivalSlot(
+        string npcId,
+        NpcFacing facing
+    ) => new(
+        GameClock.StartMinute,
+        FestivalCatalog.LongnightLanternFeast.CloseMinute,
+        PlayerLocationIds.LongnightLanternFeast,
+        LongnightLanternFeastLayout.NpcAnchors[npcId],
+        facing,
+        $"festival.longnight.dialogue.{npcId}",
+        [],
+        [],
+        [],
+        FestivalSchedulePriority,
+        [FestivalCatalog.LongnightLanternFeastFestivalId]
+    );
+
+    private static NpcScheduleEntry FireflyFestivalSlot(
+        string npcId,
+        NpcFacing facing
+    ) => new(
+        GameClock.StartMinute,
+        FestivalCatalog.FireflyTide.CloseMinute,
+        PlayerLocationIds.FireflyTide,
+        FireflyTideLayout.NpcAnchors[npcId],
+        facing,
+        $"festival.firefly.dialogue.{npcId}",
+        [],
+        [],
+        [],
+        FestivalSchedulePriority,
+        [FestivalCatalog.FireflyTideFestivalId]
+    );
 }
 
 public sealed class VillageSystem
@@ -1331,6 +2078,19 @@ public sealed class VillageSystem
         GridPosition? playerPosition
     )
     {
+        if (playerPosition is { } player &&
+            Math.Abs(player.X - position.X) +
+                Math.Abs(player.Y - position.Y) != 1)
+        {
+            return new VillageInteractionCheck(
+                null,
+                false,
+                false,
+                null,
+                "notice.nothing_to_interact"
+            );
+        }
+
         var state = CurrentNpcs(
                 day,
                 minuteOfDay,
@@ -1434,7 +2194,7 @@ public sealed class VillageSystem
         }
 
         var state = check.Npc;
-        var firstMeeting = _metNpcIds.Add(state.Definition.Id);
+        var firstMeeting = !_metNpcIds.Contains(state.Definition.Id);
         var relationship = Relationship(state.Definition.Id);
         var dialogueKey = state.DialogueKey;
         if (check.IsGift)
@@ -1474,6 +2234,7 @@ public sealed class VillageSystem
             result = ActionResult.Success(messageKey: "village.talked");
         }
 
+        _metNpcIds.Add(state.Definition.Id);
         _relationships[state.Definition.Id] = relationship;
         Changed?.Invoke();
         return new VillageConversation(

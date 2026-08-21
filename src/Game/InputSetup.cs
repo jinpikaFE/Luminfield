@@ -12,6 +12,7 @@ public static class InputSetup
     public const string Pause = "pause";
     public const string Backpack = "backpack";
     public const string Crafting = "crafting";
+    public const string CombatDodge = "combat_dodge";
     public const string HotbarPrevious = "hotbar_previous";
     public const string HotbarNext = "hotbar_next";
 
@@ -41,6 +42,7 @@ public static class InputSetup
         AddAction(Pause, 0.5f, Key.Escape, JoyButton.Start);
         AddAction(Backpack, 0.5f, Key.B, Key.Tab, JoyButton.Y);
         AddAction(Crafting, 0.5f, Key.C, JoyButton.X);
+        AddAction(CombatDodge, 0.5f, Key.Shift, JoyButton.B);
         AddAction(HotbarPrevious, 0.5f, JoyButton.LeftShoulder);
         AddAction(HotbarNext, 0.5f, JoyButton.RightShoulder);
     }

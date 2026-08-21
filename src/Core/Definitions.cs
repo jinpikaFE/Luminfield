@@ -6,10 +6,16 @@ public enum ItemKind
     Seed,
     Sapling,
     Produce,
+    Fish,
     Fertilizer,
     Artisan,
+    AnimalFeed,
+    AnimalProduct,
+    CookedDish,
     Resource,
-    Placeable
+    Placeable,
+    Weapon,
+    Artifact
 }
 
 public enum CropQuality
@@ -57,6 +63,19 @@ public sealed record CraftingRecipe(
     int OutputCount,
     IReadOnlyList<CraftingIngredient> Ingredients,
     string NameKey
+);
+
+public sealed record CookingRecipeDefinition(
+    string Id,
+    string OutputItemId,
+    int OutputCount,
+    IReadOnlyList<CraftingIngredient> Ingredients,
+    string NameKey
+);
+
+public sealed record CookedDishDefinition(
+    string ItemId,
+    int EnergyRestore
 );
 
 public enum FarmObjectKind
@@ -127,12 +146,22 @@ public sealed record StarlightContributionOption(
     int MaximumCount
 );
 
+public enum StarlightNodeSourceKind
+{
+    Inventory,
+    FestivalResults,
+    Milestones,
+    PedestalRewards
+}
+
 public sealed record StarlightNodeDefinition(
     string Id,
     string TitleKey,
     string DescriptionKey,
     int RequiredCount,
-    IReadOnlyList<StarlightContributionOption> Options
+    IReadOnlyList<StarlightContributionOption> Options,
+    StarlightNodeSourceKind SourceKind = StarlightNodeSourceKind.Inventory,
+    IReadOnlyList<string>? SourceIds = null
 );
 
 public sealed record StarlightPedestalDefinition(
@@ -141,14 +170,19 @@ public sealed record StarlightPedestalDefinition(
     string RegionKey,
     string RewardTitleKey,
     string RewardDescriptionKey,
-    IReadOnlyList<StarlightNodeDefinition> Nodes
+    IReadOnlyList<StarlightNodeDefinition> Nodes,
+    string ActivationMessageKey = "starlight.activated",
+    string RewardId = "",
+    bool RequiresManualActivation = false
 );
 
 public sealed record WeatherDefinition(
     string Id,
     string NameKey,
     int AtlasIndex,
-    bool AutoWatersCrops = false
+    bool AutoWatersCrops = false,
+    string? EffectKey = null,
+    float OutdoorMovementMultiplier = 1f
 );
 
 public sealed record CropResonanceDefinition(
@@ -238,6 +272,60 @@ public sealed record FruitTreeDefinition(
         );
 }
 
+public enum FishingWaterKind
+{
+    HomesteadPond,
+    CrystalStream,
+    MoonwaterWetlands
+}
+
+public sealed record FishDefinition(
+    string Id,
+    string ItemId,
+    FishingWaterKind WaterKind,
+    string NameKey,
+    IReadOnlyList<string>? SeasonIds = null,
+    int StartMinute = GameClock.StartMinute,
+    int EndMinute = GameClock.EndMinute,
+    string? WeatherId = null
+)
+{
+    public bool IsAvailable(int day, int minuteOfDay, string weatherId) =>
+        minuteOfDay >= StartMinute &&
+        minuteOfDay <= EndMinute &&
+        (SeasonIds is not { Count: > 0 } ||
+            SeasonIds.Contains(
+                CalendarSystem.SeasonId(day),
+                StringComparer.Ordinal
+            )) &&
+        (WeatherId is null || WeatherId == weatherId);
+
+    public int AvailabilitySpecificity
+    {
+        get
+        {
+            var score = 0;
+            if (SeasonIds is { Count: > 0 })
+            {
+                score += 1;
+            }
+
+            if (WeatherId is not null)
+            {
+                score += 1;
+            }
+
+            if (StartMinute != GameClock.StartMinute ||
+                EndMinute != GameClock.EndMinute)
+            {
+                score += 1;
+            }
+
+            return score;
+        }
+    }
+}
+
 public static class DataCatalog
 {
     public const string LegacyHoeId = "hoe";
@@ -246,6 +334,7 @@ public static class DataCatalog
     public const string MacheteId = "machete";
     public const string WateringCanId = "watering_can";
     public const string BucketId = "water_bucket";
+    public const string FishingRodId = "fishing_rod";
     public const string StarbudSeedId = "starbud_seed";
     public const string StarbudId = "starbud";
     public const string StarbudLuminousId = "starbud_luminous";
@@ -296,12 +385,84 @@ public static class DataCatalog
     public const string CometTuberId = "comet_tuber";
     public const string CometTuberLuminousId = "comet_tuber_luminous";
     public const string CometTuberStarlightId = "comet_tuber_starlight";
+    public const string RipplecapSeedId = "ripplecap_seed";
+    public const string RipplecapId = "ripplecap";
+    public const string RipplecapLuminousId = "ripplecap_luminous";
+    public const string RipplecapStarlightId = "ripplecap_starlight";
+    public const string TideglassTaroSeedId = "tideglass_taro_seed";
+    public const string TideglassTaroId = "tideglass_taro";
+    public const string TideglassTaroLuminousId = "tideglass_taro_luminous";
+    public const string TideglassTaroStarlightId = "tideglass_taro_starlight";
+    public const string LanternReedSeedId = "lantern_reed_seed";
+    public const string LanternReedId = "lantern_reed";
+    public const string LanternReedLuminousId = "lantern_reed_luminous";
+    public const string LanternReedStarlightId = "lantern_reed_starlight";
+    public const string RainveilLotusSeedId = "rainveil_lotus_seed";
+    public const string RainveilLotusId = "rainveil_lotus";
+    public const string RainveilLotusLuminousId = "rainveil_lotus_luminous";
+    public const string RainveilLotusStarlightId = "rainveil_lotus_starlight";
+    public const string AuricShootSeedId = "auric_shoot_seed";
+    public const string AuricShootId = "auric_shoot";
+    public const string AuricShootLuminousId = "auric_shoot_luminous";
+    public const string AuricShootStarlightId = "auric_shoot_starlight";
+    public const string SunvaultGourdSeedId = "sunvault_gourd_seed";
+    public const string SunvaultGourdId = "sunvault_gourd";
+    public const string SunvaultGourdLuminousId = "sunvault_gourd_luminous";
+    public const string SunvaultGourdStarlightId = "sunvault_gourd_starlight";
+    public const string CrownstarSaffronSeedId = "crownstar_saffron_seed";
+    public const string CrownstarSaffronId = "crownstar_saffron";
+    public const string CrownstarSaffronLuminousId =
+        "crownstar_saffron_luminous";
+    public const string CrownstarSaffronStarlightId =
+        "crownstar_saffron_starlight";
+    public const string AmberthreadClusterSeedId = "amberthread_cluster_seed";
+    public const string AmberthreadClusterId = "amberthread_cluster";
+    public const string AmberthreadClusterLuminousId =
+        "amberthread_cluster_luminous";
+    public const string AmberthreadClusterStarlightId =
+        "amberthread_cluster_starlight";
     public const string StarsoilFertilizerId = "starsoil_fertilizer";
     public const string StarbudPreserveId = "starbud_preserve";
     public const string MoonrootTonicId = "moonroot_tonic";
     public const string CloudleafTeaId = "cloudleaf_tea";
     public const string LumenwoodId = "lumenwood";
     public const string CrystalShardId = "crystal_shard";
+    public const string LumenSlateOreId = "lumen_slate_ore";
+    public const string MoonveinOreId = "moonvein_ore";
+    public const string PrismheartOreId = "prismheart_ore";
+    public const string StarironOreId = "stariron_ore";
+    public const string WhisperbloomId = "whisperbloom";
+    public const string DewglassCloverId = "dewglass_clover";
+    public const string RainbellMossId = "rainbell_moss";
+    public const string MistcoilFernId = "mistcoil_fern";
+    public const string GloamgoldBerryId = "gloamgold_berry";
+    public const string SunwispPodId = "sunwisp_pod";
+    public const string NightlampLichenId = "nightlamp_lichen";
+    public const string FrostwickRootId = "frostwick_root";
+    public const string PondglowMinnowId = "pondglow_minnow";
+    public const string ReedwhisperBreamId = "reedwhisper_bream";
+    public const string LanternscaleCarpId = "lanternscale_carp";
+    public const string SunveilGudgeonId = "sunveil_gudgeon";
+    public const string RainpetalLoachId = "rainpetal_loach";
+    public const string DuskglassEelId = "duskglass_eel";
+    public const string StarharvestKoiId = "starharvest_koi";
+    public const string LongnightKoiId = "longnight_koi";
+    public const string CrystalfinDaceId = "crystalfin_dace";
+    public const string QuartzscaleTroutId = "quartzscale_trout";
+    public const string ShardbackPerchId = "shardback_perch";
+    public const string StarlitCharId = "starlit_char";
+    public const string MistglassSmeltId = "mistglass_smelt";
+    public const string StardustPikeId = "stardust_pike";
+    public const string StarharvestChubId = "starharvest_chub";
+    public const string LongnightGlowlingId = "longnight_glowling";
+    public const string MoonwaterMinnowId = "moonwater_minnow";
+    public const string MarshveilKilliId = "marshveil_killi";
+    public const string SilverreedMudfishId = "silverreed_mudfish";
+    public const string MooncapGobyId = "mooncap_goby";
+    public const string RainveilLampreyId = "rainveil_lamprey";
+    public const string StardustRayId = "stardust_ray";
+    public const string StarharvestOrbfinId = "starharvest_orbfin";
+    public const string LongnightWispfishId = "longnight_wispfish";
     public const string StarwovenChestId = "starwoven_chest";
     public const string MoonstonePathId = "moonstone_path";
     public const string StarwoodFenceId = "starwood_fence";
@@ -312,6 +473,29 @@ public static class DataCatalog
     public const string MoonplumId = "moonplum";
     public const string StarhoneyId = "starhoney";
     public const string GlowcombHiveId = "glowcomb_hive";
+    public const string MeadowFodderId = "meadow_fodder";
+    public const string StarfeatherEggId = "starfeather_egg";
+    public const string StarfeatherEggLuminousId =
+        "starfeather_egg_luminous";
+    public const string StarfeatherEggStarlightId =
+        "starfeather_egg_starlight";
+    public const string MoonfleeceId = "moonfleece";
+    public const string MoonfleeceLuminousId = "moonfleece_luminous";
+    public const string MoonfleeceStarlightId = "moonfleece_starlight";
+    public const string DewhornMilkId = "dewhorn_milk";
+    public const string DewhornMilkLuminousId = "dewhorn_milk_luminous";
+    public const string DewhornMilkStarlightId =
+        "dewhorn_milk_starlight";
+    public const string MoonmistStewId = "moonmist_stew";
+    public const string SunvaultHashId = "sunvault_hash";
+    public const string StarhoneyCustardId = "starhoney_custard";
+    public const string LanternrootBrothId = "lanternroot_broth";
+    public const string MoonmistStewRecipeId = "recipe_moonmist_stew";
+    public const string SunvaultHashRecipeId = "recipe_sunvault_hash";
+    public const string StarhoneyCustardRecipeId =
+        "recipe_starhoney_custard";
+    public const string LanternrootBrothRecipeId =
+        "recipe_lanternroot_broth";
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
@@ -338,9 +522,60 @@ public static class DataCatalog
     public const string WoodlandHarvestNodeId = "starlight_woodland_harvest";
     public const string WoodlandMaterialsNodeId = "starlight_woodland_materials";
     public const string WoodlandCraftNodeId = "starlight_woodland_craft";
+    public const string HomesteadStarlightId = "starlight_homestead";
+    public const string HomesteadHarvestNodeId =
+        "starlight_homestead_harvest";
+    public const string HomesteadArtisanNodeId =
+        "starlight_homestead_artisan";
+    public const string HomesteadBuildingNodeId =
+        "starlight_homestead_building";
+    public const string MeadowStarlightId = "starlight_meadow";
+    public const string MeadowBloomsNodeId = "starlight_meadow_blooms";
+    public const string MeadowBountyNodeId = "starlight_meadow_bounty";
+    public const string MeadowCelebrationNodeId =
+        "starlight_meadow_celebration";
+    public const string MoonwaterStarlightId = "starlight_moonwater";
+    public const string MoonwaterLocalFishNodeId =
+        "starlight_moonwater_local_fish";
+    public const string MoonwaterWeatherFishNodeId =
+        "starlight_moonwater_weather_fish";
+    public const string MoonwaterSeasonalFishNodeId =
+        "starlight_moonwater_seasonal_fish";
+    public const string CrystalValeStarlightId =
+        "starlight_crystal_vale";
+    public const string CrystalValeMineralChorusNodeId =
+        "starlight_crystal_vale_mineral_chorus";
+    public const string CrystalValeTemperedShovelNodeId =
+        "starlight_crystal_vale_tempered_shovel";
+    public const string CrystalValeDepthAnchorNodeId =
+        "starlight_crystal_vale_depth_anchor";
+    public const string CrystalRuinsPassageRewardId =
+        "starlight_reward_crystal_ruins_passage";
+    public const string MoonsteelShortbladeId = "moonsteel_shortblade";
+    public const string DawnpathCompassId = "artifact_dawnpath_compass";
+    public const string TideglassTabletId = "artifact_tideglass_tablet";
+    public const string HushedGleambellId = "artifact_hushed_gleambell";
+    public const string StarweaveSpindleId = "artifact_starweave_spindle";
+    public const string StarfallRuinsStarlightId =
+        "starlight_starfall_ruins";
+    public const string StarfallMemoryArchiveNodeId =
+        "starlight_starfall_ruins_memory_archive";
+    public const string StarfallNightwatchTrialNodeId =
+        "starlight_starfall_ruins_nightwatch_trial";
+    public const string StarfallTrustedPathsNodeId =
+        "starlight_starfall_ruins_trusted_paths";
+    public const string StarfallFiveLightsNodeId =
+        "starlight_starfall_ruins_five_lights";
+    public const string KaelTrustedRelationshipMilestoneId =
+        "relationship_kael_trusted_60";
+    public const string LioraTrustedRelationshipMilestoneId =
+        "relationship_liora_trusted_60";
+    public const string StarfallSixfoldConvergenceRewardId =
+        "starlight_reward_starfall_sixfold_convergence";
     public const string ClearWeatherId = "clear";
     public const string RainWeatherId = "rain";
     public const string StardustWindWeatherId = "stardust_wind";
+    public const string LongnightSnowWeatherId = "longnight_snow";
 
     public static readonly IReadOnlyDictionary<string, ItemDefinition> Items =
         new Dictionary<string, ItemDefinition>(StringComparer.Ordinal)
@@ -350,6 +585,12 @@ public static class DataCatalog
             [MacheteId] = new(MacheteId, ItemKind.Tool, 1, "item.machete"),
             [WateringCanId] = new(WateringCanId, ItemKind.Tool, 1, "item.watering_can"),
             [BucketId] = new(BucketId, ItemKind.Tool, 1, "item.water_bucket"),
+            [FishingRodId] = new(
+                FishingRodId,
+                ItemKind.Tool,
+                1,
+                "item.fishing_rod"
+            ),
             [StarbudSeedId] = new(
                 StarbudSeedId,
                 ItemKind.Seed,
@@ -529,6 +770,126 @@ public static class DataCatalog
                 99,
                 "item.comet_tuber",
                 SellPrice: 62
+            ),
+            [RipplecapSeedId] = new(
+                RipplecapSeedId,
+                ItemKind.Seed,
+                99,
+                "item.ripplecap_seed",
+                RipplecapId,
+                BuyPrice: 16
+            ),
+            [RipplecapId] = new(
+                RipplecapId,
+                ItemKind.Produce,
+                99,
+                "item.ripplecap",
+                SellPrice: 30
+            ),
+            [TideglassTaroSeedId] = new(
+                TideglassTaroSeedId,
+                ItemKind.Seed,
+                99,
+                "item.tideglass_taro_seed",
+                TideglassTaroId,
+                BuyPrice: 38
+            ),
+            [TideglassTaroId] = new(
+                TideglassTaroId,
+                ItemKind.Produce,
+                99,
+                "item.tideglass_taro",
+                SellPrice: 72
+            ),
+            [LanternReedSeedId] = new(
+                LanternReedSeedId,
+                ItemKind.Seed,
+                99,
+                "item.lantern_reed_seed",
+                LanternReedId,
+                BuyPrice: 46
+            ),
+            [LanternReedId] = new(
+                LanternReedId,
+                ItemKind.Produce,
+                99,
+                "item.lantern_reed",
+                SellPrice: 40
+            ),
+            [RainveilLotusSeedId] = new(
+                RainveilLotusSeedId,
+                ItemKind.Seed,
+                99,
+                "item.rainveil_lotus_seed",
+                RainveilLotusId,
+                BuyPrice: 52
+            ),
+            [RainveilLotusId] = new(
+                RainveilLotusId,
+                ItemKind.Produce,
+                99,
+                "item.rainveil_lotus",
+                SellPrice: 105
+            ),
+            [AuricShootSeedId] = new(
+                AuricShootSeedId,
+                ItemKind.Seed,
+                99,
+                "item.auric_shoot_seed",
+                AuricShootId,
+                BuyPrice: 30
+            ),
+            [AuricShootId] = new(
+                AuricShootId,
+                ItemKind.Produce,
+                99,
+                "item.auric_shoot",
+                SellPrice: 52
+            ),
+            [SunvaultGourdSeedId] = new(
+                SunvaultGourdSeedId,
+                ItemKind.Seed,
+                99,
+                "item.sunvault_gourd_seed",
+                SunvaultGourdId,
+                BuyPrice: 46
+            ),
+            [SunvaultGourdId] = new(
+                SunvaultGourdId,
+                ItemKind.Produce,
+                99,
+                "item.sunvault_gourd",
+                SellPrice: 86
+            ),
+            [CrownstarSaffronSeedId] = new(
+                CrownstarSaffronSeedId,
+                ItemKind.Seed,
+                99,
+                "item.crownstar_saffron_seed",
+                CrownstarSaffronId,
+                BuyPrice: 78
+            ),
+            [CrownstarSaffronId] = new(
+                CrownstarSaffronId,
+                ItemKind.Produce,
+                99,
+                "item.crownstar_saffron",
+                SellPrice: 154
+            ),
+            [AmberthreadClusterSeedId] = new(
+                AmberthreadClusterSeedId,
+                ItemKind.Seed,
+                99,
+                "item.amberthread_cluster_seed",
+                AmberthreadClusterId,
+                BuyPrice: 64
+            ),
+            [AmberthreadClusterId] = new(
+                AmberthreadClusterId,
+                ItemKind.Produce,
+                99,
+                "item.amberthread_cluster",
+                SellPrice: 52
             ),
             [StarbudLuminousId] = new(
                 StarbudLuminousId,
@@ -762,6 +1123,150 @@ public static class DataCatalog
                 BaseItemId: CometTuberId,
                 Quality: CropQuality.Starlight
             ),
+            [RipplecapLuminousId] = new(
+                RipplecapLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.ripplecap_luminous",
+                SellPrice: 45,
+                BaseItemId: RipplecapId,
+                Quality: CropQuality.Luminous
+            ),
+            [RipplecapStarlightId] = new(
+                RipplecapStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.ripplecap_starlight",
+                SellPrice: 68,
+                BaseItemId: RipplecapId,
+                Quality: CropQuality.Starlight
+            ),
+            [TideglassTaroLuminousId] = new(
+                TideglassTaroLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.tideglass_taro_luminous",
+                SellPrice: 108,
+                BaseItemId: TideglassTaroId,
+                Quality: CropQuality.Luminous
+            ),
+            [TideglassTaroStarlightId] = new(
+                TideglassTaroStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.tideglass_taro_starlight",
+                SellPrice: 162,
+                BaseItemId: TideglassTaroId,
+                Quality: CropQuality.Starlight
+            ),
+            [LanternReedLuminousId] = new(
+                LanternReedLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.lantern_reed_luminous",
+                SellPrice: 60,
+                BaseItemId: LanternReedId,
+                Quality: CropQuality.Luminous
+            ),
+            [LanternReedStarlightId] = new(
+                LanternReedStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.lantern_reed_starlight",
+                SellPrice: 90,
+                BaseItemId: LanternReedId,
+                Quality: CropQuality.Starlight
+            ),
+            [RainveilLotusLuminousId] = new(
+                RainveilLotusLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.rainveil_lotus_luminous",
+                SellPrice: 158,
+                BaseItemId: RainveilLotusId,
+                Quality: CropQuality.Luminous
+            ),
+            [RainveilLotusStarlightId] = new(
+                RainveilLotusStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.rainveil_lotus_starlight",
+                SellPrice: 237,
+                BaseItemId: RainveilLotusId,
+                Quality: CropQuality.Starlight
+            ),
+            [AuricShootLuminousId] = new(
+                AuricShootLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.auric_shoot_luminous",
+                SellPrice: 78,
+                BaseItemId: AuricShootId,
+                Quality: CropQuality.Luminous
+            ),
+            [AuricShootStarlightId] = new(
+                AuricShootStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.auric_shoot_starlight",
+                SellPrice: 117,
+                BaseItemId: AuricShootId,
+                Quality: CropQuality.Starlight
+            ),
+            [SunvaultGourdLuminousId] = new(
+                SunvaultGourdLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.sunvault_gourd_luminous",
+                SellPrice: 129,
+                BaseItemId: SunvaultGourdId,
+                Quality: CropQuality.Luminous
+            ),
+            [SunvaultGourdStarlightId] = new(
+                SunvaultGourdStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.sunvault_gourd_starlight",
+                SellPrice: 194,
+                BaseItemId: SunvaultGourdId,
+                Quality: CropQuality.Starlight
+            ),
+            [CrownstarSaffronLuminousId] = new(
+                CrownstarSaffronLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.crownstar_saffron_luminous",
+                SellPrice: 231,
+                BaseItemId: CrownstarSaffronId,
+                Quality: CropQuality.Luminous
+            ),
+            [CrownstarSaffronStarlightId] = new(
+                CrownstarSaffronStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.crownstar_saffron_starlight",
+                SellPrice: 347,
+                BaseItemId: CrownstarSaffronId,
+                Quality: CropQuality.Starlight
+            ),
+            [AmberthreadClusterLuminousId] = new(
+                AmberthreadClusterLuminousId,
+                ItemKind.Produce,
+                99,
+                "item.amberthread_cluster_luminous",
+                SellPrice: 78,
+                BaseItemId: AmberthreadClusterId,
+                Quality: CropQuality.Luminous
+            ),
+            [AmberthreadClusterStarlightId] = new(
+                AmberthreadClusterStarlightId,
+                ItemKind.Produce,
+                99,
+                "item.amberthread_cluster_starlight",
+                SellPrice: 117,
+                BaseItemId: AmberthreadClusterId,
+                Quality: CropQuality.Starlight
+            ),
             [StarsoilFertilizerId] = new(
                 StarsoilFertilizerId,
                 ItemKind.Fertilizer,
@@ -802,6 +1307,90 @@ public static class DataCatalog
                 99,
                 "item.crystal_shard",
                 SellPrice: 28
+            ),
+            [LumenSlateOreId] = new(
+                LumenSlateOreId,
+                ItemKind.Resource,
+                99,
+                "item.lumen_slate_ore",
+                SellPrice: 32
+            ),
+            [MoonveinOreId] = new(
+                MoonveinOreId,
+                ItemKind.Resource,
+                99,
+                "item.moonvein_ore",
+                SellPrice: 48
+            ),
+            [PrismheartOreId] = new(
+                PrismheartOreId,
+                ItemKind.Resource,
+                99,
+                "item.prismheart_ore",
+                SellPrice: 72
+            ),
+            [StarironOreId] = new(
+                StarironOreId,
+                ItemKind.Resource,
+                99,
+                "item.stariron_ore",
+                SellPrice: 96
+            ),
+            [WhisperbloomId] = new(
+                WhisperbloomId,
+                ItemKind.Resource,
+                99,
+                "item.whisperbloom",
+                SellPrice: 18
+            ),
+            [DewglassCloverId] = new(
+                DewglassCloverId,
+                ItemKind.Resource,
+                99,
+                "item.dewglass_clover",
+                SellPrice: 24
+            ),
+            [RainbellMossId] = new(
+                RainbellMossId,
+                ItemKind.Resource,
+                99,
+                "item.rainbell_moss",
+                SellPrice: 22
+            ),
+            [MistcoilFernId] = new(
+                MistcoilFernId,
+                ItemKind.Resource,
+                99,
+                "item.mistcoil_fern",
+                SellPrice: 30
+            ),
+            [GloamgoldBerryId] = new(
+                GloamgoldBerryId,
+                ItemKind.Resource,
+                99,
+                "item.gloamgold_berry",
+                SellPrice: 28
+            ),
+            [SunwispPodId] = new(
+                SunwispPodId,
+                ItemKind.Resource,
+                99,
+                "item.sunwisp_pod",
+                SellPrice: 38
+            ),
+            [NightlampLichenId] = new(
+                NightlampLichenId,
+                ItemKind.Resource,
+                99,
+                "item.nightlamp_lichen",
+                SellPrice: 34
+            ),
+            [FrostwickRootId] = new(
+                FrostwickRootId,
+                ItemKind.Resource,
+                99,
+                "item.frostwick_root",
+                SellPrice: 44
             ),
             [StarwovenChestId] = new(
                 StarwovenChestId,
@@ -855,11 +1444,319 @@ public static class DataCatalog
                 "item.starhoney",
                 SellPrice: 118
             ),
+            [MeadowFodderId] = new(
+                MeadowFodderId,
+                ItemKind.AnimalFeed,
+                99,
+                "item.meadow_fodder",
+                BuyPrice: 8
+            ),
+            [StarfeatherEggId] = new(
+                StarfeatherEggId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.starfeather_egg",
+                SellPrice: 48
+            ),
+            [StarfeatherEggLuminousId] = new(
+                StarfeatherEggLuminousId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.starfeather_egg_luminous",
+                SellPrice: 72,
+                BaseItemId: StarfeatherEggId,
+                Quality: CropQuality.Luminous
+            ),
+            [StarfeatherEggStarlightId] = new(
+                StarfeatherEggStarlightId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.starfeather_egg_starlight",
+                SellPrice: 108,
+                BaseItemId: StarfeatherEggId,
+                Quality: CropQuality.Starlight
+            ),
+            [MoonfleeceId] = new(
+                MoonfleeceId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.moonfleece",
+                SellPrice: 84
+            ),
+            [MoonfleeceLuminousId] = new(
+                MoonfleeceLuminousId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.moonfleece_luminous",
+                SellPrice: 126,
+                BaseItemId: MoonfleeceId,
+                Quality: CropQuality.Luminous
+            ),
+            [MoonfleeceStarlightId] = new(
+                MoonfleeceStarlightId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.moonfleece_starlight",
+                SellPrice: 189,
+                BaseItemId: MoonfleeceId,
+                Quality: CropQuality.Starlight
+            ),
+            [DewhornMilkId] = new(
+                DewhornMilkId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.dewhorn_milk",
+                SellPrice: 96
+            ),
+            [DewhornMilkLuminousId] = new(
+                DewhornMilkLuminousId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.dewhorn_milk_luminous",
+                SellPrice: 144,
+                BaseItemId: DewhornMilkId,
+                Quality: CropQuality.Luminous
+            ),
+            [DewhornMilkStarlightId] = new(
+                DewhornMilkStarlightId,
+                ItemKind.AnimalProduct,
+                99,
+                "item.dewhorn_milk_starlight",
+                SellPrice: 216,
+                BaseItemId: DewhornMilkId,
+                Quality: CropQuality.Starlight
+            ),
+            [MoonmistStewId] = new(
+                MoonmistStewId,
+                ItemKind.CookedDish,
+                99,
+                "item.moonmist_stew",
+                SellPrice: 156
+            ),
+            [SunvaultHashId] = new(
+                SunvaultHashId,
+                ItemKind.CookedDish,
+                99,
+                "item.sunvault_hash",
+                SellPrice: 148
+            ),
+            [StarhoneyCustardId] = new(
+                StarhoneyCustardId,
+                ItemKind.CookedDish,
+                99,
+                "item.starhoney_custard",
+                SellPrice: 258
+            ),
+            [LanternrootBrothId] = new(
+                LanternrootBrothId,
+                ItemKind.CookedDish,
+                99,
+                "item.lanternroot_broth",
+                SellPrice: 150
+            ),
+            [PondglowMinnowId] = new(
+                PondglowMinnowId,
+                ItemKind.Fish,
+                99,
+                "item.pondglow_minnow",
+                SellPrice: 34
+            ),
+            [ReedwhisperBreamId] = new(
+                ReedwhisperBreamId,
+                ItemKind.Fish,
+                99,
+                "item.reedwhisper_bream",
+                SellPrice: 42
+            ),
+            [LanternscaleCarpId] = new(
+                LanternscaleCarpId,
+                ItemKind.Fish,
+                99,
+                "item.lanternscale_carp",
+                SellPrice: 54
+            ),
+            [SunveilGudgeonId] = new(
+                SunveilGudgeonId,
+                ItemKind.Fish,
+                99,
+                "item.sunveil_gudgeon",
+                SellPrice: 46
+            ),
+            [RainpetalLoachId] = new(
+                RainpetalLoachId,
+                ItemKind.Fish,
+                99,
+                "item.rainpetal_loach",
+                SellPrice: 66
+            ),
+            [DuskglassEelId] = new(
+                DuskglassEelId,
+                ItemKind.Fish,
+                99,
+                "item.duskglass_eel",
+                SellPrice: 82
+            ),
+            [StarharvestKoiId] = new(
+                StarharvestKoiId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_koi",
+                SellPrice: 92
+            ),
+            [LongnightKoiId] = new(
+                LongnightKoiId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_koi",
+                SellPrice: 104
+            ),
+            [CrystalfinDaceId] = new(
+                CrystalfinDaceId,
+                ItemKind.Fish,
+                99,
+                "item.crystalfin_dace",
+                SellPrice: 48
+            ),
+            [QuartzscaleTroutId] = new(
+                QuartzscaleTroutId,
+                ItemKind.Fish,
+                99,
+                "item.quartzscale_trout",
+                SellPrice: 58
+            ),
+            [ShardbackPerchId] = new(
+                ShardbackPerchId,
+                ItemKind.Fish,
+                99,
+                "item.shardback_perch",
+                SellPrice: 64
+            ),
+            [StarlitCharId] = new(
+                StarlitCharId,
+                ItemKind.Fish,
+                99,
+                "item.starlit_char",
+                SellPrice: 74
+            ),
+            [MistglassSmeltId] = new(
+                MistglassSmeltId,
+                ItemKind.Fish,
+                99,
+                "item.mistglass_smelt",
+                SellPrice: 76
+            ),
+            [StardustPikeId] = new(
+                StardustPikeId,
+                ItemKind.Fish,
+                99,
+                "item.stardust_pike",
+                SellPrice: 96
+            ),
+            [StarharvestChubId] = new(
+                StarharvestChubId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_chub",
+                SellPrice: 90
+            ),
+            [LongnightGlowlingId] = new(
+                LongnightGlowlingId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_glowling",
+                SellPrice: 108
+            ),
+            [MoonwaterMinnowId] = new(
+                MoonwaterMinnowId,
+                ItemKind.Fish,
+                99,
+                "item.moonwater_minnow",
+                SellPrice: 56
+            ),
+            [MarshveilKilliId] = new(
+                MarshveilKilliId,
+                ItemKind.Fish,
+                99,
+                "item.marshveil_killi",
+                SellPrice: 62
+            ),
+            [SilverreedMudfishId] = new(
+                SilverreedMudfishId,
+                ItemKind.Fish,
+                99,
+                "item.silverreed_mudfish",
+                SellPrice: 68
+            ),
+            [MooncapGobyId] = new(
+                MooncapGobyId,
+                ItemKind.Fish,
+                99,
+                "item.mooncap_goby",
+                SellPrice: 72
+            ),
+            [RainveilLampreyId] = new(
+                RainveilLampreyId,
+                ItemKind.Fish,
+                99,
+                "item.rainveil_lamprey",
+                SellPrice: 88
+            ),
+            [StardustRayId] = new(
+                StardustRayId,
+                ItemKind.Fish,
+                99,
+                "item.stardust_ray",
+                SellPrice: 112
+            ),
+            [StarharvestOrbfinId] = new(
+                StarharvestOrbfinId,
+                ItemKind.Fish,
+                99,
+                "item.starharvest_orbfin",
+                SellPrice: 98
+            ),
+            [LongnightWispfishId] = new(
+                LongnightWispfishId,
+                ItemKind.Fish,
+                99,
+                "item.longnight_wispfish",
+                SellPrice: 118
+            ),
             [GlowcombHiveId] = new(
                 GlowcombHiveId,
                 ItemKind.Placeable,
                 99,
                 "item.glowcomb_hive"
+            ),
+            [MoonsteelShortbladeId] = new(
+                MoonsteelShortbladeId,
+                ItemKind.Weapon,
+                1,
+                "item.moonsteel_shortblade"
+            ),
+            [DawnpathCompassId] = new(
+                DawnpathCompassId,
+                ItemKind.Artifact,
+                1,
+                "item.artifact_dawnpath_compass"
+            ),
+            [TideglassTabletId] = new(
+                TideglassTabletId,
+                ItemKind.Artifact,
+                1,
+                "item.artifact_tideglass_tablet"
+            ),
+            [HushedGleambellId] = new(
+                HushedGleambellId,
+                ItemKind.Artifact,
+                1,
+                "item.artifact_hushed_gleambell"
+            ),
+            [StarweaveSpindleId] = new(
+                StarweaveSpindleId,
+                ItemKind.Artifact,
+                1,
+                "item.artifact_starweave_spindle"
             )
         };
 
@@ -903,13 +1800,82 @@ public static class DataCatalog
         CometTuberId,
         CometTuberLuminousId,
         CometTuberStarlightId,
+        RipplecapId,
+        RipplecapLuminousId,
+        RipplecapStarlightId,
+        TideglassTaroId,
+        TideglassTaroLuminousId,
+        TideglassTaroStarlightId,
+        LanternReedId,
+        LanternReedLuminousId,
+        LanternReedStarlightId,
+        RainveilLotusId,
+        RainveilLotusLuminousId,
+        RainveilLotusStarlightId,
+        AuricShootId,
+        AuricShootLuminousId,
+        AuricShootStarlightId,
+        SunvaultGourdId,
+        SunvaultGourdLuminousId,
+        SunvaultGourdStarlightId,
+        CrownstarSaffronId,
+        CrownstarSaffronLuminousId,
+        CrownstarSaffronStarlightId,
+        AmberthreadClusterId,
+        AmberthreadClusterLuminousId,
+        AmberthreadClusterStarlightId,
         StarbudPreserveId,
         MoonrootTonicId,
         CloudleafTeaId,
         MoonplumId,
         StarhoneyId,
+        StarfeatherEggId,
+        StarfeatherEggLuminousId,
+        StarfeatherEggStarlightId,
+        MoonfleeceId,
+        MoonfleeceLuminousId,
+        MoonfleeceStarlightId,
+        DewhornMilkId,
+        DewhornMilkLuminousId,
+        DewhornMilkStarlightId,
+        MoonmistStewId,
+        SunvaultHashId,
+        StarhoneyCustardId,
+        LanternrootBrothId,
         LumenwoodId,
-        CrystalShardId
+        CrystalShardId,
+        WhisperbloomId,
+        DewglassCloverId,
+        RainbellMossId,
+        MistcoilFernId,
+        GloamgoldBerryId,
+        SunwispPodId,
+        NightlampLichenId,
+        FrostwickRootId,
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId
     ];
 
     public static readonly IReadOnlyList<string> SeedItemIds =
@@ -925,7 +1891,15 @@ public static class DataCatalog
         DawnlaceSeedId,
         GlimmerpodSeedId,
         MistsongMintSeedId,
-        CometTuberSeedId
+        CometTuberSeedId,
+        RipplecapSeedId,
+        TideglassTaroSeedId,
+        LanternReedSeedId,
+        RainveilLotusSeedId,
+        AuricShootSeedId,
+        SunvaultGourdSeedId,
+        CrownstarSaffronSeedId,
+        AmberthreadClusterSeedId
     ];
 
     public static readonly IReadOnlyList<string> CropIds =
@@ -941,7 +1915,15 @@ public static class DataCatalog
         DawnlaceId,
         GlimmerpodId,
         MistsongMintId,
-        CometTuberId
+        CometTuberId,
+        RipplecapId,
+        TideglassTaroId,
+        LanternReedId,
+        RainveilLotusId,
+        AuricShootId,
+        SunvaultGourdId,
+        CrownstarSaffronId,
+        AmberthreadClusterId
     ];
 
     public static readonly IReadOnlyList<string> GleamriseCropIds =
@@ -960,9 +1942,81 @@ public static class DataCatalog
         CometTuberSeedId
     ];
 
+    public static readonly IReadOnlyList<string> RainveilCropIds =
+    [
+        RipplecapId,
+        TideglassTaroId,
+        LanternReedId,
+        RainveilLotusId
+    ];
+
+    public static readonly IReadOnlyList<string> RainveilSeedItemIds =
+    [
+        RipplecapSeedId,
+        TideglassTaroSeedId,
+        LanternReedSeedId,
+        RainveilLotusSeedId
+    ];
+
+    public static readonly IReadOnlyList<string> StarharvestCropIds =
+    [
+        AuricShootId,
+        SunvaultGourdId,
+        CrownstarSaffronId,
+        AmberthreadClusterId
+    ];
+
+    public static readonly IReadOnlyList<string> StarharvestSeedItemIds =
+    [
+        AuricShootSeedId,
+        SunvaultGourdSeedId,
+        CrownstarSaffronSeedId,
+        AmberthreadClusterSeedId
+    ];
+
+    public static readonly IReadOnlyList<string> LongnightGreenhouseSeedItemIds =
+    [
+        CloudleafSeedId,
+        StarbudSeedId,
+        MoonrootSeedId,
+        GlowpeaSeedId,
+        EmberbellSeedId,
+        DuskbellSeedId,
+        PrismcornSeedId,
+        DewmelonSeedId
+    ];
+
     public static readonly IReadOnlyList<string> SaplingItemIds =
     [
         MoonplumSaplingId
+    ];
+
+    public static readonly IReadOnlyList<string> FishItemIds =
+    [
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId
     ];
 
     public static readonly IReadOnlyList<string> QualityProduceItemIds =
@@ -990,7 +2044,23 @@ public static class DataCatalog
         MistsongMintLuminousId,
         MistsongMintStarlightId,
         CometTuberLuminousId,
-        CometTuberStarlightId
+        CometTuberStarlightId,
+        RipplecapLuminousId,
+        RipplecapStarlightId,
+        TideglassTaroLuminousId,
+        TideglassTaroStarlightId,
+        LanternReedLuminousId,
+        LanternReedStarlightId,
+        RainveilLotusLuminousId,
+        RainveilLotusStarlightId,
+        AuricShootLuminousId,
+        AuricShootStarlightId,
+        SunvaultGourdLuminousId,
+        SunvaultGourdStarlightId,
+        CrownstarSaffronLuminousId,
+        CrownstarSaffronStarlightId,
+        AmberthreadClusterLuminousId,
+        AmberthreadClusterStarlightId
     ];
 
     public static readonly IReadOnlyList<string> ResonanceProduceItemIds =
@@ -1051,6 +2121,38 @@ public static class DataCatalog
         CometTuberId,
         CometTuberLuminousId,
         CometTuberStarlightId,
+        RipplecapSeedId,
+        RipplecapId,
+        RipplecapLuminousId,
+        RipplecapStarlightId,
+        TideglassTaroSeedId,
+        TideglassTaroId,
+        TideglassTaroLuminousId,
+        TideglassTaroStarlightId,
+        LanternReedSeedId,
+        LanternReedId,
+        LanternReedLuminousId,
+        LanternReedStarlightId,
+        RainveilLotusSeedId,
+        RainveilLotusId,
+        RainveilLotusLuminousId,
+        RainveilLotusStarlightId,
+        AuricShootSeedId,
+        AuricShootId,
+        AuricShootLuminousId,
+        AuricShootStarlightId,
+        SunvaultGourdSeedId,
+        SunvaultGourdId,
+        SunvaultGourdLuminousId,
+        SunvaultGourdStarlightId,
+        CrownstarSaffronSeedId,
+        CrownstarSaffronId,
+        CrownstarSaffronLuminousId,
+        CrownstarSaffronStarlightId,
+        AmberthreadClusterSeedId,
+        AmberthreadClusterId,
+        AmberthreadClusterLuminousId,
+        AmberthreadClusterStarlightId,
         StarsoilFertilizerId,
         StarbudPreserveId,
         MoonrootTonicId,
@@ -1058,14 +2160,65 @@ public static class DataCatalog
         MoonplumSaplingId,
         MoonplumId,
         StarhoneyId,
+        MeadowFodderId,
+        StarfeatherEggId,
+        StarfeatherEggLuminousId,
+        StarfeatherEggStarlightId,
+        MoonfleeceId,
+        MoonfleeceLuminousId,
+        MoonfleeceStarlightId,
+        DewhornMilkId,
+        DewhornMilkLuminousId,
+        DewhornMilkStarlightId,
+        MoonmistStewId,
+        SunvaultHashId,
+        StarhoneyCustardId,
+        LanternrootBrothId,
         LumenwoodId,
         CrystalShardId,
+        WhisperbloomId,
+        DewglassCloverId,
+        RainbellMossId,
+        MistcoilFernId,
+        GloamgoldBerryId,
+        SunwispPodId,
+        NightlampLichenId,
+        FrostwickRootId,
+        PondglowMinnowId,
+        ReedwhisperBreamId,
+        LanternscaleCarpId,
+        SunveilGudgeonId,
+        RainpetalLoachId,
+        DuskglassEelId,
+        StarharvestKoiId,
+        LongnightKoiId,
+        CrystalfinDaceId,
+        QuartzscaleTroutId,
+        ShardbackPerchId,
+        StarlitCharId,
+        MistglassSmeltId,
+        StardustPikeId,
+        StarharvestChubId,
+        LongnightGlowlingId,
+        MoonwaterMinnowId,
+        MarshveilKilliId,
+        SilverreedMudfishId,
+        MooncapGobyId,
+        RainveilLampreyId,
+        StardustRayId,
+        StarharvestOrbfinId,
+        LongnightWispfishId,
         StarwovenChestId,
         MoonstonePathId,
         StarwoodFenceId,
         StarlightTorchId,
         DewfallSprinklerId,
-        GlowcombHiveId
+        GlowcombHiveId,
+        MoonsteelShortbladeId,
+        DawnpathCompassId,
+        TideglassTabletId,
+        HushedGleambellId,
+        StarweaveSpindleId
     ];
 
     public static readonly IReadOnlyDictionary<string, FarmObjectDefinition>
@@ -1122,6 +2275,211 @@ public static class DataCatalog
                 StardustWindWeatherId,
                 "weather.stardust_wind",
                 2
+            ),
+            [LongnightSnowWeatherId] = new(
+                LongnightSnowWeatherId,
+                "weather.longnight_snow",
+                -1,
+                EffectKey: "weather.longnight_snow.effect",
+                OutdoorMovementMultiplier: 0.85f
+            )
+        };
+
+    public static readonly IReadOnlyDictionary<string, FishDefinition> Fishes =
+        new Dictionary<string, FishDefinition>(StringComparer.Ordinal)
+        {
+            [PondglowMinnowId] = new(
+                PondglowMinnowId,
+                PondglowMinnowId,
+                FishingWaterKind.HomesteadPond,
+                "fish.pondglow_minnow"
+            ),
+            [ReedwhisperBreamId] = new(
+                ReedwhisperBreamId,
+                ReedwhisperBreamId,
+                FishingWaterKind.HomesteadPond,
+                "fish.reedwhisper_bream",
+                StartMinute: 10 * 60,
+                EndMinute: 15 * 60
+            ),
+            [LanternscaleCarpId] = new(
+                LanternscaleCarpId,
+                LanternscaleCarpId,
+                FishingWaterKind.HomesteadPond,
+                "fish.lanternscale_carp",
+                StartMinute: 15 * 60,
+                EndMinute: 20 * 60
+            ),
+            [SunveilGudgeonId] = new(
+                SunveilGudgeonId,
+                SunveilGudgeonId,
+                FishingWaterKind.HomesteadPond,
+                "fish.sunveil_gudgeon",
+                [CalendarSystem.GleamriseSeasonId],
+                StartMinute: 12 * 60,
+                EndMinute: 18 * 60
+            ),
+            [RainpetalLoachId] = new(
+                RainpetalLoachId,
+                RainpetalLoachId,
+                FishingWaterKind.HomesteadPond,
+                "fish.rainpetal_loach",
+                WeatherId: RainWeatherId
+            ),
+            [DuskglassEelId] = new(
+                DuskglassEelId,
+                DuskglassEelId,
+                FishingWaterKind.HomesteadPond,
+                "fish.duskglass_eel",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [StarharvestKoiId] = new(
+                StarharvestKoiId,
+                StarharvestKoiId,
+                FishingWaterKind.HomesteadPond,
+                "fish.starharvest_koi",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: 8 * 60,
+                EndMinute: 18 * 60
+            ),
+            [LongnightKoiId] = new(
+                LongnightKoiId,
+                LongnightKoiId,
+                FishingWaterKind.HomesteadPond,
+                "fish.longnight_koi",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [CrystalfinDaceId] = new(
+                CrystalfinDaceId,
+                CrystalfinDaceId,
+                FishingWaterKind.CrystalStream,
+                "fish.crystalfin_dace"
+            ),
+            [QuartzscaleTroutId] = new(
+                QuartzscaleTroutId,
+                QuartzscaleTroutId,
+                FishingWaterKind.CrystalStream,
+                "fish.quartzscale_trout",
+                StartMinute: 10 * 60,
+                EndMinute: 15 * 60
+            ),
+            [ShardbackPerchId] = new(
+                ShardbackPerchId,
+                ShardbackPerchId,
+                FishingWaterKind.CrystalStream,
+                "fish.shardback_perch",
+                StartMinute: 14 * 60,
+                EndMinute: 19 * 60
+            ),
+            [StarlitCharId] = new(
+                StarlitCharId,
+                StarlitCharId,
+                FishingWaterKind.CrystalStream,
+                "fish.starlit_char",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [MistglassSmeltId] = new(
+                MistglassSmeltId,
+                MistglassSmeltId,
+                FishingWaterKind.CrystalStream,
+                "fish.mistglass_smelt",
+                WeatherId: RainWeatherId
+            ),
+            [StardustPikeId] = new(
+                StardustPikeId,
+                StardustPikeId,
+                FishingWaterKind.CrystalStream,
+                "fish.stardust_pike",
+                StartMinute: 12 * 60,
+                EndMinute: GameClock.EndMinute,
+                WeatherId: StardustWindWeatherId
+            ),
+            [StarharvestChubId] = new(
+                StarharvestChubId,
+                StarharvestChubId,
+                FishingWaterKind.CrystalStream,
+                "fish.starharvest_chub",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: GameClock.StartMinute,
+                EndMinute: 14 * 60
+            ),
+            [LongnightGlowlingId] = new(
+                LongnightGlowlingId,
+                LongnightGlowlingId,
+                FishingWaterKind.CrystalStream,
+                "fish.longnight_glowling",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [MoonwaterMinnowId] = new(
+                MoonwaterMinnowId,
+                MoonwaterMinnowId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.moonwater_minnow"
+            ),
+            [MarshveilKilliId] = new(
+                MarshveilKilliId,
+                MarshveilKilliId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.marshveil_killi",
+                StartMinute: 10 * 60,
+                EndMinute: 16 * 60
+            ),
+            [SilverreedMudfishId] = new(
+                SilverreedMudfishId,
+                SilverreedMudfishId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.silverreed_mudfish",
+                StartMinute: 14 * 60,
+                EndMinute: 20 * 60
+            ),
+            [MooncapGobyId] = new(
+                MooncapGobyId,
+                MooncapGobyId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.mooncap_goby",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
+            ),
+            [RainveilLampreyId] = new(
+                RainveilLampreyId,
+                RainveilLampreyId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.rainveil_lamprey",
+                [CalendarSystem.RainveilSeasonId],
+                WeatherId: RainWeatherId
+            ),
+            [StardustRayId] = new(
+                StardustRayId,
+                StardustRayId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.stardust_ray",
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute,
+                WeatherId: StardustWindWeatherId
+            ),
+            [StarharvestOrbfinId] = new(
+                StarharvestOrbfinId,
+                StarharvestOrbfinId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.starharvest_orbfin",
+                [CalendarSystem.StarharvestSeasonId],
+                StartMinute: 10 * 60,
+                EndMinute: 18 * 60
+            ),
+            [LongnightWispfishId] = new(
+                LongnightWispfishId,
+                LongnightWispfishId,
+                FishingWaterKind.MoonwaterWetlands,
+                "fish.longnight_wispfish",
+                [CalendarSystem.LongnightSeasonId],
+                StartMinute: 18 * 60,
+                EndMinute: GameClock.EndMinute
             )
         };
 
@@ -1246,6 +2604,80 @@ public static class DataCatalog
                 [0, 1, 2, 4],
                 0,
                 SeasonIds: [CalendarSystem.GleamriseSeasonId]
+            ),
+            [RipplecapId] = new(
+                RipplecapId,
+                RipplecapSeedId,
+                RipplecapId,
+                "crop.ripplecap",
+                [0, 1, 2],
+                0,
+                SeasonIds: [CalendarSystem.RainveilSeasonId]
+            ),
+            [TideglassTaroId] = new(
+                TideglassTaroId,
+                TideglassTaroSeedId,
+                TideglassTaroId,
+                "crop.tideglass_taro",
+                [0, 1, 3, 4],
+                0,
+                SeasonIds: [CalendarSystem.RainveilSeasonId]
+            ),
+            [LanternReedId] = new(
+                LanternReedId,
+                LanternReedSeedId,
+                LanternReedId,
+                "crop.lantern_reed",
+                [0, 1, 2, 4],
+                0,
+                SeasonIds: [CalendarSystem.RainveilSeasonId],
+                RegrowthNights: 2
+            ),
+            [RainveilLotusId] = new(
+                RainveilLotusId,
+                RainveilLotusSeedId,
+                RainveilLotusId,
+                "crop.rainveil_lotus",
+                [0, 1, 3, 5],
+                0,
+                SeasonIds: [CalendarSystem.RainveilSeasonId]
+            ),
+            [AuricShootId] = new(
+                AuricShootId,
+                AuricShootSeedId,
+                AuricShootId,
+                "crop.auric_shoot",
+                [0, 1, 2, 3],
+                0,
+                SeasonIds: [CalendarSystem.StarharvestSeasonId]
+            ),
+            [SunvaultGourdId] = new(
+                SunvaultGourdId,
+                SunvaultGourdSeedId,
+                SunvaultGourdId,
+                "crop.sunvault_gourd",
+                [0, 1, 3, 4],
+                0,
+                SeasonIds: [CalendarSystem.StarharvestSeasonId]
+            ),
+            [CrownstarSaffronId] = new(
+                CrownstarSaffronId,
+                CrownstarSaffronSeedId,
+                CrownstarSaffronId,
+                "crop.crownstar_saffron",
+                [0, 2, 4, 6],
+                0,
+                SeasonIds: [CalendarSystem.StarharvestSeasonId]
+            ),
+            [AmberthreadClusterId] = new(
+                AmberthreadClusterId,
+                AmberthreadClusterSeedId,
+                AmberthreadClusterId,
+                "crop.amberthread_cluster",
+                [0, 1, 3, 5],
+                0,
+                SeasonIds: [CalendarSystem.StarharvestSeasonId],
+                RegrowthNights: 3
             )
         };
 
@@ -1374,6 +2806,77 @@ public static class DataCatalog
             )
         };
 
+    public static readonly IReadOnlyList<string> CookedDishItemIds =
+    [
+        MoonmistStewId,
+        SunvaultHashId,
+        StarhoneyCustardId,
+        LanternrootBrothId
+    ];
+
+    public static readonly IReadOnlyDictionary<string, CookingRecipeDefinition>
+        CookingRecipes =
+            new Dictionary<string, CookingRecipeDefinition>(
+                StringComparer.Ordinal
+            )
+            {
+                [MoonmistStewRecipeId] = new(
+                    MoonmistStewRecipeId,
+                    MoonmistStewId,
+                    1,
+                    [
+                        new CraftingIngredient(RipplecapId, 1),
+                        new CraftingIngredient(MistsongMintId, 1),
+                        new CraftingIngredient(DewhornMilkId, 1)
+                    ],
+                    "recipe.moonmist_stew"
+                ),
+                [SunvaultHashRecipeId] = new(
+                    SunvaultHashRecipeId,
+                    SunvaultHashId,
+                    1,
+                    [
+                        new CraftingIngredient(SunvaultGourdId, 1),
+                        new CraftingIngredient(CometTuberId, 1)
+                    ],
+                    "recipe.sunvault_hash"
+                ),
+                [StarhoneyCustardRecipeId] = new(
+                    StarhoneyCustardRecipeId,
+                    StarhoneyCustardId,
+                    1,
+                    [
+                        new CraftingIngredient(StarhoneyId, 1),
+                        new CraftingIngredient(StarfeatherEggId, 1),
+                        new CraftingIngredient(MoonplumId, 1)
+                    ],
+                    "recipe.starhoney_custard"
+                ),
+                [LanternrootBrothRecipeId] = new(
+                    LanternrootBrothRecipeId,
+                    LanternrootBrothId,
+                    1,
+                    [
+                        new CraftingIngredient(LanternReedId, 1),
+                        new CraftingIngredient(MoonrootId, 1),
+                        new CraftingIngredient(TideglassTaroId, 1)
+                    ],
+                    "recipe.lanternroot_broth"
+                )
+            };
+
+    public static readonly IReadOnlyDictionary<string, CookedDishDefinition>
+        CookedDishes =
+            new Dictionary<string, CookedDishDefinition>(
+                StringComparer.Ordinal
+            )
+            {
+                [MoonmistStewId] = new(MoonmistStewId, 60),
+                [SunvaultHashId] = new(SunvaultHashId, 45),
+                [StarhoneyCustardId] = new(StarhoneyCustardId, 70),
+                [LanternrootBrothId] = new(LanternrootBrothId, 55)
+            };
+
     public static readonly IReadOnlyList<DailyCommissionDefinition> DailyCommissionRotation =
     [
         new(
@@ -1490,20 +2993,286 @@ public static class DataCatalog
             ]
         );
 
+    public static readonly StarlightPedestalDefinition HomesteadStarlight =
+        new(
+            HomesteadStarlightId,
+            "starlight.homestead.name",
+            "starlight.homestead.region",
+            "starlight.homestead.reward_title",
+            "starlight.homestead.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    HomesteadHarvestNodeId,
+                    "starlight.node.homestead_harvest.title",
+                    "starlight.node.homestead_harvest.description",
+                    4,
+                    CropIds.Select(itemId =>
+                        new StarlightContributionOption(itemId, 1)
+                    ).ToArray()
+                ),
+                new StarlightNodeDefinition(
+                    HomesteadArtisanNodeId,
+                    "starlight.node.homestead_artisan.title",
+                    "starlight.node.homestead_artisan.description",
+                    3,
+                    [
+                        new StarlightContributionOption(StarbudPreserveId, 1),
+                        new StarlightContributionOption(MoonrootTonicId, 1),
+                        new StarlightContributionOption(CloudleafTeaId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    HomesteadBuildingNodeId,
+                    "starlight.node.homestead_building.title",
+                    "starlight.node.homestead_building.description",
+                    3,
+                    [
+                        new StarlightContributionOption(MoonstonePathId, 1),
+                        new StarlightContributionOption(StarwoodFenceId, 1),
+                        new StarlightContributionOption(StarlightTorchId, 1),
+                        new StarlightContributionOption(DewfallSprinklerId, 1)
+                    ]
+                )
+            ]
+        );
+
+    public static readonly StarlightPedestalDefinition MeadowStarlight =
+        new(
+            MeadowStarlightId,
+            "starlight.meadow.name",
+            "starlight.meadow.region",
+            "starlight.meadow.reward_title",
+            "starlight.meadow.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    MeadowBloomsNodeId,
+                    "starlight.node.meadow_blooms.title",
+                    "starlight.node.meadow_blooms.description",
+                    3,
+                    [
+                        new StarlightContributionOption(DawnlaceId, 1),
+                        new StarlightContributionOption(EmberbellId, 1),
+                        new StarlightContributionOption(DuskbellId, 1),
+                        new StarlightContributionOption(RainveilLotusId, 1),
+                        new StarlightContributionOption(
+                            CrownstarSaffronId,
+                            1
+                        )
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MeadowBountyNodeId,
+                    "starlight.node.meadow_bounty.title",
+                    "starlight.node.meadow_bounty.description",
+                    4,
+                    [
+                        new StarlightContributionOption(StarhoneyId, 1),
+                        new StarlightContributionOption(
+                            StarfeatherEggId,
+                            1
+                        ),
+                        new StarlightContributionOption(MoonfleeceId, 1),
+                        new StarlightContributionOption(DewhornMilkId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MeadowCelebrationNodeId,
+                    "starlight.node.meadow_celebration.title",
+                    "starlight.node.meadow_celebration.description",
+                    1,
+                    [],
+                    StarlightNodeSourceKind.FestivalResults,
+                    [
+                        FestivalCatalog.GleamrisePlantingFestivalId,
+                        FestivalCatalog.StarharvestMarketFestivalId
+                    ]
+                )
+            ],
+            "starlight.meadow.activated"
+        );
+
+    public static readonly StarlightPedestalDefinition MoonwaterStarlight =
+        new(
+            MoonwaterStarlightId,
+            "starlight.moonwater.name",
+            "starlight.moonwater.region",
+            "starlight.moonwater.reward_title",
+            "starlight.moonwater.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    MoonwaterLocalFishNodeId,
+                    "starlight.node.moonwater_local.title",
+                    "starlight.node.moonwater_local.description",
+                    3,
+                    [
+                        new StarlightContributionOption(MoonwaterMinnowId, 1),
+                        new StarlightContributionOption(MarshveilKilliId, 1),
+                        new StarlightContributionOption(
+                            SilverreedMudfishId,
+                            1
+                        ),
+                        new StarlightContributionOption(MooncapGobyId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MoonwaterWeatherFishNodeId,
+                    "starlight.node.moonwater_weather.title",
+                    "starlight.node.moonwater_weather.description",
+                    2,
+                    [
+                        new StarlightContributionOption(RainveilLampreyId, 1),
+                        new StarlightContributionOption(StardustRayId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    MoonwaterSeasonalFishNodeId,
+                    "starlight.node.moonwater_seasonal.title",
+                    "starlight.node.moonwater_seasonal.description",
+                    2,
+                    [
+                        new StarlightContributionOption(
+                            StarharvestOrbfinId,
+                            1
+                        ),
+                        new StarlightContributionOption(
+                            LongnightWispfishId,
+                            1
+                        )
+                    ]
+                )
+            ],
+            "starlight.moonwater.activated"
+        );
+
+    public static readonly StarlightPedestalDefinition CrystalValeStarlight =
+        new(
+            CrystalValeStarlightId,
+            "starlight.crystal_vale.name",
+            "starlight.crystal_vale.region",
+            "starlight.crystal_vale.reward_title",
+            "starlight.crystal_vale.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    CrystalValeMineralChorusNodeId,
+                    "starlight.node.crystal_vale_mineral_chorus.title",
+                    "starlight.node.crystal_vale_mineral_chorus.description",
+                    4,
+                    [
+                        new StarlightContributionOption(LumenSlateOreId, 1),
+                        new StarlightContributionOption(MoonveinOreId, 1),
+                        new StarlightContributionOption(PrismheartOreId, 1),
+                        new StarlightContributionOption(StarironOreId, 1)
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    CrystalValeTemperedShovelNodeId,
+                    "starlight.node.crystal_vale_tempered_shovel.title",
+                    "starlight.node.crystal_vale_tempered_shovel.description",
+                    1,
+                    [],
+                    StarlightNodeSourceKind.Milestones,
+                    [ToolProgressionCatalog.ShovelBronzeStarUpgradeId]
+                ),
+                new StarlightNodeDefinition(
+                    CrystalValeDepthAnchorNodeId,
+                    "starlight.node.crystal_vale_depth_anchor.title",
+                    "starlight.node.crystal_vale_depth_anchor.description",
+                    1,
+                    [],
+                    StarlightNodeSourceKind.Milestones,
+                    [MiningCatalog.CrystalGrottoFifthRoomAnchorId]
+                )
+            ],
+            "starlight.crystal_vale.activated",
+            CrystalRuinsPassageRewardId
+        );
+
+    public static readonly StarlightPedestalDefinition StarfallRuinsStarlight =
+        new(
+            StarfallRuinsStarlightId,
+            "starlight.starfall_ruins.name",
+            "starlight.starfall_ruins.region",
+            "starlight.starfall_ruins.reward_title",
+            "starlight.starfall_ruins.reward_description",
+            [
+                new StarlightNodeDefinition(
+                    StarfallMemoryArchiveNodeId,
+                    "starlight.node.starfall_memory_archive.title",
+                    "starlight.node.starfall_memory_archive.description",
+                    3,
+                    [],
+                    StarlightNodeSourceKind.Milestones,
+                    [
+                        DawnpathCompassId,
+                        TideglassTabletId,
+                        HushedGleambellId,
+                        StarweaveSpindleId
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    StarfallNightwatchTrialNodeId,
+                    "starlight.node.starfall_nightwatch_trial.title",
+                    "starlight.node.starfall_nightwatch_trial.description",
+                    3,
+                    [],
+                    StarlightNodeSourceKind.Milestones,
+                    [
+                        StarfallRuinsTrialCatalog.ShardlingEnemyId,
+                        StarfallRuinsTrialCatalog.PrismWispEnemyId,
+                        StarfallRuinsTrialCatalog.HollowSentinelEnemyId
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    StarfallTrustedPathsNodeId,
+                    "starlight.node.starfall_trusted_paths.title",
+                    "starlight.node.starfall_trusted_paths.description",
+                    2,
+                    [],
+                    StarlightNodeSourceKind.Milestones,
+                    [
+                        KaelTrustedRelationshipMilestoneId,
+                        LioraTrustedRelationshipMilestoneId
+                    ]
+                ),
+                new StarlightNodeDefinition(
+                    StarfallFiveLightsNodeId,
+                    "starlight.node.starfall_five_lights.title",
+                    "starlight.node.starfall_five_lights.description",
+                    5,
+                    [],
+                    StarlightNodeSourceKind.PedestalRewards,
+                    [
+                        WoodlandStarlightId,
+                        HomesteadStarlightId,
+                        MeadowStarlightId,
+                        MoonwaterStarlightId,
+                        CrystalValeStarlightId
+                    ]
+                )
+            ],
+            "starlight.starfall_ruins.activated",
+            StarfallSixfoldConvergenceRewardId,
+            RequiresManualActivation: true
+        );
+
     public static readonly IReadOnlyDictionary<string, StarlightPedestalDefinition>
         StarlightPedestals =
             new Dictionary<string, StarlightPedestalDefinition>(
                 StringComparer.Ordinal
             )
             {
-                [WoodlandStarlight.Id] = WoodlandStarlight
+                [WoodlandStarlight.Id] = WoodlandStarlight,
+                [HomesteadStarlight.Id] = HomesteadStarlight,
+                [MeadowStarlight.Id] = MeadowStarlight,
+                [MoonwaterStarlight.Id] = MoonwaterStarlight,
+                [CrystalValeStarlight.Id] = CrystalValeStarlight,
+                [StarfallRuinsStarlight.Id] = StarfallRuinsStarlight
             };
 
     public static readonly IReadOnlyDictionary<string, StarlightNodeDefinition>
-        StarlightNodes = WoodlandStarlight.Nodes.ToDictionary(
-            node => node.Id,
-            StringComparer.Ordinal
-        );
+        StarlightNodes = StarlightPedestals.Values
+            .SelectMany(pedestal => pedestal.Nodes)
+            .ToDictionary(node => node.Id, StringComparer.Ordinal);
 
     public static IReadOnlyList<string> SeedItemIdsForDay(int day) =>
         SeedItemIds.Where(itemId => IsSeedAvailableOnDay(itemId, day))
@@ -1578,18 +3347,20 @@ public static class DataCatalog
     public static IReadOnlyList<string> ItemFamilyIds(string itemId)
     {
         var baseItemId = BaseItemId(itemId);
-        if (!Crops.ContainsKey(baseItemId))
+        var qualityVariants = Items.Values
+            .Where(item => item.BaseItemId == baseItemId)
+            .OrderBy(item => item.Quality)
+            .Select(item => item.Id)
+            .ToArray();
+        if (!Crops.ContainsKey(baseItemId) && qualityVariants.Length == 0)
         {
             return [itemId];
         }
 
-        var family = new List<string>
-        {
-            baseItemId,
-            ProduceItemId(baseItemId, CropQuality.Luminous),
-            ProduceItemId(baseItemId, CropQuality.Starlight)
-        };
-        if (Crops[baseItemId].Resonances is { Count: > 0 } resonances)
+        var family = new List<string> { baseItemId };
+        family.AddRange(qualityVariants);
+        if (Crops.TryGetValue(baseItemId, out var crop) &&
+            crop.Resonances is { Count: > 0 } resonances)
         {
             family.AddRange(resonances.Select(resonance => resonance.ItemId));
         }

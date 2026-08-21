@@ -55,4 +55,4 @@
 - 每次相关改动至少执行 C# 编译、核心测试、Godot 无界面导入/启动和 `git diff --check`。
 - 目标高亮、生成美术、像素缩放或布局变化必须在当前 macOS 上实际查看；Windows 与 Linux 只在对应系统运行后才能声称实机通过。
 - 未经用户明确授权，不提交、推送、发布、清理工作区或重新导出分享包。
-- 仓库映射到独立 Vault `/Users/edy/Documents/Obsidian Luminfield/Luminfield`；验证通过后按项目工作流更新模块说明和当天变更记录，不写入 `Obsidian Personal` 或 `Obsidian Work`。
+- 仓库通过 Git remote 映射到独立 Obsidian Vault `Obsidian Luminfield` 内的 `Luminfield/` 项目 Hub；验证通过后按项目工作流更新模块说明和当天变更记录，不写入其他个人或工作 Vault。

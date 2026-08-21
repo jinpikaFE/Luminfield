@@ -26,9 +26,7 @@ public sealed class ShippingBinSystem
 
     public IReadOnlyDictionary<string, int> Pending => _pending;
     public int PendingItemCount => _pending.Values.Sum();
-    public int PendingValue => _pending.Sum(pair =>
-        pair.Value * DataCatalog.Item(pair.Key).SellPrice
-    );
+    public int PendingValue => PendingValueFor();
     public ShippingSettlement LastSettlement { get; private set; } =
         ShippingSettlement.Empty;
 
@@ -58,11 +56,21 @@ public sealed class ShippingBinSystem
         var lines = (last?.Entries ?? [])
             .Where(entry => IsSellable(entry.ItemId) && entry.Count > 0)
             .GroupBy(entry => entry.ItemId, StringComparer.Ordinal)
-            .Select(group => new ShippingLine(
-                group.Key,
-                Math.Min(group.Sum(entry => entry.Count), Inventory.SlotCount * 99),
-                DataCatalog.Item(group.Key).SellPrice
-            ))
+            .Select(group =>
+            {
+                var savedPrice = group.Select(entry => entry.UnitPrice)
+                    .FirstOrDefault(price => price > 0);
+                return new ShippingLine(
+                    group.Key,
+                    Math.Min(
+                        group.Sum(entry => entry.Count),
+                        Inventory.SlotCount * 99
+                    ),
+                    savedPrice > 0
+                        ? savedPrice
+                        : DataCatalog.Item(group.Key).SellPrice
+                );
+            })
             .OrderBy(line => SellableOrder(line.ItemId))
             .ToArray();
         LastSettlement = last is { Day: > 0 } && lines.Length > 0
@@ -117,13 +125,23 @@ public sealed class ShippingBinSystem
     public int PendingCount(string itemId) =>
         _pending.GetValueOrDefault(itemId);
 
-    public ShippingSettlement Settle(int day)
+    public int PendingValueFor(Func<string, int>? unitPrice = null)
     {
+        unitPrice ??= itemId => DataCatalog.Item(itemId).SellPrice;
+        return _pending.Sum(pair => pair.Value * unitPrice(pair.Key));
+    }
+
+    public ShippingSettlement Settle(
+        int day,
+        Func<string, int>? unitPrice = null
+    )
+    {
+        unitPrice ??= itemId => DataCatalog.Item(itemId).SellPrice;
         var lines = _pending
             .Select(pair => new ShippingLine(
                 pair.Key,
                 pair.Value,
-                DataCatalog.Item(pair.Key).SellPrice
+                unitPrice(pair.Key)
             ))
             .OrderBy(line => SellableOrder(line.ItemId))
             .ToArray();
@@ -150,7 +168,8 @@ public sealed class ShippingBinSystem
                 .Select(line => new ShippingEntrySave
                 {
                     ItemId = line.ItemId,
-                    Count = line.Count
+                    Count = line.Count,
+                    UnitPrice = line.UnitPrice
                 })
                 .ToList()
         }

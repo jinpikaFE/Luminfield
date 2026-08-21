@@ -151,7 +151,11 @@ public sealed class StorageSystem
         foreach (var chestSave in save?.Chests ?? [])
         {
             var position = new GridPosition(chestSave.X, chestSave.Y);
-            if (CheckPlacement(position, farm) != ChestPlacementIssue.None)
+            if (CheckPlacement(
+                    position,
+                    farm,
+                    allowAnimalBuildingLegacyCell: true
+                ) != ChestPlacementIssue.None)
             {
                 continue;
             }
@@ -170,7 +174,8 @@ public sealed class StorageSystem
     public ChestPlacementIssue CheckPlacement(
         GridPosition position,
         FarmSystem farm,
-        Func<GridPosition, bool>? extraOccupied = null
+        Func<GridPosition, bool>? extraOccupied = null,
+        bool allowAnimalBuildingLegacyCell = false
     )
     {
         if (!WorldDefinition.IsHomeCell(position))
@@ -186,6 +191,8 @@ public sealed class StorageSystem
 
         if (WorldDefinition.IsBlocked(position) ||
             FarmLayout.IsStaticBlocked(position) ||
+            (!allowAnimalBuildingLegacyCell &&
+             FarmLayout.IsAnimalBuildingProtectedCell(position)) ||
             FarmSystem.IsPlantingBed(position) ||
             farm.IsReserved(position) ||
             farm.Tiles.ContainsKey(position))

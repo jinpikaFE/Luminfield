@@ -4,7 +4,7 @@ public sealed class Inventory
 {
     public const int HotbarSlotCount = 8;
     public const int SlotCount = 24;
-    public const int StartingToolCount = 5;
+    public const int StartingToolCount = 6;
 
     private static readonly string[] StartingTools =
     [
@@ -12,7 +12,8 @@ public sealed class Inventory
         DataCatalog.ShovelId,
         DataCatalog.MacheteId,
         DataCatalog.WateringCanId,
-        DataCatalog.BucketId
+        DataCatalog.BucketId,
+        DataCatalog.FishingRodId
     ];
 
     private readonly List<InventorySlot> _slots =
@@ -216,28 +217,31 @@ public sealed class Inventory
         int outputCount
     )
     {
-        var simulated = _slots.Select(slot => slot.Clone()).ToList();
-        foreach (var removal in removals)
-        {
-            if (!RemoveFrom(simulated, removal.ItemId, removal.Count))
-            {
-                return false;
-            }
-        }
-
-        if (!AddTo(simulated, outputItemId, outputCount))
+        if (!TrySimulateExchange(
+                removals,
+                outputItemId,
+                outputCount,
+                out var simulated
+            ))
         {
             return false;
         }
 
-        foreach (var removal in removals)
-        {
-            _ = RemoveFrom(_slots, removal.ItemId, removal.Count);
-        }
-        _ = AddTo(_slots, outputItemId, outputCount);
+        ApplySimulation(simulated);
         Changed?.Invoke();
         return true;
     }
+
+    public bool CanExchange(
+        IReadOnlyList<CraftingIngredient> removals,
+        string outputItemId,
+        int outputCount
+    ) => TrySimulateExchange(
+        removals,
+        outputItemId,
+        outputCount,
+        out _
+    );
 
     public bool TryRemoveMany(IReadOnlyList<CraftingIngredient> removals)
     {
@@ -296,6 +300,24 @@ public sealed class Inventory
 
     public bool TryAddMany(IReadOnlyList<CraftingIngredient> additions)
     {
+        if (!CanAddMany(additions))
+        {
+            return false;
+        }
+
+        var simulated = _slots.Select(slot => slot.Clone()).ToList();
+        foreach (var addition in additions)
+        {
+            _ = AddTo(simulated, addition.ItemId, addition.Count);
+        }
+
+        ApplySimulation(simulated);
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool CanAddMany(IReadOnlyList<CraftingIngredient> additions)
+    {
         if (additions.Count == 0 ||
             additions.Any(addition => addition.Count <= 0))
         {
@@ -312,8 +334,6 @@ public sealed class Inventory
             }
         }
 
-        ApplySimulation(simulated);
-        Changed?.Invoke();
         return true;
     }
 
@@ -509,5 +529,32 @@ public sealed class Inventory
             _slots[index].ItemId = simulated[index].ItemId;
             _slots[index].Count = simulated[index].Count;
         }
+    }
+
+    private bool TrySimulateExchange(
+        IReadOnlyList<CraftingIngredient> removals,
+        string outputItemId,
+        int outputCount,
+        out List<InventorySlot> simulated
+    )
+    {
+        simulated = _slots.Select(slot => slot.Clone()).ToList();
+        if (removals.Count == 0 ||
+            removals.Any(removal => removal.Count <= 0) ||
+            outputCount <= 0 ||
+            !DataCatalog.Items.ContainsKey(outputItemId))
+        {
+            return false;
+        }
+
+        foreach (var removal in removals)
+        {
+            if (!RemoveFrom(simulated, removal.ItemId, removal.Count))
+            {
+                return false;
+            }
+        }
+
+        return AddTo(simulated, outputItemId, outputCount);
     }
 }

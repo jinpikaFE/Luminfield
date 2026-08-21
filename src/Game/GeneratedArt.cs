@@ -20,6 +20,29 @@ internal static class GeneratedArt
     private static readonly Texture2D PhaseAAssets =
         GD.Load<Texture2D>("res://assets/generated/phase_a_systems.png");
 
+    private static readonly Texture2D LongnightSnowWeather =
+        GD.Load<Texture2D>(
+            "res://assets/generated/longnight_snow_weather.png"
+        );
+
+    private static readonly Rect2[] LongnightSnowflakeRegions =
+    [
+        new Rect2(172, 263, 72, 76),
+        new Rect2(485, 236, 114, 129),
+        new Rect2(793, 171, 230, 262),
+        new Rect2(1154, 116, 303, 352)
+    ];
+
+    private static readonly Rect2[] LongnightSnowGustRegions =
+    [
+        new Rect2(81, 641, 265, 152),
+        new Rect2(428, 651, 271, 155),
+        new Rect2(781, 659, 280, 154)
+    ];
+
+    private static readonly Rect2 LongnightSnowIconRegion =
+        new(1172, 610, 266, 262);
+
     private static readonly Texture2D CropExpansion =
         GD.Load<Texture2D>("res://assets/generated/crop_expansion.png");
 
@@ -28,6 +51,12 @@ internal static class GeneratedArt
 
     private static readonly Texture2D GleamriseResonance =
         GD.Load<Texture2D>("res://assets/generated/gleamrise_resonance.png");
+
+    private static readonly Texture2D RainveilCrops =
+        GD.Load<Texture2D>("res://assets/generated/rainveil_crops.png");
+
+    private static readonly Texture2D StarharvestCrops =
+        GD.Load<Texture2D>("res://assets/generated/starharvest_crops.png");
 
     private static readonly Texture2D StarwovenChest =
         GD.Load<Texture2D>("res://assets/generated/starwoven_chest.png");
@@ -68,6 +97,16 @@ internal static class GeneratedArt
     private static readonly Texture2D VillageNpcsExpansion =
         GD.Load<Texture2D>(
             "res://assets/generated/village_npcs_expansion.png"
+        );
+
+    private static readonly Texture2D VillageNpcsWave2 =
+        GD.Load<Texture2D>(
+            "res://assets/generated/village_npcs_wave_2.png"
+        );
+
+    private static readonly Texture2D VillageNpcsWave3 =
+        GD.Load<Texture2D>(
+            "res://assets/generated/village_npcs_wave_3.png"
         );
 
     private static readonly Texture2D RelationshipGifts =
@@ -117,6 +156,25 @@ internal static class GeneratedArt
             {
                 [DataCatalog.RainwovenDawnlaceId] = 0,
                 [DataCatalog.StarwindGlimmerpodId] = 1
+            };
+
+    private static readonly IReadOnlyDictionary<string, int> RainveilCropRows =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [DataCatalog.RipplecapId] = 0,
+            [DataCatalog.TideglassTaroId] = 1,
+            [DataCatalog.LanternReedId] = 2,
+            [DataCatalog.RainveilLotusId] = 3
+        };
+
+    private static readonly IReadOnlyDictionary<string, int>
+        StarharvestCropRows =
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                [DataCatalog.AuricShootId] = 0,
+                [DataCatalog.SunvaultGourdId] = 1,
+                [DataCatalog.CrownstarSaffronId] = 2,
+                [DataCatalog.AmberthreadClusterId] = 3
             };
 
     private static readonly Rect2 StarbudPreserveRegion = new(185, 125, 275, 330);
@@ -197,7 +255,7 @@ internal static class GeneratedArt
     private static readonly Rect2 MoonplumIconRegion =
         new(385, 512, 361, 421);
     private static readonly Rect2 StarhoneyIconRegion =
-        new(806, 512, 346, 439);
+        new(806, 640, 304, 321);
     private static readonly Rect2 GlowcombHiveIconRegion =
         new(1152, 512, 319, 446);
     private static readonly Rect2 StarsoilFertilizerItemRegion =
@@ -281,6 +339,60 @@ internal static class GeneratedArt
             new Rect2(352, 1133, 133, 235),
             new Rect2(646, 1133, 109, 237),
             new Rect2(920, 1133, 109, 237)
+        ]
+    ];
+    private static readonly Rect2[][] VillageNpcWave2Regions =
+    [
+        [
+            new Rect2(63, 20, 129, 218),
+            new Rect2(321, 20, 125, 218),
+            new Rect2(594, 20, 92, 218),
+            new Rect2(850, 20, 92, 218)
+        ],
+        [
+            new Rect2(68, 276, 120, 218),
+            new Rect2(325, 276, 117, 218),
+            new Rect2(592, 276, 96, 218),
+            new Rect2(849, 276, 94, 218)
+        ],
+        [
+            new Rect2(73, 532, 109, 218),
+            new Rect2(329, 532, 109, 218),
+            new Rect2(594, 532, 92, 218),
+            new Rect2(850, 532, 92, 218)
+        ],
+        [
+            new Rect2(62, 788, 132, 218),
+            new Rect2(318, 788, 131, 218),
+            new Rect2(591, 788, 97, 218),
+            new Rect2(848, 788, 96, 218)
+        ]
+    ];
+    private static readonly Rect2[][] VillageNpcWave3Regions =
+    [
+        [
+            new Rect2(73, 20, 109, 218),
+            new Rect2(330, 20, 108, 218),
+            new Rect2(596, 20, 88, 218),
+            new Rect2(852, 20, 88, 218)
+        ],
+        [
+            new Rect2(60, 276, 135, 218),
+            new Rect2(318, 276, 132, 218),
+            new Rect2(587, 276, 106, 218),
+            new Rect2(844, 276, 103, 218)
+        ],
+        [
+            new Rect2(63, 532, 130, 218),
+            new Rect2(323, 532, 122, 218),
+            new Rect2(595, 532, 89, 218),
+            new Rect2(852, 532, 88, 218)
+        ],
+        [
+            new Rect2(73, 788, 109, 218),
+            new Rect2(330, 788, 108, 218),
+            new Rect2(596, 788, 88, 218),
+            new Rect2(852, 788, 88, 218)
         ]
     ];
 
@@ -385,8 +497,33 @@ internal static class GeneratedArt
         sprite.Scale = Vector2.One * (56f / source.Size.Y);
     }
 
-    public static Texture2D CreateWeatherIcon(string weatherId) =>
-        CreatePhaseAIcon(DataCatalog.Weather(weatherId).AtlasIndex);
+    public static Texture2D CreateWeatherIcon(string weatherId)
+    {
+        if (weatherId == DataCatalog.LongnightSnowWeatherId)
+        {
+            return new AtlasTexture
+            {
+                Atlas = LongnightSnowWeather,
+                Region = LongnightSnowIconRegion,
+                FilterClip = true
+            };
+        }
+
+        return CreatePhaseAIcon(DataCatalog.Weather(weatherId).AtlasIndex);
+    }
+
+    internal static Texture2D LongnightSnowTexture =>
+        LongnightSnowWeather;
+
+    internal static Rect2 LongnightSnowflakeRegion(int variant) =>
+        LongnightSnowflakeRegions[
+            Math.Clamp(variant, 0, LongnightSnowflakeRegions.Length - 1)
+        ];
+
+    internal static Rect2 LongnightSnowGustRegion(int frame) =>
+        LongnightSnowGustRegions[
+            Math.Clamp(frame, 0, LongnightSnowGustRegions.Length - 1)
+        ];
 
     public static Texture2D CreateForecastIcon() =>
         CreatePhaseAIcon(3);
@@ -609,17 +746,23 @@ internal static class GeneratedArt
             VillageLandmarkRegions.Length - 1
         )];
 
-    public static Texture2D VillageNpcTexture(int atlasRow)
+    public static Texture2D VillageNpcTexture(string atlasId) => atlasId switch
     {
-        if (atlasRow < VillageNpcRegions.Length)
-        {
-            return VillageNpcs;
-        }
+        NpcArtCatalog.BaseAtlasId => VillageNpcs,
+        NpcArtCatalog.ExpansionAtlasId => VillageNpcsExpansion,
+        NpcArtCatalog.Wave2AtlasId => VillageNpcsWave2,
+        NpcArtCatalog.Wave3AtlasId => VillageNpcsWave3,
+        _ => throw new ArgumentException(
+            $"Unknown village NPC atlas: {atlasId}.",
+            nameof(atlasId)
+        )
+    };
 
-        return VillageNpcsExpansion;
-    }
-
-    public static Rect2 VillageNpcRegion(int atlasRow, NpcFacing facing)
+    public static Rect2 VillageNpcRegion(
+        string atlasId,
+        int row,
+        NpcFacing facing
+    )
     {
         var column = facing switch
         {
@@ -629,22 +772,27 @@ internal static class GeneratedArt
             NpcFacing.Right => 3,
             _ => 0
         };
-        if (atlasRow < VillageNpcRegions.Length)
+        var regions = atlasId switch
         {
-            var row = Math.Clamp(
-                atlasRow,
-                0,
-                VillageNpcRegions.Length - 1
+            NpcArtCatalog.BaseAtlasId => VillageNpcRegions,
+            NpcArtCatalog.ExpansionAtlasId => VillageNpcExpansionRegions,
+            NpcArtCatalog.Wave2AtlasId => VillageNpcWave2Regions,
+            NpcArtCatalog.Wave3AtlasId => VillageNpcWave3Regions,
+            _ => throw new ArgumentException(
+                $"Unknown village NPC atlas: {atlasId}.",
+                nameof(atlasId)
+            )
+        };
+        if (row < 0 || row >= regions.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(row),
+                row,
+                $"Village NPC row is outside atlas {atlasId}."
             );
-            return VillageNpcRegions[row][column];
         }
 
-        var expansionRow = Math.Clamp(
-            atlasRow - VillageNpcRegions.Length,
-            0,
-            VillageNpcExpansionRegions.Length - 1
-        );
-        return VillageNpcExpansionRegions[expansionRow][column];
+        return regions[row][column];
     }
 
     public static Texture2D RelationshipIcon(
@@ -901,6 +1049,84 @@ internal static class GeneratedArt
     public static Rect2 GleamriseCropRegion(int row, int column) =>
         new(column * 256, row * 256, 256, 256);
 
+    public static Texture2D RainveilCropsTexture => RainveilCrops;
+
+    public static bool TryRainveilCropRow(string cropId, out int row) =>
+        RainveilCropRows.TryGetValue(cropId, out row);
+
+    public static bool TryRainveilItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = RainveilCrops;
+        region = default;
+        if (!DataCatalog.Items.TryGetValue(itemId, out var item))
+        {
+            return false;
+        }
+
+        var cropId = item.Kind switch
+        {
+            ItemKind.Seed => item.CropId,
+            ItemKind.Produce => DataCatalog.BaseItemId(item.Id),
+            _ => null
+        };
+        if (cropId is null || !TryRainveilCropRow(cropId, out var row))
+        {
+            return false;
+        }
+
+        region = RainveilCropRegion(
+            row,
+            item.Kind == ItemKind.Seed ? 0 : 1
+        );
+        return true;
+    }
+
+    public static Rect2 RainveilCropRegion(int row, int column) =>
+        new(column * 256, row * 256, 256, 256);
+
+    public static Texture2D StarharvestCropsTexture => StarharvestCrops;
+
+    public static bool TryStarharvestCropRow(string cropId, out int row) =>
+        StarharvestCropRows.TryGetValue(cropId, out row);
+
+    public static bool TryStarharvestItemIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = StarharvestCrops;
+        region = default;
+        if (!DataCatalog.Items.TryGetValue(itemId, out var item))
+        {
+            return false;
+        }
+
+        var cropId = item.Kind switch
+        {
+            ItemKind.Seed => item.CropId,
+            ItemKind.Produce => DataCatalog.BaseItemId(item.Id),
+            _ => null
+        };
+        if (cropId is null || !TryStarharvestCropRow(cropId, out var row))
+        {
+            return false;
+        }
+
+        region = StarharvestCropRegion(
+            row,
+            item.Kind == ItemKind.Seed ? 0 : 1
+        );
+        return true;
+    }
+
+    public static Rect2 StarharvestCropRegion(int row, int column) =>
+        new(column * 256, row * 256, 256, 256);
+
     public static (Texture2D Texture, Rect2 Region) EconomyItemIcon(string itemId) =>
         itemId switch
         {
@@ -1088,6 +1314,10 @@ internal sealed partial class CottageBackdrop : Node2D
         GD.Load<Texture2D>(
             "res://assets/generated/cottage_first_upgrade_interior.png"
         );
+    private static readonly Texture2D SecondUpgradeBackground =
+        GD.Load<Texture2D>(
+            "res://assets/generated/cottage_second_upgrade_interior.png"
+        );
     private readonly GameSession _session;
 
     public CottageBackdrop(GameSession session)
@@ -1101,9 +1331,12 @@ internal sealed partial class CottageBackdrop : Node2D
     public override void _Draw()
     {
         DrawTextureRectRegion(
-            _session.Construction.IsCompleted
-                ? UpgradedBackground
-                : BaseBackground,
+            _session.CottageUpgradeLevel switch
+            {
+                2 => SecondUpgradeBackground,
+                1 => UpgradedBackground,
+                _ => BaseBackground
+            },
             new Rect2(0, 0, 640, 360),
             new Rect2(0, 80, 1536, 864)
         );
@@ -1363,19 +1596,19 @@ internal sealed partial class GeneratedCropLayer : Node2D
         new Rect2(1090, 530, 380, 385),
     ];
 
-    private readonly GameSession _session;
+    private readonly FarmSystem _farm;
 
-    public GeneratedCropLayer(GameSession session)
+    public GeneratedCropLayer(FarmSystem farm)
     {
-        _session = session;
+        _farm = farm;
         ZIndex = 1;
-        session.Farm.TileChanged += OnTileChanged;
+        farm.TileChanged += OnTileChanged;
         Rebuild();
     }
 
     public override void _ExitTree()
     {
-        _session.Farm.TileChanged -= OnTileChanged;
+        _farm.TileChanged -= OnTileChanged;
     }
 
     private void Rebuild()
@@ -1385,7 +1618,7 @@ internal sealed partial class GeneratedCropLayer : Node2D
             child.QueueFree();
         }
 
-        foreach (var tile in _session.Farm.Tiles.Values)
+        foreach (var tile in _farm.Tiles.Values)
         {
             if (tile.FertilizerId == DataCatalog.StarsoilFertilizerId)
             {
@@ -1417,7 +1650,33 @@ internal sealed partial class GeneratedCropLayer : Node2D
             Rect2 source;
             Material? material;
             float height;
-            if (GeneratedArt.TryGleamriseCropRow(
+            if (GeneratedArt.TryStarharvestCropRow(
+                    tile.CropId,
+                    out var starharvestRow
+                ))
+            {
+                texture = GeneratedArt.StarharvestCropsTexture;
+                source = GeneratedArt.StarharvestCropRegion(
+                    starharvestRow,
+                    frameIndex + 2
+                );
+                material = null;
+                height = 34f;
+            }
+            else if (GeneratedArt.TryRainveilCropRow(
+                    tile.CropId,
+                    out var rainveilRow
+                ))
+            {
+                texture = GeneratedArt.RainveilCropsTexture;
+                source = GeneratedArt.RainveilCropRegion(
+                    rainveilRow,
+                    frameIndex + 2
+                );
+                material = null;
+                height = 34f;
+            }
+            else if (GeneratedArt.TryGleamriseCropRow(
                     tile.CropId,
                     out var gleamriseRow
                 ))
@@ -1481,18 +1740,18 @@ internal sealed partial class GeneratedCropLayer : Node2D
 
 internal sealed partial class FarmSoilStateLayer : Node2D
 {
-    private readonly GameSession _session;
+    private readonly FarmSystem _farm;
 
-    public FarmSoilStateLayer(GameSession session)
+    public FarmSoilStateLayer(FarmSystem farm)
     {
-        _session = session;
+        _farm = farm;
         ZIndex = -1;
-        session.Farm.TileChanged += OnTileChanged;
+        farm.TileChanged += OnTileChanged;
     }
 
     public override void _Draw()
     {
-        foreach (var tile in _session.Farm.Tiles.Values)
+        foreach (var tile in _farm.Tiles.Values)
         {
             if (!tile.Tilled)
             {
@@ -1532,7 +1791,7 @@ internal sealed partial class FarmSoilStateLayer : Node2D
 
     public override void _ExitTree()
     {
-        _session.Farm.TileChanged -= OnTileChanged;
+        _farm.TileChanged -= OnTileChanged;
     }
 
     private void OnTileChanged(GridPosition position)

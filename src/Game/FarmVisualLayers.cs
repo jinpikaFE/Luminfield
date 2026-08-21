@@ -36,6 +36,7 @@ internal sealed partial class WeatherEffectView : Control
     {
         _session = session;
         MouseFilter = MouseFilterEnum.Ignore;
+        TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         session.Weather.Changed += OnWeatherChanged;
     }
@@ -48,6 +49,13 @@ internal sealed partial class WeatherEffectView : Control
 
     public override void _Draw()
     {
+        if (_session.Weather.CurrentId ==
+            DataCatalog.LongnightSnowWeatherId)
+        {
+            DrawLongnightSnow();
+            return;
+        }
+
         if (_session.Weather.CurrentId == DataCatalog.RainWeatherId)
         {
             DrawRect(new Rect2(Vector2.Zero, Size), new Color("#10284a20"));
@@ -109,6 +117,76 @@ internal sealed partial class WeatherEffectView : Control
         }
     }
 
+    private void DrawLongnightSnow()
+    {
+        DrawRect(
+            new Rect2(Vector2.Zero, Size),
+            new Color("#b7c9ff0d")
+        );
+        DrawSnowflakeLayer(20, 17, 24f, 5f, 0);
+        DrawSnowflakeLayer(14, 83, 43f, 8f, 2);
+        DrawSnowflakeLayer(6, 149, 68f, 12f, 3);
+
+        var frame = (int)Math.Floor(_time * 7) % 3;
+        for (var index = 0; index < 2; index++)
+        {
+            var x = Mathf.PosMod(
+                index * 337 + (float)_time * 52,
+                Math.Max(1, Size.X + 40)
+            ) - 20;
+            var y = Mathf.PosMod(
+                index * 139 + 84 + (float)_time * 7,
+                Math.Max(1, Size.Y - 40)
+            ) + 20;
+            DrawTextureRectRegion(
+                GeneratedArt.LongnightSnowTexture,
+                new Rect2(
+                    new Vector2(Mathf.Round(x), Mathf.Round(y)),
+                    new Vector2(16, 10)
+                ),
+                GeneratedArt.LongnightSnowGustRegion(
+                    (frame + index) % 3
+                )
+            );
+        }
+    }
+
+    private void DrawSnowflakeLayer(
+        int count,
+        int seed,
+        float speed,
+        float targetWidth,
+        int firstVariant
+    )
+    {
+        for (var index = 0; index < count; index++)
+        {
+            var variant = firstVariant == 0 ? index % 2 : firstVariant;
+            var source = GeneratedArt.LongnightSnowflakeRegion(variant);
+            var width = targetWidth + (firstVariant == 0 ? index % 2 : 0);
+            var height = Mathf.Round(width * source.Size.Y / source.Size.X);
+            var x = Mathf.PosMod(
+                seed + index * 97 + (float)_time *
+                    (speed + index % 3 * 3),
+                Math.Max(1, Size.X + width * 2)
+            ) - width;
+            var y = Mathf.PosMod(
+                seed * 2 + index * 61 + (float)_time * speed,
+                Math.Max(1, Size.Y + height * 2)
+            ) - height;
+            x += Mathf.Sin((float)_time * 0.8f + index * 1.7f) *
+                (firstVariant == 3 ? 5 : 2);
+            DrawTextureRectRegion(
+                GeneratedArt.LongnightSnowTexture,
+                new Rect2(
+                    new Vector2(Mathf.Round(x), Mathf.Round(y)),
+                    new Vector2(width, height)
+                ),
+                source
+            );
+        }
+    }
+
     public override void _ExitTree()
     {
         _session.Weather.Changed -= OnWeatherChanged;
@@ -117,16 +195,61 @@ internal sealed partial class WeatherEffectView : Control
     private void OnWeatherChanged() => QueueRedraw();
 }
 
+public static class FarmBackdropCatalog
+{
+    public const string DefaultTexturePath =
+        "res://assets/generated/farm_twilight_backdrop.png";
+    public const string RainveilTexturePath =
+        "res://assets/generated/farm_rainveil_backdrop.png";
+    public const string StarharvestTexturePath =
+        "res://assets/generated/farm_starharvest_backdrop.png";
+    public const string LongnightTexturePath =
+        "res://assets/generated/farm_longnight_backdrop.png";
+
+    public static string TexturePathForDay(int day) =>
+        CalendarSystem.SeasonId(day) switch
+        {
+            CalendarSystem.RainveilSeasonId => RainveilTexturePath,
+            CalendarSystem.StarharvestSeasonId => StarharvestTexturePath,
+            CalendarSystem.LongnightSeasonId => LongnightTexturePath,
+            _ => DefaultTexturePath
+        };
+}
+
 internal sealed partial class FarmBackdrop : Sprite2D
 {
-    public FarmBackdrop()
+    private readonly GameSession _session;
+    private string? _texturePath;
+
+    public FarmBackdrop(GameSession session)
     {
-        Texture = GD.Load<Texture2D>("res://assets/generated/farm_twilight_backdrop.png");
+        _session = session;
         Centered = false;
         Position = Vector2.Zero;
         Scale = new Vector2(0.5f, 0.5f);
         TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         ZIndex = -100;
+        RefreshTexture();
+        session.Clock.TimeChanged += RefreshTexture;
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Clock.TimeChanged -= RefreshTexture;
+    }
+
+    private void RefreshTexture()
+    {
+        var texturePath = FarmBackdropCatalog.TexturePathForDay(
+            _session.Clock.Day
+        );
+        if (_texturePath == texturePath)
+        {
+            return;
+        }
+
+        Texture = GD.Load<Texture2D>(texturePath);
+        _texturePath = texturePath;
     }
 }
 
@@ -610,18 +733,18 @@ internal sealed partial class AmbientGlowField : Node2D
 
 internal sealed partial class CropGlowLayer : Node2D
 {
-    private readonly GameSession _session;
+    private readonly FarmSystem _farm;
     private double _time;
 
-    public CropGlowLayer(GameSession session)
+    public CropGlowLayer(FarmSystem farm)
     {
-        _session = session;
+        _farm = farm;
         ZIndex = 2;
         Material = new CanvasItemMaterial
         {
             BlendMode = CanvasItemMaterial.BlendModeEnum.Add,
         };
-        session.Farm.TileChanged += OnTileChanged;
+        farm.TileChanged += OnTileChanged;
     }
 
     public override void _Process(double delta)
@@ -633,7 +756,7 @@ internal sealed partial class CropGlowLayer : Node2D
     public override void _Draw()
     {
         var index = 0;
-        foreach (var tile in _session.Farm.Tiles.Values)
+        foreach (var tile in _farm.Tiles.Values)
         {
             if (string.IsNullOrWhiteSpace(tile.CropId))
             {
@@ -665,7 +788,7 @@ internal sealed partial class CropGlowLayer : Node2D
 
     public override void _ExitTree()
     {
-        _session.Farm.TileChanged -= OnTileChanged;
+        _farm.TileChanged -= OnTileChanged;
     }
 
     private void OnTileChanged(GridPosition position)

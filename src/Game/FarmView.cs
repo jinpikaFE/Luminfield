@@ -14,8 +14,20 @@ public sealed partial class FarmView : Node2D
         FarmLayout.CommissionBoardCell;
     public static readonly GridPosition StarlightMailboxCell =
         FarmLayout.StarlightMailboxCell;
+    public static readonly GridPosition HomesteadWorkbenchCell =
+        FarmLayout.HomesteadWorkbenchCell;
+    public static readonly GridPosition GreenhouseDoorCell =
+        FarmLayout.GreenhouseDoorCell;
+    public static readonly GridPosition StarfeatherCoopDoorCell =
+        FarmLayout.StarfeatherCoopDoorCell;
+    public static readonly GridPosition MoonfleeceBarnDoorCell =
+        FarmLayout.MoonfleeceBarnDoorCell;
+    public static readonly GridPosition HomesteadStarlightCell =
+        FarmLayout.HomesteadStarlightCell;
     public static readonly GridPosition WoodlandStarlightCell =
         WorldDefinition.WoodlandStarlightCell;
+    public static readonly GridPosition MeadowStarlightCell =
+        WorldDefinition.MeadowStarlightCell;
     public static readonly GridPosition MoonlitArchiveDoorCell =
         VillageCatalog.MoonlitArchiveDoorCell;
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
@@ -28,6 +40,8 @@ public sealed partial class FarmView : Node2D
         VillageCatalog.StarlightPostDoorCell;
     public static readonly GridPosition StarfallWatchDoorCell =
         VillageCatalog.StarfallWatchDoorCell;
+    public static readonly GridPosition StarharvestMarketEntryCell =
+        StarharvestMarketLayout.WorldEntryCell;
 
     private readonly GameSession _session;
     private readonly TileMapLayer _baseLayer;
@@ -64,16 +78,55 @@ public sealed partial class FarmView : Node2D
         _worldStreamer = new WorldChunkStreamer(session);
         _worldStreamer.RegionEntered += key => RegionEntered?.Invoke(key);
         AddChild(_worldStreamer);
-        AddChild(new FarmBackdrop());
+        AddChild(new FarmBackdrop(session));
         AddChild(new SouthernWorldGate());
         _canvasModulate = new CanvasModulate { Color = Colors.White };
         AddChild(_canvasModulate);
         AddChild(new FarmWeatherOverlay(session));
 
-        AddChild(new FarmSoilStateLayer(session));
-        AddChild(new GeneratedCropLayer(session));
-        AddChild(new CropGlowLayer(session));
+        AddChild(new FarmSoilStateLayer(session.Farm));
+        AddChild(new GeneratedCropLayer(session.Farm));
+        AddChild(new CropGlowLayer(session.Farm));
         AddChild(new GeneratedOrchardLayer(session));
+        AddChild(new HomesteadWorkshopVisual(session)
+        {
+            Position = CellCenter(HomesteadWorkbenchCell) +
+                new Vector2(0, 8),
+            ZIndex = 7
+        });
+        AddChild(new HomesteadGreenhouseVisual(session)
+        {
+            Position = CellCenter(GreenhouseDoorCell) +
+                new Vector2(0, 8),
+            ZIndex = 7
+        });
+        AddChild(new HomesteadStarfeatherCoopVisual(session)
+        {
+            Position = CellCenter(FarmLayout.StarfeatherCoopReturnCell) +
+                new Vector2(0, 8),
+            ZIndex = 7
+        });
+        AddChild(new StarfeatherChickenVisual(
+            session,
+            worldProjection: true
+        ));
+        AddChild(new HomesteadMoonfleeceBarnVisual(session)
+        {
+            Position = CellCenter(FarmLayout.MoonfleeceBarnDoorCell) +
+                new Vector2(0, 8),
+            ZIndex = 7
+        });
+        AddChild(new MoonfleeceSheepVisual(
+            session,
+            worldProjection: true
+        ));
+        AddChild(new DewhornVisual(session, worldProjection: true));
+        AddChild(new HomesteadStarlightVisual(session)
+        {
+            Position = CellCenter(HomesteadStarlightCell) +
+                new Vector2(0, 7),
+            ZIndex = 7
+        });
         AddChild(new MoteField(new Rect2(0, 0, FarmSystem.MapWidth * 16, FarmSystem.MapHeight * 16)));
 
         var mira = GeneratedArt.CreateMiraSprite();
@@ -168,7 +221,10 @@ public sealed partial class FarmView : Node2D
         AddChild(_farmObjectLayer);
         RebuildFarmObjects();
 
-        _player = new PlayerController(CanOccupy)
+        _player = new PlayerController(
+            CanOccupy,
+            () => session.PlayerMovementMultiplier
+        )
         {
             Name = "Player",
             Position = new Vector2(session.PlayerX, session.PlayerY),
@@ -246,7 +302,13 @@ public sealed partial class FarmView : Node2D
 
         _cursor = new TargetCursor(ResolveTargetPreview, locale);
         _cursor.ZIndex = 20;
-        AddChild(_cursor);
+        var cursorLayer = new CanvasLayer
+        {
+            Layer = 60,
+            FollowViewportEnabled = true
+        };
+        cursorLayer.AddChild(_cursor);
+        AddChild(cursorLayer);
 
         BuildBaseMap();
         RefreshAllFarmTiles();
@@ -275,20 +337,30 @@ public sealed partial class FarmView : Node2D
     public event Action<GridPosition>? UseRequested;
     public event Action? MiraRequested;
     public event Action? EnterCottageRequested;
+    public event Action? EnterGreenhouseRequested;
+    public event Action? EnterStarfeatherCoopRequested;
+    public event Action? EnterMoonfleeceBarnRequested;
     public event Action? EnterArchiveRequested;
     public event Action? EnterWorkshopRequested;
     public event Action? EnterTeaHouseRequested;
     public event Action? EnterTwilightEmporiumRequested;
     public event Action? EnterStarlightPostRequested;
     public event Action? EnterStarfallWatchRequested;
+    public event Action? EnterStarharvestMarketRequested;
+    public event Action? EnterGleamrisePlantingFestivalRequested;
+    public event Action? EnterLongnightLanternFeastRequested;
+    public event Action? EnterFireflyTideRequested;
+    public event Action? EnterCrystalGrottoRequested;
+    public event Action? EnterStarfallRuinsRequested;
     public event Action? ShopRequested;
     public event Action<string>? ProcessorRequested;
     public event Action? ShippingRequested;
     public event Action? CommissionRequested;
     public event Action? MailRequested;
-    public event Action? StarlightRequested;
+    public event Action<string>? StarlightRequested;
     public event Action<GridPosition>? VillagerRequested;
     public event Action<GridPosition>? StorageRequested;
+    public event Action<GridPosition>? HomesteadWorkbenchRequested;
     public event Action<string>? NoticeRequested;
     public event Action<string>? RegionEntered;
     public event Action? StepRequested
@@ -303,6 +375,69 @@ public sealed partial class FarmView : Node2D
     {
         var target = _player.TargetCell;
         var player = _player.CurrentCell;
+        if (FestivalCatalog.FestivalOnDay(_session.Clock.Day) is { } festival &&
+            FestivalSpatialCatalog.TryByFestivalId(
+                festival.Id,
+                out var festivalSpatial
+            ) && (target == festivalSpatial.WorldEntryCell ||
+             IsAdjacent(player, festivalSpatial.WorldEntryCell)))
+        {
+            return _session.PreviewSelectedTarget(
+                festivalSpatial.WorldEntryCell
+            );
+        }
+
+        if (target == StarfallRuinsTrialLayout.WorldEntryCell ||
+            IsAdjacent(player, StarfallRuinsTrialLayout.WorldEntryCell))
+        {
+            return _session.PreviewSelectedTarget(
+                StarfallRuinsTrialLayout.WorldEntryCell
+            );
+        }
+
+        if (target == CrystalGrottoSurveyLayout.WorldEntryCell ||
+            IsAdjacent(player, CrystalGrottoSurveyLayout.WorldEntryCell))
+        {
+            return _session.PreviewSelectedTarget(
+                CrystalGrottoSurveyLayout.WorldEntryCell
+            );
+        }
+
+        // A forage node is an exact real-world target. Resolve it before
+        // nearby doors, animals, villagers, or facilities can absorb the
+        // interaction merely because they are adjacent to the player.
+        if (_session.Forage.SpawnAt(target) is not null)
+        {
+            return _session.PreviewSelectedTarget(target);
+        }
+
+        if (target == GreenhouseDoorCell ||
+            IsAdjacent(player, GreenhouseDoorCell))
+        {
+            return _session.PreviewSelectedTarget(GreenhouseDoorCell);
+        }
+
+        // Facing a grazing animal from its building step must select the
+        // animal itself; adjacency to the door is only the fallback target.
+        var exactAnimal = _session.VisibleAnimalProjections
+            .FirstOrDefault(projection => projection.Cell == target);
+        if (exactAnimal is not null)
+        {
+            return _session.PreviewSelectedTarget(exactAnimal.Cell);
+        }
+
+        var animalDoor = AnimalBuildingSpatialCatalog.Definitions
+            .FirstOrDefault(definition =>
+                target == definition.WorldDoorCell ||
+                IsAdjacent(player, definition.WorldDoorCell)
+            );
+        if (animalDoor is not null)
+        {
+            return _session.PreviewSelectedTarget(
+                animalDoor.WorldDoorCell
+            );
+        }
+
         if (target == MoonlitArchiveDoorCell)
         {
             return _session.PreviewSelectedTarget(
@@ -345,16 +480,30 @@ public sealed partial class FarmView : Node2D
             );
         }
 
+        var nearbyStarlight = StarlightSpatialCatalog.Pedestals
+            .FirstOrDefault(definition =>
+                target == definition.Cell ||
+                IsAdjacent(player, definition.Cell)
+            );
+        if (nearbyStarlight is not null)
+        {
+            return _session.PreviewSelectedTarget(nearbyStarlight.Cell);
+        }
+
+        var nearbyAnimal = _session.VisibleAnimalProjections
+            .FirstOrDefault(projection =>
+                target == projection.Cell ||
+                IsAdjacent(player, projection.Cell)
+            );
+        if (nearbyAnimal is not null)
+        {
+            return _session.PreviewSelectedTarget(nearbyAnimal.Cell);
+        }
+
         var villager = ResolveVillageNpcTarget(target, player);
         if (villager is not null)
         {
             return _session.PreviewSelectedTarget(villager.Position);
-        }
-
-        if (WorldDefinition.IsWoodlandStarlightCell(target) ||
-            IsAdjacent(player, WoodlandStarlightCell))
-        {
-            return _session.PreviewSelectedTarget(WoodlandStarlightCell);
         }
 
         if (FarmLayout.IsCommissionBoardCell(target) ||
@@ -367,6 +516,12 @@ public sealed partial class FarmView : Node2D
             IsAdjacent(player, StarlightMailboxCell))
         {
             return _session.PreviewSelectedTarget(StarlightMailboxCell);
+        }
+
+        if (target == HomesteadWorkbenchCell ||
+            IsAdjacent(player, HomesteadWorkbenchCell))
+        {
+            return _session.PreviewSelectedTarget(HomesteadWorkbenchCell);
         }
 
         var storageTarget = ResolveStorageTarget(target, player);
@@ -480,6 +635,99 @@ public sealed partial class FarmView : Node2D
         }
 
         var target = _player.TargetCell;
+        if (FestivalCatalog.FestivalOnDay(_session.Clock.Day) is { } festival &&
+            FestivalSpatialCatalog.TryByFestivalId(
+                festival.Id,
+                out var festivalSpatial
+            ) && (target == festivalSpatial.WorldEntryCell ||
+             IsAdjacent(_player.CurrentCell, festivalSpatial.WorldEntryCell)))
+        {
+            if (festival.Id == FestivalCatalog.GleamrisePlantingFestivalId)
+            {
+                EnterGleamrisePlantingFestivalRequested?.Invoke();
+            }
+            else if (festival.Id ==
+                FestivalCatalog.LongnightLanternFeastFestivalId)
+            {
+                EnterLongnightLanternFeastRequested?.Invoke();
+            }
+            else if (festival.Id == FestivalCatalog.FireflyTideFestivalId)
+            {
+                EnterFireflyTideRequested?.Invoke();
+            }
+            else
+            {
+                EnterStarharvestMarketRequested?.Invoke();
+            }
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (_session.Forage.SpawnAt(target) is not null)
+        {
+            UseRequested?.Invoke(target);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == StarfallRuinsTrialLayout.WorldEntryCell ||
+            IsAdjacent(
+                _player.CurrentCell,
+                StarfallRuinsTrialLayout.WorldEntryCell
+            ))
+        {
+            EnterStarfallRuinsRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == CrystalGrottoSurveyLayout.WorldEntryCell ||
+            IsAdjacent(
+                _player.CurrentCell,
+                CrystalGrottoSurveyLayout.WorldEntryCell
+            ))
+        {
+            EnterCrystalGrottoRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (target == GreenhouseDoorCell ||
+            IsAdjacent(_player.CurrentCell, GreenhouseDoorCell))
+        {
+            EnterGreenhouseRequested?.Invoke();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        var exactAnimal = _session.VisibleAnimalProjections
+            .FirstOrDefault(projection => projection.Cell == target);
+        if (exactAnimal is not null)
+        {
+            UseRequested?.Invoke(exactAnimal.Cell);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        var animalDoor = AnimalBuildingSpatialCatalog.Definitions
+            .FirstOrDefault(definition =>
+                target == definition.WorldDoorCell ||
+                IsAdjacent(_player.CurrentCell, definition.WorldDoorCell)
+            );
+        if (animalDoor is not null)
+        {
+            if (animalDoor.BuildingId == AnimalCatalog.MoonfleeceBarnId)
+            {
+                EnterMoonfleeceBarnRequested?.Invoke();
+            }
+            else
+            {
+                EnterStarfeatherCoopRequested?.Invoke();
+            }
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (target == MoonlitArchiveDoorCell)
         {
             EnterArchiveRequested?.Invoke();
@@ -522,6 +770,21 @@ public sealed partial class FarmView : Node2D
             return;
         }
 
+        var nearbyStarlight = StarlightSpatialCatalog.Pedestals
+            .FirstOrDefault(definition =>
+                target == definition.Cell ||
+                IsAdjacent(_player.CurrentCell, definition.Cell)
+            );
+        if (nearbyStarlight is not null)
+        {
+            RequestStarlight(
+                nearbyStarlight.PedestalId,
+                nearbyStarlight.Cell
+            );
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         var villager = ResolveVillageNpcTarget(
             target,
             _player.CurrentCell
@@ -532,11 +795,6 @@ public sealed partial class FarmView : Node2D
         {
             VillagerRequested?.Invoke(villager.Position);
         }
-        else if (WorldDefinition.IsWoodlandStarlightCell(target) ||
-            IsAdjacent(_player.CurrentCell, WoodlandStarlightCell))
-        {
-            RequestStarlight();
-        }
         else if (FarmLayout.IsCommissionBoardCell(target) ||
             IsNearCommissionBoard(_player.CurrentCell))
         {
@@ -546,6 +804,20 @@ public sealed partial class FarmView : Node2D
             IsAdjacent(_player.CurrentCell, StarlightMailboxCell))
         {
             RequestStarlightMail();
+        }
+        else if (target == HomesteadWorkbenchCell ||
+            IsAdjacent(_player.CurrentCell, HomesteadWorkbenchCell))
+        {
+            HomesteadWorkbenchRequested?.Invoke(
+                HomesteadWorkbenchCell
+            );
+        }
+        else if (_session.VisibleAnimalProjections.FirstOrDefault(projection =>
+                     target == projection.Cell ||
+                     IsAdjacent(_player.CurrentCell, projection.Cell)
+                 ) is { } animalProjection)
+        {
+            UseRequested?.Invoke(animalProjection.Cell);
         }
         else if (storageTarget is { } chest)
         {
@@ -759,6 +1031,13 @@ public sealed partial class FarmView : Node2D
             green *= 0.94f;
             blue = Math.Min(1f, blue * 1.05f);
         }
+        else if (_session.Weather.CurrentId ==
+            DataCatalog.LongnightSnowWeatherId)
+        {
+            red *= 0.82f;
+            green *= 0.9f;
+            blue = Math.Min(1f, blue * 1.04f);
+        }
 
         _canvasModulate.Color = new Color(red, green, blue);
     }
@@ -852,16 +1131,19 @@ public sealed partial class FarmView : Node2D
         MailRequested?.Invoke();
     }
 
-    private void RequestStarlight()
+    private void RequestStarlight(
+        string pedestalId,
+        GridPosition pedestalCell
+    )
     {
-        var result = _session.UseSelected(WoodlandStarlightCell);
+        var result = _session.UseSelected(pedestalCell);
         if (!result.Succeeded)
         {
             NoticeRequested?.Invoke(result.MessageKey);
             return;
         }
 
-        StarlightRequested?.Invoke();
+        StarlightRequested?.Invoke(pedestalId);
     }
 
     public void SetStorageChestOpen(GridPosition? position)
@@ -1057,8 +1339,21 @@ public sealed partial class FarmView : Node2D
                 return false;
             }
 
+            if (_session.Forage.SpawnAt(cell) is not null)
+            {
+                return false;
+            }
+
             return _session.Resources.IsRemoved(cell) ||
                 !WorldDefinition.IsBlocked(cell);
+        }
+
+        // Older saves may legitimately contain a chest, tree, or placeable on
+        // an animal-building approach. Keep that data, and keep water-built
+        // boardwalk approaches traversable so they cannot seal the only door.
+        if (FarmLayout.IsAnimalBuildingApproachCell(cell))
+        {
+            return true;
         }
 
         if (WorldDefinition.IsBlocked(cell))
@@ -1235,7 +1530,7 @@ internal sealed partial class TargetCursor : Node2D
             new Color(accent, active ? 0.16f + pulse * 0.1f : 0.045f),
             true
         );
-        DrawObjectHighlight(preview.Kind, origin, accent, pulse);
+        DrawObjectHighlight(preview, origin, accent, pulse);
 
         var outline = new Color(
             accent,
@@ -1255,7 +1550,7 @@ internal sealed partial class TargetCursor : Node2D
     }
 
     private void DrawObjectHighlight(
-        TargetPreviewKind kind,
+        TargetPreview preview,
         Vector2 origin,
         Color accent,
         float pulse
@@ -1263,7 +1558,7 @@ internal sealed partial class TargetCursor : Node2D
     {
         var fill = new Color(accent, 0.07f + pulse * 0.035f);
         var line = new Color(accent, 0.56f + pulse * 0.32f);
-        switch (kind)
+        switch (preview.Kind)
         {
             case TargetPreviewKind.Tree:
                 DrawRect(new Rect2(origin + new Vector2(-21, -56), new Vector2(58, 72)), fill);
@@ -1275,14 +1570,271 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-13, -32), new Vector2(42, 48)), line, false, 1.5f);
                 DrawCircle(origin + new Vector2(8, -8), 22 + pulse * 2, new Color(accent, 0.055f));
                 break;
+            case TargetPreviewKind.MineralVein:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -38),
+                        new Vector2(52, 54)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -38),
+                        new Vector2(52, 54)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.CrystalGrottoPortal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -50),
+                        new Vector2(64, 66)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -50),
+                        new Vector2(64, 66)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.CrystalGrottoExit:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -46),
+                        new Vector2(64, 62)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -46),
+                        new Vector2(64, 62)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.StarfallRuinsPortal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -48),
+                        new Vector2(56, 64)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -48),
+                        new Vector2(56, 64)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.StarfallRuinsExit:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -26),
+                        new Vector2(64, 42)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -26),
+                        new Vector2(64, 42)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.RuinsWeaponRack:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -38),
+                        new Vector2(56, 54)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -38),
+                        new Vector2(56, 54)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.RuinsEnemy:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -40),
+                        new Vector2(52, 56)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -40),
+                        new Vector2(52, 56)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.RuinsArtifact:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -36),
+                        new Vector2(48, 52)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -36),
+                        new Vector2(48, 52)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.RuinsSeal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -40),
+                        new Vector2(58, 56)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -40),
+                        new Vector2(58, 56)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.ToolUpgradeBench:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-46, -42),
+                        new Vector2(108, 58)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-46, -42),
+                        new Vector2(108, 58)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.MineDepthAnchor:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -38),
+                        new Vector2(52, 54)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-18, -38),
+                        new Vector2(52, 54)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.GrottoSeal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -43),
+                        new Vector2(58, 59)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-21, -43),
+                        new Vector2(58, 59)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.Forage:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -20),
+                        new Vector2(38, 36)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -20),
+                        new Vector2(38, 36)
+                    ),
+                    line,
+                    false,
+                    1.5f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -3),
+                    18 + pulse,
+                    0,
+                    Mathf.Tau,
+                    24,
+                    line,
+                    1.5f
+                );
+                break;
             case TargetPreviewKind.Water:
                 DrawCircle(origin + new Vector2(8, 8), 10 + pulse * 2, fill);
                 DrawArc(origin + new Vector2(8, 8), 7 + pulse, 0, Mathf.Tau, 20, line, 1.5f);
                 DrawArc(origin + new Vector2(8, 8), 12 + pulse * 2, 0, Mathf.Tau, 24, new Color(accent, 0.35f), 1);
                 break;
             case TargetPreviewKind.Crop:
-                DrawRect(new Rect2(origin + new Vector2(-2, -24), new Vector2(20, 40)), fill);
-                DrawArc(origin + new Vector2(8, 1), 12 + pulse * 2, 0, Mathf.Tau, 22, line, 1.5f);
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-7, -16),
+                        new Vector2(30, 32)
+                    ),
+                    fill
+                );
+                DrawArc(
+                    origin + new Vector2(8, 0),
+                    16 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    26,
+                    line,
+                    1.5f
+                );
                 break;
             case TargetPreviewKind.Character:
                 DrawRect(new Rect2(origin + new Vector2(-9, -48), new Vector2(34, 64)), fill);
@@ -1295,6 +1847,290 @@ internal sealed partial class TargetCursor : Node2D
             case TargetPreviewKind.Station:
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), line, false, 1.5f);
+                break;
+            case TargetPreviewKind.ArchiveResearchDesk:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-64, -40),
+                        new Vector2(128, 88)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-64, -40),
+                        new Vector2(128, 88)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.HomesteadWorkshop:
+                var workshopRect = WorkshopHighlightRect(
+                    origin,
+                    preview
+                );
+                DrawRect(workshopRect, fill);
+                DrawRect(workshopRect, line, false, 1.7f);
+                break;
+            case TargetPreviewKind.GreenhousePortal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -60),
+                        new Vector2(56, 76)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -60),
+                        new Vector2(56, 76)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.AnimalBuildingPortal:
+                var coopFacade = preview.LabelKey is
+                    "construction.homestead_starfeather_coop.not_started" or
+                    "construction.homestead_starfeather_coop.in_progress";
+                var coopRect = coopFacade
+                    ? new Rect2(
+                        origin + new Vector2(-24, -24),
+                        new Vector2(64, 58)
+                    )
+                    : new Rect2(
+                        origin + new Vector2(-2, -14),
+                        new Vector2(20, 46)
+                    );
+                DrawRect(coopRect, fill);
+                DrawRect(coopRect, line, false, 1.8f);
+                break;
+            case TargetPreviewKind.MoonfleeceBarnPortal:
+                var barnFacade = preview.LabelKey is
+                    "construction.homestead_moonfleece_barn.not_started" or
+                    "construction.homestead_moonfleece_barn.in_progress";
+                var barnRect = barnFacade
+                    ? new Rect2(
+                        origin + new Vector2(-26, -42),
+                        new Vector2(68, 66)
+                    )
+                    : new Rect2(
+                        origin + new Vector2(-3, -30),
+                        new Vector2(22, 48)
+                    );
+                DrawRect(barnRect, fill);
+                DrawRect(barnRect, line, false, 1.8f);
+                break;
+            case TargetPreviewKind.AnimalBuildingExit:
+            case TargetPreviewKind.MoonfleeceBarnExit:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-48, -58),
+                        new Vector2(112, 74)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-48, -58),
+                        new Vector2(112, 74)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.AnimalFeedTrough:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-61, -56),
+                        new Vector2(126, 56)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-61, -56),
+                        new Vector2(126, 56)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.AnimalNest:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-45, -94),
+                        new Vector2(121, 94)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-45, -94),
+                        new Vector2(121, 94)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.AnimalProductStation:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-62, -61),
+                        new Vector2(124, 65)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-62, -61),
+                        new Vector2(124, 65)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.DewhornMilkingStation:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -47),
+                        new Vector2(48, 48)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -47),
+                        new Vector2(48, 48)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.Animal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-6, -15),
+                        new Vector2(28, 30)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-6, -15),
+                        new Vector2(28, 30)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                break;
+            case TargetPreviewKind.MoonfleeceSheep:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -31),
+                        new Vector2(38, 35)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -31),
+                        new Vector2(38, 35)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                break;
+            case TargetPreviewKind.Dewhorn:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-10, -32),
+                        new Vector2(36, 35)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-10, -32),
+                        new Vector2(36, 35)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                break;
+            case TargetPreviewKind.AnimalAutomationStation:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -36),
+                        new Vector2(48, 52)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -36),
+                        new Vector2(48, 52)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.GreenhouseExit:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-53, -51),
+                        new Vector2(106, 91)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-53, -51),
+                        new Vector2(106, 91)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.Cistern:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-2, -14),
+                        new Vector2(40, 32)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-2, -14),
+                        new Vector2(40, 32)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                DrawArc(
+                    origin + new Vector2(18, 2),
+                    18 + pulse,
+                    0,
+                    Mathf.Tau,
+                    24,
+                    new Color(accent, 0.28f),
+                    1
+                );
                 break;
             case TargetPreviewKind.KitchenReserve:
                 DrawRect(
@@ -1312,6 +2148,42 @@ internal sealed partial class TargetCursor : Node2D
                     line,
                     false,
                     1.5f
+                );
+                break;
+            case TargetPreviewKind.KitchenStation:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-42, -66),
+                        new Vector2(106, 128)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-42, -66),
+                        new Vector2(106, 128)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.IngredientPantry:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -66),
+                        new Vector2(48, 128)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-16, -66),
+                        new Vector2(48, 128)
+                    ),
+                    line,
+                    false,
+                    1.7f
                 );
                 break;
             case TargetPreviewKind.CommissionBoard:
@@ -1458,6 +2330,216 @@ internal sealed partial class TargetCursor : Node2D
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), line, false, 1.5f);
                 break;
+            case TargetPreviewKind.FestivalPortal:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-32, -60),
+                        new Vector2(80, 76)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-32, -60),
+                        new Vector2(80, 76)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalExit:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -26),
+                        new Vector2(64, 42)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-24, -26),
+                        new Vector2(64, 42)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.FestivalExhibit:
+            case TargetPreviewKind.FestivalFishBasin:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-38, -56),
+                        new Vector2(92, 72)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-38, -56),
+                        new Vector2(92, 72)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalBidBoard:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -48),
+                        new Vector2(56, 64)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -48),
+                        new Vector2(56, 64)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.FestivalShop:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -62),
+                        new Vector2(72, 78)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -62),
+                        new Vector2(72, 78)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalPlantingPlot:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-2, -5),
+                        new Vector2(20, 20)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-2, -5),
+                        new Vector2(20, 20)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                break;
+            case TargetPreviewKind.FestivalSeedRack:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -28),
+                        new Vector2(56, 44)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-20, -28),
+                        new Vector2(56, 44)
+                    ),
+                    line,
+                    false,
+                    1.7f
+                );
+                break;
+            case TargetPreviewKind.FestivalSeedExchange:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -62),
+                        new Vector2(72, 78)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-28, -62),
+                        new Vector2(72, 78)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalFeastTable:
+            case TargetPreviewKind.FestivalLanternLaunch:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-38, -56),
+                        new Vector2(92, 72)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-38, -56),
+                        new Vector2(92, 72)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalGiftExchange:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-23, -54),
+                        new Vector2(62, 70)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-23, -54),
+                        new Vector2(62, 70)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                break;
+            case TargetPreviewKind.FestivalRitual:
+            case TargetPreviewKind.FestivalTideAltar:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-31, -62),
+                        new Vector2(78, 78)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-31, -62),
+                        new Vector2(78, 78)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -23),
+                    39,
+                    0,
+                    Mathf.Tau,
+                    32,
+                    new Color(line, 0.34f),
+                    1.1f
+                );
+                break;
         }
     }
 
@@ -1477,7 +2559,12 @@ internal sealed partial class TargetCursor : Node2D
         );
         var width = Math.Clamp(measured.X + 12, 38, 118);
         var top = origin.Y + LabelOffset(preview.Kind);
-        var panel = new Rect2(origin.X + 8 - width / 2, top, width, 13);
+        var panel = new Rect2(
+            origin.X + LabelCenterOffset(preview.Kind) - width / 2,
+            top,
+            width,
+            13
+        );
         DrawRect(panel, new Color("#07132bee"), true);
         DrawRect(panel, new Color(accent, 0.96f), false, 1);
         DrawString(
@@ -1495,7 +2582,26 @@ internal sealed partial class TargetCursor : Node2D
     {
         TargetPreviewKind.Tree => -72,
         TargetPreviewKind.Station => -68,
+        TargetPreviewKind.ArchiveResearchDesk => -54,
+        TargetPreviewKind.HomesteadWorkshop => -58,
+        TargetPreviewKind.GreenhousePortal => -76,
+        TargetPreviewKind.AnimalBuildingPortal => -62,
+        TargetPreviewKind.MoonfleeceBarnPortal => -70,
+        TargetPreviewKind.AnimalBuildingExit => -68,
+        TargetPreviewKind.MoonfleeceBarnExit => -68,
+        TargetPreviewKind.AnimalFeedTrough => -64,
+        TargetPreviewKind.AnimalNest => 4,
+        TargetPreviewKind.AnimalProductStation => -66,
+        TargetPreviewKind.DewhornMilkingStation => -54,
+        TargetPreviewKind.Animal => -38,
+        TargetPreviewKind.MoonfleeceSheep => -43,
+        TargetPreviewKind.Dewhorn => -43,
+        TargetPreviewKind.AnimalAutomationStation => -54,
+        TargetPreviewKind.GreenhouseExit => -66,
+        TargetPreviewKind.Cistern => -44,
         TargetPreviewKind.KitchenReserve => -72,
+        TargetPreviewKind.KitchenStation => -72,
+        TargetPreviewKind.IngredientPantry => -72,
         TargetPreviewKind.CommissionBoard => -58,
         TargetPreviewKind.Mailbox => -67,
         TargetPreviewKind.StorageChest => -48,
@@ -1508,12 +2614,42 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewKind.Character => -62,
         TargetPreviewKind.Door => -49,
         TargetPreviewKind.Crystal => -47,
+        TargetPreviewKind.MineralVein => -52,
+        TargetPreviewKind.CrystalGrottoPortal => -66,
+        TargetPreviewKind.CrystalGrottoExit => -62,
+        TargetPreviewKind.StarfallRuinsPortal => -66,
+        TargetPreviewKind.StarfallRuinsExit => -60,
+        TargetPreviewKind.RuinsWeaponRack => -56,
+        TargetPreviewKind.RuinsEnemy => -58,
+        TargetPreviewKind.RuinsArtifact => -54,
+        TargetPreviewKind.RuinsSeal => -58,
+        TargetPreviewKind.ToolUpgradeBench => -60,
+        TargetPreviewKind.MineDepthAnchor => -54,
+        TargetPreviewKind.GrottoSeal => -58,
+        TargetPreviewKind.Forage => -39,
         TargetPreviewKind.Landmark => -56,
         TargetPreviewKind.StarlightPedestal => -62,
         TargetPreviewKind.Crop => -34,
         TargetPreviewKind.Bed => -25,
+        TargetPreviewKind.FestivalPortal => -76,
+        TargetPreviewKind.FestivalExit => -62,
+        TargetPreviewKind.FestivalExhibit => -66,
+        TargetPreviewKind.FestivalBidBoard => -58,
+        TargetPreviewKind.FestivalShop => -68,
+        TargetPreviewKind.FestivalPlantingPlot => -34,
+        TargetPreviewKind.FestivalSeedRack => -50,
+        TargetPreviewKind.FestivalSeedExchange => -68,
+        TargetPreviewKind.FestivalFeastTable => -66,
+        TargetPreviewKind.FestivalGiftExchange => -64,
+        TargetPreviewKind.FestivalRitual => 66,
+        TargetPreviewKind.FestivalLanternLaunch => -66,
+        TargetPreviewKind.FestivalFishBasin => -62,
+        TargetPreviewKind.FestivalTideAltar => 66,
         _ => -18
     };
+
+    private static float LabelCenterOffset(TargetPreviewKind kind) =>
+        kind == TargetPreviewKind.AnimalNest ? -70 : 8;
 
     private static Color PreviewColor(TargetPreviewState state) => state switch
     {
@@ -1522,6 +2658,35 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewState.Blocked => new Color("#e58a9f"),
         _ => new Color("#8294b8")
     };
+
+    private static Rect2 WorkshopHighlightRect(
+        Vector2 origin,
+        TargetPreview preview
+    )
+    {
+        if (preview.LabelKey ==
+            "construction.homestead_workshop.not_started")
+        {
+            return new Rect2(
+                origin + new Vector2(-13, -16),
+                new Vector2(42, 32)
+            );
+        }
+
+        if (preview.LabelKey ==
+            "construction.homestead_workshop.in_progress")
+        {
+            return new Rect2(
+                origin + new Vector2(-17, -28),
+                new Vector2(50, 44)
+            );
+        }
+
+        return new Rect2(
+            origin + new Vector2(-20, -32),
+            new Vector2(56, 48)
+        );
+    }
 }
 
 internal sealed partial class CottageEntranceBeacon : Node2D

@@ -105,7 +105,7 @@ public sealed class CalendarAndWeatherTests
         Assert.Equal(GameSession.MaxEnergy - 2, session.Energy);
 
         session.Inventory.Add(DataCatalog.StarbudSeedId, 1);
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         Assert.True(session.UseSelected(position).Succeeded);
         session.EndDay();
         Assert.Equal(1, session.Farm.Tiles[position].WateredNights);
@@ -174,10 +174,16 @@ public sealed class FarmSystemTests
     }
 
     [Fact]
-    public void AllTwelveCatalogCropsPlantGrowHarvestAndRemainSellable()
+    public void AllCatalogCropsPlantGrowHarvestAndRemainSellable()
     {
-        Assert.Equal(12, DataCatalog.CropIds.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(12, DataCatalog.SeedItemIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            DataCatalog.Crops.Count,
+            DataCatalog.CropIds.Distinct(StringComparer.Ordinal).Count()
+        );
+        Assert.Equal(
+            DataCatalog.Crops.Count,
+            DataCatalog.SeedItemIds.Distinct(StringComparer.Ordinal).Count()
+        );
 
         foreach (var cropId in DataCatalog.CropIds)
         {
@@ -193,10 +199,22 @@ public sealed class FarmSystemTests
 
             var session = new GameSession();
             session.NewGame();
+            if (crop.SeasonIds is { Count: > 0 })
+            {
+                var seasonIndex = Array.IndexOf(
+                    CalendarSystem.SeasonIds.ToArray(),
+                    crop.SeasonIds[0]
+                );
+                Assert.True(seasonIndex >= 0);
+                session.Clock.Reset(
+                    seasonIndex * CalendarSystem.DaysPerSeason + 1,
+                    8 * 60
+                );
+            }
             var position = new GridPosition(12, 16);
             Assert.True(session.Farm.TryTill(position, session.Energy).Succeeded);
             Assert.True(session.Inventory.Add(crop.SeedItemId, 1));
-            session.Inventory.Select(5);
+            Assert.True(session.Inventory.PromoteToHotbar(crop.SeedItemId));
             Assert.True(session.PreviewSelectedTarget(position).IsAvailable);
             Assert.True(session.UseSelected(position).Succeeded);
             Assert.Equal(cropId, session.Farm.Tiles[position].CropId);
@@ -245,12 +263,270 @@ public sealed class FarmSystemTests
         Assert.Equal(beforeEnergy, session.Energy);
         Assert.Equal(beforeCoins, session.Coins);
         Assert.Null(session.Farm.Tiles[position].CropId);
-        Assert.All(DataCatalog.CropIds.Take(8), cropId =>
-            Assert.True(DataCatalog.Crop(cropId).IsAvailableOnDay(15))
+        Assert.All(DataCatalog.Crops.Values.Where(crop =>
+            crop.SeasonIds is not { Count: > 0 }
+        ), crop =>
+            Assert.True(crop.IsAvailableOnDay(15))
         );
         Assert.All(DataCatalog.GleamriseCropIds, cropId =>
             Assert.False(DataCatalog.Crop(cropId).IsAvailableOnDay(15))
         );
+    }
+
+    [Theory]
+    [InlineData(14, false)]
+    [InlineData(15, true)]
+    [InlineData(28, true)]
+    [InlineData(29, false)]
+    [InlineData(71, true)]
+    public void RainveilCropsUseFourteenDaySeasonBoundaries(
+        int day,
+        bool expectedAvailable
+    )
+    {
+        Assert.Equal(4, DataCatalog.RainveilCropIds.Count);
+        Assert.Equal(4, DataCatalog.RainveilSeedItemIds.Count);
+        Assert.All(DataCatalog.RainveilCropIds, cropId =>
+            Assert.Equal(
+                expectedAvailable,
+                DataCatalog.Crop(cropId).IsAvailableOnDay(day)
+            )
+        );
+        Assert.All(DataCatalog.RainveilSeedItemIds, seedId =>
+            Assert.Equal(
+                expectedAvailable,
+                DataCatalog.IsSeedAvailableOnDay(seedId, day)
+            )
+        );
+    }
+
+    [Fact]
+    public void RainveilSeedsPlantPurchaseAndRegrowThroughExistingRules()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(15, 8 * 60);
+        var position = new GridPosition(12, 16);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.RipplecapSeedId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.RipplecapSeedId
+        ));
+
+        Assert.True(session.PreviewSelectedTarget(position).IsAvailable);
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(DataCatalog.RipplecapId, session.Farm.Tiles[position].CropId);
+        Assert.Equal(0, session.Inventory.Count(DataCatalog.RipplecapSeedId));
+        Assert.True(session.BuyItem(DataCatalog.RipplecapSeedId).Succeeded);
+
+        var reed = DataCatalog.Crop(DataCatalog.LanternReedId);
+        Assert.Equal(2, reed.RegrowthNights);
+        Assert.All(DataCatalog.RainveilCropIds, cropId =>
+            Assert.InRange(DataCatalog.Crop(cropId).MatureAfterWateredNights, 2, 5)
+        );
+    }
+
+    [Fact]
+    public void RainveilCropStateRoundTripsWithoutChangingTheSaveSchema()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(15, 8 * 60);
+        var position = new GridPosition(12, 16);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Farm.TryFertilize(
+            position,
+            DataCatalog.StarsoilFertilizerId
+        ).Succeeded);
+        Assert.True(session.Inventory.Add(DataCatalog.RainveilLotusSeedId, 1));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.RainveilLotusSeedId
+        ));
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.True(session.Farm.TryWater(position, 100).Succeeded);
+
+        var save = session.Capture();
+        var savedTile = Assert.Single(save.FarmTiles);
+        Assert.Equal(SaveService.CurrentSchemaVersion, save.SchemaVersion);
+        Assert.Equal(DataCatalog.RainveilLotusId, savedTile.CropId);
+        Assert.Equal(DataCatalog.StarsoilFertilizerId, savedTile.FertilizerId);
+        Assert.Equal(15, savedTile.PlantedDay);
+
+        var restored = new GameSession();
+        restored.Restore(save);
+        var restoredTile = restored.Farm.Tiles[position];
+        Assert.Equal(savedTile.CropId, restoredTile.CropId);
+        Assert.Equal(savedTile.FertilizerId, restoredTile.FertilizerId);
+        Assert.Equal(savedTile.QualityRoll, restoredTile.QualityRoll);
+        Assert.Equal(savedTile.WateredNights, restoredTile.WateredNights);
+    }
+
+    [Theory]
+    [InlineData(28, false)]
+    [InlineData(29, true)]
+    [InlineData(42, true)]
+    [InlineData(43, false)]
+    [InlineData(85, true)]
+    public void StarharvestCropsUseFourteenDaySeasonBoundaries(
+        int day,
+        bool expectedAvailable
+    )
+    {
+        Assert.Equal(4, DataCatalog.StarharvestCropIds.Count);
+        Assert.Equal(4, DataCatalog.StarharvestSeedItemIds.Count);
+        Assert.All(DataCatalog.StarharvestCropIds, cropId =>
+            Assert.Equal(
+                expectedAvailable,
+                DataCatalog.Crop(cropId).IsAvailableOnDay(day)
+            )
+        );
+        Assert.All(DataCatalog.StarharvestSeedItemIds, seedId =>
+            Assert.Equal(
+                expectedAvailable,
+                DataCatalog.IsSeedAvailableOnDay(seedId, day)
+            )
+        );
+    }
+
+    [Fact]
+    public void StarharvestSeedsShareAtomicPreviewPlantingAndPurchaseRules()
+    {
+        var blocked = new GameSession();
+        blocked.NewGame();
+        blocked.Clock.Reset(28, 8 * 60);
+        var position = new GridPosition(12, 16);
+        Assert.True(blocked.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(blocked.Inventory.Add(DataCatalog.AuricShootSeedId, 1));
+        Assert.True(blocked.Inventory.PromoteToHotbar(
+            DataCatalog.AuricShootSeedId
+        ));
+        var beforeEnergy = blocked.Energy;
+        var beforeCoins = blocked.Coins;
+
+        var preview = blocked.PreviewSelectedTarget(position);
+        var planted = blocked.UseSelected(position);
+        var bought = blocked.BuyItem(DataCatalog.AuricShootSeedId);
+
+        Assert.Equal(TargetPreviewState.Blocked, preview.State);
+        Assert.Equal("target.blocked.seed_out_of_season", preview.LabelKey);
+        Assert.False(planted.Succeeded);
+        Assert.Equal("notice.seed_out_of_season", planted.MessageKey);
+        Assert.False(bought.Succeeded);
+        Assert.Equal("shop.seed_out_of_season", bought.MessageKey);
+        Assert.Equal(1, blocked.Inventory.Count(DataCatalog.AuricShootSeedId));
+        Assert.Equal(beforeEnergy, blocked.Energy);
+        Assert.Equal(beforeCoins, blocked.Coins);
+        Assert.Null(blocked.Farm.Tiles[position].CropId);
+
+        var available = new GameSession();
+        available.NewGame();
+        available.Clock.Reset(29, 8 * 60);
+        Assert.True(available.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(available.Inventory.Add(DataCatalog.AuricShootSeedId, 1));
+        Assert.True(available.Inventory.PromoteToHotbar(
+            DataCatalog.AuricShootSeedId
+        ));
+
+        Assert.True(available.PreviewSelectedTarget(position).IsAvailable);
+        Assert.True(available.UseSelected(position).Succeeded);
+        Assert.Equal(0, available.Inventory.Count(DataCatalog.AuricShootSeedId));
+        Assert.Equal(DataCatalog.AuricShootId, available.Farm.Tiles[position].CropId);
+        Assert.True(available.BuyItem(DataCatalog.AuricShootSeedId).Succeeded);
+    }
+
+    [Fact]
+    public void AmberthreadClusterRegrowsAfterThreeWateredNightsWithoutASeed()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(29, 8 * 60);
+        var position = new GridPosition(12, 16);
+        var crop = DataCatalog.Crop(DataCatalog.AmberthreadClusterId);
+        Assert.Equal(3, crop.RegrowthNights);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Inventory.Add(
+            DataCatalog.AmberthreadClusterSeedId,
+            1
+        ));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.AmberthreadClusterSeedId
+        ));
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(
+            0,
+            session.Inventory.Count(DataCatalog.AmberthreadClusterSeedId)
+        );
+
+        GrowToMaturity(
+            session.Farm,
+            position,
+            crop,
+            DataCatalog.ClearWeatherId
+        );
+        session.Inventory.Select(0);
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(
+            crop.RegrowthWateredNights,
+            session.Farm.Tiles[position].WateredNights
+        );
+
+        for (var night = 0; night < crop.RegrowthNights; night++)
+        {
+            Assert.True(session.Farm.TryWater(position, 100).Succeeded);
+            session.Farm.EndDay();
+        }
+
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.Equal(
+            2,
+            session.Inventory.Count(DataCatalog.AmberthreadClusterId)
+        );
+        Assert.Equal(
+            0,
+            session.Inventory.Count(DataCatalog.AmberthreadClusterSeedId)
+        );
+        Assert.Equal(
+            DataCatalog.AmberthreadClusterId,
+            session.Farm.Tiles[position].CropId
+        );
+    }
+
+    [Fact]
+    public void StarharvestCropStateRoundTripsWithoutChangingTheSaveSchema()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        session.Clock.Reset(29, 8 * 60);
+        var position = new GridPosition(12, 16);
+        Assert.True(session.Farm.TryTill(position, 100).Succeeded);
+        Assert.True(session.Farm.TryFertilize(
+            position,
+            DataCatalog.StarsoilFertilizerId
+        ).Succeeded);
+        Assert.True(session.Inventory.Add(
+            DataCatalog.CrownstarSaffronSeedId,
+            1
+        ));
+        Assert.True(session.Inventory.PromoteToHotbar(
+            DataCatalog.CrownstarSaffronSeedId
+        ));
+        Assert.True(session.UseSelected(position).Succeeded);
+        Assert.True(session.Farm.TryWater(position, 100).Succeeded);
+
+        var save = session.Capture();
+        var savedTile = Assert.Single(save.FarmTiles);
+        Assert.Equal(SaveService.CurrentSchemaVersion, save.SchemaVersion);
+        Assert.Equal(DataCatalog.CrownstarSaffronId, savedTile.CropId);
+        Assert.Equal(DataCatalog.StarsoilFertilizerId, savedTile.FertilizerId);
+        Assert.Equal(29, savedTile.PlantedDay);
+
+        var restored = new GameSession();
+        restored.Restore(save);
+        var restoredTile = restored.Farm.Tiles[position];
+        Assert.Equal(savedTile.CropId, restoredTile.CropId);
+        Assert.Equal(savedTile.FertilizerId, restoredTile.FertilizerId);
+        Assert.Equal(savedTile.QualityRoll, restoredTile.QualityRoll);
+        Assert.Equal(savedTile.WateredNights, restoredTile.WateredNights);
     }
 
     [Fact]
@@ -682,9 +958,13 @@ public sealed class CropQualityAndFertilizerTests
     [Fact]
     public void EveryCropHasStableIncreasingQualityVariants()
     {
-        Assert.Equal(24, DataCatalog.QualityProduceItemIds.Count);
+        var expectedQualityVariantCount = DataCatalog.CropIds.Count * 2;
         Assert.Equal(
-            24,
+            expectedQualityVariantCount,
+            DataCatalog.QualityProduceItemIds.Count
+        );
+        Assert.Equal(
+            expectedQualityVariantCount,
             DataCatalog.QualityProduceItemIds
                 .Distinct(StringComparer.Ordinal)
                 .Count()
@@ -1488,18 +1768,48 @@ public sealed class TwilightEmporiumRotationTests
             .ToArray();
         var secondWeek = TwilightEmporiumSystem.StockForDay(8).ToArray();
         var nextSeason = TwilightEmporiumSystem.StockForDay(15).ToArray();
+        var nextSeasonSecondWeek = TwilightEmporiumSystem
+            .StockForDay(22)
+            .ToArray();
+        var starharvest = TwilightEmporiumSystem.StockForDay(29).ToArray();
+        var starharvestSecondWeek = TwilightEmporiumSystem
+            .StockForDay(36)
+            .ToArray();
 
         Assert.Equal(firstWeek, firstWeekAgain);
         Assert.Equal(TwilightEmporiumSystem.StockSize, firstWeek.Length);
         Assert.Equal(DataCatalog.GleamriseSeedItemIds, firstWeek);
+        Assert.Equal(DataCatalog.RainveilSeedItemIds, nextSeason);
+        Assert.Equal(DataCatalog.StarharvestSeedItemIds, starharvest);
+        Assert.Equal(
+            new[]
+            {
+                DataCatalog.CrownstarSaffronSeedId,
+                DataCatalog.AmberthreadClusterSeedId,
+                DataCatalog.AuricShootSeedId,
+                DataCatalog.SunvaultGourdSeedId
+            },
+            starharvestSecondWeek
+        );
         Assert.Equal(firstWeek.Length, firstWeek.Distinct().Count());
         Assert.False(firstWeek.SequenceEqual(secondWeek));
         Assert.False(secondWeek.SequenceEqual(nextSeason));
+        Assert.False(nextSeason.SequenceEqual(nextSeasonSecondWeek));
         Assert.DoesNotContain(
             nextSeason,
             itemId => DataCatalog.GleamriseSeedItemIds.Contains(itemId)
         );
-        Assert.All(firstWeek.Concat(secondWeek).Concat(nextSeason), itemId =>
+        Assert.DoesNotContain(
+            starharvest,
+            itemId => DataCatalog.GleamriseSeedItemIds.Contains(itemId) ||
+                DataCatalog.RainveilSeedItemIds.Contains(itemId)
+        );
+        Assert.All(firstWeek
+            .Concat(secondWeek)
+            .Concat(nextSeason)
+            .Concat(nextSeasonSecondWeek)
+            .Concat(starharvest)
+            .Concat(starharvestSecondWeek), itemId =>
         {
             Assert.Contains(itemId, DataCatalog.SeedItemIds);
             Assert.True(DataCatalog.Item(itemId).BuyPrice > 0);
@@ -2071,7 +2381,7 @@ public sealed class QuestAndSessionTests
         }
         Assert.Equal(QuestStage.Plant, session.Quest.Stage);
 
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         foreach (var position in positions)
         {
             Assert.True(session.UseSelected(position).Succeeded);
@@ -2275,7 +2585,7 @@ public sealed class QuestAndSessionTests
         var needsBucket = session.PreviewSelectedTarget(water);
         Assert.Equal(TargetPreviewState.NeedsTool, needsBucket.State);
         Assert.Equal(TargetPreviewKind.Water, needsBucket.Kind);
-        Assert.Equal("target.need.bucket", needsBucket.LabelKey);
+        Assert.Equal("target.need.bucket_or_rod", needsBucket.LabelKey);
 
         session.Inventory.Select(4);
         var alreadyFull = session.PreviewSelectedTarget(water);
@@ -2382,7 +2692,7 @@ public sealed class DailyCommissionTests
         session.NewGame();
         session.AcceptDailyCommission();
         session.Inventory.Add(DataCatalog.StarbudSeedId, 2);
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         var soil = new GridPosition(12, 16);
 
         Assert.False(session.UseSelected(soil).Succeeded);
@@ -2391,7 +2701,7 @@ public sealed class DailyCommissionTests
 
         session.Inventory.Select(1);
         Assert.True(session.UseSelected(soil).Succeeded);
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         Assert.True(session.UseSelected(soil).Succeeded);
         Assert.Equal(1, session.Commission.Progress);
 
@@ -2611,7 +2921,7 @@ public sealed class WeeklyCommissionTests
         session.NewGame();
         session.AcceptWeeklyCommission();
         Assert.True(session.Inventory.Add(DataCatalog.StarbudSeedId, 1));
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         var soil = new GridPosition(12, 16);
 
         Assert.False(session.UseSelected(soil).Succeeded);
@@ -2619,7 +2929,7 @@ public sealed class WeeklyCommissionTests
 
         session.Inventory.Select(1);
         Assert.True(session.UseSelected(soil).Succeeded);
-        session.Inventory.Select(5);
+        Assert.True(session.Inventory.PromoteToHotbar(DataCatalog.StarbudSeedId));
         Assert.True(session.UseSelected(soil).Succeeded);
         Assert.Equal(1, session.WeeklyCommission.Progress);
         RecordStarbudPlanting(session, 2);
@@ -2662,7 +2972,7 @@ public sealed class WeeklyCommissionTests
         var seedStack = DataCatalog.Item(DataCatalog.StarbudSeedId).MaxStack;
         Assert.True(session.Inventory.Add(
             DataCatalog.StarbudSeedId,
-            18 * seedStack
+            (Inventory.SlotCount - Inventory.StartingToolCount - 1) * seedStack
         ));
         var before = session.Inventory.Capture()
             .Select(slot => (slot.ItemId, slot.Count))
@@ -3075,6 +3385,11 @@ public sealed class StarlightSystemTests
         var session = new GameSession();
         session.NewGame();
         var pedestal = WorldDefinition.WoodlandStarlightCell;
+        session.SetPlayerLocation(
+            pedestal.X * 16 + 8,
+            (pedestal.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
         session.Inventory.Select(1);
         var startingEnergy = session.Energy;
 
@@ -3256,7 +3571,8 @@ public sealed class VillageSystemTests
     [
         DataCatalog.ClearWeatherId,
         DataCatalog.RainWeatherId,
-        DataCatalog.StardustWindWeatherId
+        DataCatalog.StardustWindWeatherId,
+        DataCatalog.LongnightSnowWeatherId
     ];
 
     [Fact]
@@ -3272,7 +3588,7 @@ public sealed class VillageSystemTests
                  minute += GameClock.MinutesPerTick)
             {
                 var current = village.AllCurrentNpcs(day, minute);
-                Assert.Equal(8, current.Count);
+                Assert.Equal(VillageCatalog.Npcs.Count, current.Count);
                 Assert.Equal(
                     current.Count,
                     current
@@ -3550,7 +3866,7 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void EightVillagersHaveCompleteDistinctDailySchedules()
+    public void CatalogVillagersHaveCompleteDistinctDailySchedules()
     {
         var village = new VillageSystem();
 
@@ -3561,7 +3877,7 @@ public sealed class VillageSystemTests
                  minute += GameClock.MinutesPerTick)
             {
                 var current = village.AllCurrentNpcs(day, minute);
-                Assert.Equal(8, current.Count);
+                Assert.Equal(VillageCatalog.Npcs.Count, current.Count);
                 Assert.Equal(
                     current.Count,
                     current
@@ -3855,6 +4171,7 @@ public sealed class VillageSystemTests
             "village.npc.tavi.weather_stardust",
             tavi.DialogueKey
         );
+        tavi = NpcTestPositioning.PlacePlayerAdjacent(session, tavi);
 
         var preview = session.PreviewSelectedTarget(tavi.Position);
         Assert.True(preview.IsAvailable);
@@ -4004,6 +4321,7 @@ public sealed class VillageSystemTests
             session.Clock.MinuteOfDay
         );
         Assert.NotNull(npc);
+        npc = NpcTestPositioning.PlacePlayerAdjacent(session, npc);
 
         var introduction = session.InteractWithVillager(
             npc.Position,
@@ -4046,6 +4364,7 @@ public sealed class VillageSystemTests
             session.Clock.MinuteOfDay
         );
         Assert.NotNull(liora);
+        liora = NpcTestPositioning.PlacePlayerAdjacent(session, liora);
 
         session.Inventory.Select(1);
         var wrongTool = session.PreviewSelectedTarget(liora.Position);
@@ -4116,6 +4435,7 @@ public sealed class VillageSystemTests
             PlayerLocationIds.MoonlitArchive,
             liora.LocationId
         );
+        liora = NpcTestPositioning.PlacePlayerAdjacent(session, liora);
         Assert.True(session.Inventory.Add(DataCatalog.MoonrootId, 2));
         Assert.True(
             session.Inventory.PromoteToHotbar(DataCatalog.MoonrootId)
@@ -4224,6 +4544,7 @@ public sealed class VillageSystemTests
             PlayerLocationIds.MoonstoneWorkshop,
             tavi.LocationId
         );
+        tavi = NpcTestPositioning.PlacePlayerAdjacent(session, tavi);
 
         var talkPreview = session.PreviewSelectedTarget(tavi.Position);
         Assert.True(talkPreview.IsAvailable);
@@ -4331,6 +4652,7 @@ public sealed class VillageSystemTests
             PlayerLocationIds.StarweaverTeaHouse,
             vessa.LocationId
         );
+        vessa = NpcTestPositioning.PlacePlayerAdjacent(session, vessa);
 
         var talkPreview = session.PreviewSelectedTarget(vessa.Position);
         Assert.True(talkPreview.IsAvailable);
@@ -4510,19 +4832,26 @@ public sealed class VillageSystemTests
         session.Inventory.Select(0);
         session.SetPlayerLocation(
             20 * 16 + 8,
-            19 * 16 + 8,
+            12 * 16 + 8,
             PlayerLocationIds.MoonlitArchive
         );
         var desk = session.PreviewSelectedTarget(
             VillageCatalog.MoonlitArchiveDeskCell
         );
+        Assert.True(desk.IsAvailable);
+        Assert.Equal("target.action.open_crop_codex", desk.LabelKey);
+        Assert.Equal(TargetPreviewKind.ArchiveResearchDesk, desk.Kind);
+        Assert.True(session.InspectMoonlitArchiveDesk().Succeeded);
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            19 * 16 + 8,
+            PlayerLocationIds.MoonlitArchive
+        );
         var exit = session.PreviewSelectedTarget(
             VillageCatalog.MoonlitArchiveExitCell
         );
-        Assert.True(desk.IsAvailable);
-        Assert.Equal("target.action.read_archive", desk.LabelKey);
         Assert.True(exit.IsAvailable);
-        Assert.True(session.InspectMoonlitArchiveDesk().Succeeded);
         Assert.True(session.TryExitMoonlitArchive().Succeeded);
     }
 
@@ -5582,7 +5911,10 @@ public sealed class CharacterEventSystemTests
             CharacterEventCatalog.LioraRememberedWayHomeId
         ).Succeeded);
 
-        laterDay.Session.Clock.Reset(4, 10 * 60);
+        // Gleamrise day 4 now hosts the Planting Festival, so Liora is in
+        // the festival scene. Use the following ordinary day to verify that
+        // a completed event does not reopen during her regular route.
+        laterDay.Session.Clock.Reset(5, 10 * 60);
         var completedTalk = laterDay.Session.InteractWithVillager(
             laterDay.LioraPosition,
             out var completedResult
@@ -7090,6 +7422,7 @@ public sealed class CharacterEventSystemTests
             session.PlayerCell
         ).Single(state => state.Definition.Id == VillageCatalog.OrinId);
         Assert.Equal(expectedDialogueKey, orin.DialogueKey);
+        orin = NpcTestPositioning.PlacePlayerAdjacent(session, orin);
 
         var conversation = session.InteractWithVillager(
             orin.Position,
@@ -7761,6 +8094,7 @@ public sealed class CharacterEventSystemTests
             PlayerLocationIds.MoonlitArchive,
             liora.LocationId
         );
+        liora = NpcTestPositioning.PlacePlayerAdjacent(session, liora);
         return (session, liora.Position);
     }
 
@@ -7811,6 +8145,7 @@ public sealed class CharacterEventSystemTests
             PlayerLocationIds.MoonstoneWorkshop,
             tavi.LocationId
         );
+        tavi = NpcTestPositioning.PlacePlayerAdjacent(session, tavi);
         return (session, tavi.Position);
     }
 
@@ -7864,6 +8199,7 @@ public sealed class CharacterEventSystemTests
         ).Single(state => state.Definition.Id == VillageCatalog.NemiId);
         Assert.Equal(PlayerLocationIds.World, nemi.LocationId);
         Assert.Equal("village.npc.nemi.route", nemi.DialogueKey);
+        nemi = NpcTestPositioning.PlacePlayerAdjacent(session, nemi);
         return (session, nemi.Position);
     }
 
@@ -7917,6 +8253,7 @@ public sealed class CharacterEventSystemTests
         ).Single(state => state.Definition.Id == VillageCatalog.KaelId);
         Assert.Equal(PlayerLocationIds.World, kael.LocationId);
         Assert.Equal("village.npc.kael.plaza", kael.DialogueKey);
+        kael = NpcTestPositioning.PlacePlayerAdjacent(session, kael);
         return (session, kael.Position);
     }
 
@@ -7970,6 +8307,7 @@ public sealed class CharacterEventSystemTests
         ).Single(state => state.Definition.Id == VillageCatalog.SelaId);
         Assert.Equal(PlayerLocationIds.World, sela.LocationId);
         Assert.Equal("village.npc.sela.plaza", sela.DialogueKey);
+        sela = NpcTestPositioning.PlacePlayerAdjacent(session, sela);
         return (session, sela.Position);
     }
 
@@ -8023,6 +8361,7 @@ public sealed class CharacterEventSystemTests
         ).Single(state => state.Definition.Id == VillageCatalog.OrinId);
         Assert.Equal(PlayerLocationIds.World, orin.LocationId);
         Assert.Equal("village.npc.orin.plaza", orin.DialogueKey);
+        orin = NpcTestPositioning.PlacePlayerAdjacent(session, orin);
         return (session, orin.Position);
     }
 }
@@ -8043,7 +8382,7 @@ public sealed class LocaleTests
     }
 
     [Fact]
-    public void GleamriseCropItemAndSeasonRuleKeysAreBilingual()
+    public void SeasonalCropItemAndSeasonRuleKeysAreBilingual()
     {
         var locale = new LocaleService();
         locale.LoadJson(LocaleService.English, ReadLocale("en.json"));
@@ -8051,9 +8390,13 @@ public sealed class LocaleTests
             LocaleService.SimplifiedChinese,
             ReadLocale("zh_CN.json")
         );
-        var keys = DataCatalog.GleamriseCropIds
+        var seasonalCropIds = DataCatalog.GleamriseCropIds
+            .Concat(DataCatalog.RainveilCropIds)
+            .Concat(DataCatalog.StarharvestCropIds)
+            .ToArray();
+        var keys = seasonalCropIds
             .Select(cropId => DataCatalog.Crop(cropId).NameKey)
-            .Concat(DataCatalog.GleamriseCropIds.SelectMany(cropId =>
+            .Concat(seasonalCropIds.SelectMany(cropId =>
             {
                 var crop = DataCatalog.Crop(cropId);
                 return DataCatalog.ItemFamilyIds(cropId)
@@ -8064,7 +8407,9 @@ public sealed class LocaleTests
             [
                 "target.blocked.seed_out_of_season",
                 "notice.seed_out_of_season",
-                "shop.seed_out_of_season"
+                "shop.seed_out_of_season",
+                "target.blocked.longnight_outdoor_planting",
+                "notice.longnight_outdoor_planting"
             ])
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -8208,6 +8553,7 @@ public sealed class LocaleTests
             "notice.emporium_world_only",
             "emporium.manifest.name",
             "emporium.manifest.dialogue",
+            "emporium.shop.longnight_greenhouse_note",
             "village.landmark.twilight_emporium",
             "village.npc.orin.emporium"
         };
@@ -9469,8 +9815,12 @@ public sealed class SaveServiceTests : IDisposable
                      session.Clock.MinuteOfDay
                  ))
         {
+            var adjacentNpc = NpcTestPositioning.PlacePlayerAdjacent(
+                session,
+                npc
+            );
             var conversation = session.InteractWithVillager(
-                npc.Position,
+                adjacentNpc.Position,
                 out var interaction
             );
             Assert.True(interaction.Succeeded);
@@ -9501,7 +9851,10 @@ public sealed class SaveServiceTests : IDisposable
             VillageCatalog.Npcs.Keys.Order(StringComparer.Ordinal),
             result.Save.Village.MetNpcIds.Order(StringComparer.Ordinal)
         );
-        Assert.Equal(8, result.Save.Village.Relationships.Count);
+        Assert.Equal(
+            VillageCatalog.Npcs.Count,
+            result.Save.Village.Relationships.Count
+        );
         Assert.All(
             result.Save.Village.Relationships,
             relationship => Assert.Equal(2, relationship.Points)

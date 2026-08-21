@@ -14,12 +14,21 @@ public sealed partial class Main : Node
     private Node2D? _world;
     private FarmView? _farm;
     private CottageView? _cottage;
+    private GreenhouseView? _greenhouse;
+    private StarfeatherCoopView? _starfeatherCoop;
+    private MoonfleeceBarnView? _moonfleeceBarn;
     private ArchiveView? _archive;
     private WorkshopView? _workshop;
     private TeaHouseView? _teaHouse;
     private TwilightEmporiumView? _twilightEmporium;
     private StarlightPostView? _starlightPost;
     private StarfallWatchView? _starfallWatch;
+    private StarharvestMarketView? _starharvestMarket;
+    private GleamrisePlantingFestivalView? _gleamrisePlantingFestival;
+    private LongnightLanternFeastView? _longnightLanternFeast;
+    private FireflyTideView? _fireflyTide;
+    private CrystalGrottoView? _crystalGrotto;
+    private StarfallRuinsTrialView? _starfallRuinsTrial;
     private TitleMenu? _title;
     private HudView? _hud;
     private PauseOverlay? _pauseOverlay;
@@ -33,10 +42,25 @@ public sealed partial class Main : Node
     private StarlightMailOverlay? _mailOverlay;
     private StarlightPedestalOverlay? _starlightOverlay;
     private CraftingOverlay? _craftingOverlay;
+    private KitchenOverlay? _kitchenOverlay;
+    private IngredientPantryOverlay? _ingredientPantryOverlay;
+    private CookedDishOverlay? _cookedDishOverlay;
     private StorageOverlay? _storageOverlay;
     private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
+    private FishingCollectionOverlay? _fishingCollectionOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
+    private FestivalShowcaseOverlay? _festivalShowcaseOverlay;
+    private FestivalShopOverlay? _festivalShopOverlay;
+    private GleamrisePlantingOverlay? _gleamrisePlantingOverlay;
+    private GleamriseSeedExchangeOverlay? _gleamriseSeedExchangeOverlay;
+    private LongnightLanternFeastOverlay? _longnightFeastOverlay;
+    private LongnightLanternStallOverlay? _longnightStallOverlay;
+    private FireflyTideOverlay? _fireflyTideOverlay;
+    private FireflyTideShopOverlay? _fireflyTideShopOverlay;
+    private LivestockAutomationOverlay? _livestockAutomationOverlay;
+    private CompendiumOverlay? _compendiumOverlay;
+    private ToolUpgradeOverlay? _toolUpgradeOverlay;
     private FadeTransition? _fadeTransition;
     private bool _playing;
     private bool _paused;
@@ -70,6 +94,7 @@ public sealed partial class Main : Node
         AddChild(_uiLayer);
 
         _session.NewGame(_locale.CurrentLocale);
+        _session.CollectionEntryDiscovered += OnCollectionEntryDiscovered;
         _locale.LocaleChanged += OnLocaleChanged;
         ShowTitle();
 
@@ -108,7 +133,14 @@ public sealed partial class Main : Node
         _session.Clock.AdvanceRealTime(delta);
         if (_session.Clock.EndOfDayReached && _fadeTransition is null)
         {
-            EndDay();
+            if (_session.InsideStarfallRuinsTrial)
+            {
+                ResolveStarfallTrialDefeat(forcedByClosingTime: true);
+            }
+            else
+            {
+                EndDay();
+            }
         }
     }
 
@@ -143,6 +175,46 @@ public sealed partial class Main : Node
     {
         if (!_playing)
         {
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _compendiumOverlay is not null)
+        {
+            CloseCropCodex();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _festivalShowcaseOverlay is not null)
+        {
+            CloseFestivalShowcase();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _festivalShopOverlay is not null)
+        {
+            CloseFestivalShop();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _gleamrisePlantingOverlay is not null)
+        {
+            CloseGleamrisePlanting();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _gleamriseSeedExchangeOverlay is not null)
+        {
+            CloseGleamriseSeedExchange();
+            GetViewport().SetInputAsHandled();
             return;
         }
 
@@ -183,6 +255,14 @@ public sealed partial class Main : Node
         }
 
         if (@event.IsActionPressed(InputSetup.Pause) &&
+            _livestockAutomationOverlay is not null)
+        {
+            CloseLivestockAutomation();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
             _mailOverlay is not null)
         {
             CloseStarlightMail();
@@ -194,6 +274,30 @@ public sealed partial class Main : Node
             _starlightOverlay is not null)
         {
             CloseStarlightPedestal();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _kitchenOverlay is not null)
+        {
+            CloseKitchen();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _ingredientPantryOverlay is not null)
+        {
+            CloseIngredientPantry();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _cookedDishOverlay is not null)
+        {
+            CloseCookedDishes();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -237,6 +341,14 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _fishingCollectionOverlay is not null)
+        {
+            CloseFishingCollection();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Backpack) && !IsInputBlocked)
         {
             OpenBackpack();
@@ -259,12 +371,17 @@ public sealed partial class Main : Node
             _shippingOverlay is null &&
             _commissionOverlay is null &&
             _constructionOverlay is null &&
+            _livestockAutomationOverlay is null &&
             _mailOverlay is null &&
             _starlightOverlay is null &&
             _craftingOverlay is null &&
+            _kitchenOverlay is null &&
+            _ingredientPantryOverlay is null &&
+            _cookedDishOverlay is null &&
             _storageOverlay is null &&
             _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
+            _fishingCollectionOverlay is null &&
             _farmingSpecializationOverlay is null &&
             _fadeTransition is null)
         {
@@ -335,13 +452,28 @@ public sealed partial class Main : Node
         _shippingOverlay is not null ||
         _commissionOverlay is not null ||
         _constructionOverlay is not null ||
+        _livestockAutomationOverlay is not null ||
+        _compendiumOverlay is not null ||
+        _toolUpgradeOverlay is not null ||
         _mailOverlay is not null ||
         _starlightOverlay is not null ||
         _craftingOverlay is not null ||
+        _kitchenOverlay is not null ||
+        _ingredientPantryOverlay is not null ||
+        _cookedDishOverlay is not null ||
         _storageOverlay is not null ||
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
+        _fishingCollectionOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
+        _festivalShowcaseOverlay is not null ||
+        _festivalShopOverlay is not null ||
+        _gleamrisePlantingOverlay is not null ||
+        _gleamriseSeedExchangeOverlay is not null ||
+        _longnightFeastOverlay is not null ||
+        _longnightStallOverlay is not null ||
+        _fireflyTideOverlay is not null ||
+        _fireflyTideShopOverlay is not null ||
         _fadeTransition is not null;
 
     private bool CanRestoreWorldControls =>
@@ -353,13 +485,28 @@ public sealed partial class Main : Node
         _shippingOverlay is null &&
         _commissionOverlay is null &&
         _constructionOverlay is null &&
+        _livestockAutomationOverlay is null &&
+        _compendiumOverlay is null &&
+        _toolUpgradeOverlay is null &&
         _mailOverlay is null &&
         _starlightOverlay is null &&
         _craftingOverlay is null &&
+        _kitchenOverlay is null &&
+        _ingredientPantryOverlay is null &&
+        _cookedDishOverlay is null &&
         _storageOverlay is null &&
         _nightlySummaryOverlay is null &&
         _backpackOverlay is null &&
+        _fishingCollectionOverlay is null &&
         _farmingSpecializationOverlay is null &&
+        _festivalShowcaseOverlay is null &&
+        _festivalShopOverlay is null &&
+        _gleamrisePlantingOverlay is null &&
+        _gleamriseSeedExchangeOverlay is null &&
+        _longnightFeastOverlay is null &&
+        _longnightStallOverlay is null &&
+        _fireflyTideOverlay is null &&
+        _fireflyTideShopOverlay is null &&
         _fadeTransition is null;
 
     private void ShowTitle(string? noticeKey = null)
@@ -387,20 +534,40 @@ public sealed partial class Main : Node
         _commissionOverlay = null;
         FreeUi(_constructionOverlay);
         _constructionOverlay = null;
+        FreeUi(_livestockAutomationOverlay);
+        _livestockAutomationOverlay = null;
+        FreeUi(_compendiumOverlay);
+        _compendiumOverlay = null;
         FreeUi(_mailOverlay);
         _mailOverlay = null;
         FreeUi(_starlightOverlay);
         _starlightOverlay = null;
         FreeUi(_craftingOverlay);
         _craftingOverlay = null;
+        FreeUi(_kitchenOverlay);
+        _kitchenOverlay = null;
+        FreeUi(_ingredientPantryOverlay);
+        _ingredientPantryOverlay = null;
+        FreeUi(_cookedDishOverlay);
+        _cookedDishOverlay = null;
         FreeUi(_storageOverlay);
         _storageOverlay = null;
         FreeUi(_nightlySummaryOverlay);
         _nightlySummaryOverlay = null;
         FreeUi(_backpackOverlay);
         _backpackOverlay = null;
+        FreeUi(_fishingCollectionOverlay);
+        _fishingCollectionOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
         _farmingSpecializationOverlay = null;
+        FreeUi(_festivalShowcaseOverlay);
+        _festivalShowcaseOverlay = null;
+        FreeUi(_festivalShopOverlay);
+        _festivalShopOverlay = null;
+        FreeUi(_gleamrisePlantingOverlay);
+        _gleamrisePlantingOverlay = null;
+        FreeUi(_gleamriseSeedExchangeOverlay);
+        _gleamriseSeedExchangeOverlay = null;
         FreeUi(_fadeTransition);
         _fadeTransition = null;
         FreeUi(_title);
@@ -440,9 +607,141 @@ public sealed partial class Main : Node
                     StartCottageUpgradeInProgressPlaytest,
                 [PlaytestScenarioId.CottageUpgradeCompleted] =
                     StartCottageUpgradeCompletedPlaytest,
+                [PlaytestScenarioId.CottageSecondUpgradeReady] =
+                    StartCottageSecondUpgradeReadyPlaytest,
+                [PlaytestScenarioId.CottageSecondUpgradeInProgress] =
+                    StartCottageSecondUpgradeInProgressPlaytest,
+                [PlaytestScenarioId.CottageKitchen] =
+                    StartCottageKitchenPlaytest,
+                [PlaytestScenarioId.CottageKitchenPanel] =
+                    StartCottageKitchenPanelPlaytest,
+                [PlaytestScenarioId.CottagePantry] =
+                    StartCottagePantryPlaytest,
+                [PlaytestScenarioId.CottagePantryPanel] =
+                    StartCottagePantryPanelPlaytest,
+                [PlaytestScenarioId.CottageMealsEnglish] =
+                    StartCottageMealsEnglishPlaytest,
+                [PlaytestScenarioId.HomesteadWorkshopReady] =
+                    StartHomesteadWorkshopReadyPlaytest,
+                [PlaytestScenarioId.HomesteadWorkshopInProgress] =
+                    StartHomesteadWorkshopInProgressPlaytest,
+                [PlaytestScenarioId.HomesteadWorkshopCompleted] =
+                    StartHomesteadWorkshopCompletedPlaytest,
+                [PlaytestScenarioId.GreenhouseReady] =
+                    StartGreenhouseReadyPlaytest,
+                [PlaytestScenarioId.GreenhouseInProgress] =
+                    StartGreenhouseInProgressPlaytest,
+                [PlaytestScenarioId.GreenhouseExteriorCompleted] =
+                    StartGreenhouseExteriorCompletedPlaytest,
+                [PlaytestScenarioId.GreenhouseCompleted] =
+                    StartGreenhouseCompletedPlaytest,
+                [PlaytestScenarioId.GreenhouseCistern] =
+                    StartGreenhouseCisternPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopReady] =
+                    StartStarfeatherCoopReadyPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopInProgress] =
+                    StartStarfeatherCoopInProgressPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopGrazing] =
+                    StartStarfeatherCoopGrazingPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopChick] =
+                    StartStarfeatherCoopChickPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopAdult] =
+                    StartStarfeatherCoopAdultPlaytest,
+                [PlaytestScenarioId.StarfeatherCoopNestBlockedEnglish] =
+                    StartStarfeatherCoopNestBlockedEnglishPlaytest,
+                [PlaytestScenarioId.MoonfleeceBarnReady] =
+                    StartMoonfleeceBarnReadyPlaytest,
+                [PlaytestScenarioId.MoonfleeceBarnInProgress] =
+                    StartMoonfleeceBarnInProgressPlaytest,
+                [PlaytestScenarioId.MoonfleeceBarnGrazing] =
+                    StartMoonfleeceBarnGrazingPlaytest,
+                [PlaytestScenarioId.MoonfleeceBarnJuvenile] =
+                    StartMoonfleeceBarnJuvenilePlaytest,
+                [PlaytestScenarioId.MoonfleeceBarnRackBlockedEnglish] =
+                    StartMoonfleeceBarnRackBlockedEnglishPlaytest,
+                [PlaytestScenarioId.DewhornGrazing] =
+                    StartDewhornGrazingPlaytest,
+                [PlaytestScenarioId.DewhornMilkingBlockedEnglish] =
+                    StartDewhornMilkingBlockedEnglishPlaytest,
+                [PlaytestScenarioId.LivestockAutomationConsole] =
+                    StartLivestockAutomationConsolePlaytest,
+                [PlaytestScenarioId.LivestockAutomationPanel] =
+                    StartLivestockAutomationPanelPlaytest,
+                [PlaytestScenarioId.LivestockAutomationPanelEnglish] =
+                    StartLivestockAutomationPanelEnglishPlaytest,
+                [PlaytestScenarioId.LivestockAutomationConstruction] =
+                    StartLivestockAutomationConstructionPlaytest,
                 [PlaytestScenarioId.Crops] = StartCropPlaytest,
                 [PlaytestScenarioId.GleamriseCrops] =
                     StartGleamriseCropPlaytest,
+                [PlaytestScenarioId.RainveilCrops] =
+                    StartRainveilCropPlaytest,
+                [PlaytestScenarioId.StarharvestCrops] =
+                    StartStarharvestCropPlaytest,
+                [PlaytestScenarioId.StarharvestMarketGate] =
+                    StartStarharvestMarketGatePlaytest,
+                [PlaytestScenarioId.StarharvestMarket] =
+                    StartStarharvestMarketPlaytest,
+                [PlaytestScenarioId.StarharvestMarketShowcase] =
+                    StartStarharvestMarketShowcasePlaytest,
+                [PlaytestScenarioId.StarharvestMarketResult] =
+                    StartStarharvestMarketResultPlaytest,
+                [PlaytestScenarioId.StarharvestMarketShop] =
+                    StartStarharvestMarketShopPlaytest,
+                [PlaytestScenarioId.StarharvestMarketShowcaseEnglish] =
+                    StartStarharvestMarketShowcaseEnglishPlaytest,
+                [PlaytestScenarioId.GleamriseFestivalGate] =
+                    StartGleamriseFestivalGatePlaytest,
+                [PlaytestScenarioId.GleamriseFestival] =
+                    StartGleamriseFestivalPlaytest,
+                [PlaytestScenarioId.GleamriseFestivalChallenge] =
+                    StartGleamriseFestivalChallengePlaytest,
+                [PlaytestScenarioId.GleamriseFestivalResult] =
+                    StartGleamriseFestivalResultPlaytest,
+                [PlaytestScenarioId.GleamriseFestivalExchange] =
+                    StartGleamriseFestivalExchangePlaytest,
+                [PlaytestScenarioId.GleamriseFestivalChallengeEnglish] =
+                    StartGleamriseFestivalChallengeEnglishPlaytest,
+                [PlaytestScenarioId.LongnightFeastGate] =
+                    StartLongnightFeastGatePlaytest,
+                [PlaytestScenarioId.LongnightFeast] =
+                    StartLongnightFeastPlaytest,
+                [PlaytestScenarioId.LongnightFeastActivity] =
+                    StartLongnightFeastActivityPlaytest,
+                [PlaytestScenarioId.LongnightFeastResult] =
+                    StartLongnightFeastResultPlaytest,
+                [PlaytestScenarioId.LongnightFeastStall] =
+                    StartLongnightFeastStallPlaytest,
+                [PlaytestScenarioId.LongnightFeastActivityEnglish] =
+                    StartLongnightFeastActivityEnglishPlaytest,
+                [PlaytestScenarioId.LongnightFeastWrongTool] =
+                    StartLongnightFeastWrongToolPlaytest,
+                [PlaytestScenarioId.FireflyTideGate] =
+                    StartFireflyTideGatePlaytest,
+                [PlaytestScenarioId.FireflyTide] =
+                    StartFireflyTidePlaytest,
+                [PlaytestScenarioId.FireflyTideActivity] =
+                    StartFireflyTideActivityPlaytest,
+                [PlaytestScenarioId.FireflyTideResult] =
+                    StartFireflyTideResultPlaytest,
+                [PlaytestScenarioId.FireflyTideShop] =
+                    StartFireflyTideShopPlaytest,
+                [PlaytestScenarioId.FireflyTideActivityEnglish] =
+                    StartFireflyTideActivityEnglishPlaytest,
+                [PlaytestScenarioId.FireflyTideWrongTool] =
+                    StartFireflyTideWrongToolPlaytest,
+                [PlaytestScenarioId.LongnightHomestead] =
+                    StartLongnightHomesteadPlaytest,
+                [PlaytestScenarioId.LongnightEmporium] =
+                    StartLongnightEmporiumPlaytest,
+                [PlaytestScenarioId.LongnightSnowForecast] =
+                    StartLongnightSnowForecastPlaytest,
+                [PlaytestScenarioId.LongnightSnow] =
+                    StartLongnightSnowPlaytest,
+                [PlaytestScenarioId.LongnightSnowIndoor] =
+                    StartLongnightSnowIndoorPlaytest,
+                [PlaytestScenarioId.LongnightSnowClear] =
+                    StartLongnightSnowClearPlaytest,
                 [PlaytestScenarioId.Economy] = StartEconomyPlaytest,
                 [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
                 [PlaytestScenarioId.MultiProcessorBatch] =
@@ -450,6 +749,83 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
                 [PlaytestScenarioId.Archive] = StartArchivePlaytest,
                 [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
+                [PlaytestScenarioId.CropCodexDesk] =
+                    StartCropCodexDeskPlaytest,
+                [PlaytestScenarioId.CropCodexPartial] =
+                    StartCropCodexPartialPlaytest,
+                [PlaytestScenarioId.CropCodexRewardReady] =
+                    StartCropCodexRewardReadyPlaytest,
+                [PlaytestScenarioId.CropCodexRewardClaimedEnglish] =
+                    StartCropCodexRewardClaimedEnglishPlaytest,
+                [PlaytestScenarioId.CropCodexWrongTool] =
+                    StartCropCodexWrongToolPlaytest,
+                [PlaytestScenarioId.CropCodexDiscountShop] =
+                    StartCropCodexDiscountShopPlaytest,
+                [PlaytestScenarioId.CookingCodexUnknown] =
+                    StartCookingCodexUnknownPlaytest,
+                [PlaytestScenarioId.CookingCodexPartial] =
+                    StartCookingCodexPartialPlaytest,
+                [PlaytestScenarioId.CookingCodexRewardReady] =
+                    StartCookingCodexRewardReadyPlaytest,
+                [PlaytestScenarioId.CookingCodexRewardClaimedEnglish] =
+                    StartCookingCodexRewardClaimedEnglishPlaytest,
+                [PlaytestScenarioId.CookingCodexRewardMealsEnglish] =
+                    StartCookingCodexRewardMealsEnglishPlaytest,
+                [PlaytestScenarioId.ArtisanCodexUnknown] =
+                    StartArtisanCodexUnknownPlaytest,
+                [PlaytestScenarioId.ArtisanCodexPartial] =
+                    StartArtisanCodexPartialPlaytest,
+                [PlaytestScenarioId.ArtisanCodexRewardReady] =
+                    StartArtisanCodexRewardReadyPlaytest,
+                [PlaytestScenarioId.ArtisanCodexRewardClaimedEnglish] =
+                    StartArtisanCodexRewardClaimedEnglishPlaytest,
+                [PlaytestScenarioId.ArtisanCodexRewardShippingEnglish] =
+                    StartArtisanCodexRewardShippingEnglishPlaytest,
+                [PlaytestScenarioId.SeasonalForage] =
+                    StartSeasonalForagePlaytest,
+                [PlaytestScenarioId.SeasonalForageWrongTool] =
+                    StartSeasonalForageWrongToolPlaytest,
+                [PlaytestScenarioId.SeasonalForageStardustMap] =
+                    StartSeasonalForageStardustMapPlaytest,
+                [PlaytestScenarioId.ForageCodexPartial] =
+                    StartForageCodexPartialPlaytest,
+                [PlaytestScenarioId.ForageCodexRewardReady] =
+                    StartForageCodexRewardReadyPlaytest,
+                [PlaytestScenarioId.ForageCodexRewardClaimedEnglish] =
+                    StartForageCodexRewardClaimedEnglishPlaytest,
+                [PlaytestScenarioId.Fishing] = StartFishingPlaytest,
+                [PlaytestScenarioId.FishingCollection] =
+                    StartFishingCollectionPlaytest,
+                [PlaytestScenarioId.FishCodexPartial] =
+                    StartFishCodexPartialPlaytest,
+                [PlaytestScenarioId.FishCodexCompleteEnglish] =
+                    StartFishCodexCompleteEnglishPlaytest,
+                [PlaytestScenarioId.CrystalGrottoEntry] =
+                    StartCrystalGrottoEntryPlaytest,
+                [PlaytestScenarioId.CrystalGrottoBasic] =
+                    StartCrystalGrottoBasicPlaytest,
+                [PlaytestScenarioId.CrystalGrottoUpgrade] =
+                    StartCrystalGrottoUpgradePlaytest,
+                [PlaytestScenarioId.CrystalGrottoDeep] =
+                    StartCrystalGrottoDeepPlaytest,
+                [PlaytestScenarioId.MineralCodexCompleteEnglish] =
+                    StartMineralCodexCompleteEnglishPlaytest,
+                [PlaytestScenarioId.CrystalValeStarlightPanel] =
+                    StartCrystalValeStarlightPanelPlaytest,
+                [PlaytestScenarioId.CrystalValeStarlightRestored] =
+                    StartCrystalValeStarlightRestoredPlaytest,
+                [PlaytestScenarioId.StarfallRuinsEntry] =
+                    StartStarfallRuinsEntryPlaytest,
+                [PlaytestScenarioId.StarfallRuinsCombat] =
+                    StartStarfallRuinsCombatPlaytest,
+                [PlaytestScenarioId.StarfallRuinsArtifacts] =
+                    StartStarfallRuinsArtifactsPlaytest,
+                [PlaytestScenarioId.ArtifactCodexDonationEnglish] =
+                    StartArtifactCodexDonationEnglishPlaytest,
+                [PlaytestScenarioId.StarfallRuinsStarlightPanel] =
+                    StartStarfallRuinsStarlightPanelPlaytest,
+                [PlaytestScenarioId.StarfallRuinsStarlightRestored] =
+                    StartStarfallRuinsStarlightRestoredPlaytest,
                 [PlaytestScenarioId.LioraEventOne] =
                     StartLioraEventOnePlaytest,
                 [PlaytestScenarioId.LioraEventTwo] =
@@ -474,6 +850,32 @@ public sealed partial class Main : Node
                     StartOrinEventOnePlaytest,
                 [PlaytestScenarioId.OrinEventTwo] =
                     StartOrinEventTwoPlaytest,
+                [PlaytestScenarioId.ElowenEventOne] =
+                    StartElowenEventOnePlaytest,
+                [PlaytestScenarioId.ElowenEventTwo] =
+                    StartElowenEventTwoPlaytest,
+                [PlaytestScenarioId.VessaEventOne] =
+                    StartVessaEventOnePlaytest,
+                [PlaytestScenarioId.VessaEventTwo] =
+                    StartVessaEventTwoPlaytest,
+                [PlaytestScenarioId.VessaEventWrongTool] =
+                    StartVessaEventWrongToolPlaytest,
+                [PlaytestScenarioId.RelationshipMailsEnglish] =
+                    StartRelationshipMailsEnglishPlaytest,
+                [PlaytestScenarioId.VillageExpansionWave3] =
+                    StartVillageExpansionWave3Playtest,
+                [PlaytestScenarioId.VillageExpansionWave3Indoor] =
+                    StartVillageExpansionWave3IndoorPlaytest,
+                [PlaytestScenarioId.VillageExpansionWave3DialogueEnglish] =
+                    StartVillageExpansionWave3DialogueEnglishPlaytest,
+                [PlaytestScenarioId.VillageExpansionWave3WrongTool] =
+                    StartVillageExpansionWave3WrongToolPlaytest,
+                [PlaytestScenarioId.YvaraEventOne] =
+                    StartYvaraEventOnePlaytest,
+                [PlaytestScenarioId.YvaraEventTwo] =
+                    StartYvaraEventTwoPlaytest,
+                [PlaytestScenarioId.Wave3RelationshipMailsEnglish] =
+                    StartWave3RelationshipMailsEnglishPlaytest,
                 [PlaytestScenarioId.WorkshopTavi] =
                     StartWorkshopTaviPlaytest,
                 [PlaytestScenarioId.Workshop] = StartWorkshopPlaytest,
@@ -517,6 +919,12 @@ public sealed partial class Main : Node
                     StartSelaDialoguePlaytest,
                 [PlaytestScenarioId.VillageExpansion] =
                     StartVillageExpansionPlaytest,
+                [PlaytestScenarioId.VillageExpansionArchive] =
+                    StartVillageExpansionArchivePlaytest,
+                [PlaytestScenarioId.VillageExpansionDialogueEnglish] =
+                    StartVillageExpansionDialogueEnglishPlaytest,
+                [PlaytestScenarioId.VillageExpansionWrongTool] =
+                    StartVillageExpansionWrongToolPlaytest,
                 [PlaytestScenarioId.NpcPathfinding] =
                     StartNpcPathfindingPlaytest,
                 [PlaytestScenarioId.VillageRestdayEnglish] =
@@ -526,6 +934,18 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.VillageRainveilSchedule] =
                     StartVillageRainveilSchedulePlaytest,
                 [PlaytestScenarioId.Village] = StartVillagePlaytest,
+                [PlaytestScenarioId.WorldAspectBoundary] =
+                    StartWorldAspectBoundaryPlaytest,
+                [PlaytestScenarioId.RainveilWorldAspect] =
+                    StartRainveilWorldAspectPlaytest,
+                [PlaytestScenarioId.StarharvestWorldAspect] =
+                    StartStarharvestWorldAspectPlaytest,
+                [PlaytestScenarioId.LongnightWorldAspect] =
+                    StartLongnightWorldAspectPlaytest,
+                [PlaytestScenarioId.RainveilWorldTreeRain] =
+                    StartRainveilWorldTreeRainPlaytest,
+                [PlaytestScenarioId.StarharvestWorldCrystalStardust] =
+                    StartStarharvestWorldCrystalStardustPlaytest,
                 [PlaytestScenarioId.World] = StartWorldPlaytest,
                 [PlaytestScenarioId.Gate] = StartGatePlaytest,
                 [PlaytestScenarioId.Backpack] = StartBackpackPlaytest,
@@ -576,6 +996,28 @@ public sealed partial class Main : Node
                     StartStarlightRestoredPlaytest,
                 [PlaytestScenarioId.StarlightRestoredEnglish] =
                     StartStarlightRestoredEnglishPlaytest,
+                [PlaytestScenarioId.HomesteadStarlightDormant] =
+                    StartHomesteadStarlightDormantPlaytest,
+                [PlaytestScenarioId.HomesteadStarlightWrongTool] =
+                    StartHomesteadStarlightWrongToolPlaytest,
+                [PlaytestScenarioId.HomesteadStarlightRestored] =
+                    StartHomesteadStarlightRestoredPlaytest,
+                [PlaytestScenarioId.HomesteadStarlightPanel] =
+                    StartHomesteadStarlightPanelPlaytest,
+                [PlaytestScenarioId.HomesteadStarlightPanelEnglish] =
+                    StartHomesteadStarlightPanelEnglishPlaytest,
+                [PlaytestScenarioId.MeadowStarlightDormant] =
+                    StartMeadowStarlightDormantPlaytest,
+                [PlaytestScenarioId.MeadowStarlightRestored] =
+                    StartMeadowStarlightRestoredPlaytest,
+                [PlaytestScenarioId.MeadowStarlightPanel] =
+                    StartMeadowStarlightPanelPlaytest,
+                [PlaytestScenarioId.MeadowStarlightPanelEnglish] =
+                    StartMeadowStarlightPanelEnglishPlaytest,
+                [PlaytestScenarioId.MeadowPollination] =
+                    StartMeadowPollinationPlaytest,
+                [PlaytestScenarioId.MoonwaterStarlightPanel] =
+                    StartMoonwaterStarlightPanelPlaytest,
                 [PlaytestScenarioId.QualityCrafting] =
                     StartQualityCraftingPlaytest,
                 [PlaytestScenarioId.QualityBackpackEnglish] =
@@ -682,6 +1124,178 @@ public sealed partial class Main : Node
         ShowCottage(false);
     }
 
+    private void StartCottageSecondUpgradeReadyPlaytest()
+    {
+        PrepareCottageSecondUpgradePlaytest();
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            11 * 16 + 8,
+            PlayerLocationIds.MoonstoneWorkshop
+        );
+        ShowWorkshop(false);
+        Callable.From(
+            () => OpenConstructionOverlay(
+                ConstructionCatalog.CottageSecondUpgradeId
+            )
+        ).CallDeferred();
+    }
+
+    private void StartCottageSecondUpgradeInProgressPlaytest()
+    {
+        PrepareCottageSecondUpgradePlaytest(
+            new ConstructionProjectSave
+            {
+                ProjectId = ConstructionCatalog.CottageSecondUpgradeId,
+                RemainingNights = 3
+            }
+        );
+        PositionAtCottageKitchen();
+        ShowCottage(false);
+    }
+
+    private void StartCottageKitchenPlaytest()
+    {
+        PrepareCottageSecondUpgradePlaytest(
+            CompletedCottageSecondUpgradeProject()
+        );
+        PositionAtCottageKitchen();
+        ShowCottage(false);
+    }
+
+    private void StartCottageKitchenPanelPlaytest()
+    {
+        StartCottageKitchenPlaytest();
+        Callable.From(
+            () => OpenKitchen(new GridPosition(29, 10))
+        ).CallDeferred();
+    }
+
+    private void StartCottagePantryPanelPlaytest()
+    {
+        StartCottagePantryPlaytest();
+        _session.Inventory.Select(0);
+        Callable.From(
+            () => OpenIngredientPantry(new GridPosition(34, 10))
+        ).CallDeferred();
+    }
+
+    private void StartCottagePantryPlaytest()
+    {
+        PrepareCottageSecondUpgradePlaytest(
+            CompletedCottageSecondUpgradeProject()
+        );
+        _session.SetPlayerLocation(
+            34 * 16 + 8,
+            9 * 16 + 8,
+            PlayerLocationIds.Cottage
+        );
+        _session.Inventory.Select(1);
+        ShowCottage(false);
+    }
+
+    private void StartCottageMealsEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareCottageSecondUpgradePlaytest(
+            CompletedCottageSecondUpgradeProject()
+        );
+        PositionAtCottageKitchen();
+        ShowCottage(false);
+        Callable.From(OpenCookedDishes).CallDeferred();
+    }
+
+    private void PrepareCottageSecondUpgradePlaytest(
+        ConstructionProjectSave? secondUpgrade = null
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        foreach (var (itemId, count) in new (string, int)[]
+                 {
+                     (DataCatalog.LumenwoodId, 32),
+                     (DataCatalog.CrystalShardId, 14),
+                     (DataCatalog.RipplecapId, 2),
+                     (DataCatalog.MistsongMintId, 2),
+                     (DataCatalog.DewhornMilkId, 2),
+                     (DataCatalog.SunvaultGourdId, 2),
+                     (DataCatalog.CometTuberId, 2),
+                     (DataCatalog.MoonplumId, 2),
+                     (DataCatalog.LanternReedId, 2),
+                     (DataCatalog.MoonrootId, 2),
+                     (DataCatalog.TideglassTaroId, 2),
+                     (DataCatalog.MoonmistStewId, 1),
+                     (DataCatalog.SunvaultHashId, 1),
+                     (DataCatalog.StarhoneyCustardId, 1),
+                     (DataCatalog.LanternrootBrothId, 1)
+                 })
+        {
+            _session.Inventory.Add(itemId, count);
+        }
+
+        var projects = new List<ConstructionProjectSave>
+        {
+            new()
+            {
+                ProjectId = ConstructionCatalog.CottageFirstUpgradeId,
+                Completed = true
+            },
+            new()
+            {
+                ProjectId = ConstructionCatalog.HomesteadWorkshopProjectId,
+                Completed = true
+            }
+        };
+        if (secondUpgrade is not null)
+        {
+            projects.Add(secondUpgrade);
+        }
+
+        var save = _session.Capture();
+        save.Day = 43;
+        save.Coins = 960;
+        save.Construction = new ConstructionSave { Projects = projects };
+        save.Kitchen = new KitchenSave
+        {
+            PantryItems =
+            [
+                new InventorySlot
+                {
+                    ItemId = DataCatalog.StarhoneyId,
+                    Count = 2
+                },
+                new InventorySlot
+                {
+                    ItemId = DataCatalog.StarfeatherEggId,
+                    Count = 2
+                }
+            ]
+        };
+        save.Player.LocationId = PlayerLocationIds.Cottage;
+        save.Player.X = 29 * 16 + 8;
+        save.Player.Y = 9 * 16 + 8;
+        save.Player.Energy = 35;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void PositionAtCottageKitchen()
+    {
+        _session.SetPlayerLocation(
+            29 * 16 + 8,
+            9 * 16 + 8,
+            PlayerLocationIds.Cottage
+        );
+    }
+
+    private static ConstructionProjectSave
+        CompletedCottageSecondUpgradeProject() => new()
+        {
+            ProjectId = ConstructionCatalog.CottageSecondUpgradeId,
+            Completed = true
+        };
+
     private void PrepareCottageConstructionPlaytest()
     {
         FreeUi(_title);
@@ -700,6 +1314,750 @@ public sealed partial class Main : Node
         ShowWorkshop(false);
     }
 
+    private void StartHomesteadWorkshopReadyPlaytest()
+    {
+        PrepareHomesteadWorkshopPlaytest();
+        ShowWorkshop(false);
+        Callable.From(
+            () => OpenConstructionOverlay(
+                ConstructionCatalog.HomesteadWorkshopProjectId
+            )
+        ).CallDeferred();
+    }
+
+    private void StartHomesteadWorkshopInProgressPlaytest()
+    {
+        PrepareHomesteadWorkshopPlaytest(15);
+        _ = _session.StartConstruction(
+            ConstructionCatalog.HomesteadWorkshopProjectId
+        );
+        PositionAtHomesteadWorkbench();
+        ShowFarm(false);
+    }
+
+    private void StartHomesteadWorkshopCompletedPlaytest()
+    {
+        PrepareHomesteadWorkshopPlaytest(29);
+        _ = _session.StartConstruction(
+            ConstructionCatalog.HomesteadWorkshopProjectId
+        );
+        _session.EndDay();
+        _session.EndDay();
+        _session.EndDay();
+        PositionAtHomesteadWorkbench();
+        ShowFarm(false);
+    }
+
+    private void PrepareHomesteadWorkshopPlaytest(int day = 1)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 20);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 8);
+        var save = _session.Capture();
+        save.Day = day;
+        save.Coins = 480;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 11 * 16 + 8;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void PositionAtHomesteadWorkbench()
+    {
+        _session.SetPlayerLocation(
+            FarmLayout.HomesteadWorkbenchCell.X * 16 + 8,
+            (FarmLayout.HomesteadWorkbenchCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+    }
+
+    private void StartGreenhouseReadyPlaytest()
+    {
+        PrepareGreenhousePlaytest();
+        ShowWorkshop(false);
+        Callable.From(
+            () => OpenConstructionOverlay(
+                ConstructionCatalog.HomesteadGreenhouseProjectId
+            )
+        ).CallDeferred();
+    }
+
+    private void StartGreenhouseInProgressPlaytest()
+    {
+        PrepareGreenhousePlaytest(15);
+        _ = _session.StartConstruction(
+            ConstructionCatalog.HomesteadGreenhouseProjectId
+        );
+        PositionAtGreenhouseDoor();
+        ShowFarm(false);
+    }
+
+    private void StartGreenhouseCompletedPlaytest()
+    {
+        CompleteGreenhousePlaytestConstruction();
+        RestoreGreenhouseShowcaseCrops();
+        _session.SetPlayerLocation(
+            12 * 16 + 8,
+            6 * 16 + 8,
+            PlayerLocationIds.Greenhouse
+        );
+        ShowGreenhouse(false);
+    }
+
+    private void StartGreenhouseExteriorCompletedPlaytest()
+    {
+        CompleteGreenhousePlaytestConstruction(29);
+        PositionAtGreenhouseDoor();
+        ShowFarm(false);
+    }
+
+    private void StartGreenhouseCisternPlaytest()
+    {
+        CompleteGreenhousePlaytestConstruction();
+        RestoreGreenhouseShowcaseCrops();
+        var save = _session.Capture();
+        save.Player.LocationId = PlayerLocationIds.Greenhouse;
+        save.Player.X = GreenhouseLayout.CisternCell.X * 16 + 8;
+        save.Player.Y = (GreenhouseLayout.CisternCell.Y - 1) * 16 + 8;
+        save.Player.SelectedSlot = 4;
+        save.Player.WateringCanWater = 6;
+        _session.Restore(save);
+        ShowGreenhouse(false);
+    }
+
+    private void CompleteGreenhousePlaytestConstruction(int day = 43)
+    {
+        PrepareGreenhousePlaytest(day);
+        _ = _session.StartConstruction(
+            ConstructionCatalog.HomesteadGreenhouseProjectId
+        );
+        for (var night = 0; night < 4; night++)
+        {
+            _session.EndDay();
+        }
+    }
+
+    private void RestoreGreenhouseShowcaseCrops()
+    {
+        _session.GreenhouseFarm.Restore(
+        [
+            MatureCropState(12, 7, DataCatalog.DawnlaceId),
+            CropState(13, 7, DataCatalog.RipplecapId, 1),
+            MatureCropState(25, 7, DataCatalog.TideglassTaroId),
+            CropState(26, 7, DataCatalog.LanternReedId, 2),
+            MatureCropState(11, 12, DataCatalog.AuricShootId),
+            CropState(12, 12, DataCatalog.SunvaultGourdId, 2),
+            MatureCropState(26, 12, DataCatalog.CrownstarSaffronId),
+            CropState(27, 12, DataCatalog.AmberthreadClusterId, 2)
+        ]);
+    }
+
+    private void PrepareGreenhousePlaytest(int day = 1)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 28);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 12);
+        var save = _session.Capture();
+        save.Day = day;
+        save.Coins = 720;
+        save.Construction.Projects =
+        [
+            new ConstructionProjectSave
+            {
+                ProjectId = ConstructionCatalog
+                    .HomesteadWorkshopProjectId,
+                Completed = true
+            }
+        ];
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 11 * 16 + 8;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void PositionAtGreenhouseDoor()
+    {
+        _session.SetPlayerLocation(
+            FarmLayout.GreenhouseReturnCell.X * 16 + 8,
+            FarmLayout.GreenhouseReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+    }
+
+    private void StartStarfeatherCoopReadyPlaytest()
+    {
+        PrepareStarfeatherCoopPlaytest(
+            day: 1,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.ClearWeatherId,
+            project: null,
+            animal: null,
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.StarfeatherCoopReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartStarfeatherCoopInProgressPlaytest()
+    {
+        PrepareStarfeatherCoopPlaytest(
+            day: 15,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.RainWeatherId,
+            project: new ConstructionProjectSave
+            {
+                ProjectId = ConstructionCatalog
+                    .HomesteadStarfeatherCoopProjectId,
+                RemainingNights = 2
+            },
+            animal: null,
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.StarfeatherCoopReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartStarfeatherCoopGrazingPlaytest()
+    {
+        PrepareStarfeatherCoopPlaytest(
+            day: 29,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.ClearWeatherId,
+            project: CompletedStarfeatherCoopProject(),
+            animal: StarfeatherChickenPlaytestState(ageNights: 2, mood: 4),
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.StarfeatherCoopReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartStarfeatherCoopChickPlaytest()
+    {
+        PrepareStarfeatherCoopPlaytest(
+            day: 16,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.RainWeatherId,
+            project: CompletedStarfeatherCoopProject(),
+            animal: StarfeatherChickenPlaytestState(ageNights: 0, mood: 2),
+            locationId: PlayerLocationIds.StarfeatherCoop,
+            playerCell: new GridPosition(19, 13)
+        );
+        _session.Inventory.Add(DataCatalog.MeadowFodderId, 4);
+        _session.Inventory.PromoteToHotbar(DataCatalog.MeadowFodderId);
+        _session.Inventory.Select(0);
+        ShowStarfeatherCoop(false);
+    }
+
+    private void StartStarfeatherCoopAdultPlaytest()
+    {
+        PrepareStarfeatherCoopPlaytest(
+            day: 43,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.LongnightSnowWeatherId,
+            project: CompletedStarfeatherCoopProject(),
+            animal: StarfeatherChickenPlaytestState(ageNights: 2, mood: 5),
+            locationId: PlayerLocationIds.StarfeatherCoop,
+            playerCell: new GridPosition(19, 13)
+        );
+        _session.Inventory.Add(DataCatalog.MeadowFodderId, 4);
+        _session.Inventory.PromoteToHotbar(DataCatalog.MeadowFodderId);
+        _session.Inventory.Select(0);
+        ShowStarfeatherCoop(false);
+    }
+
+    private void StartStarfeatherCoopNestBlockedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareStarfeatherCoopPlaytest(
+            day: 43,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.LongnightSnowWeatherId,
+            project: CompletedStarfeatherCoopProject(),
+            animal: StarfeatherChickenPlaytestState(
+                ageNights: 2,
+                mood: 4,
+                pendingProductItemId: DataCatalog.StarfeatherEggLuminousId
+            ),
+            locationId: PlayerLocationIds.StarfeatherCoop,
+            playerCell: new GridPosition(32, 11)
+        );
+        foreach (var itemId in DataCatalog.StorableItemIds
+                     .Where(itemId =>
+                         itemId != DataCatalog.StarfeatherEggLuminousId
+                     )
+                     .Distinct(StringComparer.Ordinal)
+                     .Take(19))
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+        _session.Inventory.Select(0);
+        ShowStarfeatherCoop(false);
+    }
+
+    private void PrepareStarfeatherCoopPlaytest(
+        int day,
+        int minuteOfDay,
+        string weatherId,
+        ConstructionProjectSave? project,
+        AnimalEntrySave? animal,
+        string locationId,
+        GridPosition playerCell
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = weatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Construction = new ConstructionSave
+        {
+            Projects = project is null ? [] : [project]
+        };
+        save.Animals = new AnimalSave
+        {
+            Animals = animal is null ? [] : [animal]
+        };
+        save.Player.LocationId = locationId;
+        save.Player.X = playerCell.X * 16 + 8;
+        save.Player.Y = playerCell.Y * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private static ConstructionProjectSave CompletedStarfeatherCoopProject() =>
+        new()
+        {
+            ProjectId = ConstructionCatalog
+                .HomesteadStarfeatherCoopProjectId,
+            Completed = true
+        };
+
+    private static AnimalEntrySave StarfeatherChickenPlaytestState(
+        int ageNights,
+        int mood,
+        string pendingProductItemId = ""
+    ) => new()
+    {
+        InstanceId = AnimalCatalog.StarterStarfeatherChickenId,
+        SpeciesId = AnimalCatalog.StarfeatherChickenId,
+        BuildingId = AnimalCatalog.StarfeatherCoopId,
+        AgeNights = ageNights,
+        Mood = mood,
+        PendingProductItemId = pendingProductItemId
+    };
+
+    private void StartMoonfleeceBarnReadyPlaytest()
+    {
+        PrepareMoonfleeceBarnPlaytest(
+            day: 1,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.ClearWeatherId,
+            barnProject: null,
+            sheep: null,
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.MoonfleeceBarnReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartMoonfleeceBarnInProgressPlaytest()
+    {
+        PrepareMoonfleeceBarnPlaytest(
+            day: 15,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.RainWeatherId,
+            barnProject: new ConstructionProjectSave
+            {
+                ProjectId = ConstructionCatalog
+                    .HomesteadMoonfleeceBarnProjectId,
+                RemainingNights = 2
+            },
+            sheep: null,
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.MoonfleeceBarnReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartMoonfleeceBarnGrazingPlaytest()
+    {
+        PrepareMoonfleeceBarnPlaytest(
+            day: 29,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.ClearWeatherId,
+            barnProject: CompletedMoonfleeceBarnProject(),
+            sheep: MoonfleeceSheepPlaytestState(ageNights: 3, mood: 4),
+            locationId: PlayerLocationIds.World,
+            playerCell: FarmLayout.MoonfleeceBarnReturnCell
+        );
+        ShowFarm(false);
+    }
+
+    private void StartMoonfleeceBarnJuvenilePlaytest()
+    {
+        PrepareMoonfleeceBarnPlaytest(
+            day: 16,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.RainWeatherId,
+            barnProject: CompletedMoonfleeceBarnProject(),
+            sheep: MoonfleeceSheepPlaytestState(ageNights: 0, mood: 2),
+            locationId: PlayerLocationIds.MoonfleeceBarn,
+            playerCell: new GridPosition(19, 13)
+        );
+        _session.Inventory.Add(DataCatalog.MeadowFodderId, 4);
+        _session.Inventory.PromoteToHotbar(DataCatalog.MeadowFodderId);
+        _session.Inventory.Select(0);
+        ShowMoonfleeceBarn(false);
+    }
+
+    private void StartMoonfleeceBarnRackBlockedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareMoonfleeceBarnPlaytest(
+            day: 43,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.LongnightSnowWeatherId,
+            barnProject: CompletedMoonfleeceBarnProject(),
+            sheep: MoonfleeceSheepPlaytestState(
+                ageNights: 3,
+                mood: 5,
+                pendingProductItemId: DataCatalog.MoonfleeceLuminousId
+            ),
+            locationId: PlayerLocationIds.MoonfleeceBarn,
+            playerCell: new GridPosition(31, 14)
+        );
+        foreach (var itemId in DataCatalog.StorableItemIds
+                     .Where(itemId =>
+                         itemId != DataCatalog.MoonfleeceLuminousId
+                     )
+                     .Distinct(StringComparer.Ordinal)
+                     .Take(19))
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+        _session.Inventory.Select(0);
+        ShowMoonfleeceBarn(false);
+    }
+
+    private void StartDewhornGrazingPlaytest()
+    {
+        PrepareMoonfleeceBarnPlaytest(
+            day: 29,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.ClearWeatherId,
+            barnProject: CompletedMoonfleeceBarnProject(),
+            sheep: MoonfleeceSheepPlaytestState(ageNights: 3, mood: 4),
+            locationId: PlayerLocationIds.World,
+            playerCell: new GridPosition(40, 17),
+            dewhorn: DewhornPlaytestState(ageNights: 4, mood: 4)
+        );
+        ShowFarm(false);
+    }
+
+    private void StartDewhornMilkingBlockedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareMoonfleeceBarnPlaytest(
+            day: 43,
+            minuteOfDay: 10 * 60,
+            weatherId: DataCatalog.LongnightSnowWeatherId,
+            barnProject: CompletedMoonfleeceBarnProject(),
+            sheep: MoonfleeceSheepPlaytestState(ageNights: 3, mood: 4),
+            locationId: PlayerLocationIds.MoonfleeceBarn,
+            playerCell: new GridPosition(31, 18),
+            dewhorn: DewhornPlaytestState(
+                ageNights: 4,
+                mood: 5,
+                pendingProductItemId: DataCatalog.DewhornMilkLuminousId
+            )
+        );
+        foreach (var itemId in DataCatalog.StorableItemIds
+                     .Where(itemId =>
+                         itemId != DataCatalog.DewhornMilkLuminousId
+                     )
+                     .Distinct(StringComparer.Ordinal)
+                     .Take(19))
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+        _session.Inventory.Select(0);
+        ShowMoonfleeceBarn(false);
+    }
+
+    private void StartLivestockAutomationConsolePlaytest()
+    {
+        PrepareLivestockAutomationPlaytest(
+            AnimalCatalog.StarfeatherCoopId,
+            new AnimalBuildingAutomationSave
+            {
+                BuildingId = AnimalCatalog.StarfeatherCoopId,
+                StoredFeed = 28,
+                StoredProducts =
+                [
+                    new ShippingEntrySave
+                    {
+                        ItemId = DataCatalog.StarfeatherEggLuminousId,
+                        Count = 4
+                    }
+                ]
+            }
+        );
+        ShowStarfeatherCoop(false);
+    }
+
+    private void StartLivestockAutomationPanelPlaytest()
+    {
+        PrepareLivestockAutomationPlaytest(
+            AnimalCatalog.MoonfleeceBarnId,
+            new AnimalBuildingAutomationSave
+            {
+                BuildingId = AnimalCatalog.MoonfleeceBarnId,
+                StoredFeed = 28,
+                StoredProducts =
+                [
+                    new ShippingEntrySave
+                    {
+                        ItemId = DataCatalog.MoonfleeceLuminousId,
+                        Count = 6
+                    },
+                    new ShippingEntrySave
+                    {
+                        ItemId = DataCatalog.DewhornMilkStarlightId,
+                        Count = 6
+                    }
+                ],
+                LastResolvedDay = 43,
+                LastAutoFedCount = 2,
+                LastAutoCollectedCount = 2,
+                LastFeedStatusId = AnimalAutomationStatusIds.Succeeded,
+                LastCollectionStatusId =
+                    AnimalAutomationStatusIds.Succeeded
+            }
+        );
+        ShowMoonfleeceBarn(false);
+        Callable.From(() => OpenLivestockAutomation(
+            AnimalCatalog.MoonfleeceBarnId,
+            MoonfleeceBarnLayout.AutomationStationCell
+        )).CallDeferred();
+    }
+
+    private void StartLivestockAutomationPanelEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartLivestockAutomationPanelPlaytest();
+    }
+
+    private void StartLivestockAutomationConstructionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.LumenwoodId, 24);
+        _session.Inventory.Add(DataCatalog.CrystalShardId, 16);
+        var save = _session.Capture();
+        save.Coins = 900;
+        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 11 * 16 + 8;
+        save.Construction = new ConstructionSave
+        {
+            Projects = LivestockAutomationPrerequisiteProjects()
+        };
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowWorkshop(false);
+        Callable.From(() => OpenConstructionOverlay(
+            ConstructionCatalog.HomesteadLivestockAutomationProjectId
+        )).CallDeferred();
+    }
+
+    private void PrepareLivestockAutomationPlaytest(
+        string buildingId,
+        AnimalBuildingAutomationSave automation
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
+            definition => definition.BuildingId == buildingId
+        );
+        var save = _session.Capture();
+        save.Day = 43;
+        save.MinuteOfDay = 10 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = 43,
+            CurrentId = DataCatalog.LongnightSnowWeatherId,
+            ForecastId = DataCatalog.LongnightSnowWeatherId
+        };
+        save.Construction = new ConstructionSave
+        {
+            Projects =
+            [
+                .. LivestockAutomationPrerequisiteProjects(),
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog
+                        .HomesteadLivestockAutomationProjectId,
+                    Completed = true
+                }
+            ]
+        };
+        save.Animals = new AnimalSave
+        {
+            Animals =
+            [
+                new AnimalEntrySave
+                {
+                    InstanceId = AnimalCatalog
+                        .StarterStarfeatherChickenId,
+                    SpeciesId = AnimalCatalog.StarfeatherChickenId,
+                    BuildingId = AnimalCatalog.StarfeatherCoopId,
+                    AgeNights = 2,
+                    Mood = 4
+                },
+                MoonfleeceSheepPlaytestState(3, 4),
+                DewhornPlaytestState(4, 4)
+            ],
+            Automation = [automation]
+        };
+        save.Player.LocationId = spatial.LocationId;
+        save.Player.X = spatial.AutomationStationCell.X * 16 + 8;
+        save.Player.Y = (spatial.AutomationStationCell.Y + 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private static List<ConstructionProjectSave>
+        LivestockAutomationPrerequisiteProjects() =>
+        [
+            new ConstructionProjectSave
+            {
+                ProjectId = ConstructionCatalog.HomesteadWorkshopProjectId,
+                Completed = true
+            },
+            CompletedStarfeatherCoopProject(),
+            CompletedMoonfleeceBarnProject()
+        ];
+
+    private void PrepareMoonfleeceBarnPlaytest(
+        int day,
+        int minuteOfDay,
+        string weatherId,
+        ConstructionProjectSave? barnProject,
+        AnimalEntrySave? sheep,
+        string locationId,
+        GridPosition playerCell,
+        AnimalEntrySave? dewhorn = null
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var projects = new List<ConstructionProjectSave>
+        {
+            CompletedStarfeatherCoopProject()
+        };
+        if (barnProject is not null)
+        {
+            projects.Add(barnProject);
+        }
+
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = weatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Construction = new ConstructionSave { Projects = projects };
+        save.Animals = new AnimalSave { Animals = [] };
+        if (sheep is not null)
+        {
+            save.Animals.Animals.Add(sheep);
+        }
+        if (dewhorn is not null)
+        {
+            save.Animals.Animals.Add(dewhorn);
+        }
+        save.Player.LocationId = locationId;
+        save.Player.X = playerCell.X * 16 + 8;
+        save.Player.Y = playerCell.Y * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private static ConstructionProjectSave CompletedMoonfleeceBarnProject() =>
+        new()
+        {
+            ProjectId = ConstructionCatalog.HomesteadMoonfleeceBarnProjectId,
+            Completed = true
+        };
+
+    private static AnimalEntrySave MoonfleeceSheepPlaytestState(
+        int ageNights,
+        int mood,
+        string pendingProductItemId = ""
+    ) => new()
+    {
+        InstanceId = AnimalCatalog.StarterMoonfleeceSheepId,
+        SpeciesId = AnimalCatalog.MoonfleeceSheepId,
+        BuildingId = AnimalCatalog.MoonfleeceBarnId,
+        AgeNights = ageNights,
+        Mood = mood,
+        PendingProductItemId = pendingProductItemId
+    };
+
+    private static AnimalEntrySave DewhornPlaytestState(
+        int ageNights,
+        int mood,
+        string pendingProductItemId = ""
+    ) => new()
+    {
+        InstanceId = AnimalCatalog.StarterDewhornId,
+        SpeciesId = AnimalCatalog.DewhornId,
+        BuildingId = AnimalCatalog.MoonfleeceBarnId,
+        AgeNights = ageNights,
+        Mood = mood,
+        PendingProductItemId = pendingProductItemId
+    };
+
+    private static FarmTileState MatureCropState(
+        int x,
+        int y,
+        string cropId
+    ) => CropState(
+        x,
+        y,
+        cropId,
+        DataCatalog.Crop(cropId).MatureAfterWateredNights
+    );
+
     private void StartDoorPlaytest()
     {
         StartNewGame();
@@ -716,10 +2074,16 @@ public sealed partial class Main : Node
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
-        var columns = new[]
+        var columns = Enumerable.Range(0, FarmSystem.MapWidth)
+            .Where(x => FarmSystem.IsPlantingBed(new GridPosition(x, 16)))
+            .Take(DataCatalog.CropIds.Count)
+            .ToArray();
+        if (columns.Length != DataCatalog.CropIds.Count)
         {
-            11, 12, 14, 16, 17, 19, 20, 22, 24, 26, 29, 32
-        };
+            throw new InvalidOperationException(
+                "The crop playtest requires one planting-bed column per crop."
+            );
+        }
         var crops = new List<FarmTileState>();
         for (var index = 0; index < DataCatalog.CropIds.Count; index++)
         {
@@ -760,6 +2124,661 @@ public sealed partial class Main : Node
         }
 
         _session.Farm.Restore(crops);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartRainveilCropPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(15, 8 * 60);
+        _session.Weather.AdvanceToDay(15);
+        var columns = new[] { 12, 16, 22, 29 };
+        var crops = new List<FarmTileState>();
+        for (var index = 0; index < DataCatalog.RainveilCropIds.Count; index++)
+        {
+            var crop = DataCatalog.Crop(DataCatalog.RainveilCropIds[index]);
+            crops.Add(CropState(
+                columns[index],
+                16,
+                crop.Id,
+                crop.MatureAfterWateredNights
+            ));
+            crops.Add(CropState(columns[index], 20, crop.Id, 0));
+        }
+
+        _session.Farm.Restore(crops);
+        foreach (var seedId in DataCatalog.RainveilSeedItemIds)
+        {
+            _session.Inventory.Add(seedId, 2);
+        }
+
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            columns[2] * 16 + 8,
+            15 * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartStarharvestCropPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(29, 8 * 60);
+        _session.Weather.Restore(
+            new WeatherSave
+            {
+                Day = 29,
+                CurrentId = DataCatalog.ClearWeatherId,
+                ForecastId = DataCatalog.ClearWeatherId
+            },
+            29
+        );
+        var columns = new[] { 12, 16, 22, 29 };
+        var crops = new List<FarmTileState>();
+        for (var index = 0; index < DataCatalog.StarharvestCropIds.Count; index++)
+        {
+            var crop = DataCatalog.Crop(DataCatalog.StarharvestCropIds[index]);
+            crops.Add(CropState(
+                columns[index],
+                16,
+                crop.Id,
+                crop.MatureAfterWateredNights
+            ));
+            crops.Add(CropState(columns[index], 20, crop.Id, 0));
+        }
+
+        _session.Farm.Restore(crops);
+        foreach (var seedId in DataCatalog.StarharvestSeedItemIds)
+        {
+            _session.Inventory.Add(seedId, 2);
+        }
+
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            columns[3] * 16 + 8,
+            15 * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartStarharvestMarketGatePlaytest()
+    {
+        PrepareStarharvestMarketPlaytest();
+        _session.SetPlayerLocation(
+            StarharvestMarketLayout.WorldReturnCell.X * 16 + 8,
+            StarharvestMarketLayout.WorldReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        ShowFarm(false);
+    }
+
+    private void StartStarharvestMarketPlaytest()
+    {
+        PrepareStarharvestMarketPlaytest();
+        _session.SetPlayerLocation(
+            StarharvestMarketLayout.SafeArrivalCell.X * 16 + 8,
+            StarharvestMarketLayout.SafeArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.StarharvestMarket
+        );
+        ShowStarharvestMarket(false);
+    }
+
+    private void StartStarharvestMarketShowcasePlaytest()
+    {
+        PrepareStarharvestMarketPlaytest();
+        AddStarharvestMarketExamples();
+        _session.SetPlayerLocation(
+            StarharvestMarketLayout.ExhibitCell.X * 16 + 8,
+            (StarharvestMarketLayout.ExhibitCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.StarharvestMarket
+        );
+        ShowStarharvestMarket(false);
+        Callable.From(OpenFestivalShowcase).CallDeferred();
+    }
+
+    private void StartStarharvestMarketResultPlaytest()
+    {
+        PrepareStarharvestMarketPlaytest();
+        AddStarharvestMarketExamples();
+        _session.SetPlayerLocation(
+            StarharvestMarketLayout.ExhibitCell.X * 16 + 8,
+            (StarharvestMarketLayout.ExhibitCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.StarharvestMarket
+        );
+        _ = _session.SubmitFestivalExhibit(
+        [
+            DataCatalog.AuricShootId,
+            DataCatalog.SunvaultGourdId,
+            DataCatalog.CrownstarSaffronId
+        ]);
+        ShowStarharvestMarket(false);
+    }
+
+    private void StartStarharvestMarketShopPlaytest()
+    {
+        PrepareStarharvestMarketPlaytest();
+        _session.Festival.Restore(new FestivalSave { Scrip = 12 });
+        _session.SetPlayerLocation(
+            StarharvestMarketLayout.ShopCell.X * 16 + 8,
+            (StarharvestMarketLayout.ShopCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.StarharvestMarket
+        );
+        ShowStarharvestMarket(false);
+        Callable.From(OpenFestivalShop).CallDeferred();
+    }
+
+    private void StartStarharvestMarketShowcaseEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartStarharvestMarketShowcasePlaytest();
+    }
+
+    private void PrepareStarharvestMarketPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(39, 10 * 60);
+        _session.Weather.AdvanceToDay(39);
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void AddStarharvestMarketExamples()
+    {
+        foreach (var itemId in new[]
+        {
+            DataCatalog.AuricShootId,
+            DataCatalog.SunvaultGourdId,
+            DataCatalog.CrownstarSaffronId,
+            DataCatalog.AuricShootStarlightId,
+            DataCatalog.StarbudPreserveId,
+            DataCatalog.MoonrootTonicId,
+            DataCatalog.CloudleafTeaId
+        })
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+    }
+
+    private void StartGleamriseFestivalGatePlaytest()
+    {
+        PrepareGleamriseFestivalPlaytest();
+        _session.SetPlayerLocation(
+            GleamrisePlantingFestivalLayout.WorldReturnCell.X * 16 + 8,
+            GleamrisePlantingFestivalLayout.WorldReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        ShowFarm(false);
+    }
+
+    private void StartGleamriseFestivalPlaytest()
+    {
+        PrepareGleamriseFestivalPlaytest();
+        _session.SetPlayerLocation(
+            GleamrisePlantingFestivalLayout.SafeArrivalCell.X * 16 + 8,
+            GleamrisePlantingFestivalLayout.SafeArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.GleamrisePlantingFestival
+        );
+        ShowGleamrisePlantingFestival(false);
+    }
+
+    private void StartGleamriseFestivalChallengePlaytest()
+    {
+        PrepareGleamriseFestivalPlaytest();
+        PrepareGleamriseChallenge(8);
+        var plot = GleamrisePlantingFestivalLayout.PlotCells[8];
+        _session.SetPlayerLocation(
+            (plot.X - 1) * 16 + 8,
+            plot.Y * 16 + 8,
+            PlayerLocationIds.GleamrisePlantingFestival
+        );
+        ShowGleamrisePlantingFestival(false);
+    }
+
+    private void StartGleamriseFestivalResultPlaytest()
+    {
+        PrepareGleamriseFestivalPlaytest();
+        PrepareGleamriseChallenge(12);
+        var table = GleamrisePlantingFestivalLayout.ActivityTableCell;
+        _session.SetPlayerLocation(
+            table.X * 16 + 8,
+            (table.Y + 1) * 16 + 8,
+            PlayerLocationIds.GleamrisePlantingFestival
+        );
+        ShowGleamrisePlantingFestival(false);
+        Callable.From(OpenGleamrisePlanting).CallDeferred();
+    }
+
+    private void StartGleamriseFestivalExchangePlaytest()
+    {
+        PrepareGleamriseFestivalPlaytest();
+        _session.Festival.Restore(new FestivalSave
+        {
+            CurrencyBalances =
+            [
+                new FestivalCurrencySave
+                {
+                    CurrencyId = FestivalCatalog.GleamriseBloomTokenId,
+                    Balance = 10
+                }
+            ]
+        });
+        var exchange = GleamrisePlantingFestivalLayout.SeedExchangeCell;
+        _session.SetPlayerLocation(
+            exchange.X * 16 + 8,
+            (exchange.Y + 1) * 16 + 8,
+            PlayerLocationIds.GleamrisePlantingFestival
+        );
+        ShowGleamrisePlantingFestival(false);
+        Callable.From(OpenGleamriseSeedExchange).CallDeferred();
+    }
+
+    private void StartGleamriseFestivalChallengeEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareGleamriseFestivalPlaytest();
+        PrepareGleamriseChallenge(5);
+        var table = GleamrisePlantingFestivalLayout.ActivityTableCell;
+        _session.SetPlayerLocation(
+            table.X * 16 + 8,
+            (table.Y + 1) * 16 + 8,
+            PlayerLocationIds.GleamrisePlantingFestival
+        );
+        ShowGleamrisePlantingFestival(false);
+        Callable.From(OpenGleamrisePlanting).CallDeferred();
+    }
+
+    private void PrepareGleamriseFestivalPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(4, 9 * 60);
+        _session.Weather.AdvanceToDay(4);
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void PrepareGleamriseChallenge(int plantedCount)
+    {
+        var selected = new[]
+        {
+            DataCatalog.DawnlaceSeedId,
+            DataCatalog.GlimmerpodSeedId,
+            DataCatalog.MistsongMintSeedId
+        };
+        _ = _session.Festival.StartPlantingChallenge(
+            CalendarSystem.YearNumber(_session.Clock.Day),
+            _session.Clock.MinuteOfDay,
+            selected
+        );
+        for (var index = 0; index < plantedCount; index++)
+        {
+            var seedId = selected[index % selected.Length];
+            _ = _session.Festival.SelectPlantingSeed(1, seedId);
+            _ = _session.Festival.PlantPlot(
+                1,
+                _session.Clock.MinuteOfDay + Math.Min(index * 5, 60),
+                GleamrisePlantingFestivalLayout.PlotIds[index]
+            );
+        }
+
+        _session.Clock.Reset(
+            4,
+            9 * 60 + Math.Min(Math.Max(0, plantedCount - 1) * 5, 60)
+        );
+    }
+
+    private void StartLongnightFeastGatePlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        _session.SetPlayerLocation(
+            LongnightLanternFeastLayout.WorldReturnCell.X * 16 + 8,
+            LongnightLanternFeastLayout.WorldReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        ShowFarm(false);
+    }
+
+    private void StartLongnightFeastPlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        _session.SetPlayerLocation(
+            LongnightLanternFeastLayout.SafeArrivalCell.X * 16 + 8,
+            LongnightLanternFeastLayout.SafeArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.LongnightLanternFeast
+        );
+        ShowLongnightLanternFeast(false);
+    }
+
+    private void StartLongnightFeastActivityPlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        AddLongnightFeastExamples();
+        var table = LongnightLanternFeastLayout.SharedTableCell;
+        _session.SetPlayerLocation(
+            table.X * 16 + 8,
+            (table.Y + 1) * 16 + 8,
+            PlayerLocationIds.LongnightLanternFeast
+        );
+        ShowLongnightLanternFeast(false);
+        Callable.From(() => OpenLongnightFeast(table)).CallDeferred();
+    }
+
+    private void StartLongnightFeastResultPlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        AddLongnightFeastExamples();
+        var ritual = LongnightLanternFeastLayout.RitualCell;
+        _session.SetPlayerLocation(
+            ritual.X * 16 + 8,
+            (ritual.Y + 1) * 16 + 8,
+            PlayerLocationIds.LongnightLanternFeast
+        );
+        _ = _session.CompleteLongnightFeast(
+            ritual,
+            [DataCatalog.MoonmistStewId, DataCatalog.StarhoneyCustardId],
+            FestivalCatalog.LongnightCloudleafTeaExchangeId
+        );
+        ShowLongnightLanternFeast(false);
+    }
+
+    private void StartLongnightFeastStallPlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        _session.Festival.Restore(new FestivalSave
+        {
+            CurrencyBalances =
+            [
+                new FestivalCurrencySave
+                {
+                    CurrencyId = FestivalCatalog.LongnightLanternKnotId,
+                    Balance = 10
+                }
+            ]
+        });
+        var stall = LongnightLanternFeastLayout.StallCell;
+        _session.SetPlayerLocation(
+            stall.X * 16 + 8,
+            (stall.Y + 1) * 16 + 8,
+            PlayerLocationIds.LongnightLanternFeast
+        );
+        ShowLongnightLanternFeast(false);
+        Callable.From(OpenLongnightStall).CallDeferred();
+    }
+
+    private void StartLongnightFeastActivityEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartLongnightFeastActivityPlaytest();
+    }
+
+    private void StartLongnightFeastWrongToolPlaytest()
+    {
+        PrepareLongnightFeastPlaytest();
+        var ritual = LongnightLanternFeastLayout.RitualCell;
+        _session.SetPlayerLocation(
+            ritual.X * 16 + 8,
+            (ritual.Y + 1) * 16 + 8,
+            PlayerLocationIds.LongnightLanternFeast
+        );
+        _session.Inventory.Select(1);
+        ShowLongnightLanternFeast(false);
+    }
+
+    private void PrepareLongnightFeastPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(55, 17 * 60);
+        _session.Weather.AdvanceToDay(55);
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void AddLongnightFeastExamples()
+    {
+        foreach (var itemId in new[]
+        {
+            DataCatalog.MoonmistStewId,
+            DataCatalog.SunvaultHashId,
+            DataCatalog.StarhoneyCustardId,
+            DataCatalog.LanternrootBrothId,
+            DataCatalog.StarbudPreserveId,
+            DataCatalog.CloudleafTeaId,
+            DataCatalog.MoonrootTonicId,
+            DataCatalog.StarhoneyId
+        })
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+    }
+
+    private void StartFireflyTideGatePlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        _session.SetPlayerLocation(
+            FireflyTideLayout.WorldReturnCell.X * 16 + 8,
+            FireflyTideLayout.WorldReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        ShowFarm(false);
+    }
+
+    private void StartFireflyTidePlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        _session.SetPlayerLocation(
+            FireflyTideLayout.SafeArrivalCell.X * 16 + 8,
+            FireflyTideLayout.SafeArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.FireflyTide
+        );
+        ShowFireflyTide(false);
+    }
+
+    private void StartFireflyTideActivityPlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        AddFireflyTideExamples();
+        var launch = FireflyTideLayout.LanternLaunchCell;
+        _session.SetPlayerLocation(
+            launch.X * 16 + 8,
+            (launch.Y + 1) * 16 + 8,
+            PlayerLocationIds.FireflyTide
+        );
+        ShowFireflyTide(false);
+        Callable.From(() => OpenFireflyTideActivity(launch)).CallDeferred();
+    }
+
+    private void StartFireflyTideResultPlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        AddFireflyTideExamples();
+        var altar = FireflyTideLayout.TideAltarCell;
+        _session.SetPlayerLocation(
+            altar.X * 16 + 8,
+            (altar.Y + 1) * 16 + 8,
+            PlayerLocationIds.FireflyTide
+        );
+        _ = _session.CompleteFireflyTide(
+            altar,
+            [
+                DataCatalog.MooncapGobyId,
+                DataCatalog.RainveilLampreyId,
+                DataCatalog.StardustRayId
+            ]
+        );
+        ShowFireflyTide(false);
+        Callable.From(() => OpenFireflyTideActivity(altar)).CallDeferred();
+    }
+
+    private void StartFireflyTideShopPlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        _session.Festival.Restore(new FestivalSave
+        {
+            CurrencyBalances =
+            [
+                new FestivalCurrencySave
+                {
+                    CurrencyId = FestivalCatalog.FireflyGlowmarkId,
+                    Balance = 10
+                }
+            ]
+        });
+        var shop = FireflyTideLayout.ShopCell;
+        _session.SetPlayerLocation(
+            shop.X * 16 + 8,
+            (shop.Y + 1) * 16 + 8,
+            PlayerLocationIds.FireflyTide
+        );
+        ShowFireflyTide(false);
+        Callable.From(OpenFireflyTideShop).CallDeferred();
+    }
+
+    private void StartFireflyTideActivityEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartFireflyTideActivityPlaytest();
+    }
+
+    private void StartFireflyTideWrongToolPlaytest()
+    {
+        PrepareFireflyTidePlaytest();
+        var altar = FireflyTideLayout.TideAltarCell;
+        _session.SetPlayerLocation(
+            altar.X * 16 + 8,
+            (altar.Y + 1) * 16 + 8,
+            PlayerLocationIds.FireflyTide
+        );
+        _session.Inventory.Select(1);
+        ShowFireflyTide(false);
+    }
+
+    private void PrepareFireflyTidePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(26, 18 * 60);
+        _session.Weather.AdvanceToDay(26);
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+    }
+
+    private void AddFireflyTideExamples()
+    {
+        foreach (var itemId in FestivalCatalog.FireflyTideFishIds)
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+    }
+
+    private void StartLongnightHomesteadPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        const int day = 43;
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = 8 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = DataCatalog.ClearWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        _session.Restore(save);
+
+        var target = new GridPosition(22, 16);
+        _ = _session.Farm.TryTill(target, GameSession.MaxEnergy);
+        _session.Inventory.Add(DataCatalog.CloudleafSeedId, 2);
+        _session.Inventory.PromoteToHotbar(DataCatalog.CloudleafSeedId);
+        _session.SetPlayerState(
+            target.X * 16 + 8,
+            (target.Y - 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartLongnightEmporiumPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        const int day = 43;
+        _session.Clock.Reset(day, 10 * 60);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            9 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+        ShowTwilightEmporium(false);
+        Callable.From(InspectTravelManifest).CallDeferred();
+    }
+
+    private void StartLongnightSnowForecastPlaytest() =>
+        StartLongnightWeatherFarmPlaytest(42);
+
+    private void StartLongnightSnowPlaytest() =>
+        StartLongnightWeatherFarmPlaytest(43);
+
+    private void StartLongnightSnowClearPlaytest() =>
+        StartLongnightWeatherFarmPlaytest(44);
+
+    private void StartLongnightSnowIndoorPlaytest()
+    {
+        CompleteGreenhousePlaytestConstruction(39);
+        RestoreGreenhouseShowcaseCrops();
+        _session.SetPlayerLocation(
+            12 * 16 + 8,
+            6 * 16 + 8,
+            PlayerLocationIds.Greenhouse
+        );
+        ShowGreenhouse(false);
+    }
+
+    private void StartLongnightWeatherFarmPlaytest(int day)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, 8 * 60);
+        _session.Weather.AdvanceToDay(day);
+        var target = new GridPosition(22, 16);
+        _ = _session.Farm.TryTill(target, GameSession.MaxEnergy);
+        _session.Inventory.Add(DataCatalog.CloudleafSeedId, 2);
+        _session.Inventory.PromoteToHotbar(DataCatalog.CloudleafSeedId);
+        _session.SetPlayerState(
+            target.X * 16 + 8,
+            (target.Y - 1) * 16 + 8,
+            false
+        );
         _playing = true;
         EnsureHud();
         ShowFarm(false);
@@ -1298,6 +3317,280 @@ public sealed partial class Main : Node
         StartStarlightRestoredPlaytest();
     }
 
+    private void StartHomesteadStarlightDormantPlaytest()
+    {
+        PrepareHomesteadStarlightPlaytest(restored: false);
+        StartHomesteadStarlightPlaytestWorld(openPanel: false);
+    }
+
+    private void StartHomesteadStarlightWrongToolPlaytest()
+    {
+        PrepareHomesteadStarlightPlaytest(restored: false);
+        StartHomesteadStarlightPlaytestWorld(
+            openPanel: false,
+            selectedSlot: 1
+        );
+    }
+
+    private void StartHomesteadStarlightRestoredPlaytest()
+    {
+        PrepareHomesteadStarlightPlaytest(restored: true);
+        StartHomesteadStarlightPlaytestWorld(openPanel: false);
+    }
+
+    private void StartHomesteadStarlightPanelPlaytest()
+    {
+        PrepareHomesteadStarlightPlaytest(restored: true);
+        StartHomesteadStarlightPlaytestWorld(openPanel: true);
+    }
+
+    private void StartHomesteadStarlightPanelEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartHomesteadStarlightPanelPlaytest();
+    }
+
+    private void PrepareHomesteadStarlightPlaytest(bool restored)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Starlight.Discover(DataCatalog.HomesteadStarlightId);
+        if (!restored)
+        {
+            return;
+        }
+
+        var crops = DataCatalog.CropIds.Take(4).ToArray();
+        foreach (var cropId in crops)
+        {
+            _session.Inventory.Add(cropId, 1);
+        }
+        foreach (var itemId in new[]
+        {
+            DataCatalog.StarbudPreserveId,
+            DataCatalog.MoonrootTonicId,
+            DataCatalog.CloudleafTeaId,
+            DataCatalog.MoonstonePathId,
+            DataCatalog.StarwoodFenceId,
+            DataCatalog.StarlightTorchId
+        })
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+        _session.ContributeToStarlightNode(
+            DataCatalog.HomesteadStarlightId,
+            DataCatalog.HomesteadHarvestNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.HomesteadStarlightId,
+            DataCatalog.HomesteadArtisanNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.HomesteadStarlightId,
+            DataCatalog.HomesteadBuildingNodeId
+        );
+    }
+
+    private void StartHomesteadStarlightPlaytestWorld(
+        bool openPanel,
+        int selectedSlot = 0
+    )
+    {
+        _session.Inventory.Select(selectedSlot);
+        _session.SetPlayerState(
+            FarmView.HomesteadStarlightCell.X * 16 + 8,
+            (FarmView.HomesteadStarlightCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openPanel)
+        {
+            Callable.From(() => OpenStarlightPedestal(
+                DataCatalog.HomesteadStarlightId
+            )).CallDeferred();
+        }
+    }
+
+    private void StartMeadowStarlightDormantPlaytest()
+    {
+        PrepareMeadowStarlightPlaytest();
+        StartMeadowStarlightPlaytestWorld(openPanel: false);
+    }
+
+    private void StartMeadowStarlightRestoredPlaytest()
+    {
+        PrepareMeadowStarlightPlaytest(complete: true);
+        StartMeadowStarlightPlaytestWorld(openPanel: false);
+    }
+
+    private void StartMeadowStarlightPanelPlaytest()
+    {
+        PrepareMeadowStarlightPlaytest(partial: true);
+        StartMeadowStarlightPlaytestWorld(openPanel: true);
+    }
+
+    private void StartMeadowStarlightPanelEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartMeadowStarlightPanelPlaytest();
+    }
+
+    private void PrepareMeadowStarlightPlaytest(
+        bool complete = false,
+        bool partial = false
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Festival.Restore(new FestivalSave
+        {
+            Results =
+            [
+                new FestivalYearResultSave
+                {
+                    FestivalId =
+                        FestivalCatalog.StarharvestMarketFestivalId,
+                    Year = 1,
+                    ItemIds =
+                    [
+                        DataCatalog.AuricShootId,
+                        DataCatalog.SunvaultGourdId,
+                        DataCatalog.CrownstarSaffronId
+                    ],
+                    Score = 30,
+                    AwardId = FestivalCatalog.GoldenCrownAwardId
+                }
+            ]
+        });
+        _session.Starlight.Discover(DataCatalog.MeadowStarlightId);
+        if (!complete && !partial)
+        {
+            return;
+        }
+
+        var blooms = complete
+            ? new[]
+            {
+                DataCatalog.DawnlaceId,
+                DataCatalog.EmberbellId,
+                DataCatalog.DuskbellId
+            }
+            : new[]
+            {
+                DataCatalog.DawnlaceId,
+                DataCatalog.EmberbellId
+            };
+        foreach (var itemId in blooms)
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+
+        var bounty = complete
+            ? new[]
+            {
+                DataCatalog.StarhoneyId,
+                DataCatalog.StarfeatherEggId,
+                DataCatalog.MoonfleeceId,
+                DataCatalog.DewhornMilkId
+            }
+            : new[]
+            {
+                DataCatalog.StarhoneyId,
+                DataCatalog.StarfeatherEggId
+            };
+        foreach (var itemId in bounty)
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+
+        _session.ContributeToStarlightNode(
+            DataCatalog.MeadowStarlightId,
+            DataCatalog.MeadowBloomsNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.MeadowStarlightId,
+            DataCatalog.MeadowBountyNodeId
+        );
+        _session.Starlight.RefreshRewardUnlocks(new StarlightProgressContext(
+            new HashSet<string>(
+                [FestivalCatalog.StarharvestMarketFestivalId],
+                StringComparer.Ordinal
+            )
+        ));
+    }
+
+    private void StartMeadowStarlightPlaytestWorld(bool openPanel)
+    {
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            FarmView.MeadowStarlightCell.X * 16 + 8,
+            (FarmView.MeadowStarlightCell.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openPanel)
+        {
+            Callable.From(() => OpenStarlightPedestal(
+                DataCatalog.MeadowStarlightId
+            )).CallDeferred();
+        }
+    }
+
+    private void StartMeadowPollinationPlaytest()
+    {
+        PrepareMeadowStarlightPlaytest(complete: true);
+        var hiveCell = new GridPosition(27, 13);
+        var treeCell = new GridPosition(21, 13);
+        var save = _session.Capture();
+        save.Orchard.FruitTrees =
+        [
+            new FruitTreeSave
+            {
+                X = treeCell.X,
+                Y = treeCell.Y,
+                TreeId = DataCatalog.MoonplumTreeId,
+                AgeNights = DataCatalog.FruitTree(
+                    DataCatalog.MoonplumTreeId
+                ).MatureAfterNights,
+                FruitReady = true
+            }
+        ];
+        save.FarmObjects.Objects =
+        [
+            new PlacedFarmObjectSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                ItemId = DataCatalog.GlowcombHiveId
+            }
+        ];
+        save.Orchard.Beehives =
+        [
+            new BeehiveSave
+            {
+                X = hiveCell.X,
+                Y = hiveCell.Y,
+                ProgressNights = 1
+            }
+        ];
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+        _session.SetPlayerState(
+            hiveCell.X * 16 + 8,
+            (hiveCell.Y - 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
     private void PrepareStarlightPlaytest()
     {
         FreeUi(_title);
@@ -1382,6 +3675,17 @@ public sealed partial class Main : Node
             minuteOfDay,
             new GridPosition(sela.Position.X, sela.Position.Y + 1)
         );
+        sela = PlacePlayerAdjacentForPlaytest(
+            _session.Village.CurrentNpcs(
+                    day,
+                    minuteOfDay,
+                    sela.LocationId,
+                    _session.PlayerCell
+                )
+                .Single(state =>
+                    state.Definition.Id == VillageCatalog.SelaId
+                )
+        );
         Callable.From(
             () => TalkToVillager(sela.Position)
         ).CallDeferred();
@@ -1394,6 +3698,72 @@ public sealed partial class Main : Node
             14 * 60,
             new GridPosition(97, 55)
         );
+    }
+
+    private void StartVillageExpansionArchivePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(1, 12 * 60);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.MoonlitArchive
+        );
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+    }
+
+    private void StartVillageExpansionDialogueEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartVillageExpansionFocusPlaytest(openDialogue: true,
+            wrongTool: false);
+    }
+
+    private void StartVillageExpansionWrongToolPlaytest() =>
+        StartVillageExpansionFocusPlaytest(
+            openDialogue: false,
+            wrongTool: true
+        );
+
+    private void StartVillageExpansionFocusPlaytest(
+        bool openDialogue,
+        bool wrongTool
+    )
+    {
+        const int day = 1;
+        const int minuteOfDay = 17 * 60;
+        StartVillagePlaytestWorld(
+            day,
+            minuteOfDay,
+            new GridPosition(97, 55)
+        );
+        var dorrik = _session.Village.CurrentNpcs(
+                day,
+                minuteOfDay,
+                PlayerLocationIds.World,
+                _session.PlayerCell
+            )
+            .FirstOrDefault(state =>
+                state.Definition.Id == VillageCatalog.DorrikId
+            );
+        if (dorrik is null)
+        {
+            return;
+        }
+        dorrik = PlacePlayerAdjacentForPlaytest(dorrik);
+
+        _session.Inventory.Select(wrongTool ? 1 : 0);
+        if (openDialogue)
+        {
+            Callable.From(
+                () => TalkToVillager(dorrik.Position)
+            ).CallDeferred();
+        }
     }
 
     private void StartNpcPathfindingPlaytest()
@@ -1427,82 +3797,979 @@ public sealed partial class Main : Node
         );
     }
 
-    private void StartLioraEventOnePlaytest()
-    {
-        StartLioraEventPlaytest(2, 25, new CharacterEventSave());
-    }
+    private void StartCropCodexDeskPlaytest() =>
+        StartCropCodexPlaytest(
+            discoveredCount: 7,
+            rewardClaimed: false,
+            openPanel: false,
+            wrongTool: false
+        );
 
-    private void StartLioraEventTwoPlaytest()
+    private void StartCropCodexPartialPlaytest() =>
+        StartCropCodexPlaytest(
+            discoveredCount: 7,
+            rewardClaimed: false,
+            openPanel: true,
+            wrongTool: false
+        );
+
+    private void StartCropCodexRewardReadyPlaytest() =>
+        StartCropCodexPlaytest(
+            discoveredCount: CompendiumCatalog.CropEntries.Count,
+            rewardClaimed: false,
+            openPanel: true,
+            wrongTool: false
+        );
+
+    private void StartCropCodexRewardClaimedEnglishPlaytest()
     {
-        StartLioraEventPlaytest(
-            3,
-            60,
-            new CharacterEventSave
-            {
-                Entries =
-                [
-                    new CharacterEventEntrySave
-                    {
-                        EventId =
-                            CharacterEventCatalog
-                                .LioraFadedReturnRouteId,
-                        CompletedDay = 2
-                    }
-                ]
-            }
+        _locale.SetLocale(LocaleService.English);
+        StartCropCodexPlaytest(
+            discoveredCount: CompendiumCatalog.CropEntries.Count,
+            rewardClaimed: true,
+            openPanel: true,
+            wrongTool: false
         );
     }
 
-    private void StartLioraEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    )
-    {
-        const int minuteOfDay = 10 * 60;
-        var liora = VillageCatalog.CurrentNpc(
-            VillageCatalog.LioraId,
-            day,
-            minuteOfDay
+    private void StartCropCodexWrongToolPlaytest() =>
+        StartCropCodexPlaytest(
+            discoveredCount: 7,
+            rewardClaimed: false,
+            openPanel: false,
+            wrongTool: true
         );
-        if (liora is null)
-        {
-            StartArchivePlaytest();
-            return;
-        }
 
+    private void StartCropCodexDiscountShopPlaytest()
+    {
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
         var save = _session.Capture();
-        save.Day = day;
-        save.MinuteOfDay = minuteOfDay;
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Coins = 500;
+        save.Collection = CompletedCropCodexSave(rewardClaimed: true);
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = FarmView.ShopCell.X * 16 + 8;
+        save.Player.Y = (FarmView.ShopCell.Y + 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenShop).CallDeferred();
+    }
+
+    private void StartCropCodexPlaytest(
+        int discoveredCount,
+        bool rewardClaimed,
+        bool openPanel,
+        bool wrongTool
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = CompendiumCatalog.CropEntries
+                .Take(Math.Clamp(
+                    discoveredCount,
+                    0,
+                    CompendiumCatalog.CropEntries.Count
+                ))
+                .Select(entry => entry.Id)
+                .ToList(),
+            ClaimedRewardIds = rewardClaimed
+                ? [CollectionRewardIds.MoonlitAlmanac]
+                : []
+        };
         save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
         save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = wrongTool ? 1 : 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        if (openPanel)
+        {
+            Callable.From(() => OpenCropCodex(
+                VillageCatalog.MoonlitArchiveDeskCell
+            )).CallDeferred();
+        }
+    }
+
+    private static CollectionSave CompletedCropCodexSave(
+        bool rewardClaimed
+    ) => new()
+    {
+        Initialized = true,
+        InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+        DiscoveredEntryIds = CompendiumCatalog.CropEntries
+            .Select(entry => entry.Id)
+            .ToList(),
+        ClaimedRewardIds = rewardClaimed
+            ? [CollectionRewardIds.MoonlitAlmanac]
+            : []
+    };
+
+    private void StartCookingCodexUnknownPlaytest() =>
+        StartCookingCodexPlaytest(0, rewardClaimed: false);
+
+    private void StartCookingCodexPartialPlaytest() =>
+        StartCookingCodexPlaytest(2, rewardClaimed: false);
+
+    private void StartCookingCodexRewardReadyPlaytest() =>
+        StartCookingCodexPlaytest(
+            CompendiumCatalog.CookingEntries.Count,
+            rewardClaimed: false
+        );
+
+    private void StartCookingCodexRewardClaimedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartCookingCodexPlaytest(
+            CompendiumCatalog.CookingEntries.Count,
+            rewardClaimed: true
+        );
+    }
+
+    private void StartCookingCodexRewardMealsEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareCottageSecondUpgradePlaytest(
+            CompletedCottageSecondUpgradeProject()
+        );
+        foreach (var entry in CompendiumCatalog.CookingEntries)
+        {
+            _session.Collection.RecordObtainedItem(entry.ItemId);
+        }
+        _ = _session.Collection.ClaimReward(
+            CollectionRewardIds.MoonhearthRecipeJournal
+        );
+        PositionAtCottageKitchen();
+        ShowCottage(false);
+        Callable.From(OpenCookedDishes).CallDeferred();
+    }
+
+    private void StartCookingCodexPlaytest(
+        int discoveredCount,
+        bool rewardClaimed
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = CompendiumCatalog.CookingEntries
+                .Take(Math.Clamp(
+                    discoveredCount,
+                    0,
+                    CompendiumCatalog.CookingEntries.Count
+                ))
+                .Select(entry => entry.Id)
+                .ToList(),
+            ClaimedRewardIds = rewardClaimed
+                ? [CollectionRewardIds.MoonhearthRecipeJournal]
+                : []
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Cooking
+        )).CallDeferred();
+    }
+
+    private void StartArtisanCodexUnknownPlaytest() =>
+        StartArtisanCodexPlaytest(0, rewardClaimed: false);
+
+    private void StartArtisanCodexPartialPlaytest() =>
+        StartArtisanCodexPlaytest(2, rewardClaimed: false);
+
+    private void StartArtisanCodexRewardReadyPlaytest() =>
+        StartArtisanCodexPlaytest(
+            CompendiumCatalog.ArtisanEntries.Count,
+            rewardClaimed: false
+        );
+
+    private void StartArtisanCodexRewardClaimedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartArtisanCodexPlaytest(
+            CompendiumCatalog.ArtisanEntries.Count,
+            rewardClaimed: true
+        );
+    }
+
+    private void StartArtisanCodexRewardShippingEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Collection = ArtisanCodexSave(
+            CompendiumCatalog.ArtisanEntries.Count,
+            rewardClaimed: true
+        );
+        save.Shipping.Pending = CompendiumCatalog.ArtisanEntries
+            .Select(entry => new ShippingEntrySave
+            {
+                ItemId = entry.ItemId,
+                Count = 1
+            })
+            .ToList();
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = FarmView.ShippingCell.X * 16 + 8;
+        save.Player.Y = (FarmView.ShippingCell.Y + 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenShipping).CallDeferred();
+    }
+
+    private void StartArtisanCodexPlaytest(
+        int discoveredCount,
+        bool rewardClaimed
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Collection = ArtisanCodexSave(
+            discoveredCount,
+            rewardClaimed
+        );
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Artisan
+        )).CallDeferred();
+    }
+
+    private static CollectionSave ArtisanCodexSave(
+        int discoveredCount,
+        bool rewardClaimed
+    ) => new()
+    {
+        Initialized = true,
+        InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+        DiscoveredEntryIds = CompendiumCatalog.ArtisanEntries
+            .Take(Math.Clamp(
+                discoveredCount,
+                0,
+                CompendiumCatalog.ArtisanEntries.Count
+            ))
+            .Select(entry => entry.Id)
+            .ToList(),
+        ClaimedRewardIds = rewardClaimed
+            ? [CollectionRewardIds.StarlitAppraisalLedger]
+            : []
+    };
+
+    private void StartSeasonalForagePlaytest() =>
+        StartSeasonalForagePlaytest(
+            day: 1,
+            weatherId: DataCatalog.ClearWeatherId,
+            wrongTool: false,
+            mapUnlocked: false
+        );
+
+    private void StartSeasonalForageWrongToolPlaytest() =>
+        StartSeasonalForagePlaytest(
+            day: 15,
+            weatherId: DataCatalog.RainWeatherId,
+            wrongTool: true,
+            mapUnlocked: false
+        );
+
+    private void StartSeasonalForageStardustMapPlaytest() =>
+        StartSeasonalForagePlaytest(
+            day: 29,
+            weatherId: DataCatalog.StardustWindWeatherId,
+            wrongTool: false,
+            mapUnlocked: true
+        );
+
+    private void StartSeasonalForagePlaytest(
+        int day,
+        string weatherId,
+        bool wrongTool,
+        bool mapUnlocked
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var spawns = ForageSystem.Generate(day, weatherId);
+        var focus = spawns[0];
+        var approach = new[]
+        {
+            new GridPosition(focus.Cell.X, focus.Cell.Y - 1),
+            new GridPosition(focus.Cell.X + 1, focus.Cell.Y),
+            new GridPosition(focus.Cell.X, focus.Cell.Y + 1),
+            new GridPosition(focus.Cell.X - 1, focus.Cell.Y)
+        }.First(cell => !WorldDefinition.IsBlocked(cell));
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = weatherId,
+            ForecastId = weatherId
+        };
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = mapUnlocked
+                ? CompendiumCatalog.ForageEntries
+                    .Select(entry => entry.Id)
+                    .ToList()
+                : [],
+            ClaimedRewardIds = mapUnlocked
+                ? [CollectionRewardIds.StarpathForagersGuide]
+                : []
+        };
+        save.Exploration.DiscoveredChunks = spawns
+            .Select(spawn => WorldDefinition.ChunkId(
+                WorldDefinition.GetChunk(spawn.Cell)
+            ))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = approach.X * 16 + 8;
+        save.Player.Y = approach.Y * 16 + 8;
+        save.Player.SelectedSlot = wrongTool ? 1 : 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartForageCodexPartialPlaytest() =>
+        StartForageCodexPlaytest(4, rewardClaimed: false);
+
+    private void StartForageCodexRewardReadyPlaytest() =>
+        StartForageCodexPlaytest(
+            CompendiumCatalog.ForageEntries.Count,
+            rewardClaimed: false
+        );
+
+    private void StartForageCodexRewardClaimedEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartForageCodexPlaytest(
+            CompendiumCatalog.ForageEntries.Count,
+            rewardClaimed: true
+        );
+    }
+
+    private void StartForageCodexPlaytest(
+        int discoveredCount,
+        bool rewardClaimed
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 1;
+        save.MinuteOfDay = 10 * 60;
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = CompendiumCatalog.ForageEntries
+                .Take(Math.Clamp(
+                    discoveredCount,
+                    0,
+                    CompendiumCatalog.ForageEntries.Count
+                ))
+                .Select(entry => entry.Id)
+                .ToList(),
+            ClaimedRewardIds = rewardClaimed
+                ? [CollectionRewardIds.StarpathForagersGuide]
+                : []
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Forage
+        )).CallDeferred();
+    }
+
+    private void StartFishingPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.SetPlayerState(38 * 16 + 8, 20 * 16 + 8, false);
+        _session.Inventory.Select(5);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartFishingCollectionPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Fishing.CaughtFishIds = DataCatalog.FishItemIds
+            .Take(8)
+            .ToList();
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenFishingCollection).CallDeferred();
+    }
+
+    private void StartFishCodexPartialPlaytest() =>
+        StartFishCodexPlaytest(12);
+
+    private void StartFishCodexCompleteEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartFishCodexPlaytest(CompendiumCatalog.FishEntries.Count);
+    }
+
+    private void StartFishCodexPlaytest(int discoveredCount)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var discovered = CompendiumCatalog.FishEntries
+            .Take(Math.Clamp(
+                discoveredCount,
+                0,
+                CompendiumCatalog.FishEntries.Count
+            ))
+            .Select(entry => entry.Id)
+            .ToList();
+        var save = _session.Capture();
+        save.Day = 15;
+        save.MinuteOfDay = 10 * 60;
+        save.Fishing.CaughtFishIds = discovered.ToList();
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = discovered
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Fish
+        )).CallDeferred();
+    }
+
+    private void StartCrystalGrottoEntryPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Select(0);
+        _session.SetPlayerLocation(
+            CrystalGrottoSurveyLayout.WorldReturnCell.X * 16 + 8,
+            CrystalGrottoSurveyLayout.WorldReturnCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartCrystalGrottoBasicPlaytest()
+    {
+        PrepareCrystalGrottoPlaytest(
+            new GridPosition(23, 15),
+            selectedSlot: 1
+        );
+    }
+
+    private void StartCrystalGrottoUpgradePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Coins = 600;
+        save.Player.LocationId = PlayerLocationIds.CrystalGrottoSurvey;
+        save.Player.X = 17 * 16 + 8;
+        save.Player.Y = 15 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _session.Inventory.Add(DataCatalog.LumenSlateOreId, 6);
+        _session.Inventory.Add(DataCatalog.MoonveinOreId, 3);
+        _playing = true;
+        EnsureHud();
+        ShowCrystalGrotto(false);
+        Callable.From(() => OpenToolUpgrade(
+            CrystalGrottoSurveyLayout.UpgradeBenchCell
+        )).CallDeferred();
+    }
+
+    private void StartCrystalGrottoDeepPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Player.LocationId = PlayerLocationIds.CrystalGrottoSurvey;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 7 * 16 + 8;
+        save.Player.SelectedSlot = 1;
+        save.Mining = new MiningSave { DeepestRoomReached = 4 };
+        save.ToolProgression = CompletedBronzeStarShovelSave();
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowCrystalGrotto(false);
+    }
+
+    private void StartMineralCodexCompleteEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = CompendiumCatalog.MineralEntries
+                .Select(entry => entry.Id)
+                .ToList()
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Minerals
+        )).CallDeferred();
+    }
+
+    private void StartCrystalValeStarlightPanelPlaytest()
+    {
+        PrepareCrystalValeStarlightPlaytest(restored: false);
+        Callable.From(() => OpenStarlightPedestal(
+            DataCatalog.CrystalValeStarlightId
+        )).CallDeferred();
+    }
+
+    private void StartCrystalValeStarlightRestoredPlaytest() =>
+        PrepareCrystalValeStarlightPlaytest(restored: true);
+
+    private void StartStarfallRuinsEntryPlaytest()
+    {
+        var save = PrepareStarfallRuinsPlaytestSave();
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = StarfallRuinsTrialLayout.WorldReturnCell.X * 16 + 8;
+        save.Player.Y = StarfallRuinsTrialLayout.WorldReturnCell.Y * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        RestoreWorldPlaytest(save);
+    }
+
+    private void StartStarfallRuinsCombatPlaytest()
+    {
+        var save = PrepareStarfallRuinsPlaytestSave();
+        save.Player.LocationId = PlayerLocationIds.StarfallRuinsTrial;
+        save.Player.X = 6 * 16 + 8;
+        save.Player.Y = 15 * 16 + 8;
+        save.StarfallRuinsTrial.WeaponClaimed = true;
+        RestoreStarfallRuinsPlaytest(save);
+        _session.Inventory.Add(DataCatalog.MoonsteelShortbladeId, 1);
+        _session.Inventory.PromoteToHotbar(
+            DataCatalog.MoonsteelShortbladeId
+        );
+    }
+
+    private void StartStarfallRuinsArtifactsPlaytest()
+    {
+        var save = PrepareStarfallRuinsPlaytestSave();
+        save.Player.LocationId = PlayerLocationIds.StarfallRuinsTrial;
+        save.Player.X = 22 * 16 + 8;
         save.Player.Y = 17 * 16 + 8;
+        save.StarfallRuinsTrial.WeaponClaimed = true;
+        save.StarfallRuinsTrial.ClearedRoomIds =
+            StarfallRuinsTrialCatalog.Rooms
+                .Select(room => room.Id)
+                .ToList();
+        RestoreStarfallRuinsPlaytest(save);
+        _session.Inventory.Add(DataCatalog.MoonsteelShortbladeId, 1);
+        _session.Inventory.Select(0);
+    }
+
+    private void StartArtifactCodexDonationEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var artifactIds = CompendiumCatalog.ArtifactEntries
+            .Select(entry => entry.Id)
+            .ToList();
+        var save = _session.Capture();
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = artifactIds,
+            DonatedEntryIds = artifactIds.Skip(2).ToList()
+        };
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 12 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        foreach (var artifactId in artifactIds.Take(2))
+        {
+            _session.Inventory.Add(artifactId, 1);
+        }
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(() => OpenCompendium(
+            VillageCatalog.MoonlitArchiveDeskCell,
+            CollectionCategoryIds.Artifacts
+        )).CallDeferred();
+    }
+
+    private void StartStarfallRuinsStarlightPanelPlaytest()
+    {
+        PrepareStarfallRuinsStarlightPlaytest(restored: false);
+        Callable.From(() => OpenStarlightPedestal(
+            DataCatalog.StarfallRuinsStarlightId
+        )).CallDeferred();
+    }
+
+    private void StartStarfallRuinsStarlightRestoredPlaytest() =>
+        PrepareStarfallRuinsStarlightPlaytest(restored: true);
+
+    private GameSaveV1 PrepareStarfallRuinsPlaytestSave()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 29;
+        save.MinuteOfDay = 18 * 60;
+        save.Mining = new MiningSave
+        {
+            DeepestRoomReached = CrystalGrottoSurveyLayout.RoomCount
+        };
+        save.ToolProgression = CompletedBronzeStarShovelSave();
+        save.Festival.Results =
+        [
+            new FestivalYearResultSave
+            {
+                FestivalId =
+                    FestivalCatalog.GleamrisePlantingFestivalId,
+                Year = 1,
+                Score = 1
+            }
+        ];
+        save.Starlight = new StarlightSave
+        {
+            Pedestals = DataCatalog.StarlightPedestals.Values
+                .Where(definition => definition.Id !=
+                    DataCatalog.StarfallRuinsStarlightId)
+                .Select(CompletedPedestalSave)
+                .ToList()
+        };
+        return save;
+    }
+
+    private void PrepareStarfallRuinsStarlightPlaytest(bool restored)
+    {
+        var save = PrepareStarfallRuinsPlaytestSave();
+        var artifactIds = CompendiumCatalog.ArtifactEntries
+            .Select(entry => entry.Id)
+            .ToList();
+        save.Collection = new CollectionSave
+        {
+            Initialized = true,
+            InitializedCategoryIds = CompendiumCatalog.CategoryIds.ToList(),
+            DiscoveredEntryIds = artifactIds
+                .Concat(CompendiumCatalog.EnemyEntries.Select(entry => entry.Id))
+                .ToList(),
+            DonatedEntryIds = artifactIds.Take(3).ToList()
+        };
         save.Village = new VillageSave
         {
-            MetNpcIds = [VillageCatalog.LioraId],
+            MetNpcIds = [VillageCatalog.KaelId, VillageCatalog.LioraId],
             Relationships =
             [
                 new VillageRelationshipSave
                 {
+                    NpcId = VillageCatalog.KaelId,
+                    Points = 60
+                },
+                new VillageRelationshipSave
+                {
                     NpcId = VillageCatalog.LioraId,
-                    Points = relationshipPoints,
-                    LastTalkDay = day
+                    Points = 60
                 }
             ]
         };
-        save.CharacterEvents = characterEvents;
-        _session.Restore(save);
-        _session.Inventory.Select(0);
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = WorldDefinition.StarfallRuinsStarlightCell.X * 16 + 8;
+        save.Player.Y =
+            (WorldDefinition.StarfallRuinsStarlightCell.Y + 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        RestoreWorldPlaytest(save);
+        _session.Starlight.Discover(DataCatalog.StarfallRuinsStarlightId);
+        if (restored)
+        {
+            _session.ActivateStarlightPedestal(
+                DataCatalog.StarfallRuinsStarlightId,
+                WorldDefinition.StarfallRuinsStarlightCell
+            );
+        }
+    }
 
+    private static StarlightPedestalSave CompletedPedestalSave(
+        StarlightPedestalDefinition definition
+    ) => new()
+    {
+        PedestalId = definition.Id,
+        Discovered = true,
+        RewardUnlocked = true,
+        Nodes = definition.Nodes
+            .Where(node => node.SourceKind ==
+                StarlightNodeSourceKind.Inventory)
+            .Select(node =>
+            {
+                var remaining = node.RequiredCount;
+                var contributions = new List<StarlightContributionSave>();
+                foreach (var option in node.Options)
+                {
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+                    var count = Math.Min(remaining, option.MaximumCount);
+                    contributions.Add(new StarlightContributionSave
+                    {
+                        ItemId = option.ItemId,
+                        Count = count
+                    });
+                    remaining -= count;
+                }
+                return new StarlightNodeSave
+                {
+                    NodeId = node.Id,
+                    Contributions = contributions
+                };
+            })
+            .ToList()
+    };
+
+    private void RestoreWorldPlaytest(GameSaveV1 save)
+    {
+        _session.Restore(save);
         _playing = true;
         EnsureHud();
-        ShowArchive(false);
-        Callable.From(
-            () => TalkToVillager(liora.Position)
-        ).CallDeferred();
+        ShowFarm(false);
+    }
+
+    private void RestoreStarfallRuinsPlaytest(GameSaveV1 save)
+    {
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowStarfallRuinsTrial(false);
+    }
+
+    private void PrepareCrystalGrottoPlaytest(
+        GridPosition playerCell,
+        int selectedSlot
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.SetPlayerLocation(
+            playerCell.X * 16 + 8,
+            playerCell.Y * 16 + 8,
+            PlayerLocationIds.CrystalGrottoSurvey
+        );
+        _session.Inventory.Select(selectedSlot);
+        _playing = true;
+        EnsureHud();
+        ShowCrystalGrotto(false);
+    }
+
+    private void PrepareCrystalValeStarlightPlaytest(bool restored)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Mining = new MiningSave
+        {
+            DeepestRoomReached = CrystalGrottoSurveyLayout.RoomCount
+        };
+        save.ToolProgression = CompletedBronzeStarShovelSave();
+        _session.Restore(save);
+        _session.Starlight.Discover(DataCatalog.CrystalValeStarlightId);
+        foreach (var itemId in MiningCatalog.Minerals.Select(
+                     mineral => mineral.ItemId
+                 ))
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+
+        if (restored)
+        {
+            _session.ContributeToStarlightNode(
+                DataCatalog.CrystalValeStarlightId,
+                DataCatalog.CrystalValeMineralChorusNodeId
+            );
+        }
+
+        _session.Inventory.Select(0);
+        _session.SetPlayerLocation(
+            WorldDefinition.CrystalWellCell.X * 16 + 8,
+            (WorldDefinition.CrystalWellCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private static ToolProgressionSave CompletedBronzeStarShovelSave() =>
+        new()
+        {
+            Tools =
+            [
+                new ToolProgressionEntrySave
+                {
+                    ToolId = DataCatalog.ShovelId,
+                    TierId = ToolProgressionCatalog.BronzeStarTierId
+                }
+            ]
+        };
+
+    private void StartMoonwaterStarlightPanelPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 15;
+        save.MinuteOfDay = 18 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = 15,
+            CurrentId = DataCatalog.RainWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        _session.Restore(save);
+        _session.Starlight.Discover(DataCatalog.MoonwaterStarlightId);
+        foreach (var itemId in new[]
+        {
+            DataCatalog.MoonwaterMinnowId,
+            DataCatalog.MarshveilKilliId,
+            DataCatalog.RainveilLampreyId
+        })
+        {
+            _session.Inventory.Add(itemId, 1);
+        }
+        _session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterStarlightId,
+            DataCatalog.MoonwaterLocalFishNodeId
+        );
+        _session.ContributeToStarlightNode(
+            DataCatalog.MoonwaterStarlightId,
+            DataCatalog.MoonwaterWeatherFishNodeId
+        );
+        _session.SetPlayerState(
+            WorldDefinition.MoonwaterStarlightCell.X * 16 + 8,
+            (WorldDefinition.MoonwaterStarlightCell.Y + 1) * 16 + 8,
+            false
+        );
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(() => OpenStarlightPedestal(
+            DataCatalog.MoonwaterStarlightId
+        )).CallDeferred();
+    }
+
+    private void StartLioraEventOnePlaytest()
+    {
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        );
+    }
+
+    private void StartLioraEventTwoPlaytest()
+    {
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.LioraRememberedWayHomeId
+        );
     }
 
     private void StartArchivePlaytest(
@@ -1532,6 +4799,7 @@ public sealed partial class Main : Node
             17 * 16 + 8,
             PlayerLocationIds.MoonlitArchive
         );
+        liora = PlacePlayerAdjacentForPlaytest(liora);
         _session.Inventory.Select(0);
         if (giveGift)
         {
@@ -1566,335 +4834,460 @@ public sealed partial class Main : Node
 
     private void StartTaviEventOnePlaytest()
     {
-        StartTaviEventPlaytest(2, 25, new CharacterEventSave());
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.TaviCrackedMoonRuneId
+        );
     }
 
     private void StartTaviEventTwoPlaytest()
     {
-        StartTaviEventPlaytest(
-            3,
-            60,
-            new CharacterEventSave
-            {
-                Entries =
-                [
-                    new CharacterEventEntrySave
-                    {
-                        EventId =
-                            CharacterEventCatalog.TaviCrackedMoonRuneId,
-                        CompletedDay = 2
-                    }
-                ]
-            }
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.TaviMendedLightId
         );
-    }
-
-    private void StartTaviEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    )
-    {
-        const int minuteOfDay = 10 * 60;
-        var tavi = VillageCatalog.CurrentNpc(
-            VillageCatalog.TaviId,
-            day,
-            minuteOfDay
-        );
-        if (tavi is null)
-        {
-            StartWorkshopPlaytest();
-            return;
-        }
-
-        FreeUi(_title);
-        _title = null;
-        _session.NewGame(_locale.CurrentLocale);
-        var save = _session.Capture();
-        save.Day = day;
-        save.MinuteOfDay = minuteOfDay;
-        save.Player.LocationId = PlayerLocationIds.MoonstoneWorkshop;
-        save.Player.X = 20 * 16 + 8;
-        save.Player.Y = 18 * 16 + 8;
-        save.Village = new VillageSave
-        {
-            MetNpcIds = [VillageCatalog.TaviId],
-            Relationships =
-            [
-                new VillageRelationshipSave
-                {
-                    NpcId = VillageCatalog.TaviId,
-                    Points = relationshipPoints,
-                    LastTalkDay = day
-                }
-            ]
-        };
-        save.CharacterEvents = characterEvents;
-        _session.Restore(save);
-        _session.Inventory.Select(0);
-
-        _playing = true;
-        EnsureHud();
-        ShowWorkshop(false);
-        Callable.From(
-            () => TalkToVillager(tavi.Position)
-        ).CallDeferred();
     }
 
     private void StartNemiEventOnePlaytest()
     {
-        StartNemiEventPlaytest(15, 25, new CharacterEventSave());
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NemiUndeliverableLetterId
+        );
     }
 
     private void StartNemiEventTwoPlaytest()
     {
-        StartNemiEventPlaytest(
-            17,
-            60,
-            new CharacterEventSave
-            {
-                Entries =
-                [
-                    new CharacterEventEntrySave
-                    {
-                        EventId =
-                            CharacterEventCatalog.NemiUndeliverableLetterId,
-                        CompletedDay = 15
-                    }
-                ]
-            }
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NemiStarChartRouteId
         );
     }
 
-    private void StartNemiEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    ) => StartWorldCharacterEventPlaytest(
-        day,
-        relationshipPoints,
-        characterEvents,
-        VillageCatalog.NemiId,
-        "village.npc.nemi.route"
-    );
-
     private void StartKaelEventOnePlaytest()
     {
-        StartKaelEventPlaytest(15, 25, new CharacterEventSave());
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.KaelBrokenBlueRuneId
+        );
     }
 
     private void StartKaelEventTwoPlaytest()
     {
-        StartKaelEventPlaytest(
-            17,
-            60,
-            new CharacterEventSave
-            {
-                Entries =
-                [
-                    new CharacterEventEntrySave
-                    {
-                        EventId =
-                            CharacterEventCatalog.KaelBrokenBlueRuneId,
-                        CompletedDay = 15
-                    }
-                ]
-            }
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.KaelSafeReturnRouteId
         );
     }
 
-    private void StartKaelEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    ) => StartWorldCharacterEventPlaytest(
-        day,
-        relationshipPoints,
-        characterEvents,
-        VillageCatalog.KaelId,
-        "village.npc.kael.plaza"
-    );
-
     private void StartSelaEventOnePlaytest()
     {
-        StartSelaEventPlaytest(15, 25, new CharacterEventSave());
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.SelaTemperedStarlightId
+        );
     }
 
     private void StartSelaEventTwoPlaytest()
     {
-        StartSelaEventPlaytest(
-            17,
-            60,
-            new CharacterEventSave
-            {
-                Entries =
-                [
-                    new CharacterEventEntrySave
-                    {
-                        EventId =
-                            CharacterEventCatalog.SelaTemperedStarlightId,
-                        CompletedDay = 15
-                    }
-                ]
-            }
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.SelaSharedForgeRhythmId
         );
     }
 
-    private void StartSelaEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    ) => StartWorldCharacterEventPlaytest(
-        day,
-        relationshipPoints,
-        characterEvents,
-        VillageCatalog.SelaId,
-        "village.npc.sela.plaza"
-    );
-
     private void StartOrinEventOnePlaytest()
     {
-        StartOrinEventPlaytest(15, 25, new CharacterEventSave());
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.OrinUnpricedWaybillId
+        );
     }
 
     private void StartOrinEventTwoPlaytest()
     {
-        StartOrinEventPlaytest(
-            17,
-            60,
-            new CharacterEventSave
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.OrinSharedLanternRouteId
+        );
+    }
+
+    private void StartElowenEventOnePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.ElowenTideMarksAtTheWellId
+        );
+
+    private void StartElowenEventTwoPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.ElowenWaterlineReadTogetherId
+        );
+
+    private void StartVessaEventOnePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.VessaBitterLeafWarmCupId
+        );
+
+    private void StartVessaEventTwoPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.VessaPathThatListensBackId
+        );
+
+    private void StartVessaEventWrongToolPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.VessaBitterLeafWarmCupId,
+            wrongTool: true
+        );
+
+    private void StartRelationshipMailsEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareMailPlaytest(
+            [
+                RelationshipMail(MailCatalog.KaelKindredId),
+                RelationshipMail(MailCatalog.SelaKindredId),
+                RelationshipMail(MailCatalog.ElowenKindredId),
+                RelationshipMail(MailCatalog.VessaKindredId),
+                RelationshipMail(MailCatalog.OrinKindredId)
+            ]
+        );
+        StartMailPlaytestWorld(true);
+    }
+
+    private void StartVillageExpansionWave3Playtest()
+    {
+        StartVillagePlaytestWorld(
+            1,
+            14 * 60,
+            new GridPosition(97, 55)
+        );
+    }
+
+    private void StartVillageExpansionWave3IndoorPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(1, 11 * 60);
+        _session.SetPlayerLocation(
+            20 * 16 + 8,
+            18 * 16 + 8,
+            PlayerLocationIds.TwilightEmporium
+        );
+        _session.Inventory.Select(0);
+        var yvara = _session.Village.CurrentNpcs(
+                1,
+                11 * 60,
+                PlayerLocationIds.TwilightEmporium,
+                _session.PlayerCell
+            )
+            .FirstOrDefault(state =>
+                state.Definition.Id == VillageCatalog.YvaraId
+            );
+        if (yvara is not null)
+        {
+            PlacePlayerAdjacentForPlaytest(yvara);
+        }
+        _playing = true;
+        EnsureHud();
+        ShowTwilightEmporium(false);
+    }
+
+    private void StartVillageExpansionWave3DialogueEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        StartVillageExpansionWave3FocusPlaytest(
+            openDialogue: true,
+            wrongTool: false
+        );
+    }
+
+    private void StartVillageExpansionWave3WrongToolPlaytest() =>
+        StartVillageExpansionWave3FocusPlaytest(
+            openDialogue: false,
+            wrongTool: true
+        );
+
+    private void StartVillageExpansionWave3FocusPlaytest(
+        bool openDialogue,
+        bool wrongTool
+    )
+    {
+        const int day = 1;
+        const int minuteOfDay = 14 * 60;
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Clock.Reset(day, minuteOfDay);
+        _session.SetPlayerState(
+            97 * 16 + 8,
+            55 * 16 + 8,
+            false
+        );
+        var yvara = _session.Village.CurrentNpcs(
+                day,
+                minuteOfDay,
+                PlayerLocationIds.World,
+                _session.PlayerCell
+            )
+            .FirstOrDefault(state =>
+                state.Definition.Id == VillageCatalog.YvaraId
+            );
+        if (yvara is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+        yvara = PlacePlayerAdjacentForPlaytest(yvara);
+        _session.Inventory.Select(wrongTool ? 1 : 0);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (openDialogue)
+        {
+            Callable.From(
+                () => TalkToVillager(yvara.Position)
+            ).CallDeferred();
+        }
+    }
+
+    private void StartYvaraEventOnePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.YvaraSeedsBeyondTheCalendarId
+        );
+
+    private void StartYvaraEventTwoPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.YvaraASeasonCarriedGentlyId
+        );
+
+    private void StartWave3RelationshipMailsEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareMailPlaytest(
+            [
+                RelationshipMail(MailCatalog.YvaraKindredId),
+                RelationshipMail(MailCatalog.BrialKindredId),
+                RelationshipMail(MailCatalog.PavriKindredId),
+                RelationshipMail(MailCatalog.RovenKindredId)
+            ]
+        );
+        StartMailPlaytestWorld(true);
+    }
+
+    private static MailEntrySave RelationshipMail(string mailId) => new()
+    {
+        MailId = mailId,
+        DeliveredDay = 3
+    };
+
+    private void StartCatalogCharacterEventPlaytest(
+        string eventId,
+        bool wrongTool = false
+    )
+    {
+        var definition = CharacterEventCatalog.ById[eventId];
+        var trigger = FindCharacterEventTrigger(definition);
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = trigger.Day;
+        save.MinuteOfDay = trigger.Minute;
+        save.Player.LocationId = definition.RequiredLocationId;
+        save.Player.X = 8;
+        save.Player.Y = 8;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [definition.NpcId],
+            Relationships =
+            [
+                new VillageRelationshipSave
+                {
+                    NpcId = definition.NpcId,
+                    Points = definition.RequiredRelationshipPoints,
+                    LastTalkDay = trigger.Day
+                }
+            ]
+        };
+        if (definition.RequiredPreviousEventId is not null)
+        {
+            save.CharacterEvents = new CharacterEventSave
             {
                 Entries =
                 [
                     new CharacterEventEntrySave
                     {
-                        EventId =
-                            CharacterEventCatalog.OrinUnpricedWaybillId,
-                        CompletedDay = 15
+                        EventId = definition.RequiredPreviousEventId,
+                        CompletedDay = trigger.Day - 1
                     }
                 ]
+            };
+        }
+        _session.Restore(save);
+        _session.Inventory.Select(wrongTool ? 1 : 0);
+
+        var npc = _session.Village.CurrentNpcs(
+                trigger.Day,
+                trigger.Minute,
+                definition.RequiredLocationId
+            )
+            .FirstOrDefault(state =>
+                state.Definition.Id == definition.NpcId
+            );
+        if (npc is null)
+        {
+            StartVillagePlaytest();
+            return;
+        }
+        npc = PlacePlayerAdjacentForPlaytest(npc);
+
+        _playing = true;
+        EnsureHud();
+        ShowCharacterEventLocation(definition.RequiredLocationId);
+        if (!wrongTool)
+        {
+            var target = npc.Position;
+            Callable.From(() => TalkToVillager(target)).CallDeferred();
+        }
+    }
+
+    private VillageNpcState PlacePlayerAdjacentForPlaytest(
+        VillageNpcState npc
+    )
+    {
+        for (var attempt = 0; attempt < 8; attempt++)
+        {
+            var current = _session.Village.CurrentNpcs(
+                    _session.Clock.Day,
+                    _session.Clock.MinuteOfDay,
+                    npc.LocationId,
+                    _session.PlayerCell
+                )
+                .Single(state =>
+                    state.Definition.Id == npc.Definition.Id
+                );
+            var occupied = _session.Village.CurrentNpcs(
+                    _session.Clock.Day,
+                    _session.Clock.MinuteOfDay,
+                    npc.LocationId,
+                    _session.PlayerCell
+                )
+                .Where(state =>
+                    state.Definition.Id != npc.Definition.Id
+                )
+                .Select(state => state.Position)
+                .ToHashSet();
+            var approach = new[]
+                {
+                    new GridPosition(
+                        current.Position.X,
+                        current.Position.Y + 1
+                    ),
+                    new GridPosition(
+                        current.Position.X - 1,
+                        current.Position.Y
+                    ),
+                    new GridPosition(
+                        current.Position.X + 1,
+                        current.Position.Y
+                    ),
+                    new GridPosition(
+                        current.Position.X,
+                        current.Position.Y - 1
+                    )
+                }
+                .First(candidate =>
+                    NpcNavigationMap.IsWalkableGeometry(
+                        npc.LocationId,
+                        candidate
+                    ) &&
+                    !NpcNavigationMap.IsCriticalEntranceCell(
+                        npc.LocationId,
+                        candidate
+                    ) &&
+                    !occupied.Contains(candidate)
+                );
+            _session.SetPlayerLocation(
+                approach.X * 16 + 8,
+                approach.Y * 16 + 8,
+                npc.LocationId
+            );
+            var projected = _session.Village.CurrentNpcs(
+                    _session.Clock.Day,
+                    _session.Clock.MinuteOfDay,
+                    npc.LocationId,
+                    _session.PlayerCell
+                )
+                .Single(state =>
+                    state.Definition.Id == npc.Definition.Id
+                );
+            if (Math.Abs(_session.PlayerCell.X - projected.Position.X) +
+                Math.Abs(_session.PlayerCell.Y - projected.Position.Y) == 1)
+            {
+                return projected;
             }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not place player adjacent to {npc.Definition.Id}."
         );
     }
 
-    private void StartOrinEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents
-    ) => StartWorldCharacterEventPlaytest(
-        day,
-        relationshipPoints,
-        characterEvents,
-        VillageCatalog.OrinId,
-        "village.npc.orin.plaza"
-    );
+    private void ShowCharacterEventLocation(string locationId)
+    {
+        switch (locationId)
+        {
+            case PlayerLocationIds.World:
+                ShowFarm(false);
+                break;
+            case PlayerLocationIds.MoonlitArchive:
+                ShowArchive(false);
+                break;
+            case PlayerLocationIds.MoonstoneWorkshop:
+                ShowWorkshop(false);
+                break;
+            case PlayerLocationIds.StarweaverTeaHouse:
+                ShowTeaHouse(false);
+                break;
+            case PlayerLocationIds.TwilightEmporium:
+                ShowTwilightEmporium(false);
+                break;
+            case PlayerLocationIds.StarlightPost:
+                ShowStarlightPost(false);
+                break;
+            case PlayerLocationIds.StarfallWatch:
+                ShowStarfallWatch(false);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported character event location: {locationId}."
+                );
+        }
+    }
 
-    private void StartWorldCharacterEventPlaytest(
-        int day,
-        int relationshipPoints,
-        CharacterEventSave characterEvents,
-        string npcId,
-        string expectedDialogueKey
+    private static (int Day, int Minute) FindCharacterEventTrigger(
+        CharacterEventDefinition definition
     )
     {
-        const int minuteOfDay = 14 * 60;
-        FreeUi(_title);
-        _title = null;
-        _session.NewGame(_locale.CurrentLocale);
-        var save = _session.Capture();
-        save.Day = day;
-        save.MinuteOfDay = minuteOfDay;
-        save.Player.LocationId = PlayerLocationIds.World;
-        save.Player.X = 96 * 16 + 8;
-        save.Player.Y = 60 * 16 + 8;
-        save.Village = new VillageSave
+        var firstDay = definition.RequiredPreviousEventId is null ? 1 : 2;
+        var npc = VillageCatalog.Npcs[definition.NpcId];
+        for (var day = firstDay;
+             day <= CalendarSystem.DaysPerYear;
+             day++)
         {
-            MetNpcIds = [npcId],
-            Relationships =
-            [
-                new VillageRelationshipSave
-                {
-                    NpcId = npcId,
-                    Points = relationshipPoints,
-                    LastTalkDay = day
-                }
-            ]
-        };
-        save.CharacterEvents = characterEvents;
-        _session.Restore(save);
-        _session.Inventory.Select(0);
-
-        var villageNpcs = _session.Village.CurrentNpcs(
-            day,
-            minuteOfDay,
-            PlayerLocationIds.World,
-            _session.PlayerCell
-        );
-        var npc = villageNpcs.FirstOrDefault(state =>
-            state.Definition.Id == npcId
-        );
-        if (npc is null || npc.DialogueKey != expectedDialogueKey)
-        {
-            StartVillagePlaytest();
-            return;
-        }
-
-        var occupied = villageNpcs
-            .Select(state => state.Position)
-            .ToHashSet();
-        GridPosition? approach = null;
-        foreach (var candidate in new[]
-                 {
-                     new GridPosition(
-                         npc.Position.X,
-                         npc.Position.Y + 1
-                     ),
-                     new GridPosition(
-                         npc.Position.X - 1,
-                         npc.Position.Y
-                     ),
-                     new GridPosition(
-                         npc.Position.X + 1,
-                         npc.Position.Y
-                     ),
-                     new GridPosition(
-                         npc.Position.X,
-                         npc.Position.Y - 1
-                     )
-                 })
-        {
-            if (NpcNavigationMap.IsWalkableGeometry(
-                    PlayerLocationIds.World,
-                    candidate
-                ) &&
-                !NpcNavigationMap.IsCriticalEntranceCell(
-                    PlayerLocationIds.World,
-                    candidate
-                ) &&
-                !occupied.Contains(candidate))
+            var weatherId = WeatherSystem.WeatherForDay(day);
+            for (var minute = GameClock.StartMinute;
+                 minute < GameClock.EndMinute;
+                 minute += GameClock.MinutesPerTick)
             {
-                approach = candidate;
-                break;
+                var entry = NpcScheduleSystem.SelectEntry(
+                    npc,
+                    day,
+                    minute,
+                    weatherId
+                );
+                if (entry?.LocationId == definition.RequiredLocationId &&
+                    entry.DialogueKey == definition.RequiredNpcDialogueKey &&
+                    minute >= entry.StartMinute + 60)
+                {
+                    return (day, minute);
+                }
             }
         }
 
-        if (approach is null)
-        {
-            StartVillagePlaytest();
-            return;
-        }
-
-        _session.SetPlayerLocation(
-            approach.Value.X * 16 + 8,
-            approach.Value.Y * 16 + 8,
-            PlayerLocationIds.World
+        throw new InvalidOperationException(
+            $"No schedule trigger exists for {definition.Id}."
         );
-        _playing = true;
-        EnsureHud();
-        ShowFarm(false);
-        Callable.From(
-            () => TalkToVillager(npc.Position)
-        ).CallDeferred();
     }
 
     private void StartWorkshopPlaytest()
@@ -1931,6 +5324,7 @@ public sealed partial class Main : Node
             18 * 16 + 8,
             PlayerLocationIds.MoonstoneWorkshop
         );
+        tavi = PlacePlayerAdjacentForPlaytest(tavi);
         _session.Inventory.Select(0);
         if (giveGift)
         {
@@ -1997,6 +5391,7 @@ public sealed partial class Main : Node
             10 * 16 + 8,
             PlayerLocationIds.StarweaverTeaHouse
         );
+        vessa = PlacePlayerAdjacentForPlaytest(vessa);
         _session.Inventory.Select(0);
         if (giveGift)
         {
@@ -2081,6 +5476,7 @@ public sealed partial class Main : Node
             9 * 16 + 8,
             PlayerLocationIds.TwilightEmporium
         );
+        orin = PlacePlayerAdjacentForPlaytest(orin);
         _session.Inventory.Select(0);
 
         _playing = true;
@@ -2148,6 +5544,7 @@ public sealed partial class Main : Node
             14 * 16 + 8,
             PlayerLocationIds.StarlightPost
         );
+        nemi = PlacePlayerAdjacentForPlaytest(nemi);
         _session.Inventory.Select(selectedSlot);
 
         _playing = true;
@@ -2215,6 +5612,7 @@ public sealed partial class Main : Node
             14 * 16 + 8,
             PlayerLocationIds.StarfallWatch
         );
+        kael = PlacePlayerAdjacentForPlaytest(kael);
         _session.Inventory.Select(selectedSlot);
 
         _playing = true;
@@ -2271,6 +5669,7 @@ public sealed partial class Main : Node
         ShowWorkshop(false);
         if (sela is not null)
         {
+            sela = PlacePlayerAdjacentForPlaytest(sela);
             Callable.From(
                 () => TalkToVillager(sela.Position)
             ).CallDeferred();
@@ -2304,11 +5703,7 @@ public sealed partial class Main : Node
             );
         if (vessa is not null)
         {
-            _session.SetPlayerLocation(
-                vessa.Position.X * 16 + 8,
-                (vessa.Position.Y + 1) * 16 + 8,
-                PlayerLocationIds.World
-            );
+            vessa = PlacePlayerAdjacentForPlaytest(vessa);
         }
 
         _playing = true;
@@ -2353,6 +5748,90 @@ public sealed partial class Main : Node
             63 * 16 + 8,
             false
         );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartWorldAspectBoundaryPlaytest() =>
+        StartWorldAspectPlaytest(14);
+
+    private void StartRainveilWorldAspectPlaytest() =>
+        StartWorldAspectPlaytest(15);
+
+    private void StartStarharvestWorldAspectPlaytest() =>
+        StartWorldAspectPlaytest(29);
+
+    private void StartLongnightWorldAspectPlaytest() =>
+        StartWorldAspectPlaytest(43);
+
+    private void StartRainveilWorldTreeRainPlaytest() =>
+        StartWorldAspectResourcePlaytest(
+            15,
+            DataCatalog.RainWeatherId,
+            WorldResourceKind.Tree,
+            2
+        );
+
+    private void StartStarharvestWorldCrystalStardustPlaytest() =>
+        StartWorldAspectResourcePlaytest(
+            29,
+            DataCatalog.StardustWindWeatherId,
+            WorldResourceKind.Crystal,
+            2
+        );
+
+    private void StartWorldAspectPlaytest(int day)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var playerCell = new GridPosition(70, 64);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = DataCatalog.ClearWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = playerCell.X * 16 + 8;
+        save.Player.Y = playerCell.Y * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private void StartWorldAspectResourcePlaytest(
+        int day,
+        string weatherId,
+        WorldResourceKind resourceKind,
+        int selectedSlot
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var resource = FindResourceWithNorthernApproach(resourceKind);
+        var playerCell = new GridPosition(resource.X, resource.Y - 1);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = 14 * 60;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = weatherId,
+            ForecastId = weatherId
+        };
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = playerCell.X * 16 + 8;
+        save.Player.Y = playerCell.Y * 16 + 8;
+        save.Player.SelectedSlot = selectedSlot;
+        _session.Restore(save);
         _playing = true;
         EnsureHud();
         ShowFarm(false);
@@ -2561,6 +6040,18 @@ public sealed partial class Main : Node
         {
             ShowCottage(false);
         }
+        else if (_session.InsideGreenhouse)
+        {
+            ShowGreenhouse(false);
+        }
+        else if (_session.InsideStarfeatherCoop)
+        {
+            ShowStarfeatherCoop(false);
+        }
+        else if (_session.InsideMoonfleeceBarn)
+        {
+            ShowMoonfleeceBarn(false);
+        }
         else if (_session.InsideArchive)
         {
             ShowArchive(false);
@@ -2584,6 +6075,30 @@ public sealed partial class Main : Node
         else if (_session.InsideStarfallWatch)
         {
             ShowStarfallWatch(false);
+        }
+        else if (_session.InsideStarharvestMarket)
+        {
+            ShowStarharvestMarket(false);
+        }
+        else if (_session.InsideGleamrisePlantingFestival)
+        {
+            ShowGleamrisePlantingFestival(false);
+        }
+        else if (_session.InsideLongnightLanternFeast)
+        {
+            ShowLongnightLanternFeast(false);
+        }
+        else if (_session.InsideFireflyTide)
+        {
+            ShowFireflyTide(false);
+        }
+        else if (_session.InsideCrystalGrottoSurvey)
+        {
+            ShowCrystalGrotto(false);
+        }
+        else if (_session.InsideStarfallRuinsTrial)
+        {
+            ShowStarfallRuinsTrial(false);
         }
         else
         {
@@ -2610,7 +6125,16 @@ public sealed partial class Main : Node
         bool fromTeaHouse = false,
         bool fromTwilightEmporium = false,
         bool fromStarlightPost = false,
-        bool fromStarfallWatch = false
+        bool fromStarfallWatch = false,
+        bool fromGreenhouse = false,
+        bool fromStarfeatherCoop = false,
+        bool fromMoonfleeceBarn = false,
+        bool fromStarharvestMarket = false,
+        bool fromGleamrisePlantingFestival = false,
+        bool fromLongnightLanternFeast = false,
+        bool fromFireflyTide = false,
+        bool fromCrystalGrotto = false,
+        bool fromStarfallRuinsTrial = false
     )
     {
         ClearWorld();
@@ -2620,6 +6144,30 @@ public sealed partial class Main : Node
                 FarmView.CottageDoorCell.X * 16 + 8,
                 (FarmView.CottageDoorCell.Y + 1) * 16 + 8,
                 false
+            );
+        }
+        else if (fromGreenhouse)
+        {
+            _session.SetPlayerLocation(
+                FarmLayout.GreenhouseReturnCell.X * 16 + 8,
+                FarmLayout.GreenhouseReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromStarfeatherCoop)
+        {
+            _session.SetPlayerLocation(
+                FarmLayout.StarfeatherCoopReturnCell.X * 16 + 8,
+                FarmLayout.StarfeatherCoopReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromMoonfleeceBarn)
+        {
+            _session.SetPlayerLocation(
+                FarmLayout.MoonfleeceBarnReturnCell.X * 16 + 8,
+                FarmLayout.MoonfleeceBarnReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
             );
         }
         else if (fromArchive)
@@ -2670,11 +6218,62 @@ public sealed partial class Main : Node
                 PlayerLocationIds.World
             );
         }
+        else if (fromStarharvestMarket)
+        {
+            _session.SetPlayerLocation(
+                StarharvestMarketLayout.WorldReturnCell.X * 16 + 8,
+                StarharvestMarketLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromGleamrisePlantingFestival)
+        {
+            _session.SetPlayerLocation(
+                GleamrisePlantingFestivalLayout.WorldReturnCell.X * 16 + 8,
+                GleamrisePlantingFestivalLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromLongnightLanternFeast)
+        {
+            _session.SetPlayerLocation(
+                LongnightLanternFeastLayout.WorldReturnCell.X * 16 + 8,
+                LongnightLanternFeastLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromFireflyTide)
+        {
+            _session.SetPlayerLocation(
+                FireflyTideLayout.WorldReturnCell.X * 16 + 8,
+                FireflyTideLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromCrystalGrotto)
+        {
+            _session.SetPlayerLocation(
+                CrystalGrottoSurveyLayout.WorldReturnCell.X * 16 + 8,
+                CrystalGrottoSurveyLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
+        else if (fromStarfallRuinsTrial)
+        {
+            _session.SetPlayerLocation(
+                StarfallRuinsTrialLayout.WorldReturnCell.X * 16 + 8,
+                StarfallRuinsTrialLayout.WorldReturnCell.Y * 16 + 8,
+                PlayerLocationIds.World
+            );
+        }
 
         _farm = new FarmView(_session, _locale);
         _farm.UseRequested += UseFarmTarget;
         _farm.MiraRequested += TalkToMira;
         _farm.EnterCottageRequested += () => ShowCottage(true);
+        _farm.EnterGreenhouseRequested += TryEnterGreenhouse;
+        _farm.EnterStarfeatherCoopRequested += TryEnterStarfeatherCoop;
+        _farm.EnterMoonfleeceBarnRequested += TryEnterMoonfleeceBarn;
         _farm.EnterArchiveRequested += TryEnterMoonlitArchive;
         _farm.EnterWorkshopRequested += TryEnterMoonstoneWorkshop;
         _farm.EnterTeaHouseRequested += TryEnterStarweaverTeaHouse;
@@ -2682,6 +6281,15 @@ public sealed partial class Main : Node
             TryEnterTwilightEmporium;
         _farm.EnterStarlightPostRequested += TryEnterStarlightPost;
         _farm.EnterStarfallWatchRequested += TryEnterStarfallWatch;
+        _farm.EnterStarharvestMarketRequested +=
+            TryEnterStarharvestMarket;
+        _farm.EnterGleamrisePlantingFestivalRequested +=
+            TryEnterGleamrisePlantingFestival;
+        _farm.EnterLongnightLanternFeastRequested +=
+            TryEnterLongnightLanternFeast;
+        _farm.EnterFireflyTideRequested += TryEnterFireflyTide;
+        _farm.EnterCrystalGrottoRequested += TryEnterCrystalGrotto;
+        _farm.EnterStarfallRuinsRequested += TryEnterStarfallRuinsTrial;
         _farm.ShopRequested += OpenShop;
         _farm.ProcessorRequested += OpenProcessor;
         _farm.ShippingRequested += OpenShipping;
@@ -2690,6 +6298,8 @@ public sealed partial class Main : Node
         _farm.StarlightRequested += OpenStarlightPedestal;
         _farm.VillagerRequested += TalkToVillager;
         _farm.StorageRequested += OpenStorage;
+        _farm.HomesteadWorkbenchRequested +=
+            OpenHomesteadConstructionPanel;
         _farm.NoticeRequested += key => _hud?.ShowNotice(key);
         _farm.RegionEntered += key => _hud?.ShowNotice(key, 2.6);
         _farm.StepRequested += () => _audio.Play(PixelSound.Step);
@@ -2724,6 +6334,38 @@ public sealed partial class Main : Node
         {
             _hud?.ShowNotice("notice.leave_starfall_watch");
         }
+        else if (fromGreenhouse)
+        {
+            _hud?.ShowNotice("notice.leave_greenhouse");
+        }
+        else if (fromStarfeatherCoop)
+        {
+            _hud?.ShowNotice("notice.leave_starfeather_coop");
+        }
+        else if (fromMoonfleeceBarn)
+        {
+            _hud?.ShowNotice("notice.leave_moonfleece_barn");
+        }
+        else if (fromStarharvestMarket)
+        {
+            _hud?.ShowNotice("notice.leave_starharvest_market");
+        }
+        else if (fromLongnightLanternFeast)
+        {
+            _hud?.ShowNotice("notice.leave_longnight_feast");
+        }
+        else if (fromFireflyTide)
+        {
+            _hud?.ShowNotice("notice.leave_firefly_tide");
+        }
+        else if (fromCrystalGrotto)
+        {
+            _hud?.ShowNotice("mining.survey.exit");
+        }
+        else if (fromStarfallRuinsTrial)
+        {
+            _hud?.ShowNotice("ruins.trial.exit");
+        }
     }
 
     private void ShowCottage(bool fromFarm)
@@ -2738,11 +6380,337 @@ public sealed partial class Main : Node
         _cottage.SleepRequested += EndDay;
         _cottage.ExitRequested += () => ShowFarm(true);
         _cottage.KitchenReserveRequested += InspectKitchenReserve;
+        _cottage.KitchenRequested += OpenKitchen;
+        _cottage.IngredientPantryRequested += OpenIngredientPantry;
         _cottage.StepRequested += () => _audio.Play(PixelSound.Step);
         _world = _cottage;
         AddChild(_world);
         MoveChild(_world, 1);
         _hud?.ShowNotice(fromFarm ? "notice.enter_cottage" : string.Empty);
+    }
+
+    private void ShowGreenhouse(bool fromFarm)
+    {
+        ClearWorld();
+        if (fromFarm)
+        {
+            _session.SetPlayerLocation(
+                GreenhouseLayout.SafeArrivalCell.X * 16 + 8,
+                GreenhouseLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.Greenhouse
+            );
+        }
+
+        _greenhouse = new GreenhouseView(_session, _locale);
+        _greenhouse.UseRequested += UseFarmTarget;
+        _greenhouse.ExitRequested += () =>
+            ShowFarm(false, fromGreenhouse: true);
+        _greenhouse.NoticeRequested += key => _hud?.ShowNotice(key);
+        _greenhouse.StepRequested += () => _audio.Play(PixelSound.Step);
+        _world = _greenhouse;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        _hud?.ShowNotice(
+            fromFarm ? "notice.enter_greenhouse" : string.Empty
+        );
+    }
+
+    private void ShowCrystalGrotto(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                CrystalGrottoSurveyLayout.SafeArrivalCell.X * 16 + 8,
+                CrystalGrottoSurveyLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.CrystalGrottoSurvey
+            );
+        }
+
+        _crystalGrotto = new CrystalGrottoView(_session, _locale);
+        _crystalGrotto.UseRequested += UseFarmTarget;
+        _crystalGrotto.UpgradeRequested += OpenToolUpgrade;
+        _crystalGrotto.ExitRequested += () => ShowFarm(
+            false,
+            fromCrystalGrotto: true
+        );
+        _crystalGrotto.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _crystalGrotto.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _crystalGrotto;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("mining.survey.enter");
+        }
+    }
+
+    private void ShowStarfallRuinsTrial(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                StarfallRuinsTrialLayout.SafeArrivalCell.X * 16 + 8,
+                StarfallRuinsTrialLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.StarfallRuinsTrial
+            );
+        }
+
+        _starfallRuinsTrial = new StarfallRuinsTrialView(
+            _session,
+            _locale
+        );
+        _starfallRuinsTrial.ExitRequested += () =>
+        {
+            SaveNow(false);
+            ShowFarm(false, fromStarfallRuinsTrial: true);
+        };
+        _starfallRuinsTrial.DefeatRequested += () =>
+            ResolveStarfallTrialDefeat(forcedByClosingTime: false);
+        _starfallRuinsTrial.ProgressChanged += () => SaveNow(false);
+        _starfallRuinsTrial.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _starfallRuinsTrial.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _starfallRuinsTrial;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("ruins.trial.enter");
+        }
+    }
+
+    private void ShowStarfeatherCoop(bool fromFarm)
+    {
+        ClearWorld();
+        if (fromFarm)
+        {
+            _session.SetPlayerLocation(
+                StarfeatherCoopLayout.SafeArrivalCell.X * 16 + 8,
+                StarfeatherCoopLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.StarfeatherCoop
+            );
+        }
+
+        _starfeatherCoop = new StarfeatherCoopView(_session, _locale);
+        _starfeatherCoop.UseRequested += UseFarmTarget;
+        _starfeatherCoop.ExitRequested += () => ShowFarm(
+            false,
+            fromStarfeatherCoop: true
+        );
+        _starfeatherCoop.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _starfeatherCoop.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _starfeatherCoop;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        _hud?.ShowNotice(
+            fromFarm ? "notice.enter_starfeather_coop" : string.Empty
+        );
+    }
+
+    private void ShowMoonfleeceBarn(bool fromFarm)
+    {
+        ClearWorld();
+        if (fromFarm)
+        {
+            _session.SetPlayerLocation(
+                MoonfleeceBarnLayout.SafeArrivalCell.X * 16 + 8,
+                MoonfleeceBarnLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.MoonfleeceBarn
+            );
+        }
+
+        _moonfleeceBarn = new MoonfleeceBarnView(_session, _locale);
+        _moonfleeceBarn.UseRequested += UseFarmTarget;
+        _moonfleeceBarn.ExitRequested += () => ShowFarm(
+            false,
+            fromMoonfleeceBarn: true
+        );
+        _moonfleeceBarn.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _moonfleeceBarn.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _moonfleeceBarn;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        _hud?.ShowNotice(
+            fromFarm ? "notice.enter_moonfleece_barn" : string.Empty
+        );
+    }
+
+    private void ShowStarharvestMarket(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                StarharvestMarketLayout.SafeArrivalCell.X * 16 + 8,
+                StarharvestMarketLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.StarharvestMarket
+            );
+        }
+
+        _starharvestMarket = new StarharvestMarketView(
+            _session,
+            _locale
+        );
+        _starharvestMarket.ExitRequested += () => ShowFarm(
+            false,
+            fromStarharvestMarket: true
+        );
+        _starharvestMarket.ClosedRequested += () =>
+        {
+            CloseFestivalShowcase();
+            CloseFestivalShop();
+            ShowFarm(false);
+            _hud?.ShowNotice("festival.starharvest.closed");
+        };
+        _starharvestMarket.ShowcaseRequested += OpenFestivalShowcase;
+        _starharvestMarket.ShopRequested += OpenFestivalShop;
+        _starharvestMarket.VillagerRequested += TalkToVillager;
+        _starharvestMarket.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _starharvestMarket.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _starharvestMarket;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_starharvest_market");
+        }
+    }
+
+    private void ShowGleamrisePlantingFestival(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                GleamrisePlantingFestivalLayout.SafeArrivalCell.X * 16 + 8,
+                GleamrisePlantingFestivalLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.GleamrisePlantingFestival
+            );
+        }
+
+        _gleamrisePlantingFestival = new GleamrisePlantingFestivalView(
+            _session,
+            _locale
+        );
+        _gleamrisePlantingFestival.ExitRequested += () => ShowFarm(
+            false,
+            fromGleamrisePlantingFestival: true
+        );
+        _gleamrisePlantingFestival.ClosedRequested += () =>
+        {
+            CloseGleamrisePlanting();
+            CloseGleamriseSeedExchange();
+            ShowFarm(false);
+            _hud?.ShowNotice("festival.gleamrise.closed");
+        };
+        _gleamrisePlantingFestival.ActivityRequested +=
+            OpenGleamrisePlanting;
+        _gleamrisePlantingFestival.ExchangeRequested +=
+            OpenGleamriseSeedExchange;
+        _gleamrisePlantingFestival.VillagerRequested += TalkToVillager;
+        _gleamrisePlantingFestival.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _gleamrisePlantingFestival.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _gleamrisePlantingFestival;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_gleamrise_festival");
+        }
+    }
+
+    private void ShowLongnightLanternFeast(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                LongnightLanternFeastLayout.SafeArrivalCell.X * 16 + 8,
+                LongnightLanternFeastLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.LongnightLanternFeast
+            );
+        }
+
+        _longnightLanternFeast = new LongnightLanternFeastView(
+            _session,
+            _locale
+        );
+        _longnightLanternFeast.ExitRequested += () => ShowFarm(
+            false,
+            fromLongnightLanternFeast: true
+        );
+        _longnightLanternFeast.ClosedRequested += () =>
+        {
+            CloseLongnightFeast();
+            CloseLongnightStall();
+            ShowFarm(false);
+            _hud?.ShowNotice("festival.longnight.closed");
+        };
+        _longnightLanternFeast.ActivityRequested += OpenLongnightFeast;
+        _longnightLanternFeast.StallRequested += OpenLongnightStall;
+        _longnightLanternFeast.VillagerRequested += TalkToVillager;
+        _longnightLanternFeast.NoticeRequested += key =>
+            _hud?.ShowNotice(key);
+        _longnightLanternFeast.StepRequested += () =>
+            _audio.Play(PixelSound.Step);
+        _world = _longnightLanternFeast;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_longnight_feast");
+        }
+    }
+
+    private void ShowFireflyTide(bool fromWorld)
+    {
+        ClearWorld();
+        if (fromWorld)
+        {
+            _session.SetPlayerLocation(
+                FireflyTideLayout.SafeArrivalCell.X * 16 + 8,
+                FireflyTideLayout.SafeArrivalCell.Y * 16 + 8,
+                PlayerLocationIds.FireflyTide
+            );
+        }
+
+        _fireflyTide = new FireflyTideView(_session, _locale);
+        _fireflyTide.ExitRequested += () => ShowFarm(
+            false,
+            fromFireflyTide: true
+        );
+        _fireflyTide.ClosedRequested += () =>
+        {
+            CloseFireflyTideActivity();
+            CloseFireflyTideShop();
+            ShowFarm(false);
+            _hud?.ShowNotice("festival.firefly.closed");
+        };
+        _fireflyTide.ActivityRequested += OpenFireflyTideActivity;
+        _fireflyTide.ShopRequested += OpenFireflyTideShop;
+        _fireflyTide.VillagerRequested += TalkToVillager;
+        _fireflyTide.NoticeRequested += key => _hud?.ShowNotice(key);
+        _fireflyTide.StepRequested += () => _audio.Play(PixelSound.Step);
+        _world = _fireflyTide;
+        AddChild(_world);
+        MoveChild(_world, 1);
+        if (fromWorld)
+        {
+            _hud?.ShowNotice("notice.enter_firefly_tide");
+        }
     }
 
     private void ShowArchive(bool fromWorld)
@@ -2759,7 +6727,7 @@ public sealed partial class Main : Node
 
         _archive = new ArchiveView(_session, _locale);
         _archive.ExitRequested += TryLeaveMoonlitArchive;
-        _archive.DeskRequested += InspectMoonlitArchiveDesk;
+        _archive.DeskRequested += OpenCropCodex;
         _archive.VillagerRequested += TalkToVillager;
         _archive.StepRequested += () => _audio.Play(PixelSound.Step);
         _world = _archive;
@@ -2925,6 +6893,20 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (result.MessageKey == "animal.automation.panel.opened" &&
+            _session.CurrentAnimalBuildingId is { } buildingId &&
+            AnimalBuildingSpatialCatalog.TryByBuildingId(
+                buildingId,
+                out var spatial
+            ))
+        {
+            OpenLivestockAutomation(
+                buildingId,
+                spatial.AutomationStationCell
+            );
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(result.MessageKey))
         {
             _hud?.ShowNotice(result.MessageKey);
@@ -2956,6 +6938,7 @@ public sealed partial class Main : Node
             DataCatalog.MacheteId => PixelSound.Harvest,
             DataCatalog.WateringCanId => PixelSound.Water,
             DataCatalog.BucketId => PixelSound.Water,
+            DataCatalog.FishingRodId => PixelSound.Water,
             _ => PixelSound.Chime
         };
     }
@@ -3099,6 +7082,406 @@ public sealed partial class Main : Node
         ShowArchive(true);
     }
 
+    private void TryEnterGreenhouse()
+    {
+        var result = _session.TryEnterGreenhouse(
+            FarmLayout.GreenhouseDoorCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowGreenhouse(true);
+    }
+
+    private void TryEnterCrystalGrotto()
+    {
+        var result = _session.TryEnterCrystalGrottoSurvey(
+            CrystalGrottoSurveyLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowCrystalGrotto(true);
+    }
+
+    private void TryEnterStarfallRuinsTrial()
+    {
+        var result = _session.TryEnterStarfallRuinsTrial(
+            StarfallRuinsTrialLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowStarfallRuinsTrial(true);
+    }
+
+    private void TryEnterStarfeatherCoop()
+    {
+        var result = _session.TryEnterStarfeatherCoop(
+            FarmLayout.StarfeatherCoopDoorCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowStarfeatherCoop(true);
+    }
+
+    private void TryEnterMoonfleeceBarn()
+    {
+        var result = _session.TryEnterAnimalBuilding(
+            AnimalCatalog.MoonfleeceBarnId,
+            FarmLayout.MoonfleeceBarnDoorCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowMoonfleeceBarn(true);
+    }
+
+    private void TryEnterStarharvestMarket()
+    {
+        var result = _session.TryEnterStarharvestMarket(
+            StarharvestMarketLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowStarharvestMarket(true);
+    }
+
+    private void TryEnterGleamrisePlantingFestival()
+    {
+        var result = _session.TryEnterFestival(
+            FestivalCatalog.GleamrisePlantingFestivalId,
+            GleamrisePlantingFestivalLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowGleamrisePlantingFestival(true);
+    }
+
+    private void TryEnterLongnightLanternFeast()
+    {
+        var result = _session.TryEnterFestival(
+            FestivalCatalog.LongnightLanternFeastFestivalId,
+            LongnightLanternFeastLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowLongnightLanternFeast(true);
+    }
+
+    private void TryEnterFireflyTide()
+    {
+        var result = _session.TryEnterFestival(
+            FestivalCatalog.FireflyTideFestivalId,
+            FireflyTideLayout.WorldEntryCell
+        );
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        ShowFireflyTide(true);
+    }
+
+    private void OpenFestivalShowcase()
+    {
+        if (_festivalShowcaseOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _festivalShowcaseOverlay = new FestivalShowcaseOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _festivalShowcaseOverlay.CloseRequested +=
+            CloseFestivalShowcase;
+        _festivalShowcaseOverlay.SubmissionCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_festivalShowcaseOverlay);
+    }
+
+    private void CloseFestivalShowcase()
+    {
+        FreeUi(_festivalShowcaseOverlay);
+        _festivalShowcaseOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFestivalShop()
+    {
+        if (_festivalShopOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _festivalShopOverlay = new FestivalShopOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _festivalShopOverlay.CloseRequested += CloseFestivalShop;
+        _festivalShopOverlay.PurchaseCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_festivalShopOverlay);
+    }
+
+    private void CloseFestivalShop()
+    {
+        FreeUi(_festivalShopOverlay);
+        _festivalShopOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenGleamrisePlanting()
+    {
+        if (_gleamrisePlantingOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _gleamrisePlantingOverlay = new GleamrisePlantingOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _gleamrisePlantingOverlay.CloseRequested +=
+            CloseGleamrisePlanting;
+        _uiLayer.AddChild(_gleamrisePlantingOverlay);
+    }
+
+    private void CloseGleamrisePlanting()
+    {
+        FreeUi(_gleamrisePlantingOverlay);
+        _gleamrisePlantingOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenGleamriseSeedExchange()
+    {
+        if (_gleamriseSeedExchangeOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _gleamriseSeedExchangeOverlay = new GleamriseSeedExchangeOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _gleamriseSeedExchangeOverlay.CloseRequested +=
+            CloseGleamriseSeedExchange;
+        _uiLayer.AddChild(_gleamriseSeedExchangeOverlay);
+    }
+
+    private void CloseGleamriseSeedExchange()
+    {
+        FreeUi(_gleamriseSeedExchangeOverlay);
+        _gleamriseSeedExchangeOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenLongnightFeast(GridPosition sourceCell)
+    {
+        if (_longnightFeastOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _longnightFeastOverlay = new LongnightLanternFeastOverlay(
+            _theme,
+            _session,
+            _locale,
+            sourceCell
+        );
+        _longnightFeastOverlay.CloseRequested += CloseLongnightFeast;
+        _longnightFeastOverlay.ParticipationCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_longnightFeastOverlay);
+    }
+
+    private void CloseLongnightFeast()
+    {
+        FreeUi(_longnightFeastOverlay);
+        _longnightFeastOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenLongnightStall()
+    {
+        if (_longnightStallOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _longnightStallOverlay = new LongnightLanternStallOverlay(
+            _theme,
+            _session,
+            _locale,
+            LongnightLanternFeastLayout.StallCell
+        );
+        _longnightStallOverlay.CloseRequested += CloseLongnightStall;
+        _longnightStallOverlay.PurchaseCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_longnightStallOverlay);
+    }
+
+    private void CloseLongnightStall()
+    {
+        FreeUi(_longnightStallOverlay);
+        _longnightStallOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFireflyTideActivity(GridPosition sourceCell)
+    {
+        if (_fireflyTideOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _fireflyTideOverlay = new FireflyTideOverlay(
+            _theme,
+            _session,
+            _locale,
+            sourceCell
+        );
+        _fireflyTideOverlay.CloseRequested += CloseFireflyTideActivity;
+        _fireflyTideOverlay.ParticipationCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_fireflyTideOverlay);
+    }
+
+    private void CloseFireflyTideActivity()
+    {
+        FreeUi(_fireflyTideOverlay);
+        _fireflyTideOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFireflyTideShop()
+    {
+        if (_fireflyTideShopOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _fireflyTideShopOverlay = new FireflyTideShopOverlay(
+            _theme,
+            _session,
+            _locale,
+            FireflyTideLayout.ShopCell
+        );
+        _fireflyTideShopOverlay.CloseRequested += CloseFireflyTideShop;
+        _fireflyTideShopOverlay.PurchaseCompleted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_fireflyTideShopOverlay);
+    }
+
+    private void CloseFireflyTideShop()
+    {
+        FreeUi(_fireflyTideShopOverlay);
+        _fireflyTideShopOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
     private void TryLeaveMoonlitArchive()
     {
         var result = _session.TryExitMoonlitArchive();
@@ -3111,9 +7494,22 @@ public sealed partial class Main : Node
         ShowFarm(false, fromArchive: true);
     }
 
-    private void InspectMoonlitArchiveDesk()
+    private void OpenCropCodex(GridPosition target)
     {
-        var result = _session.InspectMoonlitArchiveDesk();
+        OpenCompendium(target, CollectionCategoryIds.Crops);
+    }
+
+    private void OpenCompendium(
+        GridPosition target,
+        string initialCategoryId
+    )
+    {
+        if (_compendiumOverlay is not null)
+        {
+            return;
+        }
+
+        var result = _session.OpenMoonlitArchiveCompendium(target);
         if (!result.Succeeded)
         {
             _hud?.ShowNotice(result.MessageKey);
@@ -3121,14 +7517,31 @@ public sealed partial class Main : Node
         }
 
         _audio.Play(PixelSound.Chime);
-        ShowDialogue(
-            "archive.desk.name",
-            result.MessageKey,
-            () => { },
-            GeneratedArt.RelationshipIcon(
-                RelationshipTier.NewAcquaintance
-            )
+        SetWorldControls(false);
+        _compendiumOverlay = new CompendiumOverlay(
+            _theme,
+            _session,
+            _locale,
+            target,
+            initialCategoryId
         );
+        _compendiumOverlay.CloseRequested += CloseCropCodex;
+        _compendiumOverlay.RewardClaimed += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_compendiumOverlay);
+    }
+
+    private void CloseCropCodex()
+    {
+        FreeUi(_compendiumOverlay);
+        _compendiumOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void TryEnterMoonstoneWorkshop()
@@ -3165,6 +7578,25 @@ public sealed partial class Main : Node
             return;
         }
 
+        OpenConstructionOverlay();
+    }
+
+    private void OpenHomesteadConstructionPanel(GridPosition target)
+    {
+        var result = _session.OpenHomesteadWorkbench(target);
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        OpenConstructionOverlay(
+            ConstructionCatalog.HomesteadWorkshopProjectId
+        );
+    }
+
+    private void OpenConstructionOverlay(string? initialProjectId = null)
+    {
         if (_constructionOverlay is not null)
         {
             return;
@@ -3175,7 +7607,8 @@ public sealed partial class Main : Node
         _constructionOverlay = new ConstructionOverlay(
             _theme,
             _session,
-            _locale
+            _locale,
+            initialProjectId
         );
         _constructionOverlay.CloseRequested += CloseConstructionPanel;
         _constructionOverlay.ConstructionChanged += () =>
@@ -3190,6 +7623,86 @@ public sealed partial class Main : Node
     {
         FreeUi(_constructionOverlay);
         _constructionOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenToolUpgrade(GridPosition target)
+    {
+        if (_toolUpgradeOverlay is not null)
+        {
+            return;
+        }
+
+        var check = _session.OpenCrystalGrottoUpgradeBench(target);
+        if (!check.Succeeded)
+        {
+            _hud?.ShowNotice(check.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _toolUpgradeOverlay = new ToolUpgradeOverlay(
+            _theme,
+            _session,
+            _locale,
+            target
+        );
+        _toolUpgradeOverlay.CloseRequested += CloseToolUpgrade;
+        _toolUpgradeOverlay.UpgradeStarted += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_toolUpgradeOverlay);
+    }
+
+    private void CloseToolUpgrade()
+    {
+        FreeUi(_toolUpgradeOverlay);
+        _toolUpgradeOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenLivestockAutomation(
+        string buildingId,
+        GridPosition target
+    )
+    {
+        if (_livestockAutomationOverlay is not null)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _livestockAutomationOverlay = new LivestockAutomationOverlay(
+            _theme,
+            _session,
+            _locale,
+            buildingId,
+            target
+        );
+        _livestockAutomationOverlay.CloseRequested +=
+            CloseLivestockAutomation;
+        _livestockAutomationOverlay.AutomationChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_livestockAutomationOverlay);
+    }
+
+    private void CloseLivestockAutomation()
+    {
+        FreeUi(_livestockAutomationOverlay);
+        _livestockAutomationOverlay = null;
         if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
@@ -3211,6 +7724,116 @@ public sealed partial class Main : Node
             result.MessageKey,
             () => { }
         );
+    }
+
+    private void OpenKitchen(GridPosition target)
+    {
+        if (_kitchenOverlay is not null)
+        {
+            return;
+        }
+
+        var result = _session.OpenKitchenStation(target);
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _kitchenOverlay = new KitchenOverlay(
+            _theme,
+            _session,
+            _locale,
+            target
+        );
+        _kitchenOverlay.CloseRequested += CloseKitchen;
+        _kitchenOverlay.Cooked += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_kitchenOverlay);
+    }
+
+    private void CloseKitchen()
+    {
+        FreeUi(_kitchenOverlay);
+        _kitchenOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenIngredientPantry(GridPosition target)
+    {
+        if (_ingredientPantryOverlay is not null)
+        {
+            return;
+        }
+
+        var result = _session.OpenIngredientPantry(target);
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _ingredientPantryOverlay = new IngredientPantryOverlay(
+            _theme,
+            _session,
+            _locale,
+            target
+        );
+        _ingredientPantryOverlay.CloseRequested += CloseIngredientPantry;
+        _ingredientPantryOverlay.PantryChanged += () => SaveNow(false);
+        _uiLayer.AddChild(_ingredientPantryOverlay);
+    }
+
+    private void CloseIngredientPantry()
+    {
+        FreeUi(_ingredientPantryOverlay);
+        _ingredientPantryOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenCookedDishes()
+    {
+        if (_cookedDishOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _cookedDishOverlay = new CookedDishOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _cookedDishOverlay.CloseRequested += CloseCookedDishes;
+        _cookedDishOverlay.DishEaten += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_cookedDishOverlay);
+    }
+
+    private void CloseCookedDishes()
+    {
+        FreeUi(_cookedDishOverlay);
+        _cookedDishOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void TryEnterStarweaverTeaHouse()
@@ -3565,7 +8188,11 @@ public sealed partial class Main : Node
         }
     }
 
-    private void OpenStarlightPedestal()
+    private void OpenStarlightPedestal() => OpenStarlightPedestal(
+        DataCatalog.WoodlandStarlightId
+    );
+
+    private void OpenStarlightPedestal(string pedestalId)
     {
         if (_starlightOverlay is not null)
         {
@@ -3573,11 +8200,12 @@ public sealed partial class Main : Node
         }
 
         SetWorldControls(false);
-        _session.Starlight.Discover();
+        _session.Starlight.Discover(pedestalId);
         _starlightOverlay = new StarlightPedestalOverlay(
             _theme,
             _session,
-            _locale
+            _locale,
+            pedestalId
         );
         _starlightOverlay.CloseRequested += CloseStarlightPedestal;
         _starlightOverlay.StarlightChanged += () =>
@@ -3612,6 +8240,11 @@ public sealed partial class Main : Node
         {
             CloseBackpack();
             OpenCrafting();
+        };
+        _backpackOverlay.MealsRequested += () =>
+        {
+            CloseBackpack();
+            OpenCookedDishes();
         };
         _uiLayer.AddChild(_backpackOverlay);
     }
@@ -3764,6 +8397,39 @@ public sealed partial class Main : Node
         _uiLayer.AddChild(_fadeTransition);
     }
 
+    private void ResolveStarfallTrialDefeat(bool forcedByClosingTime)
+    {
+        if (_fadeTransition is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _audio.Play(PixelSound.Sleep);
+        _fadeTransition = new FadeTransition(
+            () =>
+            {
+                var result = _session.ResolveStarfallTrialDefeat(
+                    forcedByClosingTime
+                );
+                if (!result.Succeeded)
+                {
+                    _hud?.ShowNotice(result.MessageKey);
+                    return;
+                }
+                SaveNow(false);
+                _hud?.Refresh();
+            },
+            () =>
+            {
+                _fadeTransition = null;
+                ShowCottage(false);
+                _hud?.ShowNotice("combat.defeat.resolved", 2.6);
+            }
+        );
+        _uiLayer.AddChild(_fadeTransition);
+    }
+
     private void ShowNightlySummary()
     {
         FreeUi(_nightlySummaryOverlay);
@@ -3797,6 +8463,11 @@ public sealed partial class Main : Node
         SetWorldControls(false);
         _pauseOverlay = new PauseOverlay(_theme, _locale);
         _pauseOverlay.ResumeRequested += ClosePause;
+        _pauseOverlay.FishingCollectionRequested += () =>
+        {
+            ClosePause();
+            OpenFishingCollection();
+        };
         _pauseOverlay.LanguageRequested += () =>
         {
             ToggleLanguage();
@@ -3820,6 +8491,33 @@ public sealed partial class Main : Node
         _paused = false;
         FreeUi(_pauseOverlay);
         _pauseOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFishingCollection()
+    {
+        if (_fishingCollectionOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _fishingCollectionOverlay = new FishingCollectionOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _fishingCollectionOverlay.CloseRequested += CloseFishingCollection;
+        _uiLayer.AddChild(_fishingCollectionOverlay);
+    }
+
+    private void CloseFishingCollection()
+    {
+        FreeUi(_fishingCollectionOverlay);
+        _fishingCollectionOverlay = null;
         if (CanRestoreWorldControls)
         {
             SetWorldControls(true);
@@ -3874,10 +8572,30 @@ public sealed partial class Main : Node
         _mailOverlay?.RefreshText();
         _starlightOverlay?.RefreshText();
         _craftingOverlay?.RefreshText();
+        _kitchenOverlay?.RefreshText();
+        _ingredientPantryOverlay?.RefreshText();
+        _cookedDishOverlay?.RefreshText();
         _storageOverlay?.RefreshText();
         _backpackOverlay?.RefreshText();
         _farmingSpecializationOverlay?.RefreshText();
         _hud?.Refresh();
+    }
+
+    private void OnCollectionEntryDiscovered(string entryId)
+    {
+        if (!CompendiumCatalog.Entries.TryGetValue(entryId, out var entry))
+        {
+            return;
+        }
+
+        var noticeKey = CompendiumCatalog.Category(
+            entry.CategoryId
+        ).DiscoveryNoticeKey;
+        _hud?.ShowNoticeFormatted(
+            noticeKey,
+            2.6,
+            _locale.Tr(entry.NameKey)
+        );
     }
 
     private void SaveNow(bool showNotice)
@@ -3900,6 +8618,21 @@ public sealed partial class Main : Node
         if (_cottage is not null)
         {
             _cottage.ControlsEnabled = enabled;
+        }
+
+        if (_greenhouse is not null)
+        {
+            _greenhouse.ControlsEnabled = enabled;
+        }
+
+        if (_starfeatherCoop is not null)
+        {
+            _starfeatherCoop.ControlsEnabled = enabled;
+        }
+
+        if (_moonfleeceBarn is not null)
+        {
+            _moonfleeceBarn.ControlsEnabled = enabled;
         }
 
         if (_archive is not null)
@@ -3931,6 +8664,36 @@ public sealed partial class Main : Node
         {
             _starfallWatch.ControlsEnabled = enabled;
         }
+
+        if (_starharvestMarket is not null)
+        {
+            _starharvestMarket.ControlsEnabled = enabled;
+        }
+
+        if (_gleamrisePlantingFestival is not null)
+        {
+            _gleamrisePlantingFestival.ControlsEnabled = enabled;
+        }
+
+        if (_longnightLanternFeast is not null)
+        {
+            _longnightLanternFeast.ControlsEnabled = enabled;
+        }
+
+        if (_fireflyTide is not null)
+        {
+            _fireflyTide.ControlsEnabled = enabled;
+        }
+
+        if (_crystalGrotto is not null)
+        {
+            _crystalGrotto.ControlsEnabled = enabled;
+        }
+
+        if (_starfallRuinsTrial is not null)
+        {
+            _starfallRuinsTrial.ControlsEnabled = enabled;
+        }
     }
 
     private void ClearWorld()
@@ -3942,12 +8705,21 @@ public sealed partial class Main : Node
         _world = null;
         _farm = null;
         _cottage = null;
+        _greenhouse = null;
+        _starfeatherCoop = null;
+        _moonfleeceBarn = null;
         _archive = null;
         _workshop = null;
         _teaHouse = null;
         _twilightEmporium = null;
         _starlightPost = null;
         _starfallWatch = null;
+        _starharvestMarket = null;
+        _gleamrisePlantingFestival = null;
+        _longnightLanternFeast = null;
+        _fireflyTide = null;
+        _crystalGrotto = null;
+        _starfallRuinsTrial = null;
     }
 
     private static void FreeUi(CanvasItem? item)

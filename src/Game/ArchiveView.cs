@@ -19,6 +19,7 @@ public sealed partial class ArchiveView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new ArchiveBackdrop());
+        AddChild(new ArchiveArtifactDisplay(session));
         AddChild(new ArchiveNpcLayer(session));
 
         _player = new PlayerController(CanOccupy)
@@ -62,7 +63,7 @@ public sealed partial class ArchiveView : Node2D
     }
 
     public event Action? ExitRequested;
-    public event Action? DeskRequested;
+    public event Action<GridPosition>? DeskRequested;
     public event Action<GridPosition>? VillagerRequested;
     public event Action? StepRequested
     {
@@ -82,7 +83,8 @@ public sealed partial class ArchiveView : Node2D
             return _session.PreviewSelectedTarget(villager.Position);
         }
 
-        if (IsDeskArea(target) || IsAdjacent(player, DeskCell))
+        if (VillageCatalog.IsMoonlitArchiveDeskCell(target) ||
+            VillageCatalog.IsAdjacentToMoonlitArchiveDesk(player))
         {
             return _session.PreviewSelectedTarget(DeskCell);
         }
@@ -109,9 +111,10 @@ public sealed partial class ArchiveView : Node2D
         {
             VillagerRequested?.Invoke(villager.Position);
         }
-        else if (IsDeskArea(target) || IsAdjacent(player, DeskCell))
+        else if (VillageCatalog.IsMoonlitArchiveDeskCell(target) ||
+            VillageCatalog.IsAdjacentToMoonlitArchiveDesk(player))
         {
-            DeskRequested?.Invoke();
+            DeskRequested?.Invoke(DeskCell);
         }
         else if (target == DoorCell || IsAdjacent(player, DoorCell))
         {
@@ -172,16 +175,71 @@ public sealed partial class ArchiveView : Node2D
             .FirstOrDefault();
     }
 
-    private static bool IsDeskArea(GridPosition cell) =>
-        cell.X is >= 16 and <= 23 &&
-        cell.Y is >= 8 and <= 11;
-
     private static Vector2 CellCenter(GridPosition cell) =>
         new(cell.X * 16 + 8, cell.Y * 16 + 8);
 
     private static bool IsAdjacent(GridPosition first, GridPosition second) =>
         Math.Abs(first.X - second.X) +
         Math.Abs(first.Y - second.Y) <= 1;
+}
+
+internal sealed partial class ArchiveArtifactDisplay : Node2D
+{
+    private readonly GameSession _session;
+
+    public ArchiveArtifactDisplay(GameSession session)
+    {
+        _session = session;
+        ZIndex = 5;
+        TextureFilter = TextureFilterEnum.Nearest;
+        session.Collection.Changed += QueueRedraw;
+    }
+
+    public override void _Draw()
+    {
+        var donated = CompendiumCatalog.ArtifactEntries
+            .Where(entry => _session.Collection.IsDonated(entry.Id))
+            .ToArray();
+        var complete = donated.Length == CompendiumCatalog.ArtifactEntries.Count;
+        var source = StarfallRuinsArt.ArchiveDisplayRegion(complete);
+        var anchor = new Vector2(
+            ArchiveView.DeskCell.X * 16 + 8,
+            ArchiveView.DeskCell.Y * 16 + 13
+        );
+        const float width = 96;
+        const float height = 58;
+        DrawTextureRectRegion(
+            StarfallRuinsArt.ArtifactAtlas,
+            new Rect2(
+                anchor - new Vector2(width / 2, height),
+                new Vector2(width, height)
+            ),
+            source
+        );
+
+        if (complete)
+        {
+            return;
+        }
+
+        var offsets = new[] { -30f, -10f, 10f, 30f };
+        for (var index = 0; index < donated.Length; index++)
+        {
+            DrawTextureRectRegion(
+                StarfallRuinsArt.ArtifactAtlas,
+                new Rect2(
+                    anchor + new Vector2(offsets[index] - 8, -42),
+                    new Vector2(16, 16)
+                ),
+                StarfallRuinsArt.ArtifactIconRegion(donated[index].ItemId)
+            );
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Collection.Changed -= QueueRedraw;
+    }
 }
 
 internal sealed partial class ArchiveNpcLayer : Node2D
@@ -206,11 +264,12 @@ internal sealed partial class ArchiveNpcLayer : Node2D
                      _session.PlayerCell
                  ))
         {
-            var source = GeneratedArt.VillageNpcRegion(
-                npc.Definition.AtlasRow,
+            var art = NpcArtCatalog.Resolve(
+                npc.Definition.Id,
                 npc.Facing
             );
-            var height = npc.Definition.AtlasRow == 0 ? 54f : 52f;
+            var source = art.Region;
+            var height = art.TargetHeight;
             var width = height * source.Size.X / source.Size.Y;
             var anchor = new Vector2(
                 npc.Position.X * 16 + 8,
@@ -222,7 +281,7 @@ internal sealed partial class ArchiveNpcLayer : Node2D
                 new Color(0.01f, 0.03f, 0.08f, 0.44f)
             );
             DrawTextureRectRegion(
-                GeneratedArt.VillageNpcTexture(npc.Definition.AtlasRow),
+                art.Texture,
                 new Rect2(
                     anchor - new Vector2(width / 2, height),
                     new Vector2(width, height)

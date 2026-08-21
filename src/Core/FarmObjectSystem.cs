@@ -18,6 +18,13 @@ public sealed class FarmObjectSystem
         new(0, 1),
         new(-1, 0)
     ];
+    private static readonly GridPosition[] DiagonalSprinklerOffsets =
+    [
+        new(-1, -1),
+        new(1, -1),
+        new(1, 1),
+        new(-1, 1)
+    ];
 
     private readonly Dictionary<GridPosition, string> _objects = [];
 
@@ -43,7 +50,8 @@ public sealed class FarmObjectSystem
         GridPosition position,
         FarmSystem farm,
         StorageSystem storage,
-        Func<GridPosition, bool>? extraOccupied = null
+        Func<GridPosition, bool>? extraOccupied = null,
+        bool allowAnimalBuildingLegacyCell = false
     )
     {
         if (!DataCatalog.FarmObjects.TryGetValue(itemId, out var definition))
@@ -65,6 +73,8 @@ public sealed class FarmObjectSystem
 
         if (WorldDefinition.IsBlocked(position) ||
             FarmLayout.IsStaticBlocked(position) ||
+            (!allowAnimalBuildingLegacyCell &&
+             FarmLayout.IsAnimalBuildingProtectedCell(position)) ||
             farm.IsReserved(position) ||
             farm.Tiles.ContainsKey(position))
         {
@@ -115,7 +125,10 @@ public sealed class FarmObjectSystem
         return ActionResult.Success(messageKey: "notice.placeable_placed");
     }
 
-    public int ApplySprinklers(FarmSystem farm)
+    public int ApplySprinklers(
+        FarmSystem farm,
+        bool includeDiagonals = false
+    )
     {
         var watered = 0;
         foreach (var pair in _objects)
@@ -126,6 +139,23 @@ public sealed class FarmObjectSystem
             }
 
             foreach (var offset in SprinklerOffsets)
+            {
+                var target = new GridPosition(
+                    pair.Key.X + offset.X,
+                    pair.Key.Y + offset.Y
+                );
+                if (farm.ApplyAutomaticWatering(target))
+                {
+                    watered++;
+                }
+            }
+
+            if (!includeDiagonals)
+            {
+                continue;
+            }
+
+            foreach (var offset in DiagonalSprinklerOffsets)
             {
                 var target = new GridPosition(
                     pair.Key.X + offset.X,
@@ -151,7 +181,13 @@ public sealed class FarmObjectSystem
         foreach (var entry in save?.Objects ?? [])
         {
             var position = new GridPosition(entry.X, entry.Y);
-            if (CheckPlacement(entry.ItemId, position, farm, storage) !=
+            if (CheckPlacement(
+                    entry.ItemId,
+                    position,
+                    farm,
+                    storage,
+                    allowAnimalBuildingLegacyCell: true
+                ) !=
                 FarmObjectPlacementIssue.None)
             {
                 continue;

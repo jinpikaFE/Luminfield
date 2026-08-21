@@ -8,6 +8,7 @@ public sealed partial class PlayerController : CharacterBody2D
     private const float Speed = 72;
     private const float FootContactY = 8;
     private readonly Func<Vector2, bool> _canOccupy;
+    private readonly Func<float> _movementMultiplier;
     private readonly ActorShadow _shadow;
     private readonly Sprite2D _sprite;
     private Vector2I _facing = Vector2I.Down;
@@ -16,9 +17,13 @@ public sealed partial class PlayerController : CharacterBody2D
     private double _stepTimer;
     private int _walkFrame;
 
-    public PlayerController(Func<Vector2, bool> canOccupy)
+    public PlayerController(
+        Func<Vector2, bool> canOccupy,
+        Func<float>? movementMultiplier = null
+    )
     {
         _canOccupy = canOccupy;
+        _movementMultiplier = movementMultiplier ?? (() => 1f);
         _shadow = new ActorShadow
         {
             Position = new Vector2(0, 8),
@@ -37,6 +42,53 @@ public sealed partial class PlayerController : CharacterBody2D
 
     public event Action? Stepped;
     public event Action<Vector2>? PositionChanged;
+
+    public float TryDisplaceForward(float distance)
+    {
+        if (distance <= 0)
+        {
+            return 0;
+        }
+
+        var before = Position;
+        var direction = new Vector2(_facing.X, _facing.Y);
+        var remaining = distance;
+        while (remaining > 0.01f)
+        {
+            var step = Math.Min(4f, remaining);
+            var previous = Position;
+            MoveWithGridCollision(direction * step);
+            if (Position.IsEqualApprox(previous))
+            {
+                break;
+            }
+            remaining -= step;
+        }
+
+        PositionChanged?.Invoke(Position);
+        return before.DistanceTo(Position);
+    }
+
+    public float AvailableForwardDisplacement(float distance)
+    {
+        var direction = new Vector2(_facing.X, _facing.Y);
+        var simulated = Position;
+        var available = 0f;
+        var remaining = Math.Max(0, distance);
+        while (remaining > 0.01f)
+        {
+            var step = Math.Min(4f, remaining);
+            var next = simulated + direction * step;
+            if (!_canOccupy(next))
+            {
+                break;
+            }
+            simulated = next;
+            available += step;
+            remaining -= step;
+        }
+        return available;
+    }
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -61,7 +113,7 @@ public sealed partial class PlayerController : CharacterBody2D
         }
 
         UpdateFacing(direction);
-        MoveWithGridCollision(direction * 4);
+        MoveWithGridCollision(direction * 4 * CurrentMovementMultiplier());
         _isWalking = true;
         _walkFrame = 1 - _walkFrame;
         UpdateSprite();
@@ -82,7 +134,10 @@ public sealed partial class PlayerController : CharacterBody2D
         if (input.LengthSquared() > 0.01f)
         {
             UpdateFacing(input);
-            MoveWithGridCollision(input.Normalized() * Speed * (float)delta);
+            MoveWithGridCollision(
+                input.Normalized() * Speed * CurrentMovementMultiplier() *
+                    (float)delta
+            );
             _isWalking = true;
             AnimateWalking(delta);
             PositionChanged?.Invoke(Position);
@@ -111,6 +166,9 @@ public sealed partial class PlayerController : CharacterBody2D
             Position = vertical;
         }
     }
+
+    private float CurrentMovementMultiplier() =>
+        Math.Clamp(_movementMultiplier(), 0.1f, 1f);
 
     private void UpdateFacing(Vector2 input)
     {

@@ -7,7 +7,17 @@ public sealed class FarmSystem
 
     private readonly Dictionary<GridPosition, FarmTileState> _tiles = [];
 
+    public FarmSystem() : this(CultivationZoneCatalog.OutdoorFarm)
+    {
+    }
+
+    public FarmSystem(CultivationZoneDefinition zone)
+    {
+        Zone = zone ?? throw new ArgumentNullException(nameof(zone));
+    }
+
     public IReadOnlyDictionary<GridPosition, FarmTileState> Tiles => _tiles;
+    public CultivationZoneDefinition Zone { get; }
 
     public event Action<GridPosition>? TileChanged;
 
@@ -23,23 +33,24 @@ public sealed class FarmSystem
         {
             foreach (var tile in tiles)
             {
+                if (Zone.Id == CultivationZoneCatalog.GreenhouseId &&
+                    !Zone.IsPlantingCell(tile.Position))
+                {
+                    continue;
+                }
+
                 _tiles[tile.Position] = tile.Clone();
             }
         }
     }
 
-    public static bool IsPlantingBed(GridPosition position)
-    {
-        var inTopRow = position.Y is >= 15 and <= 17;
-        var inBottomRow = position.Y is >= 19 and <= 21;
-        var inLeftBed = position.X is >= 11 and <= 17;
-        var inCenterBed = position.X is >= 19 and <= 24;
-        var inRightBed = position.X is >= 26 and <= 32;
-        return (inTopRow || inBottomRow) && (inLeftBed || inCenterBed || inRightBed);
-    }
+    public static bool IsPlantingBed(GridPosition position) =>
+        CultivationZoneCatalog.OutdoorFarm.IsPlantingCell(position);
 
     public bool IsTillable(GridPosition position) =>
-        IsPlantingBed(position) && !IsReserved(position);
+        Zone.IsPlantingCell(position) &&
+        (Zone.Id != CultivationZoneCatalog.OutdoorFarmId ||
+            !IsReserved(position));
 
     public bool IsReserved(GridPosition position)
     {
@@ -141,6 +152,11 @@ public sealed class FarmSystem
 
     public bool ApplyWeatherWatering(GridPosition position)
     {
+        if (!Zone.ReceivesOutdoorWeather)
+        {
+            return false;
+        }
+
         return ApplyAutomaticWatering(position);
     }
 
@@ -160,6 +176,11 @@ public sealed class FarmSystem
 
     public int ApplyWeatherWatering()
     {
+        if (!Zone.ReceivesOutdoorWeather)
+        {
+            return 0;
+        }
+
         var watered = 0;
         foreach (var position in _tiles.Keys)
         {
@@ -188,10 +209,11 @@ public sealed class FarmSystem
             return ActionResult.Fail("notice.already_planted");
         }
 
-        var crop = DataCatalog.Crop(cropId);
-        if (!crop.IsAvailableOnDay(plantedDay))
+        _ = DataCatalog.Crop(cropId);
+        var plantingCheck = CheckCropPlanting(cropId, plantedDay);
+        if (!plantingCheck.Succeeded)
         {
-            return ActionResult.Fail("notice.seed_out_of_season");
+            return plantingCheck;
         }
 
         tile.CropId = cropId;
@@ -206,6 +228,27 @@ public sealed class FarmSystem
         TileChanged?.Invoke(position);
         return ActionResult.Success();
     }
+
+    public ActionResult CheckCropPlanting(string cropId, int day)
+    {
+        if (Zone.IgnoresSeasonRestrictions)
+        {
+            return ActionResult.Success();
+        }
+
+        if (CalendarSystem.SeasonId(day) ==
+            CalendarSystem.LongnightSeasonId)
+        {
+            return ActionResult.Fail("notice.longnight_outdoor_planting");
+        }
+
+        return DataCatalog.Crop(cropId).IsAvailableOnDay(day)
+            ? ActionResult.Success()
+            : ActionResult.Fail("notice.seed_out_of_season");
+    }
+
+    public bool IsCropAvailableForPlanting(string cropId, int day) =>
+        CheckCropPlanting(cropId, day).Succeeded;
 
     public CropQuality HarvestQualityAt(GridPosition position)
     {
@@ -277,6 +320,9 @@ public sealed class FarmSystem
 
     public int EndDay(string weatherId = DataCatalog.ClearWeatherId)
     {
+        var cultivationWeatherId = Zone.ReceivesOutdoorWeather
+            ? weatherId
+            : DataCatalog.ClearWeatherId;
         var advanced = 0;
         foreach (var pair in _tiles)
         {
@@ -295,7 +341,7 @@ public sealed class FarmSystem
                         pair.Key,
                         tile,
                         crop,
-                        weatherId
+                        cultivationWeatherId
                     );
                 }
 

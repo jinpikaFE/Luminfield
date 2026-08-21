@@ -133,6 +133,9 @@ public sealed partial class HudView : Control
     private readonly Label _farmingSkill;
     private readonly Label _selected;
     private readonly Label _controls;
+    private readonly PanelContainer _clockPanel;
+    private readonly PanelContainer _objectivePanel;
+    private readonly PanelContainer _energyPanel;
     private readonly PanelContainer _noticePanel;
     private readonly Label _notice;
     private readonly MinimapView _minimap;
@@ -149,8 +152,8 @@ public sealed partial class HudView : Control
         _locale = locale;
         AddChild(new HudChrome());
 
-        var clockPanel = PanelAt(new Vector2(8, 8), new Vector2(122, 46));
-        clockPanel.AddThemeStyleboxOverride(
+        _clockPanel = PanelAt(new Vector2(8, 8), new Vector2(122, 46));
+        _clockPanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
                 new Color("#151d37ee"),
@@ -162,7 +165,7 @@ public sealed partial class HudView : Control
         );
         var clockColumn = new VBoxContainer();
         clockColumn.AddThemeConstantOverride("separation", 0);
-        clockPanel.AddChild(clockColumn);
+        _clockPanel.AddChild(clockColumn);
         var dayRow = new HBoxContainer();
         dayRow.AddThemeConstantOverride("separation", 2);
         _day = ThemeFactory.Label(size: 9, color: ThemeFactory.Gold);
@@ -184,8 +187,8 @@ public sealed partial class HudView : Control
         clockColumn.AddChild(_time);
         clockColumn.AddChild(_weather);
 
-        var objectivePanel = PanelAt(new Vector2(138, 8), new Vector2(302, 72));
-        objectivePanel.AddThemeStyleboxOverride(
+        _objectivePanel = PanelAt(new Vector2(138, 8), new Vector2(302, 72));
+        _objectivePanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
                 new Color("#17253def"),
@@ -198,10 +201,10 @@ public sealed partial class HudView : Control
         _objective = ThemeFactory.Label(size: 8);
         _objective.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _objective.VerticalAlignment = VerticalAlignment.Center;
-        objectivePanel.AddChild(_objective);
+        _objectivePanel.AddChild(_objective);
 
-        var energyPanel = PanelAt(new Vector2(448, 8), new Vector2(184, 62));
-        energyPanel.AddThemeStyleboxOverride(
+        _energyPanel = PanelAt(new Vector2(448, 8), new Vector2(184, 62));
+        _energyPanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
                 new Color("#151d37ee"),
@@ -213,7 +216,7 @@ public sealed partial class HudView : Control
         );
         var energyColumn = new VBoxContainer();
         energyColumn.AddThemeConstantOverride("separation", 2);
-        energyPanel.AddChild(energyColumn);
+        _energyPanel.AddChild(energyColumn);
         var statusRow = new HBoxContainer();
         _energyText = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
         _energyText.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -340,6 +343,22 @@ public sealed partial class HudView : Control
         _noticeRemaining = seconds;
     }
 
+    public void ShowNoticeFormatted(
+        string key,
+        double seconds,
+        params object[] arguments
+    )
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        _notice.Text = _locale.Tr(key, arguments);
+        _noticePanel.Visible = true;
+        _noticeRemaining = seconds;
+    }
+
     public void Refresh()
     {
         var weekday = _locale.Tr(CalendarSystem.WeekdayKey(_session.Clock.Day));
@@ -361,11 +380,18 @@ public sealed partial class HudView : Control
         var weatherName = _locale.Tr(_session.Weather.Current.NameKey);
         var forecastName = _locale.Tr(_session.Weather.Forecast.NameKey);
         _weather.Text = _locale.Tr("hud.weather_line", weatherName, forecastName);
-        _weather.TooltipText = _locale.Tr(
+        var weatherTooltip = _locale.Tr(
             "hud.weather_tooltip",
             weatherName,
             forecastName
         );
+        if (!string.IsNullOrWhiteSpace(_session.Weather.Current.EffectKey))
+        {
+            weatherTooltip += $"\n{_locale.Tr(
+                _session.Weather.Current.EffectKey
+            )}";
+        }
+        _weather.TooltipText = weatherTooltip;
         _weatherIcon.Texture = GeneratedArt.CreateWeatherIcon(_session.Weather.CurrentId);
         _weatherIcon.TooltipText = _weather.TooltipText;
         _energy.Value = _session.Energy;
@@ -442,6 +468,25 @@ public sealed partial class HudView : Control
                 _session.Mail.UnreadCount
             );
         }
+        var todayFestival = FestivalCatalog.FestivalOnDay(
+            _session.Clock.Day
+        );
+        var tomorrowFestival = FestivalCatalog.FestivalOnDay(
+            _session.Clock.Day + 1
+        );
+        var festivalNoticeKey = todayFestival is not null
+            ? FestivalHudKey(todayFestival.Id, true)
+            : tomorrowFestival is not null
+                ? FestivalHudKey(tomorrowFestival.Id, false)
+                : string.Empty;
+        if (!string.IsNullOrWhiteSpace(festivalNoticeKey))
+        {
+            objectiveText = _locale.Tr(
+                "festival.hud",
+                objectiveText,
+                _locale.Tr(festivalNoticeKey)
+            );
+        }
         _objective.Text = objectiveText;
         _controls.Text = _locale.Tr("hud.controls");
         RefreshLocationChrome();
@@ -487,7 +532,23 @@ public sealed partial class HudView : Control
                 )
                 : _locale.Tr("hud.selected", selectedName);
         }
+
+        if (_session.InsideCrystalGrottoSurvey)
+        {
+            var selectedName = selectedSlot.IsEmpty
+                ? "—"
+                : _locale.Tr(DataCatalog.Item(selectedSlot.ItemId).NameKey);
+            _selected.Text = _locale.Tr(
+                "hud.selected_mining",
+                selectedName,
+                _session.Energy,
+                GameSession.MaxEnergy
+            );
+        }
     }
+
+    private static string FestivalHudKey(string festivalId, bool today) =>
+        FestivalCatalog.HudKey(festivalId, !today);
 
     public override void _ExitTree()
     {
@@ -500,6 +561,10 @@ public sealed partial class HudView : Control
 
     private void RefreshLocationChrome()
     {
+        var grotto = _session.InsideCrystalGrottoSurvey;
+        _clockPanel.Visible = !grotto;
+        _objectivePanel.Visible = !grotto;
+        _energyPanel.Visible = !grotto;
         _minimap.Visible =
             _session.PlayerLocationId == PlayerLocationIds.World;
     }
@@ -530,6 +595,8 @@ internal sealed partial class MinimapView : Control
         MouseFilter = MouseFilterEnum.Ignore;
         session.PlayerMoved += OnWorldChanged;
         session.Exploration.Changed += OnWorldChanged;
+        session.Forage.Changed += OnForageChanged;
+        session.Collection.Changed += OnWorldChanged;
     }
 
     public override void _Draw()
@@ -608,6 +675,23 @@ internal sealed partial class MinimapView : Control
             );
         }
 
+        if (_session.ForageMapUnlocked)
+        {
+            foreach (var spawn in _session.Forage.ActiveSpawns)
+            {
+                if (!_session.Exploration.IsDiscovered(
+                        WorldDefinition.GetChunk(spawn.Cell)
+                    ))
+                {
+                    continue;
+                }
+
+                var point = WorldToMap(spawn.Cell.X, spawn.Cell.Y);
+                DrawCircle(point, 2f, new Color("#07132b"));
+                DrawCircle(point, 1.25f, ThemeFactory.Mint);
+            }
+        }
+
         var player = WorldToMap(_session.PlayerX / 16f, _session.PlayerY / 16f);
         DrawCircle(player, 2.6f, new Color("#07132b"));
         DrawCircle(player, 1.8f, ThemeFactory.Mint);
@@ -623,9 +707,13 @@ internal sealed partial class MinimapView : Control
     {
         _session.PlayerMoved -= OnWorldChanged;
         _session.Exploration.Changed -= OnWorldChanged;
+        _session.Forage.Changed -= OnForageChanged;
+        _session.Collection.Changed -= OnWorldChanged;
     }
 
     private void OnWorldChanged() => QueueRedraw();
+
+    private void OnForageChanged(GridPosition _) => QueueRedraw();
 
     private Vector2 WorldToMap(float x, float y) =>
         MapOrigin + new Vector2(
@@ -694,6 +782,8 @@ internal sealed partial class HotbarSlotContent : Control
         GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
     private static readonly Texture2D ToolIcons =
         GD.Load<Texture2D>("res://assets/generated/tool_backpack_icons_chroma.png");
+    private static readonly Texture2D FishingIcons =
+        GD.Load<Texture2D>("res://assets/generated/fishing_icons.png");
     private const float ToolIconCell = 443.5f;
 
     private readonly Label _key;
@@ -784,7 +874,57 @@ internal sealed partial class HotbarSlotContent : Control
         out Rect2 region
     )
     {
+        if (StarfallRuinsArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (SeasonalForageArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (TryFishingIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (CrystalGrottoArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (CottageKitchenArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (DewhornArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (MoonfleeceArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (StarfeatherArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         if (GeneratedArt.TryOrchardItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (GeneratedArt.TryRainveilItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
+        if (GeneratedArt.TryStarharvestItemIcon(itemId, out texture, out region))
         {
             return true;
         }
@@ -864,6 +1004,42 @@ internal sealed partial class HotbarSlotContent : Control
         ToolIconCell,
         ToolIconCell
     );
+
+    private static bool TryFishingIcon(
+        string itemId,
+        out Texture2D texture,
+        out Rect2 region
+    )
+    {
+        texture = FishingIcons;
+        if (itemId == DataCatalog.FishingRodId)
+        {
+            region = new Rect2(0, 0, 380, 430);
+            return true;
+        }
+
+        if (itemId == "__fish_shadow__")
+        {
+            region = new Rect2(430, 470, 520, 410);
+            return true;
+        }
+
+        var visualItemId = DataCatalog.BaseItemId(itemId);
+        if (!DataCatalog.Fishes.TryGetValue(visualItemId, out var fish))
+        {
+            region = default;
+            return false;
+        }
+
+        region = fish.WaterKind switch
+        {
+            FishingWaterKind.CrystalStream => new Rect2(880, 90, 390, 340),
+            FishingWaterKind.MoonwaterWetlands =>
+                new Rect2(1280, 80, 494, 350),
+            _ => new Rect2(430, 90, 390, 340)
+        };
+        return true;
+    }
 }
 
 public sealed partial class BackpackOverlay : FullScreenUi
@@ -874,6 +1050,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
     private readonly Label _summary;
     private readonly Label _hint;
     private readonly Button _craft;
+    private readonly Button _meals;
     private readonly Button _close;
     private readonly List<PanelContainer> _slots = [];
     private readonly List<HotbarSlotContent> _contents = [];
@@ -949,11 +1126,15 @@ public sealed partial class BackpackOverlay : FullScreenUi
         };
         actions.AddThemeConstantOverride("separation", 8);
         _craft = ThemeFactory.Button("");
-        _craft.CustomMinimumSize = new Vector2(160, 28);
+        _craft.CustomMinimumSize = new Vector2(132, 28);
         _craft.Pressed += () => CraftingRequested?.Invoke();
         actions.AddChild(_craft);
+        _meals = ThemeFactory.Button("");
+        _meals.CustomMinimumSize = new Vector2(132, 28);
+        _meals.Pressed += () => MealsRequested?.Invoke();
+        actions.AddChild(_meals);
         _close = ThemeFactory.Button("");
-        _close.CustomMinimumSize = new Vector2(160, 28);
+        _close.CustomMinimumSize = new Vector2(132, 28);
         _close.Pressed += () => CloseRequested?.Invoke();
         actions.AddChild(_close);
         column.AddChild(actions);
@@ -966,6 +1147,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? CraftingRequested;
+    public event Action? MealsRequested;
 
     public void RefreshText()
     {
@@ -974,6 +1156,7 @@ public sealed partial class BackpackOverlay : FullScreenUi
         _summary.Text = _locale.Tr("backpack.capacity", used, Inventory.SlotCount);
         _hint.Text = _locale.Tr("backpack.hint");
         _craft.Text = _locale.Tr("backpack.craft");
+        _meals.Text = _locale.Tr("backpack.meals");
         _close.Text = _locale.Tr("backpack.close");
 
         for (var index = 0; index < Inventory.SlotCount; index++)
@@ -1154,7 +1337,7 @@ public sealed partial class ShippingOverlay : FullScreenUi
         _summary.Text = _locale.Tr(
             "shipping.pending_summary",
             _session.Shipping.PendingItemCount,
-            _session.Shipping.PendingValue
+            _session.PendingShippingValue
         );
         _availableHeader.Text = _locale.Tr("shipping.available");
         _pendingHeader.Text = _locale.Tr("shipping.pending");
@@ -1397,7 +1580,7 @@ public sealed partial class ShopOverlay : FullScreenUi
         _locale = locale;
         _mode = mode;
         _buyItemIds = mode == ShopOverlayMode.TwilightEmporium
-            ? TwilightEmporiumSystem.StockForDay(session.Clock.Day)
+            ? session.TwilightEmporiumItemIds()
             : DataCatalog.FarmShopItemIdsForDay(session.Clock.Day);
         AddChild(Dim(new Color(0.02f, 0.03f, 0.1f, 0.72f)));
 
@@ -1556,7 +1739,12 @@ public sealed partial class ShopOverlay : FullScreenUi
                 _locale.Tr(CalendarSystem.SeasonNameKey(_session.Clock.Day)),
                 CalendarSystem.WeekNumber(_session.Clock.Day)
             );
-            _description.Text = _locale.Tr("emporium.manifest.dialogue");
+            _description.Text = _locale.Tr(
+                CalendarSystem.SeasonId(_session.Clock.Day) ==
+                    CalendarSystem.LongnightSeasonId
+                    ? "emporium.shop.longnight_greenhouse_note"
+                    : "emporium.manifest.dialogue"
+            );
             _buyHeader.Text = _locale.Tr("emporium.shop.buy_header");
         }
         else
@@ -1574,7 +1762,7 @@ public sealed partial class ShopOverlay : FullScreenUi
             pair.Value.Text = _locale.Tr(
                 "shop.buy_action",
                 _locale.Tr(item.NameKey),
-                item.BuyPrice,
+                _session.PurchasePrice(pair.Key),
                 _session.Inventory.Count(pair.Key)
             );
         }
@@ -1586,7 +1774,7 @@ public sealed partial class ShopOverlay : FullScreenUi
             pair.Value.Text = _locale.Tr(
                 "shop.sell_action",
                 _locale.Tr(item.NameKey),
-                item.SellPrice,
+                _session.SalePrice(pair.Key),
                 owned
             );
             pair.Value.Visible =
@@ -2025,6 +2213,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly LocaleService _locale;
     private readonly Label _title;
     private readonly Button _resume;
+    private readonly Button _fishingCollection;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2036,25 +2225,29 @@ public sealed partial class PauseOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 220) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 248) };
         center.AddChild(panel);
         var column = new VBoxContainer
         {
             Alignment = BoxContainer.AlignmentMode.Center
         };
-        column.AddThemeConstantOverride("separation", 12);
+        column.AddThemeConstantOverride("separation", 10);
         panel.AddChild(column);
         _title = ThemeFactory.Label(size: 24, color: ThemeFactory.Mint);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
         _resume = ThemeFactory.Button("");
+        _fishingCollection = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
         column.AddChild(_resume);
+        column.AddChild(_fishingCollection);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
         _resume.Pressed += () => ResumeRequested?.Invoke();
+        _fishingCollection.Pressed += () =>
+            FishingCollectionRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2062,6 +2255,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     }
 
     public event Action? ResumeRequested;
+    public event Action? FishingCollectionRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -2069,6 +2263,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     {
         _title.Text = _locale.Tr("menu.pause");
         _resume.Text = _locale.Tr("menu.resume");
+        _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }
