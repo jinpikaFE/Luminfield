@@ -134,7 +134,7 @@ public sealed partial class HudView : Control
     private readonly Label _selected;
     private readonly Label _controls;
     private readonly PanelContainer _clockPanel;
-    private readonly PanelContainer _objectivePanel;
+    private readonly Panel _objectivePanel;
     private readonly PanelContainer _energyPanel;
     private readonly PanelContainer _noticePanel;
     private readonly Label _notice;
@@ -187,7 +187,13 @@ public sealed partial class HudView : Control
         clockColumn.AddChild(_time);
         clockColumn.AddChild(_weather);
 
-        _objectivePanel = PanelAt(new Vector2(138, 8), new Vector2(302, 72));
+        _objectivePanel = new Panel
+        {
+            Position = new Vector2(138, 8),
+            Size = new Vector2(302, 36),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        AddChild(_objectivePanel);
         _objectivePanel.AddThemeStyleboxOverride(
             "panel",
             ThemeFactory.CompactBox(
@@ -199,7 +205,11 @@ public sealed partial class HudView : Control
             )
         );
         _objective = ThemeFactory.Label(size: 8);
+        _objective.Position = new Vector2(7, 5);
+        _objective.Size = new Vector2(288, 26);
         _objective.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _objective.ClipText = true;
+        _objective.MaxLinesVisible = 6;
         _objective.VerticalAlignment = VerticalAlignment.Center;
         _objectivePanel.AddChild(_objective);
 
@@ -241,7 +251,7 @@ public sealed partial class HudView : Control
 
         var hotbar = new HBoxContainer
         {
-            Position = new Vector2(146, 309),
+            Position = new Vector2(146, 305),
             Size = new Vector2(348, 40),
             MouseFilter = MouseFilterEnum.Ignore
         };
@@ -277,9 +287,9 @@ public sealed partial class HudView : Control
         _selected.VerticalAlignment = VerticalAlignment.Center;
         selectedPanel.AddChild(_selected);
 
-        _controls = ThemeFactory.Label(size: 9, color: ThemeFactory.MutedInk);
-        _controls.Position = new Vector2(9, 349);
-        _controls.Size = new Vector2(622, 10);
+        _controls = ThemeFactory.Label(size: 8, color: ThemeFactory.MutedInk);
+        _controls.Position = new Vector2(9, 347);
+        _controls.Size = new Vector2(622, 11);
         _controls.HorizontalAlignment = HorizontalAlignment.Center;
         _controls.Modulate = new Color(1, 1, 1, 0.72f);
         AddChild(_controls);
@@ -488,6 +498,7 @@ public sealed partial class HudView : Control
             );
         }
         _objective.Text = objectiveText;
+        ResizeObjectivePanel(objectiveText);
         _controls.Text = _locale.Tr("hud.controls");
         RefreshLocationChrome();
 
@@ -550,6 +561,29 @@ public sealed partial class HudView : Control
     private static string FestivalHudKey(string festivalId, bool today) =>
         FestivalCatalog.HudKey(festivalId, !today);
 
+    private void ResizeObjectivePanel(string text)
+    {
+        var font = _objective.GetThemeFont("font");
+        var fontSize = _objective.GetThemeFontSize("font_size");
+        var measured = font.GetMultilineStringSize(
+            text,
+            HorizontalAlignment.Left,
+            288,
+            fontSize,
+            -1,
+            TextServer.LineBreakFlag.Mandatory |
+                TextServer.LineBreakFlag.WordBound |
+                TextServer.LineBreakFlag.Adaptive
+        );
+        var height = measured.Y <= 14
+            ? 36
+            : measured.Y <= 36
+                ? 56
+                : 72;
+        _objectivePanel.Size = new Vector2(302, height);
+        _objective.Size = new Vector2(288, height - 10);
+    }
+
     public override void _ExitTree()
     {
         _session.Changed -= Refresh;
@@ -587,6 +621,8 @@ internal sealed partial class MinimapView : Control
 {
     private static readonly Vector2 MapOrigin = new(6, 6);
     private static readonly Vector2 MapSize = new(120, 80);
+    private static readonly Texture2D GroundAtlas =
+        GD.Load<Texture2D>(WorldSeasonVisualCatalog.GroundAtlasTexturePath);
     private readonly GameSession _session;
 
     public MinimapView(GameSession session)
@@ -611,7 +647,7 @@ internal sealed partial class MinimapView : Control
             ),
             new Rect2(Vector2.Zero, Size)
         );
-        DrawRect(new Rect2(MapOrigin, MapSize), new Color("#050b1d"));
+        DrawRect(new Rect2(MapOrigin, MapSize), new Color("#0b1328"));
 
         var chunkSize = new Vector2(
             MapSize.X / WorldDefinition.ChunkColumns,
@@ -628,7 +664,12 @@ internal sealed partial class MinimapView : Control
                 );
                 if (!_session.Exploration.IsDiscovered(chunk))
                 {
-                    DrawRect(rect.Grow(-0.5f), new Color("#0a1128"));
+                    DrawChunkTexture(
+                        rect,
+                        x,
+                        y,
+                        new Color("#17213c")
+                    );
                     continue;
                 }
 
@@ -636,7 +677,12 @@ internal sealed partial class MinimapView : Control
                     x * WorldDefinition.ChunkSize + WorldDefinition.ChunkSize / 2,
                     y * WorldDefinition.ChunkSize + WorldDefinition.ChunkSize / 2
                 );
-                DrawRect(rect.Grow(-0.5f), BiomeColor(WorldDefinition.GetBiome(sample)));
+                DrawChunkTexture(
+                    rect,
+                    x,
+                    y,
+                    BiomeColor(WorldDefinition.GetBiome(sample))
+                );
                 DrawLine(
                     rect.Position,
                     new Vector2(rect.Position.X, rect.End.Y),
@@ -715,6 +761,24 @@ internal sealed partial class MinimapView : Control
 
     private void OnForageChanged(GridPosition _) => QueueRedraw();
 
+    private void DrawChunkTexture(
+        Rect2 rect,
+        int chunkX,
+        int chunkY,
+        Color modulate
+    )
+    {
+        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
+        var variant = (chunkX + chunkY * 3) %
+            WorldSeasonVisualCatalog.GroundAtlasColumns;
+        DrawTextureRectRegion(
+            GroundAtlas,
+            rect,
+            new Rect2(variant * cellSize, 0, cellSize, cellSize),
+            modulate
+        );
+    }
+
     private Vector2 WorldToMap(float x, float y) =>
         MapOrigin + new Vector2(
             x / WorldDefinition.Width * MapSize.X,
@@ -752,17 +816,17 @@ internal sealed partial class HudChrome : Control
                 2,
                 4
             ),
-            new Rect2(138, 304, 364, 50)
+            new Rect2(138, 300, 364, 48)
         );
-        DrawLine(new Vector2(144, 307), new Vector2(496, 307), ThemeFactory.Mint, 1);
-        DrawLine(new Vector2(144, 352), new Vector2(496, 352), new Color("#3b6972"), 1);
+        DrawLine(new Vector2(144, 303), new Vector2(496, 303), ThemeFactory.Mint, 1);
+        DrawLine(new Vector2(144, 346), new Vector2(496, 346), new Color("#3b6972"), 1);
 
         DrawColoredPolygon(
-            [new Vector2(132, 329), new Vector2(138, 323), new Vector2(138, 335)],
+            [new Vector2(132, 325), new Vector2(138, 319), new Vector2(138, 331)],
             new Color("#927857")
         );
         DrawColoredPolygon(
-            [new Vector2(508, 329), new Vector2(502, 323), new Vector2(502, 335)],
+            [new Vector2(508, 325), new Vector2(502, 319), new Vector2(502, 331)],
             new Color("#927857")
         );
 
@@ -784,6 +848,10 @@ internal sealed partial class HotbarSlotContent : Control
         GD.Load<Texture2D>("res://assets/generated/ui/tools/tool_backpack_icons_chroma.png");
     private static readonly Texture2D FishingIcons =
         GD.Load<Texture2D>("res://assets/generated/activities/fishing/fishing_icons.png");
+    private static readonly Texture2D UnknownItemIcon =
+        GD.Load<Texture2D>("res://assets/generated/ui/items/unknown_item_seal.png");
+    private static readonly HashSet<string> ReportedMissingItemIcons =
+        new(StringComparer.Ordinal);
     private const float ToolIconCell = 443.5f;
 
     private readonly Label _key;
@@ -827,7 +895,6 @@ internal sealed partial class HotbarSlotContent : Control
     {
         if (string.IsNullOrWhiteSpace(_itemId))
         {
-            DrawRect(new Rect2(18, 20, 2, 2), new Color(0.45f, 0.55f, 0.65f, 0.38f));
             return;
         }
 
@@ -838,11 +905,12 @@ internal sealed partial class HotbarSlotContent : Control
 
         if (!TryGetIconRegion(_itemId, out var texture, out var source))
         {
-            DrawColoredPolygon(
-                [new Vector2(20, 9), new Vector2(30, 20), new Vector2(20, 31), new Vector2(10, 20)],
-                ThemeFactory.Violet
-            );
-            return;
+            texture = UnknownItemIcon;
+            source = new Rect2(0, 0, 32, 32);
+            if (ReportedMissingItemIcons.Add(_itemId))
+            {
+                GD.PushWarning($"Missing item icon for '{_itemId}'.");
+            }
         }
 
         const float iconSize = 28;
@@ -997,6 +1065,17 @@ internal sealed partial class HotbarSlotContent : Control
         };
         return region.Size != Vector2.Zero;
     }
+
+    internal static IReadOnlyList<string> MissingStableItemIconIds() =>
+        DataCatalog.Items.Keys
+            .Where(itemId =>
+                !TryGetIconRegion(itemId, out var texture, out var region) ||
+                texture is null ||
+                region.Size.X <= 0 ||
+                region.Size.Y <= 0
+            )
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
     private static Rect2 ToolRegion(int index) => new(
         index % 4 * ToolIconCell,
