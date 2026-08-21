@@ -1790,12 +1790,18 @@ internal sealed partial class GeneratedCropLayer : Node2D
 
 internal sealed partial class FarmSoilStateLayer : Node2D
 {
+    private const int SoilCellSize = 16;
+    private const int SoilVariantCount = 4;
+    private static readonly Texture2D SoilTiles =
+        GD.Load<Texture2D>("res://assets/generated/farming/soil/farm_soil_tiles.png");
+
     private readonly FarmSystem _farm;
 
     public FarmSoilStateLayer(FarmSystem farm)
     {
         _farm = farm;
         ZIndex = -1;
+        TextureFilter = TextureFilterEnum.Nearest;
         farm.TileChanged += OnTileChanged;
     }
 
@@ -1808,34 +1814,23 @@ internal sealed partial class FarmSoilStateLayer : Node2D
                 continue;
             }
 
-            var origin = new Vector2(tile.X * 16, tile.Y * 16);
-            var soil = tile.Watered
-                ? new Color("#18394ed9")
-                : new Color("#2b202bd9");
-            var ridge = tile.Watered
-                ? new Color("#4f8293d0")
-                : new Color("#6f4e52c9");
-            DrawColoredPolygon(
-                [
-                    origin + new Vector2(1, 6),
-                    origin + new Vector2(4, 2),
-                    origin + new Vector2(12, 2),
-                    origin + new Vector2(15, 6),
-                    origin + new Vector2(14, 12),
-                    origin + new Vector2(10, 14),
-                    origin + new Vector2(4, 13),
-                    origin + new Vector2(1, 10),
-                ],
-                soil
+            var origin = new Vector2(tile.X * SoilCellSize, tile.Y * SoilCellSize);
+            var hash = unchecked((uint)(tile.X * 73856093 ^ tile.Y * 19349663));
+            var variant = (int)(hash % SoilVariantCount);
+            var modulate = tile.Watered
+                ? new Color("#28566be8")
+                : new Color("#684653e8");
+            DrawTextureRectRegion(
+                SoilTiles,
+                new Rect2(origin, new Vector2(SoilCellSize, SoilCellSize)),
+                new Rect2(
+                    variant * SoilCellSize,
+                    0,
+                    SoilCellSize,
+                    SoilCellSize
+                ),
+                modulate
             );
-            DrawLine(origin + new Vector2(3, 6), origin + new Vector2(13, 5), ridge, 1);
-            DrawLine(origin + new Vector2(3, 10), origin + new Vector2(12, 9), ridge, 1);
-
-            if (tile.Watered)
-            {
-                DrawCircle(origin + new Vector2(5, 4), 1, new Color("#8ee6becf"));
-                DrawCircle(origin + new Vector2(12, 11), 0.8f, new Color("#4bc5bdc8"));
-            }
         }
     }
 

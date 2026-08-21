@@ -22,6 +22,12 @@ public sealed record WorldSeasonVisualProfile(
 
 public static class WorldSeasonVisualCatalog
 {
+    public const int GroundAtlasColumns = 4;
+    public const int GroundAtlasRows = 8;
+    public const int GroundAtlasCellSize = 16;
+    public const int WaterAtlasRow = 7;
+    public const int ShoreAtlasColumns = 4;
+    public const int ShoreAtlasRows = 4;
     public const int PropAtlasColumns = 4;
     public const int PropAtlasRows = 4;
     public const int PropAtlasEntryCount = 16;
@@ -29,6 +35,10 @@ public static class WorldSeasonVisualCatalog
 
     public const string DefaultPropAtlasTexturePath =
         "res://assets/generated/world/exploration/exploration_props.png";
+    public const string GroundAtlasTexturePath =
+        "res://assets/generated/world/terrain/world_ground_biomes.png";
+    public const string ShoreAtlasTexturePath =
+        "res://assets/generated/world/terrain/world_shore_tiles.png";
     public const string RainveilPropAtlasTexturePath =
         "res://assets/generated/world/exploration/exploration_props_rainveil.png";
     public const string StarharvestPropAtlasTexturePath =
@@ -80,4 +90,46 @@ public static class WorldSeasonVisualCatalog
             CalendarSystem.LongnightSeasonId => Longnight,
             _ => Default
         };
+
+    public static int GroundAtlasRow(WorldBiome biome) => biome switch
+    {
+        WorldBiome.Home => 0,
+        WorldBiome.WhisperingWoods => 1,
+        WorldBiome.StarfallMeadow => 2,
+        WorldBiome.LumenVillage => 3,
+        WorldBiome.CrystalVale => 4,
+        WorldBiome.MoonwaterWetlands => 5,
+        WorldBiome.StarfallRuins => 6,
+        _ => 0
+    };
+
+    public static int ShoreMaskAt(GridPosition cell)
+    {
+        if (!WorldDefinition.IsWater(cell))
+        {
+            return 0;
+        }
+
+        var mask = 0;
+        if (IsLand(new GridPosition(cell.X, cell.Y - 1)))
+        {
+            mask |= 1;
+        }
+        if (IsLand(new GridPosition(cell.X + 1, cell.Y)))
+        {
+            mask |= 2;
+        }
+        if (IsLand(new GridPosition(cell.X, cell.Y + 1)))
+        {
+            mask |= 4;
+        }
+        if (IsLand(new GridPosition(cell.X - 1, cell.Y)))
+        {
+            mask |= 8;
+        }
+        return mask;
+    }
+
+    private static bool IsLand(GridPosition cell) =>
+        !WorldDefinition.IsInBounds(cell) || !WorldDefinition.IsWater(cell);
 }

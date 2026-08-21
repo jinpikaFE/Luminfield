@@ -255,9 +255,17 @@ internal sealed partial class FarmBackdrop : Sprite2D
 
 internal sealed partial class SouthernWorldGate : Node2D
 {
+    private const float PathAtlasCell = 627;
+    private static readonly Texture2D PathAtlas =
+        GD.Load<Texture2D>("res://assets/generated/moonstone_path_tiles.png");
+
     public SouthernWorldGate()
     {
         ZIndex = -8;
+        TextureFilter = TextureFilterEnum.Nearest;
+
+        AddGateTorch(new Vector2(282.5f, 503));
+        AddGateTorch(new Vector2(342.5f, 503));
     }
 
     public override void _Draw()
@@ -278,27 +286,34 @@ internal sealed partial class SouthernWorldGate : Node2D
             ],
             new Color("#18243b")
         );
-        DrawRect(
-            new Rect2(left, top, width, bottom - top),
-            new Color("#554f68")
-        );
-
-        for (var y = top + 4; y < bottom; y += 9)
+        for (var row = 0; row < 5; row++)
         {
-            var offset = ((int)((y - top) / 9) & 1) == 0 ? 3 : 9;
-            DrawLine(
-                new Vector2(left + 2, y),
-                new Vector2(left + width - 2, y),
-                new Color("#80738e"),
-                1
-            );
-            for (var x = left + offset; x < left + width; x += 16)
+            var remainingHeight = bottom - (top + row * 16);
+            var destinationHeight = Math.Min(16, remainingHeight);
+            if (destinationHeight <= 0)
             {
-                DrawLine(
-                    new Vector2(x, y),
-                    new Vector2(x - 3, y + 8),
-                    new Color("#37364f"),
-                    1
+                break;
+            }
+
+            for (var column = 0; column < 3; column++)
+            {
+                var variant = (row * 3 + column) % 4;
+                var source = new Rect2(
+                    variant % 2 * PathAtlasCell,
+                    variant / 2 * PathAtlasCell,
+                    PathAtlasCell,
+                    PathAtlasCell * destinationHeight / 16
+                );
+                DrawTextureRectRegion(
+                    PathAtlas,
+                    new Rect2(
+                        left + column * 16,
+                        top + row * 16,
+                        16,
+                        destinationHeight
+                    ),
+                    source,
+                    new Color(0.78f, 0.76f, 0.9f, 1)
                 );
             }
         }
@@ -315,17 +330,13 @@ internal sealed partial class SouthernWorldGate : Node2D
             new Color("#26354b"),
             2
         );
-
-        DrawGatePost(new Vector2(left - 8, top + 5));
-        DrawGatePost(new Vector2(left + width + 4, top + 5));
     }
 
-    private void DrawGatePost(Vector2 origin)
+    private void AddGateTorch(Vector2 position)
     {
-        DrawRect(new Rect2(origin.X, origin.Y, 5, 20), new Color("#4a3542"));
-        DrawRect(new Rect2(origin.X - 1, origin.Y - 2, 7, 4), new Color("#9f7455"));
-        DrawCircle(origin + new Vector2(2.5f, -4), 3.5f, new Color("#2ce0c2"));
-        DrawCircle(origin + new Vector2(2.5f, -4), 1.5f, new Color("#eff7c8"));
+        var torch = GeneratedArt.CreateFarmObjectSprite(DataCatalog.StarlightTorchId);
+        torch.Position = position;
+        AddChild(torch);
     }
 }
 

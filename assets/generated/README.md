@@ -28,6 +28,13 @@
 
 ## 运行时资产
 
+- `ui/items/unknown_item_seal.png`：从已验收 `features/starlights/woodland_starlight_pedestal.png` 的封印节点区域 `(110,655,480,480)` 确定性裁切、去透明边并最近邻缩放到 26×26 后居中到 32×32 的独立未知物品星纹。它只在损坏或未来未登记物品 ID 缺失正式图标时显示，明确区别于合法背包；正常启动会遍历全部稳定 `DataCatalog.Items` 并报告任何缺图 ID。
+- `world/terrain/world_ground_biomes_source.png`：128×256、4×8 的确定性地表来源图，每格 32×32。七行地面依次对应家园外围、低语林地、星落草甸、微光村庄、辉晶谷、月水湿地和星落遗迹，末行为水面；素材分别从已验收 `world/homestead/farm_twilight_backdrop.png`、`farming/placeables/moonstone_path_tiles.png`、`activities/mining/crystal_grotto_survey_interior.png`、`activities/festivals/firefly-tide/firefly_tide_backdrop.png` 与 `activities/combat/starfall_ruins_trial_interior.png` 的空地或水面区域裁切，未调用新提示，也不承载地貌、阻挡、资源或季相状态。
+- `world/terrain/world_ground_biomes.png`：将来源逐格灰阶、自动拉平、以 `+level 82%,96%` 收敛为低对比底纹并最近邻缩放得到的 64×128、4×8 运行时图集，每格 16×16。`WorldChunkGround` 以稳定生物群落选择前七行、以世界格哈希选择列变体，并继续叠加季相调制；最后一行固定为水面。六个外部生物群不再只靠同一底纹换色区分，同时不会让地面纹理压过角色和资源；村庄行使用四个完整月石道路单元缩略来源，路径本身仍复用 `farming/placeables/moonstone_path_tiles.png`。
+- `world/terrain/world_shore_tiles.png`：64×64、4×4 的透明像素岸线图集，索引为北、东、南、西相邻陆地四位掩码。每个 16×16 单元包含 1–3 像素的浅水亮边和不规则泡光断点；`WorldChunkGround` 只读查询 `WorldDefinition.IsWater` 邻域后覆盖到水格，平滑水陆正交断面。水域、道路、碰撞、地标与存档语义没有改变。
+- `farming/soil/farm_soil_tiles_source.png`：从已验收 `world/homestead/farm_twilight_backdrop.png` 的四块空农田区域 `(416,512)`、`(448,512)`、`(672,512)`、`(704,512)` 分别裁切 32×32 后横向拼接得到的 128×32 确定性来源图；未调用新的生成提示，不承载开垦、浇水、肥料或作物状态。
+- `farming/soil/farm_soil_tiles.png`：将四格来源分别灰阶、自动拉平并以 `+level 74%,100%` 收敛明度，再最近邻缩放为四个 16×16 变体；每格复用旧耕地八边形足迹生成二值 alpha，最终为 64×16 RGBA。`FarmSoilStateLayer` 仅按稳定格坐标选择纹理，并以干土暖紫褐或湿土冷青蓝调制；真实开垦与湿润状态仍只来自对应 `FarmSystem.Tiles`。
+- `ui/branding/luminfield_app_icon.png`：512×512 应用图标。以 `world/homestead/farm_twilight_backdrop.png` 的 `(768,256,640,640)` 区域作为暮色水岸背景，最近邻缩放并压暗；再从 `features/starlights/starfall_sixfold_gate.png` 右下单元裁出六光点亮门、去除透明边并最近邻缩放到 390 像素包络，居中下移 40 像素确定性合成。未调用新的生成提示或色键处理；`project.godot` 与 macOS 导出预设共用此图，替换旧的程序化矩形 SVG 图标。
 - `world/homestead/farm_twilight_backdrop.png`：1536×1024 原创暮色农场全景，在 Godot 中以 0.5 倍显示为 768×512 世界背景。
 - `ui/items/item_icons_final.png`：透明背景的 3×2 原创物品图集，包含锄头、浇水壶、两类种子袋、星芽莓和月辉根。
 - `locations/cottage/cottage_twilight_interior.png`：1536×1024 原创魔法小屋内景，运行时裁切为 640×360 可玩区域。

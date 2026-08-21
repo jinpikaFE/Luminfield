@@ -60,10 +60,50 @@ public sealed class WorldSeasonVisualCatalogTests
     [Fact]
     public void AtlasContractKeepsAllExistingPropIndices()
     {
+        Assert.Equal(4, WorldSeasonVisualCatalog.GroundAtlasColumns);
+        Assert.Equal(8, WorldSeasonVisualCatalog.GroundAtlasRows);
+        Assert.Equal(16, WorldSeasonVisualCatalog.GroundAtlasCellSize);
+        Assert.Equal(7, WorldSeasonVisualCatalog.WaterAtlasRow);
+        Assert.Equal(4, WorldSeasonVisualCatalog.ShoreAtlasColumns);
+        Assert.Equal(4, WorldSeasonVisualCatalog.ShoreAtlasRows);
+        Assert.Equal(
+            "res://assets/generated/world/terrain/world_ground_biomes.png",
+            WorldSeasonVisualCatalog.GroundAtlasTexturePath
+        );
+        Assert.Equal(
+            "res://assets/generated/world/terrain/world_shore_tiles.png",
+            WorldSeasonVisualCatalog.ShoreAtlasTexturePath
+        );
         Assert.Equal(4, WorldSeasonVisualCatalog.PropAtlasColumns);
         Assert.Equal(4, WorldSeasonVisualCatalog.PropAtlasRows);
         Assert.Equal(16, WorldSeasonVisualCatalog.PropAtlasEntryCount);
         Assert.Equal(313.5f, WorldSeasonVisualCatalog.PropAtlasCellSize);
+    }
+
+    [Fact]
+    public void GroundRowsAndShoreMasksFollowStableWorldTopology()
+    {
+        foreach (var biome in Enum.GetValues<WorldBiome>())
+        {
+            Assert.Equal((int)biome, WorldSeasonVisualCatalog.GroundAtlasRow(biome));
+        }
+
+        var waterCells = Enumerable.Range(0, WorldDefinition.Width)
+            .SelectMany(x => Enumerable.Range(0, WorldDefinition.Height)
+                .Select(y => new GridPosition(x, y)))
+            .Where(WorldDefinition.IsWater)
+            .ToArray();
+
+        Assert.NotEmpty(waterCells);
+        Assert.Contains(waterCells, cell =>
+            WorldSeasonVisualCatalog.ShoreMaskAt(cell) == 0);
+        Assert.Contains(waterCells, cell =>
+            WorldSeasonVisualCatalog.ShoreMaskAt(cell) != 0);
+        Assert.All(waterCells, cell => Assert.InRange(
+            WorldSeasonVisualCatalog.ShoreMaskAt(cell),
+            0,
+            15
+        ));
     }
 
     [Fact]

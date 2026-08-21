@@ -13,7 +13,7 @@ config_version=5
 config/name="Luminfield"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
-config/icon="res://assets/pixel/icon.svg"
+config/icon="res://assets/generated/ui/branding/luminfield_app_icon.png"
 
 [display]
 

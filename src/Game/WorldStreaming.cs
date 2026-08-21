@@ -151,6 +151,10 @@ internal sealed partial class WorldChunk : Node2D
 internal sealed partial class WorldChunkGround : Node2D
 {
     private const float PathAtlasCell = 627;
+    private static readonly Texture2D GroundAtlas =
+        GD.Load<Texture2D>(WorldSeasonVisualCatalog.GroundAtlasTexturePath);
+    private static readonly Texture2D ShoreAtlas =
+        GD.Load<Texture2D>(WorldSeasonVisualCatalog.ShoreAtlasTexturePath);
     private static readonly Texture2D PathAtlas =
         GD.Load<Texture2D>("res://assets/generated/farming/placeables/moonstone_path_tiles.png");
 
@@ -195,17 +199,12 @@ internal sealed partial class WorldChunkGround : Node2D
                 }
 
                 var origin = new Vector2(localX * 16, localY * 16);
-                var rect = new Rect2(origin, new Vector2(16, 16));
                 var hash = WorldDefinition.Hash(cell.X, cell.Y);
                 var biome = WorldDefinition.GetBiome(cell);
-                DrawRect(
-                    rect,
-                    GroundColor(biome, hash) * _visual.GroundModulate
-                );
 
                 if (WorldDefinition.IsWater(cell))
                 {
-                    DrawWater(origin, hash);
+                    DrawWater(origin, cell, hash);
                 }
                 else if (WorldDefinition.IsPath(cell))
                 {
@@ -213,33 +212,66 @@ internal sealed partial class WorldChunkGround : Node2D
                 }
                 else
                 {
-                    DrawGroundDetails(origin, biome, hash);
+                    DrawGround(origin, biome, hash);
                 }
             }
         }
     }
 
-    private void DrawWater(Vector2 origin, uint hash)
+    private void DrawGround(Vector2 origin, WorldBiome biome, uint hash)
     {
-        DrawRect(
-            new Rect2(origin, new Vector2(16, 16)),
-            new Color("#0b4965") * _visual.WaterModulate
+        DrawGroundTile(
+            origin,
+            hash,
+            WorldSeasonVisualCatalog.GroundAtlasRow(biome),
+            GroundColor(biome) * _visual.GroundModulate
         );
-        DrawLine(
-            origin + new Vector2(2 + hash % 4, 5),
-            origin + new Vector2(11 + hash % 3, 5),
-            new Color("#2ca5ad") * _visual.WaterModulate,
-            1
+    }
+
+    private void DrawWater(Vector2 origin, GridPosition cell, uint hash)
+    {
+        DrawGroundTile(
+            origin,
+            hash,
+            WorldSeasonVisualCatalog.WaterAtlasRow,
+            new Color("#0f5a70") * _visual.WaterModulate
         );
-        if (hash % 3 == 0)
+
+        var shoreMask = WorldSeasonVisualCatalog.ShoreMaskAt(cell);
+        if (shoreMask == 0)
         {
-            DrawLine(
-                origin + new Vector2(5, 11),
-                origin + new Vector2(14, 11),
-                new Color("#65d9c3") * _visual.WaterModulate,
-                1
-            );
+            return;
         }
+
+        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
+        DrawTextureRectRegion(
+            ShoreAtlas,
+            new Rect2(origin, new Vector2(cellSize, cellSize)),
+            new Rect2(
+                shoreMask % WorldSeasonVisualCatalog.ShoreAtlasColumns * cellSize,
+                shoreMask / WorldSeasonVisualCatalog.ShoreAtlasColumns * cellSize,
+                cellSize,
+                cellSize
+            ),
+            new Color("#9bc3a8") * _visual.DetailModulate
+        );
+    }
+
+    private void DrawGroundTile(
+        Vector2 origin,
+        uint hash,
+        int atlasRow,
+        Color modulate
+    )
+    {
+        var variant = (int)(hash % WorldSeasonVisualCatalog.GroundAtlasColumns);
+        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
+        DrawTextureRectRegion(
+            GroundAtlas,
+            new Rect2(origin, new Vector2(cellSize, cellSize)),
+            new Rect2(variant * cellSize, atlasRow * cellSize, cellSize, cellSize),
+            modulate
+        );
     }
 
     private void DrawPath(Vector2 origin, uint hash)
@@ -259,215 +291,16 @@ internal sealed partial class WorldChunkGround : Node2D
         );
     }
 
-    private void DrawGroundDetails(Vector2 origin, WorldBiome biome, uint hash)
+    private static Color GroundColor(WorldBiome biome)
     {
-        switch (biome)
-        {
-            case WorldBiome.WhisperingWoods:
-                DrawWoodsGround(origin, hash);
-                break;
-            case WorldBiome.StarfallMeadow:
-                DrawMeadowGround(origin, hash);
-                break;
-            case WorldBiome.LumenVillage:
-                DrawVillageGround(origin, hash);
-                break;
-            case WorldBiome.CrystalVale:
-                DrawCrystalGround(origin, hash);
-                break;
-            case WorldBiome.MoonwaterWetlands:
-                DrawWetlandGround(origin, hash);
-                break;
-            case WorldBiome.StarfallRuins:
-                DrawRuinsGround(origin, hash);
-                break;
-        }
-    }
-
-    private void DrawWoodsGround(Vector2 origin, uint hash)
-    {
-        if (hash % 4 != 0)
-        {
-            return;
-        }
-
-        var roots = new Color("#245c57") * _visual.DetailModulate;
-        DrawLine(
-            origin + new Vector2(2, 14),
-            origin + new Vector2(8, 10),
-            roots,
-            1
-        );
-        DrawLine(
-            origin + new Vector2(8, 10),
-            origin + new Vector2(14, 12),
-            roots,
-            1
-        );
-        if (hash % 12 == 0)
-        {
-            DrawCircle(
-                origin + new Vector2(5, 6),
-                1,
-                ThemeFactory.Violet * _visual.DetailModulate
-            );
-        }
-    }
-
-    private void DrawMeadowGround(Vector2 origin, uint hash)
-    {
-        if (hash % 3 != 0)
-        {
-            return;
-        }
-
-        var stem = new Color("#5ca878") * _visual.DetailModulate;
-        DrawLine(
-            origin + new Vector2(8, 14),
-            origin + new Vector2(8, 9),
-            stem,
-            1
-        );
-        DrawCircle(
-            origin + new Vector2(8, 8),
-            1,
-            new Color("#b9efc2") * _visual.DetailModulate
-        );
-        if (hash % 9 == 0)
-        {
-            DrawCircle(
-                origin + new Vector2(12, 11),
-                1,
-                new Color("#e7c87d") * _visual.DetailModulate
-            );
-        }
-    }
-
-    private void DrawVillageGround(Vector2 origin, uint hash)
-    {
-        if (hash % 5 != 0)
-        {
-            return;
-        }
-
-        var gold = new Color("#9a8157") * _visual.DetailModulate;
-        DrawLine(
-            origin + new Vector2(4, 13),
-            origin + new Vector2(7, 10),
-            gold,
-            1
-        );
-        DrawLine(
-            origin + new Vector2(7, 10),
-            origin + new Vector2(10, 13),
-            gold,
-            1
-        );
-    }
-
-    private void DrawCrystalGround(Vector2 origin, uint hash)
-    {
-        if (hash % 4 != 0)
-        {
-            return;
-        }
-
-        var seam = new Color("#387d89") * _visual.DetailModulate;
-        DrawLine(
-            origin + new Vector2(2, 5),
-            origin + new Vector2(8, 9),
-            seam,
-            1
-        );
-        DrawLine(
-            origin + new Vector2(8, 9),
-            origin + new Vector2(13, 6),
-            seam,
-            1
-        );
-        if (hash % 16 == 0)
-        {
-            DrawCircle(
-                origin + new Vector2(8, 9),
-                1,
-                ThemeFactory.Mint * _visual.DetailModulate
-            );
-        }
-    }
-
-    private void DrawWetlandGround(Vector2 origin, uint hash)
-    {
-        if (hash % 4 != 0)
-        {
-            return;
-        }
-
-        var damp = new Color("#247a7c") * _visual.DetailModulate;
-        DrawArc(
-            origin + new Vector2(8, 10),
-            4,
-            0.2f,
-            2.9f,
-            8,
-            damp,
-            1
-        );
-        if (hash % 8 == 0)
-        {
-            DrawLine(
-                origin + new Vector2(12, 14),
-                origin + new Vector2(11, 8),
-                ThemeFactory.Mint * _visual.DetailModulate,
-                1
-            );
-        }
-    }
-
-    private void DrawRuinsGround(Vector2 origin, uint hash)
-    {
-        if (hash % 4 != 0)
-        {
-            return;
-        }
-
-        var crack = new Color("#725f94") * _visual.DetailModulate;
-        DrawLine(
-            origin + new Vector2(3, 4),
-            origin + new Vector2(7, 8),
-            crack,
-            1
-        );
-        DrawLine(
-            origin + new Vector2(7, 8),
-            origin + new Vector2(5, 13),
-            crack,
-            1
-        );
-        DrawLine(
-            origin + new Vector2(7, 8),
-            origin + new Vector2(12, 10),
-            crack,
-            1
-        );
-    }
-
-    private static Color GroundColor(WorldBiome biome, uint hash)
-    {
-        var alternate = hash % 4 == 0;
         return biome switch
         {
-            WorldBiome.WhisperingWoods =>
-                alternate ? new Color("#102f38") : new Color("#123743"),
-            WorldBiome.StarfallMeadow =>
-                alternate ? new Color("#1c4b49") : new Color("#205350"),
-            WorldBiome.LumenVillage =>
-                alternate ? new Color("#243f4c") : new Color("#294854"),
-            WorldBiome.CrystalVale =>
-                alternate ? new Color("#183d4e") : new Color("#1c4656"),
-            WorldBiome.MoonwaterWetlands =>
-                alternate ? new Color("#133c4b") : new Color("#164655"),
-            WorldBiome.StarfallRuins =>
-                alternate ? new Color("#242f4b") : new Color("#293652"),
+            WorldBiome.WhisperingWoods => new Color("#184754"),
+            WorldBiome.StarfallMeadow => new Color("#28665e"),
+            WorldBiome.LumenVillage => new Color("#355966"),
+            WorldBiome.CrystalVale => new Color("#24586a"),
+            WorldBiome.MoonwaterWetlands => new Color("#1d5664"),
+            WorldBiome.StarfallRuins => new Color("#35456a"),
             _ => new Color("#102d3a")
         };
     }

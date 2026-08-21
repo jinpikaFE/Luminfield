@@ -994,6 +994,7 @@ public sealed partial class FarmView : Node2D
         _session.Shipping.Changed -= RefreshShippingBin;
         _session.Storage.Changed -= RefreshStorageChests;
         _session.FarmObjects.Changed -= RefreshFarmObjects;
+        _session.CrabPots.Changed -= RebuildCrabPots;
         _session.Commission.Changed -= RefreshCommissionBoard;
         _session.WeeklyCommission.Changed -= RefreshCommissionBoard;
         _session.Mail.Changed -= RefreshStarlightMailbox;
@@ -1580,17 +1581,12 @@ internal sealed partial class StationBeacon : Node2D
             return;
         }
 
-        DrawRect(new Rect2(-8, -63, 16, 11), new Color("#07132bee"), true);
-        DrawRect(new Rect2(-8, -63, 16, 11), accent, false, 1);
-        DrawString(
-            GD.Load<Font>("res://assets/fonts/NotoSansCJKsc-Regular.otf"),
-            new Vector2(-3.5f, -54),
-            "E",
-            HorizontalAlignment.Left,
-            -1,
-            8,
-            ThemeFactory.Ink
+        var sparkle = new Vector2(
+            0,
+            -49 + Mathf.Sin((float)_time * 3.8f) * 2
         );
+        DrawLine(sparkle + new Vector2(-3, 0), sparkle + new Vector2(3, 0), accent, 1.2f);
+        DrawLine(sparkle + new Vector2(0, -3), sparkle + new Vector2(0, 3), accent, 1.2f);
     }
 }
 
@@ -1657,1047 +1653,651 @@ internal sealed partial class TargetCursor : Node2D
         float pulse
     )
     {
-        var fill = new Color(accent, 0.07f + pulse * 0.035f);
-        var line = new Color(accent, 0.56f + pulse * 0.32f);
+        var fill = new Color(accent, 0.045f + pulse * 0.018f);
+        var line = new Color(accent, 0.62f + pulse * 0.3f);
         switch (preview.Kind)
         {
             case TargetPreviewKind.Tree:
-                DrawRect(new Rect2(origin + new Vector2(-21, -56), new Vector2(58, 72)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-21, -56), new Vector2(58, 72)), line, false, 1.5f);
-                DrawArc(origin + new Vector2(8, -25), 29 + pulse * 2, 0, Mathf.Tau, 28, line, 1.5f);
+                DrawTreeContour(origin, 29, 72, line, fill, pulse);
                 break;
-            case TargetPreviewKind.Crystal:
-                DrawRect(new Rect2(origin + new Vector2(-13, -32), new Vector2(42, 48)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-13, -32), new Vector2(42, 48)), line, false, 1.5f);
-                DrawCircle(origin + new Vector2(8, -8), 22 + pulse * 2, new Color(accent, 0.055f));
-                break;
-            case TargetPreviewKind.MineralVein:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -38),
-                        new Vector2(52, 54)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -38),
-                        new Vector2(52, 54)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.CrystalGrottoPortal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -50),
-                        new Vector2(64, 66)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -50),
-                        new Vector2(64, 66)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.CrystalGrottoExit:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -46),
-                        new Vector2(64, 62)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -46),
-                        new Vector2(64, 62)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.StarfallRuinsPortal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -48),
-                        new Vector2(56, 64)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -48),
-                        new Vector2(56, 64)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.StarfallRuinsExit:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -26),
-                        new Vector2(64, 42)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -26),
-                        new Vector2(64, 42)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.RuinsWeaponRack:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -38),
-                        new Vector2(56, 54)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -38),
-                        new Vector2(56, 54)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.RuinsEnemy:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -40),
-                        new Vector2(52, 56)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -40),
-                        new Vector2(52, 56)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.RuinsArtifact:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -36),
-                        new Vector2(48, 52)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -36),
-                        new Vector2(48, 52)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.RuinsSeal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -40),
-                        new Vector2(58, 56)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -40),
-                        new Vector2(58, 56)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.ToolUpgradeBench:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-46, -42),
-                        new Vector2(108, 58)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-46, -42),
-                        new Vector2(108, 58)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.MineDepthAnchor:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -38),
-                        new Vector2(52, 54)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -38),
-                        new Vector2(52, 54)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.GrottoSeal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -43),
-                        new Vector2(58, 59)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -43),
-                        new Vector2(58, 59)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.Forage:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -20),
-                        new Vector2(38, 36)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -20),
-                        new Vector2(38, 36)
-                    ),
-                    line,
-                    false,
-                    1.5f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -3),
-                    18 + pulse,
-                    0,
-                    Mathf.Tau,
-                    24,
-                    line,
-                    1.5f
-                );
-                break;
-            case TargetPreviewKind.Water:
-                DrawCircle(origin + new Vector2(8, 8), 10 + pulse * 2, fill);
-                DrawArc(origin + new Vector2(8, 8), 7 + pulse, 0, Mathf.Tau, 20, line, 1.5f);
-                DrawArc(origin + new Vector2(8, 8), 12 + pulse * 2, 0, Mathf.Tau, 24, new Color(accent, 0.35f), 1);
+            case TargetPreviewKind.FruitTree:
+                DrawTreeContour(origin, 30, 76, line, fill, pulse);
                 break;
             case TargetPreviewKind.CrabPot:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -20),
-                        new Vector2(38, 36)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -20),
-                        new Vector2(38, 36)
-                    ),
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-11, -20), new Vector2(38, 36)),
                     line,
-                    false,
-                    1.6f
+                    fill,
+                    pulse
                 );
-                DrawArc(
-                    origin + new Vector2(8, 3),
-                    18 + pulse,
-                    0,
-                    Mathf.Tau,
-                    24,
-                    line,
-                    1.3f
-                );
+                DrawRippleContour(origin + new Vector2(8, 6), 17, line, fill, pulse);
                 break;
             case TargetPreviewKind.Crop:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-7, -16),
-                        new Vector2(30, 32)
-                    ),
-                    fill
-                );
-                DrawArc(
-                    origin + new Vector2(8, 0),
-                    16 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    26,
-                    line,
-                    1.5f
-                );
+                DrawPlantContour(origin + new Vector2(8, 13), 15, 27, line, fill);
                 break;
-            case TargetPreviewKind.Character:
-                DrawRect(new Rect2(origin + new Vector2(-9, -48), new Vector2(34, 64)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-9, -48), new Vector2(34, 64)), line, false, 1.5f);
+            case TargetPreviewKind.Forage:
+                DrawPlantContour(origin + new Vector2(8, 14), 18, 31, line, fill);
                 break;
-            case TargetPreviewKind.Door:
-                DrawRect(new Rect2(origin + new Vector2(-2, -34), new Vector2(20, 50)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-2, -34), new Vector2(20, 50)), line, false, 2);
+            case TargetPreviewKind.Crystal:
+                DrawCrystalContour(origin + new Vector2(8, 15), 34, 47, line, fill);
                 break;
-            case TargetPreviewKind.Station:
-                DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-25, -54), new Vector2(66, 70)), line, false, 1.5f);
+            case TargetPreviewKind.MineralVein:
+            case TargetPreviewKind.MineDepthAnchor:
+                DrawCrystalContour(origin + new Vector2(8, 15), 46, 53, line, fill);
                 break;
-            case TargetPreviewKind.ArchiveResearchDesk:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-64, -40),
-                        new Vector2(128, 88)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-64, -40),
-                        new Vector2(128, 88)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
+            case TargetPreviewKind.RuinsArtifact:
+                DrawCrystalContour(origin + new Vector2(8, 15), 38, 51, line, fill);
                 break;
-            case TargetPreviewKind.HomesteadWorkshop:
-                var workshopRect = WorkshopHighlightRect(
-                    origin,
-                    preview
-                );
-                DrawRect(workshopRect, fill);
-                DrawRect(workshopRect, line, false, 1.7f);
+            case TargetPreviewKind.GrottoSeal:
+            case TargetPreviewKind.RuinsSeal:
+                DrawSealContour(origin + new Vector2(8, -12), 27, line, fill, pulse);
+                break;
+            case TargetPreviewKind.CrystalGrottoPortal:
+                DrawPortalContour(origin, 60, 65, line, fill, pulse);
+                break;
+            case TargetPreviewKind.CrystalGrottoExit:
+                DrawPortalContour(origin, 60, 61, line, fill, pulse);
+                break;
+            case TargetPreviewKind.StarfallRuinsPortal:
+                DrawPortalContour(origin, 52, 63, line, fill, pulse);
+                break;
+            case TargetPreviewKind.StarfallRuinsExit:
+                DrawPortalContour(origin, 60, 41, line, fill, pulse);
                 break;
             case TargetPreviewKind.GreenhousePortal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -60),
-                        new Vector2(56, 76)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -60),
-                        new Vector2(56, 76)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
+                DrawPortalContour(origin, 52, 75, line, fill, pulse);
+                break;
+            case TargetPreviewKind.GreenhouseExit:
+                DrawPortalContour(origin, 102, 90, line, fill, pulse);
+                break;
+            case TargetPreviewKind.FestivalPortal:
+                DrawPortalContour(origin, 76, 75, line, fill, pulse);
+                break;
+            case TargetPreviewKind.FestivalExit:
+                DrawPortalContour(origin, 62, 45, line, fill, pulse);
                 break;
             case TargetPreviewKind.AnimalBuildingPortal:
-                var coopFacade = preview.LabelKey is
-                    "construction.homestead_starfeather_coop.not_started" or
-                    "construction.homestead_starfeather_coop.in_progress";
-                var coopRect = coopFacade
-                    ? new Rect2(
-                        origin + new Vector2(-24, -24),
-                        new Vector2(64, 58)
-                    )
-                    : new Rect2(
-                        origin + new Vector2(-2, -14),
-                        new Vector2(20, 46)
-                    );
-                DrawRect(coopRect, fill);
-                DrawRect(coopRect, line, false, 1.8f);
+                DrawPortalContour(origin, 58, 56, line, fill, pulse);
                 break;
             case TargetPreviewKind.MoonfleeceBarnPortal:
-                var barnFacade = preview.LabelKey is
-                    "construction.homestead_moonfleece_barn.not_started" or
-                    "construction.homestead_moonfleece_barn.in_progress";
-                var barnRect = barnFacade
-                    ? new Rect2(
-                        origin + new Vector2(-26, -42),
-                        new Vector2(68, 66)
-                    )
-                    : new Rect2(
-                        origin + new Vector2(-3, -30),
-                        new Vector2(22, 48)
-                    );
-                DrawRect(barnRect, fill);
-                DrawRect(barnRect, line, false, 1.8f);
+                DrawPortalContour(origin, 62, 65, line, fill, pulse);
                 break;
             case TargetPreviewKind.AnimalBuildingExit:
             case TargetPreviewKind.MoonfleeceBarnExit:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-48, -58),
-                        new Vector2(112, 74)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-48, -58),
-                        new Vector2(112, 74)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
+                DrawPortalContour(origin, 60, 44, line, fill, pulse);
                 break;
-            case TargetPreviewKind.AnimalFeedTrough:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-61, -56),
-                        new Vector2(126, 56)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-61, -56),
-                        new Vector2(126, 56)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
+            case TargetPreviewKind.Door:
+                DrawPortalContour(origin, 18, 49, line, fill, pulse);
                 break;
-            case TargetPreviewKind.AnimalNest:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-45, -94),
-                        new Vector2(121, 94)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-45, -94),
-                        new Vector2(121, 94)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
+            case TargetPreviewKind.Character:
+                DrawFigureContour(origin + new Vector2(8, 15), 27, 63, line, fill);
                 break;
-            case TargetPreviewKind.AnimalProductStation:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-62, -61),
-                        new Vector2(124, 65)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-62, -61),
-                        new Vector2(124, 65)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.DewhornMilkingStation:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -47),
-                        new Vector2(48, 48)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -47),
-                        new Vector2(48, 48)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
+            case TargetPreviewKind.RuinsEnemy:
+                DrawFigureContour(origin + new Vector2(8, 15), 45, 55, line, fill);
                 break;
             case TargetPreviewKind.Animal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-6, -15),
-                        new Vector2(28, 30)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-6, -15),
-                        new Vector2(28, 30)
-                    ),
-                    line,
-                    false,
-                    1.6f
-                );
+                DrawCreatureContour(origin + new Vector2(8, 13), 25, 27, line, fill);
                 break;
             case TargetPreviewKind.MoonfleeceSheep:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -31),
-                        new Vector2(38, 35)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-11, -31),
-                        new Vector2(38, 35)
-                    ),
-                    line,
-                    false,
-                    1.6f
-                );
+                DrawCreatureContour(origin + new Vector2(8, 2), 35, 33, line, fill);
                 break;
             case TargetPreviewKind.Dewhorn:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-10, -32),
-                        new Vector2(36, 35)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-10, -32),
-                        new Vector2(36, 35)
-                    ),
-                    line,
-                    false,
-                    1.6f
-                );
+                DrawCreatureContour(origin + new Vector2(8, 2), 33, 33, line, fill);
                 break;
-            case TargetPreviewKind.AnimalAutomationStation:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -36),
-                        new Vector2(48, 52)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -36),
-                        new Vector2(48, 52)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.GreenhouseExit:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-53, -51),
-                        new Vector2(106, 91)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-53, -51),
-                        new Vector2(106, 91)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
+            case TargetPreviewKind.Water:
+                DrawRippleContour(origin + new Vector2(8, 9), 12, line, fill, pulse);
                 break;
             case TargetPreviewKind.Cistern:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-2, -14),
-                        new Vector2(40, 32)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-2, -14),
-                        new Vector2(40, 32)
-                    ),
+                DrawRippleContour(origin + new Vector2(18, 3), 18, line, fill, pulse);
+                break;
+            case TargetPreviewKind.Ground:
+            case TargetPreviewKind.Soil:
+            case TargetPreviewKind.Path:
+                DrawGroundContour(origin, line, fill);
+                break;
+            case TargetPreviewKind.Fence:
+                DrawFenceContour(origin, line, fill);
+                break;
+            case TargetPreviewKind.Torch:
+                DrawTorchContour(origin, line, fill, pulse);
+                break;
+            case TargetPreviewKind.Sprinkler:
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)),
                     line,
-                    false,
-                    1.6f
+                    fill,
+                    pulse
                 );
-                DrawArc(
-                    origin + new Vector2(18, 2),
-                    18 + pulse,
-                    0,
-                    Mathf.Tau,
-                    24,
-                    new Color(accent, 0.28f),
-                    1
+                DrawRippleContour(origin + new Vector2(8, 4), 12, line, fill, pulse);
+                break;
+            case TargetPreviewKind.HomesteadWorkshop:
+                DrawFixtureContour(
+                    WorkshopHighlightRect(origin, preview),
+                    line,
+                    fill,
+                    pulse
+                );
+                break;
+            case TargetPreviewKind.ToolUpgradeBench:
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-46, -42), new Vector2(108, 58)),
+                    line,
+                    fill,
+                    pulse
+                );
+                break;
+            case TargetPreviewKind.ArchiveResearchDesk:
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-56, -40), new Vector2(112, 80)),
+                    line,
+                    fill,
+                    pulse
                 );
                 break;
             case TargetPreviewKind.KitchenReserve:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-10, -66),
-                        new Vector2(144, 128)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-10, -66),
-                        new Vector2(144, 128)
-                    ),
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-10, -66), new Vector2(144, 128)),
                     line,
-                    false,
-                    1.5f
+                    fill,
+                    pulse
                 );
                 break;
             case TargetPreviewKind.KitchenStation:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-42, -66),
-                        new Vector2(106, 128)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-42, -66),
-                        new Vector2(106, 128)
-                    ),
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-42, -66), new Vector2(106, 128)),
                     line,
-                    false,
-                    1.7f
+                    fill,
+                    pulse
                 );
                 break;
             case TargetPreviewKind.IngredientPantry:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -66),
-                        new Vector2(48, 128)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-16, -66),
-                        new Vector2(48, 128)
-                    ),
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-16, -66), new Vector2(48, 128)),
                     line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.CommissionBoard:
-                DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-20, -42), new Vector2(56, 58)), line, false, 1.7f);
-                DrawArc(origin + new Vector2(8, -18), 24 + pulse * 2, 0, Mathf.Tau, 28, new Color(accent, 0.34f), 1);
-                break;
-            case TargetPreviewKind.Mailbox:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-22, -54),
-                        new Vector2(60, 70)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-22, -54),
-                        new Vector2(60, 70)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -21),
-                    27 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    28,
-                    new Color(accent, 0.34f),
-                    1
-                );
-                break;
-            case TargetPreviewKind.StorageChest:
-                DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-13, -31), new Vector2(42, 47)), line, false, 1.5f);
-                DrawArc(origin + new Vector2(8, -8), 20 + pulse, 0, Mathf.Tau, 24, new Color(accent, 0.32f), 1);
-                break;
-            case TargetPreviewKind.Path:
-                DrawRect(new Rect2(origin + new Vector2(0, 0), new Vector2(16, 16)), fill);
-                DrawRect(new Rect2(origin + new Vector2(0, 0), new Vector2(16, 16)), line, false, 1.5f);
-                break;
-            case TargetPreviewKind.Fence:
-                DrawRect(new Rect2(origin + new Vector2(-4, -16), new Vector2(24, 32)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-4, -16), new Vector2(24, 32)), line, false, 1.5f);
-                break;
-            case TargetPreviewKind.Torch:
-                DrawRect(new Rect2(origin + new Vector2(1, -23), new Vector2(14, 39)), fill);
-                DrawRect(new Rect2(origin + new Vector2(1, -23), new Vector2(14, 39)), line, false, 1.5f);
-                DrawCircle(origin + new Vector2(8, -15), 11 + pulse, new Color(accent, 0.06f));
-                break;
-            case TargetPreviewKind.Sprinkler:
-                DrawRect(new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-2, -7), new Vector2(20, 23)), line, false, 1.5f);
-                DrawArc(origin + new Vector2(8, 3), 12 + pulse, 0, Mathf.Tau, 24, new Color(accent, 0.3f), 1);
-                break;
-            case TargetPreviewKind.FruitTree:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -60),
-                        new Vector2(58, 76)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-21, -60),
-                        new Vector2(58, 76)
-                    ),
-                    line,
-                    false,
-                    1.5f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -27),
-                    30 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    28,
-                    new Color(accent, 0.34f),
-                    1.2f
-                );
-                break;
-            case TargetPreviewKind.Beehive:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -39),
-                        new Vector2(52, 55)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-18, -39),
-                        new Vector2(52, 55)
-                    ),
-                    line,
-                    false,
-                    1.5f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -12),
-                    24 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    28,
-                    new Color(accent, 0.32f),
-                    1
-                );
-                break;
-            case TargetPreviewKind.Landmark:
-                DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-18, -42), new Vector2(52, 58)), line, false, 1.5f);
-                break;
-            case TargetPreviewKind.StarlightPedestal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-31, -63),
-                        new Vector2(78, 78)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-31, -63),
-                        new Vector2(78, 78)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -25),
-                    39 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    32,
-                    new Color(accent, 0.38f),
-                    1.2f
+                    fill,
+                    pulse
                 );
                 break;
             case TargetPreviewKind.StarGate:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-34, -70),
-                        new Vector2(84, 86)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-34, -70),
-                        new Vector2(84, 86)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -29),
-                    41 + pulse * 2,
-                    0,
-                    Mathf.Tau,
-                    32,
-                    new Color(accent, 0.38f),
-                    1.2f
-                );
+                DrawPortalContour(origin, 84, 86, line, fill, pulse);
                 break;
-            case TargetPreviewKind.Bed:
-                DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
-                DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), line, false, 1.5f);
-                break;
-            case TargetPreviewKind.FestivalPortal:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-32, -60),
-                        new Vector2(80, 76)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-32, -60),
-                        new Vector2(80, 76)
-                    ),
+            case TargetPreviewKind.FestivalFeastTable:
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-62, -61), new Vector2(124, 65)),
                     line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.FestivalExit:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -26),
-                        new Vector2(64, 42)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-24, -26),
-                        new Vector2(64, 42)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.FestivalExhibit:
-            case TargetPreviewKind.FestivalFishBasin:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-38, -56),
-                        new Vector2(92, 72)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-38, -56),
-                        new Vector2(92, 72)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.FestivalBidBoard:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -48),
-                        new Vector2(56, 64)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -48),
-                        new Vector2(56, 64)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
-                break;
-            case TargetPreviewKind.FestivalShop:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-28, -62),
-                        new Vector2(72, 78)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-28, -62),
-                        new Vector2(72, 78)
-                    ),
-                    line,
-                    false,
-                    1.8f
+                    fill,
+                    pulse
                 );
                 break;
             case TargetPreviewKind.FestivalPlantingPlot:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-2, -5),
-                        new Vector2(20, 20)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-2, -5),
-                        new Vector2(20, 20)
-                    ),
+                DrawGroundContour(origin - new Vector2(24, 16), line, fill, new Vector2(64, 48));
+                break;
+            case TargetPreviewKind.Bed:
+                DrawFixtureContour(
+                    new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)),
                     line,
-                    false,
-                    1.6f
+                    fill,
+                    pulse
                 );
                 break;
-            case TargetPreviewKind.FestivalSeedRack:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -28),
-                        new Vector2(56, 44)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-20, -28),
-                        new Vector2(56, 44)
-                    ),
-                    line,
-                    false,
-                    1.7f
-                );
+            case TargetPreviewKind.None:
                 break;
-            case TargetPreviewKind.FestivalSeedExchange:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-28, -62),
-                        new Vector2(72, 78)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-28, -62),
-                        new Vector2(72, 78)
-                    ),
+            default:
+                DrawFixtureContour(
+                    FixtureBounds(preview.Kind, origin),
                     line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.FestivalFeastTable:
-            case TargetPreviewKind.FestivalLanternLaunch:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-38, -56),
-                        new Vector2(92, 72)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-38, -56),
-                        new Vector2(92, 72)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.FestivalGiftExchange:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-23, -54),
-                        new Vector2(62, 70)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-23, -54),
-                        new Vector2(62, 70)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                break;
-            case TargetPreviewKind.FestivalRitual:
-            case TargetPreviewKind.FestivalTideAltar:
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-31, -62),
-                        new Vector2(78, 78)
-                    ),
-                    fill
-                );
-                DrawRect(
-                    new Rect2(
-                        origin + new Vector2(-31, -62),
-                        new Vector2(78, 78)
-                    ),
-                    line,
-                    false,
-                    1.8f
-                );
-                DrawArc(
-                    origin + new Vector2(8, -23),
-                    39,
-                    0,
-                    Mathf.Tau,
-                    32,
-                    new Color(line, 0.34f),
-                    1.1f
+                    fill,
+                    pulse
                 );
                 break;
         }
     }
 
+    private void DrawTreeContour(
+        Vector2 origin,
+        float canopyRadius,
+        float height,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        var basePoint = origin + new Vector2(8, 15);
+        var canopy = basePoint - new Vector2(0, height - canopyRadius - 5);
+        DrawColoredPolygon(
+            [
+                basePoint + new Vector2(-5, 0),
+                basePoint + new Vector2(-3, -height * 0.42f),
+                basePoint + new Vector2(3, -height * 0.42f),
+                basePoint + new Vector2(5, 0)
+            ],
+            fill
+        );
+        DrawPolyline(
+            [
+                basePoint + new Vector2(-5, 0),
+                basePoint + new Vector2(-3, -height * 0.42f),
+                basePoint + new Vector2(3, -height * 0.42f),
+                basePoint + new Vector2(5, 0)
+            ],
+            line,
+            1.4f
+        );
+        DrawArc(canopy, canopyRadius + pulse, 0, Mathf.Tau, 30, line, 1.6f);
+        DrawArc(
+            canopy + new Vector2(-canopyRadius * 0.42f, 5),
+            canopyRadius * 0.62f,
+            0.4f,
+            5.5f,
+            18,
+            new Color(line, 0.72f),
+            1.2f
+        );
+        DrawArc(
+            canopy + new Vector2(canopyRadius * 0.42f, 4),
+            canopyRadius * 0.58f,
+            3.8f,
+            8.8f,
+            18,
+            new Color(line, 0.72f),
+            1.2f
+        );
+    }
+
+    private void DrawCrystalContour(
+        Vector2 baseline,
+        float width,
+        float height,
+        Color line,
+        Color fill
+    )
+    {
+        var half = width / 2;
+        var left = baseline + new Vector2(-half, 0);
+        var right = baseline + new Vector2(half, 0);
+        var peak = baseline + new Vector2(0, -height);
+        var points = new[]
+        {
+            left,
+            baseline + new Vector2(-half * 0.66f, -height * 0.52f),
+            peak,
+            baseline + new Vector2(half * 0.58f, -height * 0.38f),
+            right,
+            left
+        };
+        DrawColoredPolygon(points[..^1], fill);
+        DrawPolyline(points, line, 1.7f);
+        DrawPolyline(
+            [
+                baseline + new Vector2(-half * 0.18f, -2),
+                peak,
+                baseline + new Vector2(half * 0.12f, -height * 0.28f)
+            ],
+            new Color(line, 0.74f),
+            1.1f
+        );
+        DrawPolyline(
+            [
+                baseline + new Vector2(-half * 0.55f, -height * 0.08f),
+                baseline + new Vector2(-half * 0.75f, -height * 0.45f),
+                baseline + new Vector2(-half * 0.18f, -height * 0.66f)
+            ],
+            new Color(line, 0.66f),
+            1.1f
+        );
+    }
+
+    private void DrawSealContour(
+        Vector2 center,
+        float radius,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        var points = Enumerable.Range(0, 7)
+            .Select(index =>
+            {
+                var angle = -Mathf.Pi / 2 + index * Mathf.Tau / 6;
+                return center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) *
+                    (radius + (index % 2 == 0 ? pulse : 0));
+            })
+            .ToArray();
+        DrawColoredPolygon(points[..^1], fill);
+        DrawPolyline(points, line, 1.7f);
+        DrawArc(center, radius * 0.45f + pulse, 0, Mathf.Tau, 18, new Color(line, 0.7f), 1.1f);
+        DrawCircle(center, 2.1f, line);
+    }
+
+    private void DrawPortalContour(
+        Vector2 origin,
+        float width,
+        float height,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        var baseline = origin + new Vector2(8, 15);
+        var radius = width / 2;
+        var archCenter = baseline - new Vector2(0, height - radius);
+        var left = baseline - new Vector2(radius, 0);
+        var right = baseline + new Vector2(radius, 0);
+        DrawColoredPolygon(
+            [
+                left,
+                archCenter - new Vector2(radius, 0),
+                archCenter - new Vector2(0, radius),
+                archCenter + new Vector2(radius, 0),
+                right
+            ],
+            fill
+        );
+        DrawLine(left, archCenter - new Vector2(radius, 0), line, 1.8f);
+        DrawArc(
+            archCenter,
+            radius + pulse * 0.25f,
+            Mathf.Pi,
+            Mathf.Tau,
+            24,
+            line,
+            1.8f
+        );
+        DrawLine(archCenter + new Vector2(radius, 0), right, line, 1.8f);
+        DrawLine(left, right, new Color(line, 0.7f), 1.2f);
+        DrawArc(
+            archCenter,
+            Math.Max(3, radius - 5),
+            Mathf.Pi,
+            Mathf.Tau,
+            20,
+            new Color(line, 0.48f),
+            1
+        );
+    }
+
+    private void DrawFigureContour(
+        Vector2 baseline,
+        float width,
+        float height,
+        Color line,
+        Color fill
+    )
+    {
+        var headRadius = Math.Clamp(width * 0.22f, 4, 9);
+        var head = baseline - new Vector2(0, height - headRadius);
+        var shoulderY = head.Y + headRadius + 4;
+        DrawCircle(head, headRadius, fill);
+        DrawArc(head, headRadius, 0, Mathf.Tau, 18, line, 1.5f);
+        var points = new[]
+        {
+            baseline + new Vector2(-width * 0.34f, 0),
+            new Vector2(baseline.X - width * 0.48f, shoulderY + 5),
+            new Vector2(baseline.X - width * 0.26f, shoulderY),
+            new Vector2(baseline.X + width * 0.26f, shoulderY),
+            new Vector2(baseline.X + width * 0.48f, shoulderY + 5),
+            baseline + new Vector2(width * 0.34f, 0)
+        };
+        DrawColoredPolygon(points, fill);
+        DrawPolyline(points, line, 1.5f);
+        DrawLine(points[0], points[^1], new Color(line, 0.72f), 1.1f);
+    }
+
+    private void DrawCreatureContour(
+        Vector2 baseline,
+        float width,
+        float height,
+        Color line,
+        Color fill
+    )
+    {
+        var body = EllipsePoints(
+            baseline - new Vector2(0, height * 0.42f),
+            new Vector2(width * 0.5f, height * 0.36f),
+            22
+        );
+        DrawColoredPolygon(body[..^1], fill);
+        DrawPolyline(body, line, 1.5f);
+        DrawCircle(
+            baseline + new Vector2(width * 0.34f, -height * 0.66f),
+            Math.Max(4, width * 0.18f),
+            fill
+        );
+        DrawArc(
+            baseline + new Vector2(width * 0.34f, -height * 0.66f),
+            Math.Max(4, width * 0.18f),
+            0,
+            Mathf.Tau,
+            16,
+            line,
+            1.4f
+        );
+        DrawLine(
+            baseline + new Vector2(-width * 0.28f, -2),
+            baseline + new Vector2(-width * 0.28f, 2),
+            line,
+            1.3f
+        );
+        DrawLine(
+            baseline + new Vector2(width * 0.2f, -2),
+            baseline + new Vector2(width * 0.2f, 2),
+            line,
+            1.3f
+        );
+    }
+
+    private void DrawPlantContour(
+        Vector2 baseline,
+        float width,
+        float height,
+        Color line,
+        Color fill
+    )
+    {
+        DrawLine(baseline, baseline - new Vector2(0, height), line, 1.4f);
+        foreach (var direction in new[] { -1f, 1f })
+        {
+            var leafCenter = baseline - new Vector2(
+                direction * width * 0.24f,
+                height * 0.54f
+            );
+            var leaf = new[]
+            {
+                leafCenter,
+                leafCenter + new Vector2(direction * width * 0.5f, -height * 0.18f),
+                leafCenter + new Vector2(direction * width * 0.38f, height * 0.2f),
+                leafCenter
+            };
+            DrawColoredPolygon(leaf[..^1], fill);
+            DrawPolyline(leaf, line, 1.25f);
+        }
+        DrawArc(
+            baseline - new Vector2(0, height),
+            width * 0.25f,
+            0,
+            Mathf.Tau,
+            16,
+            line,
+            1.25f
+        );
+    }
+
+    private void DrawRippleContour(
+        Vector2 center,
+        float radius,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        DrawCircle(center, radius + pulse, fill);
+        DrawArc(center, radius * 0.55f + pulse, 0.1f, 3.05f, 18, line, 1.4f);
+        DrawArc(center, radius + pulse, 3.3f, 6.15f, 22, line, 1.4f);
+        DrawArc(
+            center + new Vector2(0, 2),
+            radius * 1.35f + pulse,
+            0.2f,
+            2.9f,
+            22,
+            new Color(line, 0.48f),
+            1
+        );
+    }
+
+    private void DrawGroundContour(
+        Vector2 origin,
+        Color line,
+        Color fill,
+        Vector2? size = null
+    )
+    {
+        var dimensions = size ?? new Vector2(16, 16);
+        var points = new[]
+        {
+            origin + new Vector2(dimensions.X * 0.18f, 1),
+            origin + new Vector2(dimensions.X - 2, dimensions.Y * 0.18f),
+            origin + new Vector2(dimensions.X - 1, dimensions.Y * 0.72f),
+            origin + new Vector2(dimensions.X * 0.72f, dimensions.Y - 1),
+            origin + new Vector2(dimensions.X * 0.18f, dimensions.Y - 2),
+            origin + new Vector2(1, dimensions.Y * 0.66f),
+            origin + new Vector2(dimensions.X * 0.18f, 1)
+        };
+        DrawColoredPolygon(points[..^1], fill);
+        DrawPolyline(points, line, 1.35f);
+    }
+
+    private void DrawFenceContour(Vector2 origin, Color line, Color fill)
+    {
+        var left = origin + new Vector2(2, -15);
+        var right = origin + new Vector2(14, -15);
+        DrawColoredPolygon(
+            [
+                left,
+                left + new Vector2(4, -4),
+                left + new Vector2(4, 31),
+                left,
+                right,
+                right + new Vector2(-4, -4),
+                right + new Vector2(-4, 31),
+                right
+            ],
+            fill
+        );
+        DrawPolyline([left, left + new Vector2(4, -4), left + new Vector2(4, 31)], line, 1.4f);
+        DrawPolyline([right, right + new Vector2(-4, -4), right + new Vector2(-4, 31)], line, 1.4f);
+        DrawLine(origin + new Vector2(5, -5), origin + new Vector2(11, -5), line, 1.3f);
+        DrawLine(origin + new Vector2(5, 7), origin + new Vector2(11, 7), line, 1.3f);
+    }
+
+    private void DrawTorchContour(
+        Vector2 origin,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        var flame = origin + new Vector2(8, -15);
+        DrawColoredPolygon(
+            [
+                flame + new Vector2(0, -8 - pulse),
+                flame + new Vector2(5, 0),
+                flame + new Vector2(0, 6),
+                flame + new Vector2(-5, 0)
+            ],
+            fill
+        );
+        DrawPolyline(
+            [
+                flame + new Vector2(0, -8 - pulse),
+                flame + new Vector2(5, 0),
+                flame + new Vector2(0, 6),
+                flame + new Vector2(-5, 0),
+                flame + new Vector2(0, -8 - pulse)
+            ],
+            line,
+            1.4f
+        );
+        DrawLine(flame + new Vector2(0, 6), origin + new Vector2(8, 15), line, 1.5f);
+    }
+
+    private void DrawFixtureContour(
+        Rect2 bounds,
+        Color line,
+        Color fill,
+        float pulse
+    )
+    {
+        var cut = Math.Clamp(Math.Min(bounds.Size.X, bounds.Size.Y) * 0.12f, 3, 7);
+        var points = new[]
+        {
+            bounds.Position + new Vector2(cut, 0),
+            new Vector2(bounds.End.X - cut, bounds.Position.Y),
+            new Vector2(bounds.End.X, bounds.Position.Y + cut),
+            bounds.End - new Vector2(0, cut),
+            bounds.End - new Vector2(cut, 0),
+            new Vector2(bounds.Position.X + cut, bounds.End.Y),
+            new Vector2(bounds.Position.X, bounds.End.Y - cut),
+            bounds.Position + new Vector2(0, cut),
+            bounds.Position + new Vector2(cut, 0)
+        };
+        DrawColoredPolygon(points[..^1], fill);
+        DrawPolyline(points, line, 1.55f);
+        var topCenter = new Vector2(bounds.GetCenter().X, bounds.Position.Y);
+        DrawCircle(topCenter, 1.7f + pulse * 0.25f, line);
+        DrawLine(
+            topCenter + new Vector2(-Math.Min(8, bounds.Size.X * 0.18f), 3),
+            topCenter + new Vector2(Math.Min(8, bounds.Size.X * 0.18f), 3),
+            new Color(line, 0.58f),
+            1
+        );
+    }
+
+    private static Rect2 FixtureBounds(TargetPreviewKind kind, Vector2 origin)
+    {
+        var relative = kind switch
+        {
+            TargetPreviewKind.Station => new Rect2(-25, -54, 66, 70),
+            TargetPreviewKind.CommissionBoard => new Rect2(-20, -42, 56, 58),
+            TargetPreviewKind.Mailbox => new Rect2(-22, -54, 60, 70),
+            TargetPreviewKind.StorageChest => new Rect2(-13, -31, 42, 47),
+            TargetPreviewKind.Beehive => new Rect2(-18, -39, 52, 55),
+            TargetPreviewKind.StarlightPedestal => new Rect2(-31, -63, 78, 78),
+            TargetPreviewKind.Landmark => new Rect2(-18, -42, 52, 58),
+            TargetPreviewKind.RuinsWeaponRack => new Rect2(-20, -38, 56, 54),
+            TargetPreviewKind.FestivalExhibit => new Rect2(-42, -52, 100, 68),
+            TargetPreviewKind.FestivalBidBoard => new Rect2(-22, -54, 60, 70),
+            TargetPreviewKind.FestivalShop => new Rect2(-30, -52, 76, 68),
+            TargetPreviewKind.FestivalSeedRack => new Rect2(-24, -47, 64, 63),
+            TargetPreviewKind.FestivalSeedExchange => new Rect2(-28, -48, 72, 64),
+            TargetPreviewKind.FestivalGiftExchange => new Rect2(-30, -50, 76, 64),
+            TargetPreviewKind.FestivalRitual => new Rect2(-30, -52, 76, 68),
+            TargetPreviewKind.FestivalLanternLaunch => new Rect2(-28, -54, 72, 70),
+            TargetPreviewKind.FestivalFishBasin => new Rect2(-30, -48, 76, 64),
+            TargetPreviewKind.FestivalTideAltar => new Rect2(-28, -54, 72, 70),
+            TargetPreviewKind.AnimalFeedTrough => new Rect2(-28, -34, 72, 50),
+            TargetPreviewKind.AnimalNest => new Rect2(-20, -34, 56, 50),
+            TargetPreviewKind.AnimalProductStation => new Rect2(-24, -47, 48, 48),
+            TargetPreviewKind.DewhornMilkingStation => new Rect2(-24, -47, 48, 48),
+            TargetPreviewKind.AnimalAutomationStation => new Rect2(-16, -36, 48, 52),
+            _ => new Rect2(-18, -38, 52, 54)
+        };
+        return new Rect2(origin + relative.Position, relative.Size);
+    }
+
+    private static Vector2[] EllipsePoints(
+        Vector2 center,
+        Vector2 radii,
+        int count
+    ) => Enumerable.Range(0, count + 1)
+        .Select(index =>
+        {
+            var angle = index * Mathf.Tau / count;
+            return center + new Vector2(
+                Mathf.Cos(angle) * radii.X,
+                Mathf.Sin(angle) * radii.Y
+            );
+        })
+        .ToArray();
     private void DrawActionLabel(
         TargetPreview preview,
         Vector2 origin,
@@ -2922,16 +2522,17 @@ internal sealed partial class CottageEntranceBeacon : Node2D
             return;
         }
 
-        DrawRect(new Rect2(-7, -47, 14, 10), new Color("#07132be6"), true);
-        DrawRect(new Rect2(-7, -47, 14, 10), gold, false, 1);
-        DrawString(
-            GD.Load<Font>("res://assets/fonts/NotoSansCJKsc-Regular.otf"),
-            new Vector2(-3.5f, -39),
-            "E",
-            HorizontalAlignment.Left,
-            -1,
-            8,
-            ThemeFactory.Ink
+        DrawLine(
+            new Vector2(-4, -42),
+            new Vector2(4, -42),
+            gold,
+            1.4f
+        );
+        DrawLine(
+            new Vector2(0, -46),
+            new Vector2(0, -38),
+            gold,
+            1.4f
         );
     }
 }

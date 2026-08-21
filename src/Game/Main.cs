@@ -102,6 +102,10 @@ public sealed partial class Main : Node
         _locale.SetLocale(LocaleService.SimplifiedChinese);
 
         _theme = ThemeFactory.CreateTheme();
+        foreach (var itemId in HotbarSlotContent.MissingStableItemIconIds())
+        {
+            GD.PushError($"Stable item '{itemId}' has no runtime icon.");
+        }
         _saveService = new SaveService(
             ProjectSettings.GlobalizePath("user://saves/slot_1.json")
         );
