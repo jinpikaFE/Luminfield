@@ -21,6 +21,7 @@ public sealed partial class CompendiumOverlay : FullScreenUi
     private readonly Label _rewardStatus;
     private readonly Label _status;
     private readonly Button _claim;
+    private readonly Button _donateFish;
     private readonly Button _close;
     private readonly Dictionary<string, Button> _categoryButtons =
         new(StringComparer.Ordinal);
@@ -187,6 +188,10 @@ public sealed partial class CompendiumOverlay : FullScreenUi
         _claim.CustomMinimumSize = new Vector2(224, 24);
         _claim.Pressed += ClaimContextualAction;
         actions.AddChild(_claim);
+        _donateFish = ThemeFactory.Button("");
+        _donateFish.CustomMinimumSize = new Vector2(126, 24);
+        _donateFish.Pressed += () => FishingDonationRequested?.Invoke();
+        actions.AddChild(_donateFish);
         _close = ThemeFactory.Button("");
         _close.CustomMinimumSize = new Vector2(150, 24);
         _close.Pressed += () => CloseRequested?.Invoke();
@@ -213,6 +218,7 @@ public sealed partial class CompendiumOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? RewardClaimed;
+    public event Action? FishingDonationRequested;
 
     private IReadOnlyList<CompendiumEntryDefinition> CurrentEntries =>
         CompendiumCatalog.EntriesForCategory(_selectedCategoryId);
@@ -312,6 +318,9 @@ public sealed partial class CompendiumOverlay : FullScreenUi
             discovered,
             entries.Count
         );
+        _donateFish.Text = _locale.Tr("fishing.donation.title");
+        _donateFish.Visible =
+            _selectedCategoryId == CollectionCategoryIds.Fish;
         _close.Text = _locale.Tr("menu.back");
 
         foreach (var categoryId in CompendiumCatalog.CategoryIds)

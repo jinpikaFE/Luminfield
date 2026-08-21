@@ -41,6 +41,7 @@ public enum PlaytestScenarioId
     LivestockAutomationConstruction,
     Crops,
     GleamriseCrops,
+    GleamriseSeason,
     RainveilCrops,
     StarharvestCrops,
     StarharvestMarketGate,
@@ -105,6 +106,7 @@ public enum PlaytestScenarioId
     ForageCodexRewardClaimedEnglish,
     Fishing,
     FishingCollection,
+    FishingDonation,
     FishCodexPartial,
     FishCodexCompleteEnglish,
     CrystalGrottoEntry,
@@ -387,6 +389,10 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-gleamrise-crops"
         ),
         new(
+            PlaytestScenarioId.GleamriseSeason,
+            "--playtest-gleamrise-season"
+        ),
+        new(
             PlaytestScenarioId.RainveilCrops,
             "--playtest-rainveil-crops"
         ),
@@ -623,6 +629,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.FishingCollection,
             "--playtest-fishing-collection"
+        ),
+        new(
+            PlaytestScenarioId.FishingDonation,
+            "--playtest-fishing-donation"
         ),
         new(
             PlaytestScenarioId.FishCodexPartial,

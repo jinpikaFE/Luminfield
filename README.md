@@ -267,6 +267,13 @@ Meadow Harmony reads a
 completed festival result without consuming festival currency; its other nodes
 accept distinct flower and homestead-product families. Restoration permanently
 extends Glowcomb Hive pollination range from four tiles to six.
+The merged snapshot also adds a data-driven fourteen-day Gleamrise Goals panel.
+Stable counters follow real seed purchases, planting, watering, harvesting,
+fertilizing, processor work, orchard/hive output, animal care, and participation
+in the existing day-4 Planting Festival. Claims are atomic, reset for each new
+Gleamrise year, and persist claimed IDs without permanently punishing missed or
+unfinished goals. This supplements the existing Phase-F systems; it does not
+restore the older, superseded day-7 festival or single-chicken implementation.
 The optional day-11 market has its own scene, all sixteen villagers, a three-item
 showcase and auction, persistent Market Scrip, and a four-offer festival stall.
 The optional Gleamrise day-4 festival adds its own sixteen-villager scene, a
@@ -291,6 +298,11 @@ exactly three different Moonwater fish only on final launch, records the annual
 score and award, and grants persistent Glowmarks; previews, wrong tools,
 missing fish, repeat entries, and capacity failures change nothing. Main
 festivals are now 4/4.
+The Moonlit Archive now also exposes a 24-entry fish donation ledger from the
+Fish Codex. With the Hand selected, a discovered fish currently held in the
+backpack can be donated exactly once; successful donation removes one fish and
+persists its stable ID. Undiscovered, missing, repeated, wrong-tool, and
+outside-Archive attempts leave inventory and donation state unchanged.
 To unlock Phase F's stable Phase-E mining dependencies, the twenty-eighth slice
 adds the fixed five-room `crystal_grotto_survey`, four stable minerals, a
 two-night Bronze-Star shovel upgrade, the 4/4 `codex_minerals` category, and the
@@ -576,6 +588,11 @@ Use `--playtest-orchard-hives` to inspect a mature Moonplum tree, ready
 Glowcomb Hive, orchard hotbar icons, object outlines, and deterministic
 Starhoney collection state.
 
+Use `--playtest-gleamrise-season` to open the pause-menu Gleamrise Goals panel
+with prepared progress across the fourteen-day route. Use
+`--playtest-fishing-donation` to open the Moonlit Archive ledger with donated,
+ready, missing-held-fish, and undiscovered states visible together.
+
 Use `--playtest-homestead-workshop-ready`,
 `--playtest-homestead-workshop-in-progress`, and
 `--playtest-homestead-workshop-completed` to inspect the two-project panel,
@@ -756,6 +773,15 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-21 — Merged the paused Phase-F snapshot with the remote mainline.
+  Added the fourteen-day Gleamrise Goals panel and the Moonlit Archive fish
+  donation ledger, including additive schema-v1 persistence, atomic claims and
+  donations, bilingual UI, focused tests, and deterministic playtest entries.
+  Older Starfeather/sowing-festival art is retained only as historical source
+  material; runtime animal and festival behavior continues to use the current
+  three-species `AnimalSystem` and sixteen-villager day-4 planting challenge.
+  The Star Gate, final Phase-F acceptance, full Phase-D fishing, and full
+  Phase-E procedural mine/combat remain unfinished.
 - 2026-08-21 — Archived the current paused Phase-F snapshot after the twenty-ninth
   slice and the Longnight six-region world aspect. The fixed three-room Starfall
   Ruins trial adds three enemy families, six instances, the Moonsteel Shortblade,

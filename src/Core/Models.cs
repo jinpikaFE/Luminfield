@@ -192,6 +192,7 @@ public sealed class FishingSave
 {
     public List<string> CaughtFishIds { get; set; } = [];
     public List<string> ClaimedRewardIds { get; set; } = [];
+    public List<string> DonatedFishIds { get; set; } = [];
 }
 
 public sealed class WeatherSave
@@ -416,6 +417,26 @@ public sealed class FarmingSkillSave
     public string SpecializationId { get; set; } = string.Empty;
 }
 
+public sealed class GleamriseGoalEntrySave
+{
+    public string GoalId { get; set; } = string.Empty;
+    public int ClaimedDay { get; set; }
+}
+
+public sealed class GleamriseGoalCounterSave
+{
+    public string CounterId { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public sealed class GleamriseSeasonSave
+{
+    public int Year { get; set; } = 1;
+    public string SeasonId { get; set; } = CalendarSystem.GleamriseSeasonId;
+    public List<GleamriseGoalEntrySave> Goals { get; set; } = [];
+    public List<GleamriseGoalCounterSave> Counters { get; set; } = [];
+}
+
 public sealed class FestivalYearResultSave
 {
     public string FestivalId { get; set; } = string.Empty;
@@ -517,6 +538,7 @@ public sealed class GameSaveV1
     public CharacterEventSave CharacterEvents { get; set; } = new();
     public ConstructionSave Construction { get; set; } = new();
     public FarmingSkillSave FarmingSkill { get; set; } = new();
+    public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
     public FestivalSave Festival { get; set; } = new();
     public CollectionSave Collection { get; set; } = new();
 }

@@ -158,6 +158,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.GleamriseCrops
         ),
         (
+            "--playtest-gleamrise-season",
+            PlaytestScenarioId.GleamriseSeason
+        ),
+        (
             "--playtest-rainveil-crops",
             PlaytestScenarioId.RainveilCrops
         ),
@@ -391,6 +395,10 @@ public sealed class PlaytestScenarioRegistryTests
         (
             "--playtest-fishing-collection",
             PlaytestScenarioId.FishingCollection
+        ),
+        (
+            "--playtest-fishing-donation",
+            PlaytestScenarioId.FishingDonation
         ),
         (
             "--playtest-fish-codex-partial",

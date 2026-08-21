@@ -390,6 +390,12 @@ public sealed class SaveService
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
+        save.Fishing.DonatedFishIds ??= [];
+        save.Fishing.DonatedFishIds = save.Fishing.DonatedFishIds
+            .Where(DataCatalog.Fishes.ContainsKey)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
         save.Shipping ??= new ShippingSave();
         save.Shipping.Pending = NormalizeShippingEntries(
             save.Shipping.Pending,
@@ -610,6 +616,10 @@ public sealed class SaveService
         }
         save.FarmingSkill = FarmingSkillSystem.NormalizeSave(
             save.FarmingSkill
+        );
+        save.GleamriseSeason = GleamriseSeasonGoalSystem.NormalizeSave(
+            save.GleamriseSeason,
+            save.Day
         );
     }
 

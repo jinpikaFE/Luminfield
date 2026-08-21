@@ -5,6 +5,20 @@ public sealed record FishCollectionEntry(
     bool Caught
 );
 
+public sealed record FishingDonationEntry(
+    FishDefinition Fish,
+    bool Caught,
+    bool Donated,
+    int OwnedCount
+);
+
+public sealed record FishingDonationResult(
+    bool Succeeded,
+    string MessageKey,
+    string FishItemId = "",
+    int DonatedCount = 0
+);
+
 public sealed record FishingCollectionRewardDefinition(
     string Id,
     int RequiredCaughtCount,
@@ -89,10 +103,14 @@ public sealed class FishingSystem
         new(StringComparer.Ordinal);
     private readonly HashSet<string> _claimedRewardIds =
         new(StringComparer.Ordinal);
+    private readonly HashSet<string> _donatedFishIds =
+        new(StringComparer.Ordinal);
 
     public IReadOnlyCollection<string> CaughtFishIds => _caughtFishIds;
     public IReadOnlyCollection<string> ClaimedRewardIds => _claimedRewardIds;
+    public IReadOnlyCollection<string> DonatedFishIds => _donatedFishIds;
     public int CaughtCount => _caughtFishIds.Count;
+    public int DonatedCount => _donatedFishIds.Count;
     public int TotalFishCount => DataCatalog.Fishes.Count;
 
     public event Action? Changed;
@@ -101,6 +119,7 @@ public sealed class FishingSystem
     {
         _caughtFishIds.Clear();
         _claimedRewardIds.Clear();
+        _donatedFishIds.Clear();
         Changed?.Invoke();
     }
 
@@ -108,6 +127,7 @@ public sealed class FishingSystem
     {
         _caughtFishIds.Clear();
         _claimedRewardIds.Clear();
+        _donatedFishIds.Clear();
 
         foreach (var fishId in save?.CaughtFishIds ?? [])
         {
@@ -122,6 +142,14 @@ public sealed class FishingSystem
             if (IsCollectionRewardId(rewardId))
             {
                 _claimedRewardIds.Add(rewardId);
+            }
+        }
+
+        foreach (var fishId in save?.DonatedFishIds ?? [])
+        {
+            if (DataCatalog.Fishes.ContainsKey(fishId))
+            {
+                _donatedFishIds.Add(fishId);
             }
         }
 
@@ -163,6 +191,7 @@ public sealed class FishingSystem
     }
 
     public bool IsCaught(string fishId) => _caughtFishIds.Contains(fishId);
+    public bool IsDonated(string fishId) => _donatedFishIds.Contains(fishId);
 
     public static bool IsCollectionRewardId(string rewardId) =>
         CollectionRewardDefinitions.Any(definition =>
@@ -248,6 +277,66 @@ public sealed class FishingSystem
             ))
             .ToArray();
 
+    public IReadOnlyList<FishingDonationEntry> DonationEntries(
+        Inventory inventory
+    ) => DataCatalog.FishItemIds
+        .Select(fishId => DataCatalog.Fishes[fishId])
+        .Select(fish => new FishingDonationEntry(
+            fish,
+            _caughtFishIds.Contains(fish.Id),
+            _donatedFishIds.Contains(fish.Id),
+            inventory.Count(fish.ItemId)
+        ))
+        .ToArray();
+
+    public FishingDonationResult DonateFish(
+        string fishId,
+        Inventory inventory
+    )
+    {
+        if (!DataCatalog.Fishes.TryGetValue(fishId, out var fish))
+        {
+            return new FishingDonationResult(
+                false,
+                "fishing.donation.unknown"
+            );
+        }
+
+        if (_donatedFishIds.Contains(fish.Id))
+        {
+            return new FishingDonationResult(
+                false,
+                "fishing.donation.already_donated"
+            );
+        }
+
+        if (!_caughtFishIds.Contains(fish.Id))
+        {
+            return new FishingDonationResult(
+                false,
+                "fishing.donation.not_discovered"
+            );
+        }
+
+        if (inventory.Count(fish.ItemId) <= 0 ||
+            !inventory.Remove(fish.ItemId, 1))
+        {
+            return new FishingDonationResult(
+                false,
+                "fishing.donation.missing_fish"
+            );
+        }
+
+        _donatedFishIds.Add(fish.Id);
+        Changed?.Invoke();
+        return new FishingDonationResult(
+            true,
+            "fishing.donation.donated",
+            fish.ItemId,
+            1
+        );
+    }
+
     public FishDefinition? PreviewCatch(
         GridPosition target,
         int day,
@@ -290,6 +379,9 @@ public sealed class FishingSystem
             .Order(StringComparer.Ordinal)
             .ToList(),
         ClaimedRewardIds = _claimedRewardIds
+            .Order(StringComparer.Ordinal)
+            .ToList(),
+        DonatedFishIds = _donatedFishIds
             .Order(StringComparer.Ordinal)
             .ToList()
     };
