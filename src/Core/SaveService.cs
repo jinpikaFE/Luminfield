@@ -460,6 +460,12 @@ public sealed class SaveService
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
+        save.Fishing.DonatedFishIds ??= [];
+        save.Fishing.DonatedFishIds = save.Fishing.DonatedFishIds
+            .Where(fishId => DataCatalog.Fishes.ContainsKey(fishId))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static List<ShippingEntrySave> NormalizeShippingEntries(

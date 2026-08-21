@@ -2851,6 +2851,125 @@ public sealed class QuestAndSessionTests
     }
 
     [Fact]
+    public void FishingDonationsUseArchiveHandInventoryAndSaveAtomically()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        Assert.True(session.Inventory.Add(DataCatalog.PondglowMinnowId, 1));
+
+        var outside = session.DonateFishToArchive(DataCatalog.PondglowMinnowId);
+        Assert.False(outside.Succeeded);
+        Assert.Equal("notice.nothing_to_interact", outside.MessageKey);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.PondglowMinnowId));
+
+        session.SetPlayerLocation(
+            20 * 16 + 8,
+            17 * 16 + 8,
+            PlayerLocationIds.MoonlitArchive
+        );
+        session.Inventory.Select(5);
+        var wrongTool = session.DonateFishToArchive(
+            DataCatalog.PondglowMinnowId
+        );
+        Assert.False(wrongTool.Succeeded);
+        Assert.Equal("notice.needs_hand", wrongTool.MessageKey);
+        Assert.Empty(session.Fishing.DonatedFishIds);
+
+        session.Inventory.Select(0);
+        var undiscovered = session.DonateFishToArchive(
+            DataCatalog.PondglowMinnowId
+        );
+        Assert.False(undiscovered.Succeeded);
+        Assert.Equal("fishing.donation.not_discovered", undiscovered.MessageKey);
+        Assert.Equal(1, session.Inventory.Count(DataCatalog.PondglowMinnowId));
+
+        var save = session.Capture();
+        save.Fishing.CaughtFishIds = [DataCatalog.PondglowMinnowId];
+        save.Inventory =
+        [
+            ..save.Inventory.Where(slot =>
+                slot.ItemId != DataCatalog.PondglowMinnowId
+            )
+        ];
+        var missing = new GameSession();
+        missing.Restore(save);
+        var missingResult = missing.DonateFishToArchive(
+            DataCatalog.PondglowMinnowId
+        );
+        Assert.False(missingResult.Succeeded);
+        Assert.Equal("fishing.donation.missing_fish", missingResult.MessageKey);
+        Assert.Empty(missing.Fishing.DonatedFishIds);
+
+        Assert.True(missing.Inventory.Add(DataCatalog.PondglowMinnowId, 2));
+        var donated = missing.DonateFishToArchive(
+            DataCatalog.PondglowMinnowId
+        );
+        Assert.True(donated.Succeeded);
+        Assert.Equal("fishing.donation.donated", donated.MessageKey);
+        Assert.Equal(DataCatalog.PondglowMinnowId, donated.FishItemId);
+        Assert.Equal(1, donated.DonatedCount);
+        Assert.Equal(1, missing.Inventory.Count(DataCatalog.PondglowMinnowId));
+        Assert.Contains(
+            DataCatalog.PondglowMinnowId,
+            missing.Fishing.DonatedFishIds
+        );
+
+        var duplicate = missing.DonateFishToArchive(
+            DataCatalog.PondglowMinnowId
+        );
+        Assert.False(duplicate.Succeeded);
+        Assert.Equal(
+            "fishing.donation.already_donated",
+            duplicate.MessageKey
+        );
+        Assert.Equal(1, missing.Inventory.Count(DataCatalog.PondglowMinnowId));
+
+        var restored = new GameSession();
+        restored.Restore(missing.Capture());
+        Assert.True(restored.Fishing.IsDonated(DataCatalog.PondglowMinnowId));
+    }
+
+    [Fact]
+    public void FishingDonationEntriesExposeCaughtInventoryAndDonationState()
+    {
+        var session = new GameSession();
+        session.NewGame();
+        var save = session.Capture();
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.SelectedSlot = 0;
+        save.Fishing.CaughtFishIds =
+        [
+            DataCatalog.PondglowMinnowId,
+            DataCatalog.CrystalfinDaceId
+        ];
+        save.Fishing.DonatedFishIds = [DataCatalog.PondglowMinnowId];
+        session.Restore(save);
+        Assert.True(session.Inventory.Add(DataCatalog.CrystalfinDaceId, 3));
+
+        var entries = session.FishingDonationEntries();
+        var donated = Assert.Single(entries, entry =>
+            entry.Fish.Id == DataCatalog.PondglowMinnowId
+        );
+        Assert.True(donated.Caught);
+        Assert.True(donated.Donated);
+        Assert.Equal(0, donated.OwnedCount);
+
+        var ready = Assert.Single(entries, entry =>
+            entry.Fish.Id == DataCatalog.CrystalfinDaceId
+        );
+        Assert.True(ready.Caught);
+        Assert.False(ready.Donated);
+        Assert.Equal(3, ready.OwnedCount);
+
+        var unseen = Assert.Single(entries, entry =>
+            entry.Fish.Id == DataCatalog.MoonwaterMinnowId
+        );
+        Assert.False(unseen.Caught);
+        Assert.False(unseen.Donated);
+        Assert.Equal(0, unseen.OwnedCount);
+    }
+
+    [Fact]
     public void FishingCatalogDefinesTwentyFourConditionedFish()
     {
         Assert.Equal(24, DataCatalog.Fishes.Count);
@@ -5301,7 +5420,7 @@ public sealed class VillageSystemTests
             VillageCatalog.MoonlitArchiveExitCell
         );
         Assert.True(desk.IsAvailable);
-        Assert.Equal("target.action.read_archive", desk.LabelKey);
+        Assert.Equal("target.action.open_fish_donation", desk.LabelKey);
         Assert.True(exit.IsAvailable);
         Assert.True(session.InspectMoonlitArchiveDesk().Succeeded);
         Assert.True(session.TryExitMoonlitArchive().Succeeded);
@@ -9010,6 +9129,7 @@ public sealed class LocaleTests
                 DataCatalog.Item(DataCatalog.FishingRodId).NameKey,
                 "menu.fishing_collection",
                 "target.action.fish",
+                "target.action.open_fish_donation",
                 "target.need.bucket_or_rod",
                 "target.status.no_fish",
                 "notice.not_fishing_water",
@@ -9033,6 +9153,24 @@ public sealed class LocaleTests
                 "fishing.reward.not_ready",
                 "fishing.reward.already_claimed",
                 "fishing.reward.unknown",
+                "fishing.donation.title",
+                "fishing.donation.summary",
+                "fishing.donation.hint",
+                "fishing.donation.detail",
+                "fishing.donation.hidden_detail",
+                "fishing.donation.unseen",
+                "fishing.donation.available",
+                "fishing.donation.need_item",
+                "fishing.donation.donated_status",
+                "fishing.donation.action.donate",
+                "fishing.donation.status.locked",
+                "fishing.donation.status.missing",
+                "fishing.donation.status.donated",
+                "fishing.donation.donated",
+                "fishing.donation.missing_fish",
+                "fishing.donation.already_donated",
+                "fishing.donation.not_discovered",
+                "fishing.donation.unknown",
                 "fishing.water.homestead_pond",
                 "fishing.water.crystal_stream",
                 "fishing.water.moonwater_wetlands",
@@ -9646,6 +9784,12 @@ public sealed class SaveServiceTests : IDisposable
                     FishingSystem.FirstWatersRewardId,
                     "unknown_reward",
                     FishingSystem.FirstWatersRewardId
+                ],
+                DonatedFishIds =
+                [
+                    DataCatalog.PondglowMinnowId,
+                    "unknown_donation",
+                    DataCatalog.PondglowMinnowId
                 ]
             }
         };
@@ -9663,6 +9807,10 @@ public sealed class SaveServiceTests : IDisposable
             [FishingSystem.FirstWatersRewardId],
             result.Save.Fishing.ClaimedRewardIds
         );
+        Assert.Equal(
+            [DataCatalog.PondglowMinnowId],
+            result.Save.Fishing.DonatedFishIds
+        );
         var restored = new GameSession();
         restored.Restore(result.Save);
         Assert.True(restored.Fishing.IsCaught(DataCatalog.PondglowMinnowId));
@@ -9670,6 +9818,7 @@ public sealed class SaveServiceTests : IDisposable
             FishingSystem.FirstWatersRewardId,
             restored.Fishing.ClaimedRewardIds
         );
+        Assert.True(restored.Fishing.IsDonated(DataCatalog.PondglowMinnowId));
     }
 
     [Fact]

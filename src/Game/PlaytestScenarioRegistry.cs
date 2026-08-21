@@ -60,6 +60,7 @@ public enum PlaytestScenarioId
     Resource,
     Fishing,
     FishingCollection,
+    FishingDonation,
     Target,
     PhaseA,
     PhaseASummary,
@@ -287,6 +288,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.FishingCollection,
             "--playtest-fishing-collection"
+        ),
+        new(
+            PlaytestScenarioId.FishingDonation,
+            "--playtest-fishing-donation"
         ),
         new(PlaytestScenarioId.Target, "--playtest-target"),
         new(PlaytestScenarioId.PhaseA, "--playtest-phase-a"),

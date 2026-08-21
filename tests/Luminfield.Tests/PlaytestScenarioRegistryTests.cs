@@ -191,6 +191,10 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-fishing-collection",
             PlaytestScenarioId.FishingCollection
         ),
+        (
+            "--playtest-fishing-donation",
+            PlaytestScenarioId.FishingDonation
+        ),
         ("--playtest-target", PlaytestScenarioId.Target),
         ("--playtest-phase-a", PlaytestScenarioId.PhaseA),
         (

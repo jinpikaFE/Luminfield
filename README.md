@@ -234,9 +234,12 @@ stores claimed reward IDs in the fishing save, and leaves coins/items untouched
 when the backpack is full. The Moonwater Wetlands monolith now opens the first
 wetland Starlight Pedestal, using three fish-offering nodes for local,
 weather-bound, and seasonal wetland fish while saving both Woodland and
-Moonwater pedestal states. Dedicated 24-fish icons, the full line-control
-minigame, bait, bobbers, rod upgrades, crab pots, museum donation entry,
-Firefly Tide night, and the fishing skill remain later Phase D increments.
+Moonwater pedestal states. The Moonlit Archive desk now opens a fish donation
+ledger for discovered fish; successful donations remove one held fish, persist
+donated fish IDs in the fishing save, and keep missing, repeated, or wrong-tool
+attempts atomic. Dedicated 24-fish icons, the full line-control minigame, bait,
+bobbers, rod upgrades, crab pots, Firefly Tide night, and the fishing skill
+remain later Phase D increments.
 
 ## Tools and backpack
 
@@ -256,6 +259,8 @@ The eight-slot hotbar and the backpack are now separate:
   first eight slots are the active hotbar.
 - The pause menu opens the Fish Collection, which tracks discovered fish,
   current milestone rewards, and unknown-entry shadows.
+- Inside the Moonlit Archive, the star-chart desk opens the fish donation
+  ledger. Only discovered fish currently held in the backpack can be donated.
 
 The target preview identifies the object in front of the player. Mint outlines
 mean `E` can perform the shown action, gold explains which tool is required,
@@ -480,6 +485,10 @@ Use `--playtest-fishing-collection` to open a half-complete Fish Collection
 panel for visual QA of discovered rows, hidden shadows, the progress summary,
 and the pause-menu collection entry.
 
+Use `--playtest-fishing-donation` to open the Moonlit Archive fish donation
+ledger with donated, ready-to-donate, missing-held-fish, and hidden fish states
+visible in the first viewport.
+
 Use `--playtest-moonwater-starlight` to open the first Moonwater Tide
 Starlight panel with prepared partial fish offerings for visual QA.
 
@@ -577,6 +586,11 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-21 08:45:22 CST — Added the Moonlit Archive fish donation entry:
+  the archive desk opens a donation ledger, fish donations persist in the
+  fishing save, and missing fish, undiscovered fish, repeated donations, and
+  wrong-tool attempts leave inventory and donation state unchanged. Added
+  `--playtest-fishing-donation` plus core save/atomicity tests.
 - 2026-08-20 17:05:42 CST — Added the first Moonwater Tide Starlight: the
   existing wetland monolith now uses Starlight preview/action rules, the shared
   pedestal panel can open Woodland or Moonwater definitions, three fish-offering

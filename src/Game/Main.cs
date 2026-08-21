@@ -39,6 +39,7 @@ public sealed partial class Main : Node
     private NightlySummaryOverlay? _nightlySummaryOverlay;
     private BackpackOverlay? _backpackOverlay;
     private FishingCollectionOverlay? _fishingCollectionOverlay;
+    private FishingDonationOverlay? _fishingDonationOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
     private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FadeTransition? _fadeTransition;
@@ -274,6 +275,14 @@ public sealed partial class Main : Node
             return;
         }
 
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _fishingDonationOverlay is not null)
+        {
+            CloseFishingDonation();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (@event.IsActionPressed(InputSetup.Backpack) && !IsInputBlocked)
         {
             OpenBackpack();
@@ -303,6 +312,7 @@ public sealed partial class Main : Node
             _nightlySummaryOverlay is null &&
             _backpackOverlay is null &&
             _fishingCollectionOverlay is null &&
+            _fishingDonationOverlay is null &&
             _farmingSpecializationOverlay is null &&
             _gleamriseSeasonOverlay is null &&
             _fadeTransition is null)
@@ -382,6 +392,7 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay is not null ||
         _backpackOverlay is not null ||
         _fishingCollectionOverlay is not null ||
+        _fishingDonationOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
         _fadeTransition is not null;
@@ -403,6 +414,7 @@ public sealed partial class Main : Node
         _nightlySummaryOverlay is null &&
         _backpackOverlay is null &&
         _fishingCollectionOverlay is null &&
+        _fishingDonationOverlay is null &&
         _farmingSpecializationOverlay is null &&
         _gleamriseSeasonOverlay is null &&
         _fadeTransition is null;
@@ -448,6 +460,8 @@ public sealed partial class Main : Node
         _backpackOverlay = null;
         FreeUi(_fishingCollectionOverlay);
         _fishingCollectionOverlay = null;
+        FreeUi(_fishingDonationOverlay);
+        _fishingDonationOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
         _farmingSpecializationOverlay = null;
         FreeUi(_gleamriseSeasonOverlay);
@@ -584,6 +598,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.Fishing] = StartFishingPlaytest,
                 [PlaytestScenarioId.FishingCollection] =
                     StartFishingCollectionPlaytest,
+                [PlaytestScenarioId.FishingDonation] =
+                    StartFishingDonationPlaytest,
                 [PlaytestScenarioId.Target] = StartTargetPreviewPlaytest,
                 [PlaytestScenarioId.PhaseA] = StartPhaseAPlaytest,
                 [PlaytestScenarioId.PhaseASummary] =
@@ -2655,6 +2671,27 @@ public sealed partial class Main : Node
         Callable.From(OpenFishingCollection).CallDeferred();
     }
 
+    private void StartFishingDonationPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Player.X = 20 * 16 + 8;
+        save.Player.Y = 17 * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        var previewFishIds = DataCatalog.FishItemIds.Take(3).ToArray();
+        save.Fishing.CaughtFishIds = previewFishIds.ToList();
+        save.Fishing.DonatedFishIds = [previewFishIds[0]];
+        _session.Restore(save);
+        _session.Inventory.Add(previewFishIds[1], 1);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        Callable.From(OpenFishingDonation).CallDeferred();
+    }
+
     private void StartTargetPreviewPlaytest()
     {
         FreeUi(_title);
@@ -3422,14 +3459,7 @@ public sealed partial class Main : Node
         }
 
         _audio.Play(PixelSound.Chime);
-        ShowDialogue(
-            "archive.desk.name",
-            result.MessageKey,
-            () => { },
-            GeneratedArt.RelationshipIcon(
-                RelationshipTier.NewAcquaintance
-            )
-        );
+        OpenFishingDonation();
     }
 
     private void TryEnterMoonstoneWorkshop()
@@ -4257,6 +4287,33 @@ public sealed partial class Main : Node
     {
         FreeUi(_fishingCollectionOverlay);
         _fishingCollectionOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFishingDonation()
+    {
+        if (_fishingDonationOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _fishingDonationOverlay = new FishingDonationOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _fishingDonationOverlay.CloseRequested += CloseFishingDonation;
+        _uiLayer.AddChild(_fishingDonationOverlay);
+    }
+
+    private void CloseFishingDonation()
+    {
+        FreeUi(_fishingDonationOverlay);
+        _fishingDonationOverlay = null;
         if (CanRestoreWorldControls)
         {
             SetWorldControls(true);

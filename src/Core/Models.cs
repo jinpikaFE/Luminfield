@@ -362,6 +362,7 @@ public sealed class FishingSave
 {
     public List<string> CaughtFishIds { get; set; } = [];
     public List<string> ClaimedRewardIds { get; set; } = [];
+    public List<string> DonatedFishIds { get; set; } = [];
 }
 
 public sealed class GameSaveV1

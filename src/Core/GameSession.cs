@@ -1831,7 +1831,7 @@ public sealed class GameSession
         }
 
         return ActionResult.Success(
-            messageKey: "archive.desk.dialogue"
+            messageKey: "archive.desk.donation_opened"
         );
     }
 
@@ -2556,6 +2556,27 @@ public sealed class GameSession
         return result;
     }
 
+    public IReadOnlyList<FishingDonationEntry> FishingDonationEntries() =>
+        Fishing.DonationEntries(Inventory);
+
+    public FishingDonationResult DonateFishToArchive(string fishId)
+    {
+        if (!InsideArchive)
+        {
+            return new FishingDonationResult(
+                false,
+                "notice.nothing_to_interact"
+            );
+        }
+
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return new FishingDonationResult(false, "notice.needs_hand");
+        }
+
+        return Fishing.DonateFish(fishId, Inventory);
+    }
+
     public void RecordGleamriseSeasonMilestone(
         string milestoneId,
         int count = 1
@@ -2762,7 +2783,7 @@ public sealed class GameSession
                 ? TargetPreview.Available(
                     VillageCatalog.MoonlitArchiveDeskCell,
                     TargetPreviewKind.Station,
-                    "target.action.read_archive"
+                    "target.action.open_fish_donation"
                 )
                 : TargetPreview.NeedsTool(
                     VillageCatalog.MoonlitArchiveDeskCell,
