@@ -12,6 +12,6 @@ export PATH="$DOTNET_ROOT:$PATH"
   "$PROJECT_ROOT/tests/Luminfield.Tests/Luminfield.Tests.csproj" \
   --no-restore \
   --filter \
-  "FullyQualifiedName~PhaseG|FullyQualifiedName~PlaytestScenarioRegistryTests|FullyQualifiedName~SaveServiceTests"
+  "FullyQualifiedName~PhaseG|FullyQualifiedName~PlaytestScenarioRegistryTests|FullyQualifiedName~SaveServiceTests|FullyQualifiedName~RuntimeAssetReferenceTests"
 
 echo "Phase G fast checks passed."
