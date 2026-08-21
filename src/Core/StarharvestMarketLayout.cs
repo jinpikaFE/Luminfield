@@ -6,8 +6,8 @@ public static class StarharvestMarketLayout
     public const int Height = 22;
 
     public static readonly GridPosition WorldEntryCell =
-        new(97, 59);
-    public static readonly GridPosition WorldReturnCell = new(97, 58);
+        new(97, 86);
+    public static readonly GridPosition WorldReturnCell = new(97, 85);
     public static readonly GridPosition ExitCell = new(20, 20);
     public static readonly GridPosition SafeArrivalCell = new(20, 19);
     public static readonly GridPosition ExhibitCell = new(20, 14);

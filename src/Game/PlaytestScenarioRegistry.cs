@@ -183,6 +183,11 @@ public enum PlaytestScenarioId
     LongnightWorldAspect,
     RainveilWorldTreeRain,
     StarharvestWorldCrystalStardust,
+    WorldWoodsGrove,
+    WorldMeadowCircle,
+    WorldCrystalRidge,
+    WorldWetlandIslet,
+    WorldRuinsColonnade,
     World,
     Gate,
     Backpack,
@@ -925,6 +930,26 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarharvestWorldCrystalStardust,
             "--playtest-starharvest-world-crystal-stardust"
+        ),
+        new(
+            PlaytestScenarioId.WorldWoodsGrove,
+            "--playtest-world-woods-grove"
+        ),
+        new(
+            PlaytestScenarioId.WorldMeadowCircle,
+            "--playtest-world-meadow-circle"
+        ),
+        new(
+            PlaytestScenarioId.WorldCrystalRidge,
+            "--playtest-world-crystal-ridge"
+        ),
+        new(
+            PlaytestScenarioId.WorldWetlandIslet,
+            "--playtest-world-wetland-islet"
+        ),
+        new(
+            PlaytestScenarioId.WorldRuinsColonnade,
+            "--playtest-world-ruins-colonnade"
         ),
         new(PlaytestScenarioId.World, "--playtest-world"),
         new(PlaytestScenarioId.Gate, "--playtest-gate"),

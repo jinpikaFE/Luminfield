@@ -692,6 +692,26 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-starharvest-world-crystal-stardust",
             PlaytestScenarioId.StarharvestWorldCrystalStardust
         ),
+        (
+            "--playtest-world-woods-grove",
+            PlaytestScenarioId.WorldWoodsGrove
+        ),
+        (
+            "--playtest-world-meadow-circle",
+            PlaytestScenarioId.WorldMeadowCircle
+        ),
+        (
+            "--playtest-world-crystal-ridge",
+            PlaytestScenarioId.WorldCrystalRidge
+        ),
+        (
+            "--playtest-world-wetland-islet",
+            PlaytestScenarioId.WorldWetlandIslet
+        ),
+        (
+            "--playtest-world-ruins-colonnade",
+            PlaytestScenarioId.WorldRuinsColonnade
+        ),
         ("--playtest-world", PlaytestScenarioId.World),
         ("--playtest-gate", PlaytestScenarioId.Gate),
         ("--playtest-backpack", PlaytestScenarioId.Backpack),

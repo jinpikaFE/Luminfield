@@ -178,39 +178,40 @@ public static class VillageCatalog
     public const string StarlightPostLandmarkId = "starlight_post";
     public const string StarfallWatchLandmarkId = "starfall_watch";
 
-    public static readonly GridArea VillageBounds = new(73, 30, 115, 63);
-    public static readonly GridPosition VillageGateCell = new(97, 59);
-    public static readonly GridPosition MoonlitArchiveDoorCell = new(86, 41);
+    public static readonly GridArea VillageBounds = new(64, 32, 127, 95);
+    public static readonly GridPosition VillageCenterCell = new(96, 64);
+    public static readonly GridPosition VillageGateCell = new(97, 86);
+    public static readonly GridPosition MoonlitArchiveDoorCell = new(82, 50);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
     public static readonly GridPosition MoonlitArchiveDeskCell = new(20, 9);
     public static readonly GridArea MoonlitArchiveDeskArea =
         new(16, 8, 23, 11);
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
-        new(85, 54);
+        new(81, 76);
     public static readonly GridPosition MoonstoneWorkshopExitCell =
         new(20, 19);
     public static readonly GridPosition MoonRuneWorkbenchCell =
         new(20, 9);
     public static readonly GridPosition StarweaverTeaHouseDoorCell =
-        new(107, 42);
+        new(111, 52);
     public static readonly GridPosition StarweaverTeaHouseExitCell =
         new(20, 19);
     public static readonly GridPosition StarwovenTeaCounterCell =
         new(20, 9);
     public static readonly GridPosition TwilightEmporiumDoorCell =
-        new(110, 61);
+        new(115, 90);
     public static readonly GridPosition TwilightEmporiumExitCell =
         new(20, 19);
     public static readonly GridPosition TravelManifestCell =
         new(20, 8);
     public static readonly GridPosition StarlightPostDoorCell =
-        new(77, 41);
+        new(70, 50);
     public static readonly GridPosition StarlightPostExitCell =
         new(20, 19);
     public static readonly GridPosition RouteSortingCounterCell =
         new(20, 8);
     public static readonly GridPosition StarfallWatchDoorCell =
-        new(77, 54);
+        new(70, 76);
     public static readonly GridPosition StarfallWatchExitCell =
         new(20, 19);
     public static readonly GridPosition SealRouteTableCell =
@@ -254,28 +255,28 @@ public static class VillageCatalog
             MoonlitArchiveDoorCell,
             0,
             "village.landmark.archive",
-            [new GridArea(82, 34, 90, 40)]
+            [new GridArea(77, 36, 88, 48)]
         ),
         new(
             StarweaverTeaHouseLandmarkId,
             StarweaverTeaHouseDoorCell,
             1,
             "village.landmark.tea_house",
-            [new GridArea(102, 35, 111, 41)]
+            [new GridArea(104, 38, 116, 50)]
         ),
         new(
             MoonstoneWorkshopLandmarkId,
             MoonstoneWorkshopDoorCell,
             2,
             "village.landmark.workshop",
-            [new GridArea(81, 47, 90, 53)]
+            [new GridArea(76, 62, 88, 74)]
         ),
         new(
             "starlight_well",
-            new GridPosition(97, 50),
+            new GridPosition(86, 68),
             3,
             "village.landmark.well",
-            [new GridArea(94, 46, 100, 50)]
+            [new GridArea(82, 60, 90, 68)]
         ),
         new(
             VillageGateLandmarkId,
@@ -283,51 +284,51 @@ public static class VillageCatalog
             4,
             "world.landmark.village_gate",
             [
-                new GridArea(93, 56, 94, 59),
-                new GridArea(100, 56, 101, 59)
+                new GridArea(92, 80, 93, 86),
+                new GridArea(101, 80, 103, 86)
             ]
         ),
         new(
             "village_sign",
-            new GridPosition(91, 58),
+            new GridPosition(89, 84),
             5,
             "village.landmark.sign",
-            [new GridArea(91, 58, 91, 58)]
+            [new GridArea(89, 84, 89, 84)]
         ),
         new(
             "lantern_bench",
-            new GridPosition(105, 50),
+            new GridPosition(108, 68),
             6,
             "village.landmark.bench",
-            [new GridArea(103, 50, 107, 50)]
+            [new GridArea(105, 68, 111, 68)]
         ),
         new(
             "glowflower_cart",
-            new GridPosition(110, 53),
+            new GridPosition(115, 74),
             7,
             "village.landmark.flower_cart",
-            [new GridArea(109, 52, 111, 53)]
+            [new GridArea(114, 72, 116, 74)]
         ),
         new(
             TwilightEmporiumLandmarkId,
             TwilightEmporiumDoorCell,
             8,
             "village.landmark.twilight_emporium",
-            [new GridArea(107, 55, 113, 60)]
+            [new GridArea(111, 78, 119, 88)]
         ),
         new(
             StarlightPostLandmarkId,
             StarlightPostDoorCell,
             9,
             "village.landmark.starlight_post",
-            [new GridArea(73, 34, 81, 40)]
+            [new GridArea(65, 36, 76, 48)]
         ),
         new(
             StarfallWatchLandmarkId,
             StarfallWatchDoorCell,
             10,
             "village.landmark.starfall_watch",
-            [new GridArea(73, 47, 81, 53)]
+            [new GridArea(65, 62, 76, 74)]
         )
     ];
 
@@ -362,7 +363,7 @@ public static class VillageCatalog
                         13,
                         17,
                         PlayerLocationIds.World,
-                        new GridPosition(101, 48),
+                        new GridPosition(103, 64),
                         NpcFacing.Up,
                         "village.npc.liora.season_longnight",
                         CalendarSystem.LongnightSeasonId
@@ -370,7 +371,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(102, 48),
+                        new GridPosition(104, 64),
                         NpcFacing.Left,
                         "village.npc.liora.restday",
                         6
@@ -378,7 +379,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(86, 42),
+                        new GridPosition(83, 52),
                         NpcFacing.Down,
                         "village.npc.liora.morning"
                     ),
@@ -392,14 +393,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         17,
-                        new GridPosition(92, 48),
+                        new GridPosition(91, 64),
                         NpcFacing.Right,
                         "village.npc.liora.plaza"
                     ),
                     Slot(
                         17,
                         23,
-                        new GridPosition(104, 43),
+                        new GridPosition(107, 54),
                         NpcFacing.Down,
                         "village.npc.liora.evening"
                     )
@@ -439,7 +440,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(92, 52),
+                        new GridPosition(91, 72),
                         NpcFacing.Right,
                         "village.npc.tavi.restday",
                         6
@@ -447,7 +448,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(86, 55),
+                        new GridPosition(83, 78),
                         NpcFacing.Down,
                         "village.npc.tavi.morning"
                     ),
@@ -461,14 +462,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         16,
-                        new GridPosition(92, 51),
+                        new GridPosition(91, 70),
                         NpcFacing.Right,
                         "village.npc.tavi.plaza"
                     ),
                     Slot(
                         16,
                         23,
-                        new GridPosition(107, 43),
+                        new GridPosition(111, 54),
                         NpcFacing.Down,
                         "village.npc.tavi.evening"
                     )
@@ -509,7 +510,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(106, 44),
+                        new GridPosition(110, 56),
                         NpcFacing.Left,
                         "village.npc.nemi.season_gleamrise",
                         CalendarSystem.GleamriseSeasonId
@@ -517,7 +518,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(108, 54),
+                        new GridPosition(112, 76),
                         NpcFacing.Left,
                         "village.npc.nemi.restday",
                         6
@@ -525,7 +526,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(97, 60),
+                        new GridPosition(97, 88),
                         NpcFacing.Up,
                         "village.npc.nemi.morning"
                     ),
@@ -539,14 +540,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(108, 51),
+                        new GridPosition(112, 70),
                         NpcFacing.Down,
                         "village.npc.nemi.route"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(105, 43),
+                        new GridPosition(108, 54),
                         NpcFacing.Down,
                         "village.npc.nemi.evening"
                     )
@@ -586,7 +587,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(104, 52),
+                        new GridPosition(107, 72),
                         NpcFacing.Left,
                         "village.npc.sela.restday",
                         6
@@ -594,28 +595,28 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(89, 54),
+                        new GridPosition(87, 76),
                         NpcFacing.Down,
                         "village.npc.sela.morning"
                     ),
                     Slot(
                         9,
                         13,
-                        new GridPosition(90, 54),
+                        new GridPosition(88, 76),
                         NpcFacing.Left,
                         "village.npc.sela.workshop"
                     ),
                     Slot(
                         13,
                         17,
-                        new GridPosition(99, 52),
+                        new GridPosition(100, 72),
                         NpcFacing.Up,
                         "village.npc.sela.plaza"
                     ),
                     Slot(
                         17,
                         23,
-                        new GridPosition(109, 43),
+                        new GridPosition(114, 54),
                         NpcFacing.Left,
                         "village.npc.sela.evening"
                     )
@@ -647,7 +648,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(101, 44),
+                        new GridPosition(103, 56),
                         NpcFacing.Down,
                         "village.npc.elowen.weather_stardust",
                         DataCatalog.StardustWindWeatherId
@@ -655,7 +656,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(100, 43),
+                        new GridPosition(101, 54),
                         NpcFacing.Down,
                         "village.npc.elowen.restday",
                         6
@@ -663,28 +664,28 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(98, 58),
+                        new GridPosition(99, 84),
                         NpcFacing.Up,
                         "village.npc.elowen.morning"
                     ),
                     Slot(
                         9,
                         13,
-                        new GridPosition(105, 44),
+                        new GridPosition(108, 56),
                         NpcFacing.Right,
                         "village.npc.elowen.well"
                     ),
                     Slot(
                         13,
                         18,
-                        new GridPosition(100, 54),
+                        new GridPosition(101, 76),
                         NpcFacing.Left,
                         "village.npc.elowen.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(93, 44),
+                        new GridPosition(92, 56),
                         NpcFacing.Right,
                         "village.npc.elowen.evening"
                     )
@@ -716,7 +717,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(91, 43),
+                        new GridPosition(89, 54),
                         NpcFacing.Right,
                         "village.npc.vessa.season_rainveil",
                         CalendarSystem.RainveilSeasonId
@@ -724,7 +725,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(88, 44),
+                        new GridPosition(85, 56),
                         NpcFacing.Right,
                         "village.npc.vessa.restday",
                         6
@@ -732,7 +733,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(91, 44),
+                        new GridPosition(89, 56),
                         NpcFacing.Left,
                         "village.npc.vessa.morning"
                     ),
@@ -746,14 +747,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(103, 54),
+                        new GridPosition(105, 76),
                         NpcFacing.Left,
                         "village.npc.vessa.route"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(110, 44),
+                        new GridPosition(115, 56),
                         NpcFacing.Left,
                         "village.npc.vessa.evening"
                     )
@@ -794,7 +795,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(109, 54),
+                        new GridPosition(114, 76),
                         NpcFacing.Left,
                         "village.npc.orin.season_starharvest",
                         CalendarSystem.StarharvestSeasonId
@@ -802,7 +803,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(101, 54),
+                        new GridPosition(103, 76),
                         NpcFacing.Left,
                         "village.npc.orin.restday",
                         6
@@ -810,14 +811,14 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(103, 44),
+                        new GridPosition(105, 56),
                         NpcFacing.Right,
                         "village.npc.orin.morning"
                     ),
                     Slot(
                         9,
                         10,
-                        new GridPosition(109, 44),
+                        new GridPosition(114, 56),
                         NpcFacing.Left,
                         "village.npc.orin.market"
                     ),
@@ -831,14 +832,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(102, 53),
+                        new GridPosition(104, 74),
                         NpcFacing.Right,
                         "village.npc.orin.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(93, 53),
+                        new GridPosition(92, 74),
                         NpcFacing.Right,
                         "village.npc.orin.evening"
                     )
@@ -870,7 +871,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(93, 46),
+                        new GridPosition(92, 60),
                         NpcFacing.Right,
                         "village.npc.kael.weather_stardust",
                         DataCatalog.StardustWindWeatherId
@@ -878,7 +879,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(96, 43),
+                        new GridPosition(96, 54),
                         NpcFacing.Down,
                         "village.npc.kael.restday",
                         6
@@ -886,7 +887,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(95, 58),
+                        new GridPosition(95, 84),
                         NpcFacing.Up,
                         "village.npc.kael.morning"
                     ),
@@ -900,14 +901,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(98, 54),
+                        new GridPosition(99, 76),
                         NpcFacing.Down,
                         "village.npc.kael.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(99, 43),
+                        new GridPosition(100, 54),
                         NpcFacing.Left,
                         "village.npc.kael.evening"
                     )
@@ -947,7 +948,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         18,
-                        new GridPosition(104, 49),
+                        new GridPosition(107, 66),
                         NpcFacing.Down,
                         "village.npc.halden.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -955,28 +956,28 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(99, 58),
+                        new GridPosition(100, 84),
                         NpcFacing.Up,
                         "village.npc.halden.morning"
                     ),
                     Slot(
                         9,
                         13,
-                        new GridPosition(109, 51),
+                        new GridPosition(114, 70),
                         NpcFacing.Left,
                         "village.npc.halden.stocktake"
                     ),
                     Slot(
                         13,
                         18,
-                        new GridPosition(101, 51),
+                        new GridPosition(103, 70),
                         NpcFacing.Left,
                         "village.npc.halden.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(99, 59),
+                        new GridPosition(100, 86),
                         NpcFacing.Up,
                         "village.npc.halden.evening"
                     )
@@ -1017,7 +1018,7 @@ public static class VillageCatalog
                     Slot(
                         10,
                         18,
-                        new GridPosition(100, 52),
+                        new GridPosition(101, 72),
                         NpcFacing.Up,
                         "village.npc.mavea.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1025,7 +1026,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(110, 51),
+                        new GridPosition(115, 70),
                         NpcFacing.Down,
                         "village.npc.mavea.morning"
                     ),
@@ -1039,7 +1040,7 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(106, 44),
+                        new GridPosition(110, 56),
                         NpcFacing.Left,
                         "village.npc.mavea.plaza"
                     ),
@@ -1053,7 +1054,7 @@ public static class VillageCatalog
                     Slot(
                         21,
                         23,
-                        new GridPosition(109, 44),
+                        new GridPosition(114, 56),
                         NpcFacing.Left,
                         "village.npc.mavea.close"
                     )
@@ -1093,7 +1094,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(92, 49),
+                        new GridPosition(91, 66),
                         NpcFacing.Right,
                         "village.npc.sivren.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1101,7 +1102,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(86, 43),
+                        new GridPosition(83, 54),
                         NpcFacing.Down,
                         "village.npc.sivren.morning"
                     ),
@@ -1115,7 +1116,7 @@ public static class VillageCatalog
                     Slot(
                         17,
                         23,
-                        new GridPosition(91, 43),
+                        new GridPosition(89, 54),
                         NpcFacing.Right,
                         "village.npc.sivren.evening"
                     )
@@ -1155,7 +1156,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(99, 51),
+                        new GridPosition(100, 70),
                         NpcFacing.Down,
                         "village.npc.dorrik.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1163,7 +1164,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(88, 55),
+                        new GridPosition(85, 78),
                         NpcFacing.Down,
                         "village.npc.dorrik.morning"
                     ),
@@ -1177,14 +1178,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(98, 55),
+                        new GridPosition(99, 78),
                         NpcFacing.Up,
                         "village.npc.dorrik.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(88, 54),
+                        new GridPosition(85, 76),
                         NpcFacing.Down,
                         "village.npc.dorrik.evening"
                     )
@@ -1224,7 +1225,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(106, 54),
+                        new GridPosition(110, 76),
                         NpcFacing.Left,
                         "village.npc.yvara.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1232,7 +1233,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         10,
-                        new GridPosition(109, 61),
+                        new GridPosition(114, 90),
                         NpcFacing.Left,
                         "village.npc.yvara.morning"
                     ),
@@ -1246,14 +1247,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(105, 54),
+                        new GridPosition(108, 76),
                         NpcFacing.Left,
                         "village.npc.yvara.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(107, 44),
+                        new GridPosition(111, 56),
                         NpcFacing.Left,
                         "village.npc.yvara.evening"
                     )
@@ -1294,7 +1295,7 @@ public static class VillageCatalog
                         13,
                         18,
                         PlayerLocationIds.World,
-                        new GridPosition(108, 54),
+                        new GridPosition(112, 76),
                         NpcFacing.Left,
                         "village.npc.brial.season_gleamrise",
                         CalendarSystem.GleamriseSeasonId
@@ -1302,7 +1303,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(108, 51),
+                        new GridPosition(112, 70),
                         NpcFacing.Left,
                         "village.npc.brial.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1310,7 +1311,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(108, 54),
+                        new GridPosition(112, 76),
                         NpcFacing.Left,
                         "village.npc.brial.morning"
                     ),
@@ -1324,14 +1325,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(106, 51),
+                        new GridPosition(110, 70),
                         NpcFacing.Left,
                         "village.npc.brial.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(105, 51),
+                        new GridPosition(108, 70),
                         NpcFacing.Right,
                         "village.npc.brial.evening"
                     )
@@ -1379,7 +1380,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(87, 54),
+                        new GridPosition(84, 76),
                         NpcFacing.Right,
                         "village.npc.pavri.morning"
                     ),
@@ -1393,14 +1394,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(91, 54),
+                        new GridPosition(89, 76),
                         NpcFacing.Right,
                         "village.npc.pavri.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(91, 53),
+                        new GridPosition(89, 74),
                         NpcFacing.Left,
                         "village.npc.pavri.evening"
                     )
@@ -1441,7 +1442,7 @@ public static class VillageCatalog
                         18,
                         23,
                         PlayerLocationIds.World,
-                        new GridPosition(82, 54),
+                        new GridPosition(77, 76),
                         NpcFacing.Up,
                         "village.npc.roven.season_longnight",
                         CalendarSystem.LongnightSeasonId
@@ -1449,7 +1450,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(104, 54),
+                        new GridPosition(107, 76),
                         NpcFacing.Left,
                         "village.npc.roven.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1457,7 +1458,7 @@ public static class VillageCatalog
                     Slot(
                         6,
                         9,
-                        new GridPosition(82, 42),
+                        new GridPosition(77, 52),
                         NpcFacing.Right,
                         "village.npc.roven.morning"
                     ),
@@ -1471,14 +1472,14 @@ public static class VillageCatalog
                     Slot(
                         13,
                         18,
-                        new GridPosition(94, 54),
+                        new GridPosition(93, 76),
                         NpcFacing.Right,
                         "village.npc.roven.plaza"
                     ),
                     Slot(
                         18,
                         23,
-                        new GridPosition(82, 54),
+                        new GridPosition(77, 76),
                         NpcFacing.Up,
                         "village.npc.roven.evening"
                     )
@@ -1544,22 +1545,27 @@ public static class VillageCatalog
             return false;
         }
 
-        var mainLane = cell.X is >= 95 and <= 98 &&
-            cell.Y is >= 31 and <= 62;
-        var archiveLane = cell.Y is >= 42 and <= 44 &&
-            cell.X is >= 84 and <= 110;
-        var workshopLane = cell.Y is >= 52 and <= 54 &&
-            cell.X is >= 84 and <= 110;
-        var emporiumLane = cell.Y is >= 61 and <= 62 &&
-            cell.X is >= 97 and <= 110;
-        var postLane = cell.Y is >= 41 and <= 43 &&
-            cell.X is >= 77 and <= 84;
-        var watchLane = cell.Y is >= 52 and <= 54 &&
-            cell.X is >= 77 and <= 84;
-        var plaza = cell.X is >= 92 and <= 102 &&
-            cell.Y is >= 44 and <= 54;
-        return mainLane || archiveLane || workshopLane ||
-            emporiumLane || postLane || watchLane || plaza;
+        var eastWestSpine = cell.Y is >= 62 and <= 66;
+        var northSouthSpine = cell.X is >= 94 and <= 98;
+        var northLane = cell.Y is >= 50 and <= 56 &&
+            cell.X is >= 68 and <= 115;
+        var southLane = cell.Y is >= 76 and <= 79 &&
+            cell.X is >= 68 and <= 115;
+        var southMarketLane = cell.Y is >= 88 and <= 91 &&
+            cell.X is >= 97 and <= 115;
+        var westRing = cell.X is >= 68 and <= 71 &&
+            cell.Y is >= 50 and <= 79;
+        var eastRing = cell.X is >= 113 and <= 116 &&
+            cell.Y is >= 50 and <= 91;
+        var centralPlaza = cell.X is >= 88 and <= 104 &&
+            cell.Y is >= 56 and <= 72;
+        var northApproach = cell.X is >= 80 and <= 84 &&
+            cell.Y is >= 48 and <= 56;
+        var southApproach = cell.X is >= 79 and <= 83 &&
+            cell.Y is >= 74 and <= 82;
+        return eastWestSpine || northSouthSpine || northLane ||
+            southLane || southMarketLane || westRing || eastRing ||
+            centralPlaza || northApproach || southApproach;
     }
 
     public static bool IsBlocked(GridPosition cell) =>
