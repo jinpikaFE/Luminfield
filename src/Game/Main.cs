@@ -978,6 +978,16 @@ public sealed partial class Main : Node
                     StartRainveilWorldTreeRainPlaytest,
                 [PlaytestScenarioId.StarharvestWorldCrystalStardust] =
                     StartStarharvestWorldCrystalStardustPlaytest,
+                [PlaytestScenarioId.WorldWoodsGrove] =
+                    StartWorldWoodsGrovePlaytest,
+                [PlaytestScenarioId.WorldMeadowCircle] =
+                    StartWorldMeadowCirclePlaytest,
+                [PlaytestScenarioId.WorldCrystalRidge] =
+                    StartWorldCrystalRidgePlaytest,
+                [PlaytestScenarioId.WorldWetlandIslet] =
+                    StartWorldWetlandIsletPlaytest,
+                [PlaytestScenarioId.WorldRuinsColonnade] =
+                    StartWorldRuinsColonnadePlaytest,
                 [PlaytestScenarioId.World] = StartWorldPlaytest,
                 [PlaytestScenarioId.Gate] = StartGatePlaytest,
                 [PlaytestScenarioId.Backpack] = StartBackpackPlaytest,
@@ -5845,12 +5855,33 @@ public sealed partial class Main : Node
 
     private void StartWorldPlaytest()
     {
+        StartWorldScenicPlaytest(new GridPosition(97, 63));
+    }
+
+    private void StartWorldWoodsGrovePlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(39, 47));
+
+    private void StartWorldMeadowCirclePlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(103, 10));
+
+    private void StartWorldCrystalRidgePlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(80, 106));
+
+    private void StartWorldWetlandIsletPlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(142, 44));
+
+    private void StartWorldRuinsColonnadePlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(139, 120));
+
+    private void StartWorldScenicPlaytest(GridPosition playerCell)
+    {
         FreeUi(_title);
         _title = null;
         _session.NewGame(_locale.CurrentLocale);
+        var safeCell = WorldDefinition.NearestWalkableCell(playerCell);
         _session.SetPlayerState(
-            97 * 16 + 8,
-            63 * 16 + 8,
+            safeCell.X * 16 + 8,
+            safeCell.Y * 16 + 8,
             false
         );
         _playing = true;

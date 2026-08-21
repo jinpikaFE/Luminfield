@@ -139,6 +139,19 @@ public sealed class SaveService
         save.Player.Y = float.IsFinite(save.Player.Y)
             ? Math.Clamp(save.Player.Y, 8, WorldDefinition.Height * 16 - 8)
             : GameSession.NewGamePlayerY;
+        if (save.Player.LocationId == PlayerLocationIds.World)
+        {
+            var restoredCell = new GridPosition(
+                (int)MathF.Floor(save.Player.X / 16),
+                (int)MathF.Floor(save.Player.Y / 16)
+            );
+            var safeCell = WorldDefinition.NearestWalkableCell(restoredCell);
+            if (safeCell != restoredCell)
+            {
+                save.Player.X = safeCell.X * 16 + 8;
+                save.Player.Y = safeCell.Y * 16 + 8;
+            }
+        }
         if (save.Player.LocationId == PlayerLocationIds.CrystalGrottoSurvey &&
             !CrystalGrottoSurveyLayout.IsWalkable(new GridPosition(
                 (int)MathF.Floor(save.Player.X / 16),

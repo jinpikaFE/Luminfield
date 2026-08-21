@@ -28,12 +28,24 @@ public static class NpcNavigationMap
             StringComparer.Ordinal
         )
         {
-            [PlayerLocationIds.MoonlitArchive] = new(86, 42),
-            [PlayerLocationIds.MoonstoneWorkshop] = new(85, 55),
-            [PlayerLocationIds.StarweaverTeaHouse] = new(107, 43),
-            [PlayerLocationIds.TwilightEmporium] = new(110, 62),
-            [PlayerLocationIds.StarlightPost] = new(77, 42),
-            [PlayerLocationIds.StarfallWatch] = new(77, 55),
+            [PlayerLocationIds.MoonlitArchive] = WorldArrivalBelow(
+                VillageCatalog.MoonlitArchiveDoorCell
+            ),
+            [PlayerLocationIds.MoonstoneWorkshop] = WorldArrivalBelow(
+                VillageCatalog.MoonstoneWorkshopDoorCell
+            ),
+            [PlayerLocationIds.StarweaverTeaHouse] = WorldArrivalBelow(
+                VillageCatalog.StarweaverTeaHouseDoorCell
+            ),
+            [PlayerLocationIds.TwilightEmporium] = WorldArrivalBelow(
+                VillageCatalog.TwilightEmporiumDoorCell
+            ),
+            [PlayerLocationIds.StarlightPost] = WorldArrivalBelow(
+                VillageCatalog.StarlightPostDoorCell
+            ),
+            [PlayerLocationIds.StarfallWatch] = WorldArrivalBelow(
+                VillageCatalog.StarfallWatchDoorCell
+            ),
             [PlayerLocationIds.StarharvestMarket] =
                 StarharvestMarketLayout.WorldReturnCell,
             [PlayerLocationIds.GleamrisePlantingFestival] =
@@ -43,6 +55,9 @@ public static class NpcNavigationMap
             [PlayerLocationIds.FireflyTide] =
                 FireflyTideLayout.WorldReturnCell
         };
+
+    private static GridPosition WorldArrivalBelow(GridPosition door) =>
+        new(door.X, door.Y + 1);
 
     public static bool IsWalkableGeometry(
         string locationId,

@@ -33,27 +33,35 @@ After the tutorial, the farm opens into a repeatable economy loop:
 - Reinvest the proceeds in more seeds to keep expanding the farm.
 
 The original 48×32 farm now opens through its illuminated southern gate into a
-192×128-cell exploration world. Seven regions are connected by walkable roads:
-the home farm, Whispering Woods, Starfall Meadow, Lumen Village, Crystal Vale,
-Moonwater Wetlands, and Starfall Ruins. The world is loaded in 32×32-cell
-chunks; only the current 3×3 neighborhood remains active, so the camera can
-travel across the full map without constructing every region at once.
+192×128-cell exploration world. The expanded central Lumen City sits at the
+middle of the map and connects the homestead, Whispering Woods, Starfall Meadow,
+Crystal Vale, Moonwater Wetlands, and Starfall Ruins through four radial roads,
+so no outer region requires a long detour around the map edge. The world is
+loaded in 32×32-cell chunks; only the current 3×3 neighborhood remains active,
+so the camera can travel across the full map without constructing every region
+at once.
+
+The outer regions now combine a restrained procedural detail layer with 34
+fixed compositions and eight large original scenic landmarks instead of dense,
+repeated props. Moonroot Grove, the Moonflower Circle, the stepped Crystal
+Ridge, the wetland boardwalk islet, and the broken ruins colonnade give each
+region a distinct visual memory while Core still owns paths, collision,
+resources, NPCs, and save state.
 
 The top-right minimap reveals chunks as the player enters them, keeps
 undiscovered territory hidden, marks discovered landmarks, and stores the
 exploration state in the regular save file.
 
-## Lumen Village and eight core villagers
+## Central Lumen City and sixteen villagers
 
-- Follow the southern homestead road east and the Crystal Road north to reach
-  the first Lumen Village area. It contains eleven original exterior landmarks:
-  the Moonlit Archive, Starweaver Tea House, Moonstone Workshop, Starlight
-  Well, village gate, sign, lantern bench, glowflower cart, and the Twilight
-  Emporium on a southeast lane, the Starlight Post on a northwest lane, plus
-  Starfall Watch on a southwest lane.
-- Liora, Tavi, Nemi, Sela, Elowen, Vessa, Orin, and Kael follow deterministic
-  four-direction tile paths at each ten-minute clock tick. Day 7, Lanternrest,
-  gives each of them a separate rest-day route. They avoid world/interior
+- The central city now occupies a 64×64-cell district around the radial-road
+  junction. The Moonlit Archive, Starweaver Tea House, Moonstone Workshop,
+  Twilight Emporium, Starlight Post, and Starfall Watch are distributed across
+  its upper and lower terraces; all eleven existing exterior landmarks have
+  been migrated to the new layout.
+- All sixteen current villagers follow deterministic four-direction tile paths
+  at each ten-minute clock tick. Day 7, Lanternrest, gives each of them a
+  separate rest-day route. They avoid world/interior
   collision geometry, one another, the player, exterior doors, interior exits,
   and the village gate; cross-scene work shifts hand off at safe entrance cells.
 - Schedules now select data-driven weather and season entries before the base
@@ -621,7 +629,7 @@ also implemented. Use `--playtest-longnight-feast-gate`,
 `--playtest-longnight-feast-result`, `--playtest-longnight-feast-stall`,
 `--playtest-longnight-feast-activity-en`, and
 `--playtest-longnight-feast-wrong-tool` to inspect the real gate, independent
-eight-villager scene, bilingual rite panel, completed item/ritual projection,
+sixteen-villager scene, bilingual rite panel, completed item/ritual projection,
 Lantern Knot stall, and gold Hand requirement.
 
 Use `--playtest-starfeather-coop-ready`,
@@ -657,7 +665,7 @@ Use `--playtest-starharvest-market-gate`, `--playtest-starharvest-market`,
 `--playtest-starharvest-market-showcase`, `--playtest-starharvest-market-result`,
 `--playtest-starharvest-market-shop`, and
 `--playtest-starharvest-market-showcase-en` to inspect the day-11 gate, the
-independent eight-villager plaza, bilingual showcase layout, submitted exhibit
+independent sixteen-villager plaza, bilingual showcase layout, submitted exhibit
 with exact item icons, and the four-offer Scrip stall. The festival closes at
 18:00 and safely returns any remaining player to Lumen Village.
 
@@ -666,7 +674,7 @@ Use `--playtest-gleamrise-festival-gate`, `--playtest-gleamrise-festival`,
 `--playtest-gleamrise-festival-result`,
 `--playtest-gleamrise-festival-exchange`, and
 `--playtest-gleamrise-festival-challenge-en` to inspect the day-4 gate, the
-independent eight-villager bloomfield, partial real-plot planting, frozen
+independent sixteen-villager bloomfield, partial real-plot planting, frozen
 30-point result, four-offer Bloom Token exchange, and bilingual 640×360
 activity layout. Attempts persist on leaving and resolve at their deadline or
 festival close without consuming ordinary farm resources.
@@ -773,6 +781,17 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-21 13:13:10 CST — Completed the first central-city and world-space rebuild. The
+  city is now a 64×64-cell four-way travel hub; all six enterable buildings,
+  eleven existing landmarks, sixteen villager schedules, three festival return
+  points, and legacy-save safe positions moved with it. Outer procedural prop
+  density is about 15%, supplemented by 34 curated compositions, eight large
+  original landmarks, and five deterministic scenic playtests. The 192×128
+  world, stable IDs, schema v1, and Core state ownership remain unchanged.
+  573/573 tests, C# build, Godot headless startup, hard asset checks,
+  diff-check, and Apple M3 / Metal captures 374–379 passed. A complete freeform
+  `BuildingSystem` is now explicitly future gameplay work; this rebuild does
+  not add free construction.
 - 2026-08-21 — Merged the paused Phase-F snapshot with the remote mainline.
   Added the fourteen-day Gleamrise Goals panel and the Moonlit Archive fish
   donation ledger, including additive schema-v1 persistence, atomic claims and

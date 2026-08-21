@@ -261,40 +261,194 @@ internal sealed partial class WorldChunkGround : Node2D
 
     private void DrawGroundDetails(Vector2 origin, WorldBiome biome, uint hash)
     {
-        if (hash % 5 == 0)
+        switch (biome)
         {
-            var accent = biome switch
-            {
-                WorldBiome.StarfallMeadow => new Color("#9de7ad"),
-                WorldBiome.LumenVillage => new Color("#e7c87d"),
-                WorldBiome.MoonwaterWetlands => new Color("#4cc9bf"),
-                WorldBiome.StarfallRuins => new Color("#9d83cf"),
-                _ => new Color("#397568")
-            };
-            DrawLine(
-                origin + new Vector2(5, 13),
-                origin + new Vector2(4, 8),
-                accent * _visual.DetailModulate,
-                1
-            );
-            DrawLine(
-                origin + new Vector2(9, 14),
-                origin + new Vector2(10, 10),
-                accent * _visual.DetailModulate,
-                1
-            );
+            case WorldBiome.WhisperingWoods:
+                DrawWoodsGround(origin, hash);
+                break;
+            case WorldBiome.StarfallMeadow:
+                DrawMeadowGround(origin, hash);
+                break;
+            case WorldBiome.LumenVillage:
+                DrawVillageGround(origin, hash);
+                break;
+            case WorldBiome.CrystalVale:
+                DrawCrystalGround(origin, hash);
+                break;
+            case WorldBiome.MoonwaterWetlands:
+                DrawWetlandGround(origin, hash);
+                break;
+            case WorldBiome.StarfallRuins:
+                DrawRuinsGround(origin, hash);
+                break;
+        }
+    }
+
+    private void DrawWoodsGround(Vector2 origin, uint hash)
+    {
+        if (hash % 4 != 0)
+        {
+            return;
         }
 
-        if (hash % 17 == 0)
+        var roots = new Color("#245c57") * _visual.DetailModulate;
+        DrawLine(
+            origin + new Vector2(2, 14),
+            origin + new Vector2(8, 10),
+            roots,
+            1
+        );
+        DrawLine(
+            origin + new Vector2(8, 10),
+            origin + new Vector2(14, 12),
+            roots,
+            1
+        );
+        if (hash % 12 == 0)
         {
             DrawCircle(
-                origin + new Vector2(3 + hash % 10, 3 + (hash >> 4) % 9),
+                origin + new Vector2(5, 6),
                 1,
-                (hash % 2 == 0
-                    ? ThemeFactory.Mint
-                    : ThemeFactory.Violet) * _visual.DetailModulate
+                ThemeFactory.Violet * _visual.DetailModulate
             );
         }
+    }
+
+    private void DrawMeadowGround(Vector2 origin, uint hash)
+    {
+        if (hash % 3 != 0)
+        {
+            return;
+        }
+
+        var stem = new Color("#5ca878") * _visual.DetailModulate;
+        DrawLine(
+            origin + new Vector2(8, 14),
+            origin + new Vector2(8, 9),
+            stem,
+            1
+        );
+        DrawCircle(
+            origin + new Vector2(8, 8),
+            1,
+            new Color("#b9efc2") * _visual.DetailModulate
+        );
+        if (hash % 9 == 0)
+        {
+            DrawCircle(
+                origin + new Vector2(12, 11),
+                1,
+                new Color("#e7c87d") * _visual.DetailModulate
+            );
+        }
+    }
+
+    private void DrawVillageGround(Vector2 origin, uint hash)
+    {
+        if (hash % 5 != 0)
+        {
+            return;
+        }
+
+        var gold = new Color("#9a8157") * _visual.DetailModulate;
+        DrawLine(
+            origin + new Vector2(4, 13),
+            origin + new Vector2(7, 10),
+            gold,
+            1
+        );
+        DrawLine(
+            origin + new Vector2(7, 10),
+            origin + new Vector2(10, 13),
+            gold,
+            1
+        );
+    }
+
+    private void DrawCrystalGround(Vector2 origin, uint hash)
+    {
+        if (hash % 4 != 0)
+        {
+            return;
+        }
+
+        var seam = new Color("#387d89") * _visual.DetailModulate;
+        DrawLine(
+            origin + new Vector2(2, 5),
+            origin + new Vector2(8, 9),
+            seam,
+            1
+        );
+        DrawLine(
+            origin + new Vector2(8, 9),
+            origin + new Vector2(13, 6),
+            seam,
+            1
+        );
+        if (hash % 16 == 0)
+        {
+            DrawCircle(
+                origin + new Vector2(8, 9),
+                1,
+                ThemeFactory.Mint * _visual.DetailModulate
+            );
+        }
+    }
+
+    private void DrawWetlandGround(Vector2 origin, uint hash)
+    {
+        if (hash % 4 != 0)
+        {
+            return;
+        }
+
+        var damp = new Color("#247a7c") * _visual.DetailModulate;
+        DrawArc(
+            origin + new Vector2(8, 10),
+            4,
+            0.2f,
+            2.9f,
+            8,
+            damp,
+            1
+        );
+        if (hash % 8 == 0)
+        {
+            DrawLine(
+                origin + new Vector2(12, 14),
+                origin + new Vector2(11, 8),
+                ThemeFactory.Mint * _visual.DetailModulate,
+                1
+            );
+        }
+    }
+
+    private void DrawRuinsGround(Vector2 origin, uint hash)
+    {
+        if (hash % 4 != 0)
+        {
+            return;
+        }
+
+        var crack = new Color("#725f94") * _visual.DetailModulate;
+        DrawLine(
+            origin + new Vector2(3, 4),
+            origin + new Vector2(7, 8),
+            crack,
+            1
+        );
+        DrawLine(
+            origin + new Vector2(7, 8),
+            origin + new Vector2(5, 13),
+            crack,
+            1
+        );
+        DrawLine(
+            origin + new Vector2(7, 8),
+            origin + new Vector2(12, 10),
+            crack,
+            1
+        );
     }
 
     private static Color GroundColor(WorldBiome biome, uint hash)
@@ -354,6 +508,8 @@ internal sealed partial class WorldChunkProps : Node2D
 
     public override void _Draw()
     {
+        DrawScenicLandmarks();
+
         for (var localY = 0; localY < WorldDefinition.ChunkSize; localY++)
         {
             for (var localX = 0; localX < WorldDefinition.ChunkSize; localX++)
@@ -430,6 +586,34 @@ internal sealed partial class WorldChunkProps : Node2D
                 );
                 DrawTextureRectRegion(_atlas, destination, source);
             }
+        }
+    }
+
+    private void DrawScenicLandmarks()
+    {
+        foreach (var landmark in WorldDefinition.ScenicLandmarks
+                     .Where(value =>
+                         WorldDefinition.GetChunk(value.Position) == _chunk
+                     )
+                     .OrderBy(value => value.Position.Y)
+                     .ThenBy(value => value.Position.X))
+        {
+            var source = WorldScenicArt.Region(landmark.AtlasIndex);
+            var height = WorldScenicArt.DrawHeight(landmark.AtlasIndex);
+            var width = height * source.Size.X / source.Size.Y;
+            var localX = landmark.Position.X -
+                _chunk.X * WorldDefinition.ChunkSize;
+            var localY = landmark.Position.Y -
+                _chunk.Y * WorldDefinition.ChunkSize;
+            var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+            DrawTextureRectRegion(
+                WorldScenicArt.Atlas,
+                new Rect2(
+                    anchor - new Vector2(width / 2, height),
+                    new Vector2(width, height)
+                ),
+                source
+            );
         }
     }
 
