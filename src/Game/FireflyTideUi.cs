@@ -196,8 +196,8 @@ public sealed partial class FireflyTideOverlay : FullScreenUi
                 buttonText
             );
             button.CustomMinimumSize = new Vector2(124, 52);
-            button.AddThemeFontSizeOverride(
-                "font_size",
+            ThemeFactory.SetFontSize(
+                button,
                 _locale.CurrentLocale == LocaleService.English ? 7 : 10
             );
             button.AddThemeConstantOverride("icon_max_width", 36);

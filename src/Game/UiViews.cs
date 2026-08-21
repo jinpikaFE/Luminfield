@@ -13,6 +13,28 @@ public abstract partial class FullScreenUi : Control
         MouseFilter = MouseFilterEnum.Stop;
     }
 
+    public override void _Ready()
+    {
+        Callable.From(FocusFirstAvailableButton).CallDeferred();
+    }
+
+    private void FocusFirstAvailableButton()
+    {
+        if (GetViewport().GuiGetFocusOwner() is not null)
+        {
+            return;
+        }
+
+        var first = FindChildren("*", "Button", true, false)
+            .OfType<Button>()
+            .FirstOrDefault(button =>
+                button.Visible &&
+                !button.Disabled &&
+                button.FocusMode != FocusModeEnum.None
+            );
+        first?.GrabFocus();
+    }
+
     protected static ColorRect Dim(Color color)
     {
         var dim = new ColorRect
@@ -1303,14 +1325,14 @@ public sealed partial class ShippingOverlay : FullScreenUi
         {
             var queue = ThemeFactory.Button("");
             queue.CustomMinimumSize = new Vector2(254, 28);
-            queue.AddThemeFontSizeOverride("font_size", 9);
+            ThemeFactory.SetFontSize(queue, 9);
             queue.Pressed += () => Execute(() => _session.QueueForShipping(itemId));
             available.AddChild(queue);
             _queueButtons[itemId] = queue;
 
             var reclaim = ThemeFactory.Button("");
             reclaim.CustomMinimumSize = new Vector2(254, 28);
-            reclaim.AddThemeFontSizeOverride("font_size", 9);
+            ThemeFactory.SetFontSize(reclaim, 9);
             reclaim.Pressed += () => Execute(() => _session.ReclaimFromShipping(itemId));
             pending.AddChild(reclaim);
             _reclaimButtons[itemId] = reclaim;
@@ -1807,7 +1829,7 @@ public sealed partial class ShopOverlay : FullScreenUi
             buttonWidth = 386f;
         }
         button.CustomMinimumSize = new Vector2(buttonWidth, 30);
-        button.AddThemeFontSizeOverride("font_size", 10);
+        ThemeFactory.SetFontSize(button, 10);
         button.Pressed += () =>
         {
             var result = action();
@@ -1892,7 +1914,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
 
         _collectAll = ThemeFactory.Button("");
         _collectAll.CustomMinimumSize = new Vector2(500, 28);
-        _collectAll.AddThemeFontSizeOverride("font_size", 10);
+        ThemeFactory.SetFontSize(_collectAll, 10);
         _collectAll.Pressed += () => Execute(_session.CollectAllProcessedItems);
         _status = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
         _status.HorizontalAlignment = HorizontalAlignment.Center;
@@ -1974,7 +1996,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
             var button = ThemeFactory.Button("");
             button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             button.CustomMinimumSize = new Vector2(0, 26);
-            button.AddThemeFontSizeOverride("font_size", 9);
+            ThemeFactory.SetFontSize(button, 9);
             button.Pressed += () => Execute(() =>
                 _session.StartProcessing(definition.Id, recipeId)
             );
@@ -1984,7 +2006,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
 
         var collect = ThemeFactory.Button("");
         collect.CustomMinimumSize = new Vector2(105, 26);
-        collect.AddThemeFontSizeOverride("font_size", 9);
+        ThemeFactory.SetFontSize(collect, 9);
         collect.Pressed += () => Execute(() =>
             _session.CollectProcessedItem(definition.Id)
         );
@@ -2085,6 +2107,7 @@ public sealed partial class DialogueOverlay : FullScreenUi
     private IReadOnlyList<string> _pages = [];
     private int _pageIndex;
     private double _inputDelay = 0.15;
+    private double _pageElapsed;
 
     public DialogueOverlay(Theme theme, LocaleService locale) : base(theme)
     {
@@ -2176,6 +2199,7 @@ public sealed partial class DialogueOverlay : FullScreenUi
         _speaker.Text = speaker;
         _pages = pages;
         _pageIndex = 0;
+        _pageElapsed = 0;
         _body.Text = _pages[_pageIndex];
         _icon.Texture = icon;
         _icon.Visible = icon is not null;
@@ -2187,6 +2211,13 @@ public sealed partial class DialogueOverlay : FullScreenUi
     public override void _Process(double delta)
     {
         _inputDelay = Math.Max(0, _inputDelay - delta);
+        _pageElapsed += delta;
+        if (AccessibilityRuntime.Settings.DialogueAutoAdvance &&
+            _pageElapsed >=
+                AccessibilityRuntime.Settings.DialogueSecondsPerPage)
+        {
+            AdvanceDialogue();
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -2196,12 +2227,18 @@ public sealed partial class DialogueOverlay : FullScreenUi
             return;
         }
 
+        AdvanceDialogue();
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void AdvanceDialogue()
+    {
+        _pageElapsed = 0;
         if (_pageIndex + 1 < _pages.Count)
         {
             _pageIndex++;
             _body.Text = _pages[_pageIndex];
             _inputDelay = 0.08;
-            GetViewport().SetInputAsHandled();
             return;
         }
 
@@ -2209,7 +2246,6 @@ public sealed partial class DialogueOverlay : FullScreenUi
         _closed = null;
         callback?.Invoke();
         QueueFree();
-        GetViewport().SetInputAsHandled();
     }
 }
 
@@ -2221,6 +2257,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly Button _gleamriseGoals;
     private readonly Button _fishingCollection;
     private readonly Button _fishingGear;
+    private readonly Button _stellarResonance;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2232,7 +2269,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 282) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(320, 320) };
         center.AddChild(panel);
         var column = new VBoxContainer
         {
@@ -2246,6 +2283,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _gleamriseGoals = ThemeFactory.Button("");
         _fishingCollection = ThemeFactory.Button("");
         _fishingGear = ThemeFactory.Button("");
+        _stellarResonance = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
@@ -2253,6 +2291,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         column.AddChild(_gleamriseGoals);
         column.AddChild(_fishingCollection);
         column.AddChild(_fishingGear);
+        column.AddChild(_stellarResonance);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
@@ -2261,6 +2300,8 @@ public sealed partial class PauseOverlay : FullScreenUi
         _fishingCollection.Pressed += () =>
             FishingCollectionRequested?.Invoke();
         _fishingGear.Pressed += () => FishingGearRequested?.Invoke();
+        _stellarResonance.Pressed += () =>
+            StellarResonanceRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2271,6 +2312,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     public event Action? GleamriseGoalsRequested;
     public event Action? FishingCollectionRequested;
     public event Action? FishingGearRequested;
+    public event Action? StellarResonanceRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -2281,6 +2323,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _gleamriseGoals.Text = _locale.Tr("menu.gleamrise_goals");
         _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
         _fishingGear.Text = _locale.Tr("menu.fishing_gear");
+        _stellarResonance.Text = _locale.Tr("menu.stellar_resonance");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }
@@ -2359,18 +2402,27 @@ public sealed partial class FadeTransition : ColorRect
     public override void _Process(double delta)
     {
         _elapsed += delta;
-        var alpha = _elapsed < 0.55
-            ? Mathf.Clamp((float)(_elapsed / 0.55), 0, 1)
-            : Mathf.Clamp((float)((1.3 - _elapsed) / 0.75), 0, 1);
+        var motionScale = AccessibilityRuntime.Settings.ScreenShakePercent switch
+        {
+            0 => 0.25,
+            50 => 0.6,
+            _ => 1.0
+        };
+        var midpoint = 0.55 * motionScale;
+        var total = 1.3 * motionScale;
+        var fadeOut = Math.Max(0.05, total - midpoint);
+        var alpha = _elapsed < midpoint
+            ? Mathf.Clamp((float)(_elapsed / midpoint), 0, 1)
+            : Mathf.Clamp((float)((total - _elapsed) / fadeOut), 0, 1);
         Color = new Color(Color.R, Color.G, Color.B, alpha);
 
-        if (!_midpointCalled && _elapsed >= 0.55)
+        if (!_midpointCalled && _elapsed >= midpoint)
         {
             _midpointCalled = true;
             _midpoint();
         }
 
-        if (_elapsed < 1.3)
+        if (_elapsed < total)
         {
             return;
         }

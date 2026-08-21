@@ -369,7 +369,7 @@ public sealed class GreenhouseCultivationTests
             var legacy = new SaveService(path).Load();
             Assert.Equal(SaveLoadStatus.Loaded, legacy.Status);
             var legacySave = Assert.IsType<GameSaveV1>(legacy.Save);
-            Assert.Equal(1, legacySave.SchemaVersion);
+            Assert.Equal(SaveService.CurrentSchemaVersion, legacySave.SchemaVersion);
             Assert.Equal(9, legacySave.Day);
             Assert.Equal(123, legacySave.Coins);
             Assert.Single(legacySave.FarmTiles);
@@ -403,7 +403,7 @@ public sealed class GreenhouseCultivationTests
             var loaded = new SaveService(path).Load();
             Assert.Equal(SaveLoadStatus.Loaded, loaded.Status);
             var save = Assert.IsType<GameSaveV1>(loaded.Save);
-            Assert.Equal(1, save.SchemaVersion);
+            Assert.Equal(SaveService.CurrentSchemaVersion, save.SchemaVersion);
             Assert.Equal(15, save.Day);
             Assert.Equal(321, save.Coins);
             Assert.Single(save.FarmTiles);

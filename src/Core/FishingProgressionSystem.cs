@@ -438,7 +438,8 @@ public sealed class FishingMinigameSystem
 
     public FishingChallengeSnapshot Begin(
         FishDefinition fish,
-        FishingProgressionSystem progression
+        FishingProgressionSystem progression,
+        float additionalCatchZoneBonus = 0
     )
     {
         _fishId = fish.Id;
@@ -447,7 +448,8 @@ public sealed class FishingMinigameSystem
         _hookPosition = 0.5f;
         _hookVelocity = 0;
         _catchZoneSize = Math.Clamp(
-            0.26f - _difficulty * 0.018f + progression.CatchZoneBonus,
+            0.26f - _difficulty * 0.018f + progression.CatchZoneBonus +
+                Math.Max(0, additionalCatchZoneBonus),
             0.13f,
             0.42f
         );

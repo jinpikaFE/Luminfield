@@ -4,6 +4,8 @@ namespace Luminfield.Game;
 
 public static class ThemeFactory
 {
+    private const string BaseFontSizeMeta = "luminfield_base_font_size";
+    private static float _textScale = 1f;
     public static readonly Color Ink = new("#f7f0d9");
     public static readonly Color MutedInk = new("#aeb9cc");
     public static readonly Color DeepIndigo = new("#08142e");
@@ -22,7 +24,7 @@ public static class ThemeFactory
         var theme = new Theme
         {
             DefaultFont = font,
-            DefaultFontSize = 13
+            DefaultFontSize = ScaledFontSize(13)
         };
 
         theme.SetColor("font_color", "Label", Ink);
@@ -90,18 +92,55 @@ public static class ThemeFactory
     public static Label Label(string text = "", int size = 13, Color? color = null)
     {
         var label = new Label { Text = text };
-        label.AddThemeFontSizeOverride("font_size", size);
+        SetFontSize(label, size);
         label.AddThemeColorOverride("font_color", color ?? Ink);
         return label;
     }
 
     public static Button Button(string text)
     {
-        return new Button
+        var button = new Button
         {
             Text = text,
             CustomMinimumSize = new Vector2(220, 34),
             FocusMode = Control.FocusModeEnum.All
         };
+        SetFontSize(button, 13);
+        return button;
     }
+
+    public static void SetFontSize(Control control, int size)
+    {
+        control.SetMeta(BaseFontSizeMeta, size);
+        control.AddThemeFontSizeOverride("font_size", ScaledFontSize(size));
+    }
+
+    public static void SetTextScale(float scale, Node? root = null)
+    {
+        _textScale = Math.Clamp(scale, 1f, 1.2f);
+        if (root is not null)
+        {
+            ApplyTextScale(root);
+        }
+    }
+
+    private static void ApplyTextScale(Node node)
+    {
+        if (node is Control control && control.HasMeta(BaseFontSizeMeta))
+        {
+            var size = control.GetMeta(BaseFontSizeMeta).AsInt32();
+            control.AddThemeFontSizeOverride(
+                "font_size",
+                ScaledFontSize(size)
+            );
+        }
+
+        foreach (var child in node.GetChildren())
+        {
+            ApplyTextScale(child);
+        }
+    }
+
+    private static int ScaledFontSize(int size) =>
+        Math.Max(1, (int)MathF.Round(size * _textScale));
 }

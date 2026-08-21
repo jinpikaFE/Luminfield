@@ -401,7 +401,7 @@ public sealed partial class IngredientPantryOverlay : FullScreenUi
     {
         var button = ThemeFactory.Button("");
         button.CustomMinimumSize = new Vector2(246, 27);
-        button.AddThemeFontSizeOverride("font_size", 9);
+        ThemeFactory.SetFontSize(button, 9);
         button.AutowrapMode = TextServer.AutowrapMode.Off;
         button.ClipText = true;
         if (HotbarSlotContent.TryGetIconRegion(

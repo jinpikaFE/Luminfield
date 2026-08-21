@@ -218,7 +218,7 @@ public sealed partial class GleamrisePlantingOverlay : FullScreenUi
             var button = ThemeFactory.Button(label);
             button.CustomMinimumSize = new Vector2(240, 38);
             button.ClipText = true;
-            button.AddThemeFontSizeOverride("font_size", 10);
+            ThemeFactory.SetFontSize(button, 10);
             button.Icon = SeedAtlas(seedId);
             button.ExpandIcon = true;
             button.Disabled = result is not null ||

@@ -162,6 +162,7 @@ public sealed class MiningSave
     public bool ExpeditionActive { get; set; }
     public int ExpeditionRoom { get; set; }
     public int ExpeditionEnemyHealth { get; set; }
+    public float ExpeditionRetaliationProgress { get; set; }
     public int DeepestExpeditionRoom { get; set; }
     public int StableAnchorRoom { get; set; }
     public List<int> ClearedExpeditionRooms { get; set; } = [];
@@ -202,6 +203,19 @@ public sealed class ForageSave
 {
     public int ResolvedDay { get; set; } = 1;
     public List<ForageSpawnSave> Spawns { get; set; } = [];
+}
+
+public sealed class GatheringSkillSave
+{
+    public int Experience { get; set; }
+    public string SpecializationId { get; set; } = string.Empty;
+}
+
+public sealed class StellarResonanceSave
+{
+    public bool MainStoryCompleted { get; set; }
+    public int CompletionDay { get; set; }
+    public int Experience { get; set; }
 }
 
 public sealed class ForageSpawnSave
@@ -565,6 +579,7 @@ public sealed class GameSaveV1
     public CombatSave Combat { get; set; } = new();
     public StarfallRuinsTrialSave StarfallRuinsTrial { get; set; } = new();
     public ForageSave Forage { get; set; } = new();
+    public GatheringSkillSave GatheringSkill { get; set; } = new();
     public FishingSave Fishing { get; set; } = new();
     public WeatherSave Weather { get; set; } = new();
     public ShippingSave Shipping { get; set; } = new();
@@ -583,6 +598,7 @@ public sealed class GameSaveV1
     public FestivalSave Festival { get; set; } = new();
     public CollectionSave Collection { get; set; } = new();
     public StarGateSave StarGate { get; set; } = new();
+    public StellarResonanceSave StellarResonance { get; set; } = new();
 }
 
 public sealed record ActionResult(

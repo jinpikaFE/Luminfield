@@ -121,7 +121,7 @@ public sealed class WorldSeasonVisualCatalogTests
     [Fact]
     public void WorldAspectNeedsNoSaveSchemaMigration()
     {
-        Assert.Equal(1, SaveService.CurrentSchemaVersion);
+        Assert.Equal(2, SaveService.CurrentSchemaVersion);
         Assert.Equal(
             WorldSeasonVisualVariant.Rainveil,
             WorldSeasonVisualCatalog.ForDay(15).Variant

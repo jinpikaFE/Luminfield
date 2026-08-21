@@ -13,6 +13,7 @@ public sealed partial class PlayerController : CharacterBody2D
     private readonly Sprite2D _sprite;
     private Vector2I _facing = Vector2I.Down;
     private bool _isWalking;
+    private bool _facingLocked;
     private double _walkAnimation;
     private double _stepTimer;
     private int _walkFrame;
@@ -92,20 +93,37 @@ public sealed partial class PlayerController : CharacterBody2D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (ControlsEnabled &&
+            AccessibilityRuntime.Settings.TargetLock &&
+            @event.IsActionPressed(InputSetup.TargetLock))
+        {
+            _facingLocked = !_facingLocked;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (!ControlsEnabled || @event is not InputEventKey key || !key.Pressed || key.Echo)
         {
             return;
         }
 
-        var direction = @event.IsActionPressed(InputSetup.MoveLeft)
-            ? Vector2.Left
-            : @event.IsActionPressed(InputSetup.MoveRight)
-                ? Vector2.Right
-                : @event.IsActionPressed(InputSetup.MoveUp)
-                    ? Vector2.Up
-                    : @event.IsActionPressed(InputSetup.MoveDown)
-                        ? Vector2.Down
-                        : Vector2.Zero;
+        var direction = Vector2.Zero;
+        if (@event.IsActionPressed(InputSetup.MoveLeft))
+        {
+            direction = Vector2.Left;
+        }
+        else if (@event.IsActionPressed(InputSetup.MoveRight))
+        {
+            direction = Vector2.Right;
+        }
+        else if (@event.IsActionPressed(InputSetup.MoveUp))
+        {
+            direction = Vector2.Up;
+        }
+        else if (@event.IsActionPressed(InputSetup.MoveDown))
+        {
+            direction = Vector2.Down;
+        }
 
         if (direction == Vector2.Zero)
         {
@@ -168,10 +186,21 @@ public sealed partial class PlayerController : CharacterBody2D
     }
 
     private float CurrentMovementMultiplier() =>
-        Math.Clamp(_movementMultiplier(), 0.1f, 1f);
+        Math.Clamp(
+            _movementMultiplier() *
+                AccessibilityRuntime.Settings.MovementMultiplier,
+            0.1f,
+            1.25f
+        );
 
     private void UpdateFacing(Vector2 input)
     {
+        if (_facingLocked && AccessibilityRuntime.Settings.TargetLock)
+        {
+            return;
+        }
+        _facingLocked = false;
+
         if (Math.Abs(input.X) > Math.Abs(input.Y))
         {
             _facing = input.X < 0 ? Vector2I.Left : Vector2I.Right;
@@ -247,8 +276,21 @@ internal sealed partial class ActorShadow : Node2D
 
     public override void _Draw()
     {
-        var stride = _isWalking ? (_walkFrame == 0 ? -0.7f : 0.7f) : 0;
-        var radius = _isWalking ? (_walkFrame == 0 ? 7.1f : 7.8f) : 7.5f;
+        var stride = 0f;
+        var radius = 7.5f;
+        if (_isWalking)
+        {
+            if (_walkFrame == 0)
+            {
+                stride = -0.7f;
+                radius = 7.1f;
+            }
+            else
+            {
+                stride = 0.7f;
+                radius = 7.8f;
+            }
+        }
         DrawSetTransform(new Vector2(stride, 0), 0, new Vector2(1.0f, 0.38f));
         DrawCircle(Vector2.Zero, radius, new Color(0.03f, 0.06f, 0.11f, 0.58f));
         DrawArc(

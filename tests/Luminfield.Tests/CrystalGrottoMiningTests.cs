@@ -455,7 +455,7 @@ public sealed class CrystalGrottoMiningTests
             collection.InitializedCategoryIds);
         Assert.Contains(knownVein.MineralItemId,
             collection.DiscoveredEntryIds);
-        Assert.Equal(1, SaveService.CurrentSchemaVersion);
+        Assert.Equal(2, SaveService.CurrentSchemaVersion);
     }
 
     private static GameSession PositionedAtVein(

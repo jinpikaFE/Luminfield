@@ -63,6 +63,7 @@ public sealed partial class FarmView : Node2D
     private readonly Node2D _crabPotLayer;
     private GridPosition? _openStorageChest;
     private bool _commissionBoardOpen;
+    private double _toolRepeatTimer;
 
     public FarmView(GameSession session, LocaleService locale)
     {
@@ -663,6 +664,8 @@ public sealed partial class FarmView : Node2D
             return;
         }
 
+        _toolRepeatTimer = 0.28;
+
         var target = _player.TargetCell;
         if (FestivalCatalog.FestivalOnDay(_session.Clock.Day) is { } festival &&
             FestivalSpatialCatalog.TryByFestivalId(
@@ -933,6 +936,33 @@ public sealed partial class FarmView : Node2D
 
         GetViewport().SetInputAsHandled();
     }
+
+    public override void _Process(double delta)
+    {
+        if (!ControlsEnabled ||
+            !AccessibilityRuntime.Settings.HoldToRepeatTools ||
+            !Input.IsActionPressed(InputSetup.Interact) ||
+            !IsRepeatableTool(_session.Inventory.Selected.ItemId))
+        {
+            _toolRepeatTimer = 0;
+            return;
+        }
+
+        _toolRepeatTimer -= delta;
+        if (_toolRepeatTimer > 0)
+        {
+            return;
+        }
+
+        _toolRepeatTimer = 0.22;
+        UseRequested?.Invoke(_player.TargetCell);
+    }
+
+    private static bool IsRepeatableTool(string itemId) =>
+        itemId is DataCatalog.ShovelId or
+            DataCatalog.MacheteId or
+            DataCatalog.WateringCanId or
+            DataCatalog.BucketId;
 
     public void RefreshFarmTile(GridPosition position)
     {
@@ -1589,7 +1619,9 @@ internal sealed partial class TargetCursor : Node2D
     {
         var preview = _preview();
         var origin = new Vector2(preview.Target.X * 16, preview.Target.Y * 16);
-        var pulse = 0.62f + Mathf.Sin((float)_time * 4) * 0.18f;
+        var pulse = AccessibilityRuntime.Settings.ScreenShakePercent == 0
+            ? 0.72f
+            : 0.62f + Mathf.Sin((float)_time * 4) * 0.18f;
         var accent = PreviewColor(preview.State);
         var active = preview.State != TargetPreviewState.Neutral;
         DrawRect(
@@ -1604,10 +1636,12 @@ internal sealed partial class TargetCursor : Node2D
             active ? Math.Min(1, pulse + 0.28f) : 0.48f
         );
         const float edge = 5;
-        DrawPolyline([origin + new Vector2(1, edge), origin + Vector2.One, origin + new Vector2(edge, 1)], outline, 1.5f);
-        DrawPolyline([origin + new Vector2(15 - edge, 1), origin + new Vector2(15, 1), origin + new Vector2(15, edge)], outline, 1.5f);
-        DrawPolyline([origin + new Vector2(1, 15 - edge), origin + new Vector2(1, 15), origin + new Vector2(edge, 15)], outline, 1.5f);
-        DrawPolyline([origin + new Vector2(15 - edge, 15), origin + new Vector2(15, 15), origin + new Vector2(15, 15 - edge)], outline, 1.5f);
+        var lineWidth = AccessibilityRuntime.Settings.TargetCues ==
+            TargetCueMode.HighContrast ? 2.5f : 1.5f;
+        DrawPolyline([origin + new Vector2(1, edge), origin + Vector2.One, origin + new Vector2(edge, 1)], outline, lineWidth);
+        DrawPolyline([origin + new Vector2(15 - edge, 1), origin + new Vector2(15, 1), origin + new Vector2(15, edge)], outline, lineWidth);
+        DrawPolyline([origin + new Vector2(1, 15 - edge), origin + new Vector2(1, 15), origin + new Vector2(edge, 15)], outline, lineWidth);
+        DrawPolyline([origin + new Vector2(15 - edge, 15), origin + new Vector2(15, 15), origin + new Vector2(15, 15 - edge)], outline, lineWidth);
         DrawCircle(origin + new Vector2(8, 8), active ? 1.7f : 1.1f, outline);
 
         if (active && !string.IsNullOrWhiteSpace(preview.LabelKey))
@@ -2774,13 +2808,40 @@ internal sealed partial class TargetCursor : Node2D
     private static float LabelCenterOffset(TargetPreviewKind kind) =>
         kind == TargetPreviewKind.AnimalNest ? -70 : 8;
 
-    private static Color PreviewColor(TargetPreviewState state) => state switch
+    private static Color PreviewColor(TargetPreviewState state)
     {
-        TargetPreviewState.Available => ThemeFactory.Mint,
-        TargetPreviewState.NeedsTool => ThemeFactory.Gold,
-        TargetPreviewState.Blocked => new Color("#e58a9f"),
-        _ => new Color("#8294b8")
-    };
+        if (AccessibilityRuntime.Settings.TargetCues ==
+            TargetCueMode.HighContrast)
+        {
+            return state switch
+            {
+                TargetPreviewState.Available => Colors.White,
+                TargetPreviewState.NeedsTool => new Color("#ffe100"),
+                TargetPreviewState.Blocked => new Color("#ff4a4a"),
+                _ => new Color("#9ca9bd")
+            };
+        }
+
+        if (AccessibilityRuntime.Settings.TargetCues ==
+            TargetCueMode.Deuteranopia)
+        {
+            return state switch
+            {
+                TargetPreviewState.Available => new Color("#55b8ff"),
+                TargetPreviewState.NeedsTool => new Color("#ffd166"),
+                TargetPreviewState.Blocked => new Color("#d98cff"),
+                _ => new Color("#8ca0b8")
+            };
+        }
+
+        return state switch
+        {
+            TargetPreviewState.Available => ThemeFactory.Mint,
+            TargetPreviewState.NeedsTool => ThemeFactory.Gold,
+            TargetPreviewState.Blocked => new Color("#e58a9f"),
+            _ => new Color("#8294b8")
+        };
+    }
 
     private static Rect2 WorkshopHighlightRect(
         Vector2 origin,

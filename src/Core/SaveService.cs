@@ -19,7 +19,8 @@ public sealed record SaveLoadResult(
 
 public sealed class SaveService
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
+    public const int BackupCount = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -49,6 +50,7 @@ public sealed class SaveService
         {
             var json = JsonSerializer.Serialize(save, JsonOptions);
             File.WriteAllText(temporaryPath, json);
+            RotateBackups();
             File.Move(temporaryPath, Path, true);
         }
         finally
@@ -69,30 +71,115 @@ public sealed class SaveService
 
         try
         {
-            var json = File.ReadAllText(Path);
-            var save = JsonSerializer.Deserialize<GameSaveV1>(json, JsonOptions)
-                ?? throw new InvalidDataException("Save JSON did not contain an object.");
-
-            if (save.SchemaVersion > CurrentSchemaVersion)
-            {
-                return new SaveLoadResult(SaveLoadStatus.Unsupported);
-            }
-
-            if (save.SchemaVersion <= 0)
-            {
-                save.SchemaVersion = CurrentSchemaVersion;
-            }
-
-            Normalize(save);
-            return new SaveLoadResult(SaveLoadStatus.Loaded, save);
+            return ReadSave(Path);
         }
         catch (Exception exception) when (
             exception is JsonException or IOException or InvalidDataException
         )
         {
             var preserved = PreserveBrokenSave();
+            for (var index = 1; index <= BackupCount; index++)
+            {
+                var backupPath = BackupPath(index);
+                if (!File.Exists(backupPath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var recovered = ReadSave(backupPath);
+                    if (recovered.Status == SaveLoadStatus.Loaded)
+                    {
+                        RestorePrimary(recovered.Save!);
+                        return recovered with { PreservedPath = preserved };
+                    }
+                }
+                catch (Exception backupException) when (
+                    backupException is JsonException or IOException or InvalidDataException
+                )
+                {
+                    // Try the next retained backup.
+                }
+            }
             return new SaveLoadResult(SaveLoadStatus.Corrupt, null, preserved);
         }
+    }
+
+    public string BackupPath(int index)
+    {
+        if (index is < 1 or > BackupCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        return $"{Path}.bak.{index}";
+    }
+
+    private SaveLoadResult ReadSave(string path)
+    {
+        var json = File.ReadAllText(path);
+        var save = JsonSerializer.Deserialize<GameSaveV1>(json, JsonOptions)
+            ?? throw new InvalidDataException("Save JSON did not contain an object.");
+
+        if (save.SchemaVersion > CurrentSchemaVersion)
+        {
+            return new SaveLoadResult(SaveLoadStatus.Unsupported);
+        }
+
+        Migrate(save);
+        Normalize(save);
+        return new SaveLoadResult(SaveLoadStatus.Loaded, save);
+    }
+
+    private void RestorePrimary(GameSaveV1 recoveredSave)
+    {
+        try
+        {
+            Save(recoveredSave);
+        }
+        catch (IOException)
+        {
+            // Keep the recovered in-memory save usable even if the disk is
+            // temporarily unavailable. The next normal save retries it.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // See the IOException case above.
+        }
+    }
+
+    private static void Migrate(GameSaveV1 save)
+    {
+        if (save.SchemaVersion <= 0)
+        {
+            save.SchemaVersion = 1;
+        }
+
+        if (save.SchemaVersion == 1)
+        {
+            save.GatheringSkill ??= new GatheringSkillSave();
+            save.StellarResonance ??= new StellarResonanceSave();
+            save.SchemaVersion = 2;
+        }
+    }
+
+    private void RotateBackups()
+    {
+        if (!File.Exists(Path))
+        {
+            return;
+        }
+
+        for (var index = BackupCount; index >= 2; index--)
+        {
+            var olderPath = BackupPath(index - 1);
+            if (File.Exists(olderPath))
+            {
+                File.Move(olderPath, BackupPath(index), true);
+            }
+        }
+        File.Copy(Path, BackupPath(1), true);
     }
 
     private static void Normalize(GameSaveV1 save)
@@ -390,6 +477,9 @@ public sealed class SaveService
             save.Day,
             save.Weather.CurrentId
         );
+        save.GatheringSkill = GatheringSkillSystem.NormalizeSave(
+            save.GatheringSkill
+        );
         save.Fishing ??= new FishingSave();
         save.Fishing.CaughtFishIds ??= [];
         save.Fishing.CaughtFishIds = save.Fishing.CaughtFishIds
@@ -617,6 +707,11 @@ public sealed class SaveService
         save.StarGate = StarGateSystem.NormalizeSave(
             save.StarGate,
             starGateCompleted
+        );
+        save.StellarResonance = StellarResonanceSystem.NormalizeSave(
+            save.StellarResonance,
+            save.StarGate.Activated,
+            save.Day
         );
         save.Animals = AnimalSystem.NormalizeSave(save.Animals, save.Day);
         if (AnimalBuildingSpatialCatalog.TryByLocationId(

@@ -235,11 +235,17 @@ public static class DeepMineCatalog
 
 public sealed class DeepMineSystem
 {
+    public const int BaseEnemyMineralDrop = 1;
+    public const int BaseExcavationYield = 1;
+    public const int GemseekerExcavationYield = 2;
+    public const int BaseExcavationEnergyCost = 4;
+
     private readonly HashSet<int> _clearedRooms = [];
     private readonly HashSet<int> _excavatedRooms = [];
     private readonly HashSet<string> _claimedWeaponIds =
         new(StringComparer.Ordinal);
     private bool _dodgePrepared;
+    private float _retaliationProgress;
 
     public int Seed { get; private set; }
     public bool Active { get; private set; }
@@ -273,6 +279,7 @@ public sealed class DeepMineSystem
         _excavatedRooms.Clear();
         _claimedWeaponIds.Clear();
         _dodgePrepared = false;
+        _retaliationProgress = 0;
         CrystalMiningSkill.Reset();
         NightwatchSkill.Reset();
         Changed?.Invoke();
@@ -325,6 +332,9 @@ public sealed class DeepMineSystem
             EnemyHealth = 0;
         }
         _dodgePrepared = false;
+        _retaliationProgress = Active
+            ? Math.Clamp(save?.ExpeditionRetaliationProgress ?? 0, 0, 0.99f)
+            : 0;
         CrystalMiningSkill.Restore(save?.CrystalMiningSkill);
         NightwatchSkill.Restore(save?.NightwatchSkill);
         Changed?.Invoke();
@@ -336,6 +346,7 @@ public sealed class DeepMineSystem
         save.ExpeditionActive = Active;
         save.ExpeditionRoom = CurrentRoom;
         save.ExpeditionEnemyHealth = EnemyHealth;
+        save.ExpeditionRetaliationProgress = _retaliationProgress;
         save.DeepestExpeditionRoom = DeepestRoom;
         save.StableAnchorRoom = StableAnchorRoom;
         save.ClearedExpeditionRooms = _clearedRooms.Order().ToList();
@@ -425,7 +436,10 @@ public sealed class DeepMineSystem
         string weaponItemId,
         Inventory inventory,
         CombatSystem combat,
-        CollectionSystem collection
+        CollectionSystem collection,
+        int damageBonus = 0,
+        float incomingDamageMultiplier = 1f,
+        float enemySpeedMultiplier = 1f
     )
     {
         if (!Active || EnemyHealth <= 0)
@@ -440,7 +454,7 @@ public sealed class DeepMineSystem
 
         var room = DeepMineCatalog.Room(Seed, CurrentRoom);
         var weapon = StarfallRuinsTrialCatalog.Weapon(weaponItemId);
-        var damage = weapon.Damage +
+        var damage = weapon.Damage + Math.Max(0, damageBonus) +
             (NightwatchSkill.SpecializationId ==
                 AdventureSkillCatalog.SpellbladeSpecializationId
                     ? 3
@@ -449,7 +463,10 @@ public sealed class DeepMineSystem
         var additions = new List<CraftingIngredient>();
         if (lethal)
         {
-            additions.Add(new CraftingIngredient(room.MineralItemId, 1));
+            additions.Add(new CraftingIngredient(
+                room.MineralItemId,
+                BaseEnemyMineralDrop
+            ));
             if (!string.IsNullOrWhiteSpace(room.RewardWeaponItemId) &&
                 !_claimedWeaponIds.Contains(room.RewardWeaponItemId) &&
                 inventory.Count(room.RewardWeaponItemId) == 0)
@@ -488,11 +505,35 @@ public sealed class DeepMineSystem
                 );
             }
 
+            _retaliationProgress += Math.Clamp(
+                enemySpeedMultiplier,
+                0.5f,
+                1f
+            );
+            if (_retaliationProgress < 1f)
+            {
+                Changed?.Invoke();
+                return new DeepMineAttackResult(
+                    true,
+                    "deep_mine.enemy_slowed",
+                    applied,
+                    EnemyHealth
+                );
+            }
+            _retaliationProgress -= 1f;
+
             var reduction = NightwatchSkill.SpecializationId ==
                 AdventureSkillCatalog.GuardianSpecializationId
                     ? 2
                     : 0;
-            var hit = combat.ReceiveHit(Math.Max(1, enemyDamage - reduction));
+            var adjustedDamage = Math.Max(
+                1,
+                (int)MathF.Ceiling(
+                    (enemyDamage - reduction) *
+                    Math.Clamp(incomingDamageMultiplier, 0.5f, 1f)
+                )
+            );
+            var hit = combat.ReceiveHit(adjustedDamage);
             Changed?.Invoke();
             return new DeepMineAttackResult(
                 true,
@@ -550,7 +591,8 @@ public sealed class DeepMineSystem
     public ActionResult Excavate(
         string shovelTierId,
         int availableEnergy,
-        Inventory inventory
+        Inventory inventory,
+        int energyReduction = 0
     )
     {
         if (!Active || EnemyHealth > 0)
@@ -570,11 +612,12 @@ public sealed class DeepMineSystem
         }
         var energyCost = Math.Max(
             1,
-            4 + CurrentRoom / 4 -
+            BaseExcavationEnergyCost + CurrentRoom / 4 -
             (CrystalMiningSkill.SpecializationId ==
                 AdventureSkillCatalog.ForgekeeperSpecializationId
                     ? 1
-                    : 0)
+                    : 0) -
+            Math.Max(0, energyReduction)
         );
         if (availableEnergy < energyCost)
         {
@@ -582,8 +625,8 @@ public sealed class DeepMineSystem
         }
         var amount = CrystalMiningSkill.SpecializationId ==
             AdventureSkillCatalog.GemseekerSpecializationId
-                ? 2
-                : 1;
+                ? GemseekerExcavationYield
+                : BaseExcavationYield;
         if (!inventory.CanAdd(room.MineralItemId, amount) ||
             !inventory.Add(room.MineralItemId, amount))
         {

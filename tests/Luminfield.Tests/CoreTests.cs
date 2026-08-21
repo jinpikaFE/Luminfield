@@ -9213,7 +9213,7 @@ public sealed class SaveServiceTests : IDisposable
 
         Assert.Equal(SaveLoadStatus.Loaded, result.Status);
         Assert.NotNull(result.Save);
-        Assert.Equal(1, result.Save.SchemaVersion);
+        Assert.Equal(SaveService.CurrentSchemaVersion, result.Save.SchemaVersion);
         Assert.Equal(
             ConstructionCatalog.CottageFirstUpgradeId,
             result.Save.Construction.ProjectId

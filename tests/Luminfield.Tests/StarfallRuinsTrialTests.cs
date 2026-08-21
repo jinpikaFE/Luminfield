@@ -381,7 +381,7 @@ public sealed class StarfallRuinsTrialTests
             normalized.DiscoveredEntryIds);
         Assert.DoesNotContain(StarfallRuinsTrialCatalog.HollowSentinelEnemyId,
             normalized.DiscoveredEntryIds);
-        Assert.Equal(1, SaveService.CurrentSchemaVersion);
+        Assert.Equal(2, SaveService.CurrentSchemaVersion);
     }
 
     [Fact]

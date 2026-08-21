@@ -9,6 +9,7 @@ public sealed partial class StarGateOverlay : FullScreenUi
     private readonly LocaleService _locale;
     private readonly Label _title;
     private readonly Label _summary;
+    private readonly Button _convergence;
     private readonly Label _notice;
     private readonly Button _close;
     private readonly Dictionary<string, Button> _destinationButtons =
@@ -30,7 +31,7 @@ public sealed partial class StarGateOverlay : FullScreenUi
 
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(430, 290)
+            CustomMinimumSize = new Vector2(450, 338)
         };
         panel.AddThemeStyleboxOverride(
             "panel",
@@ -64,7 +65,15 @@ public sealed partial class StarGateOverlay : FullScreenUi
 
         _summary = ThemeFactory.Label(size: 10, color: ThemeFactory.MutedInk);
         _summary.HorizontalAlignment = HorizontalAlignment.Center;
+        _summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _summary.CustomMinimumSize = new Vector2(400, 36);
         column.AddChild(_summary);
+
+        _convergence = ThemeFactory.Button("");
+        _convergence.CustomMinimumSize = new Vector2(260, 26);
+        _convergence.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        _convergence.Pressed += () => ConvergenceRequested?.Invoke();
+        column.AddChild(_convergence);
 
         var grid = new GridContainer
         {
@@ -96,11 +105,15 @@ public sealed partial class StarGateOverlay : FullScreenUi
 
         locale.LocaleChanged += RefreshText;
         RefreshText();
-        _destinationButtons[StarGateCatalog.HomesteadId]
-            .CallDeferred(Control.MethodName.GrabFocus);
+        if (_convergence.Disabled)
+        {
+            _destinationButtons[StarGateCatalog.HomesteadId]
+                .CallDeferred(Control.MethodName.GrabFocus);
+        }
     }
 
     public event Action<string>? TravelRequested;
+    public event Action? ConvergenceRequested;
     public event Action? CloseRequested;
 
     public void ShowNotice(string messageKey)
@@ -112,15 +125,40 @@ public sealed partial class StarGateOverlay : FullScreenUi
     {
         _title.Text = _locale.Tr("star_gate.panel.title");
         _summary.Text = _locale.Tr(
-            "star_gate.panel.summary",
-            _session.StarGate.TravelCount
+            "star_gate.panel.stellar_summary",
+            _session.StarGate.TravelCount,
+            _session.StellarSkillSnapshots()
+                .Count(skill => skill.IsMaximumLevel),
+            _session.StellarSkillSnapshots().Count
         );
+        if (_session.StellarResonance.MainStoryCompleted)
+        {
+            _convergence.Text = _locale.Tr(
+                "star_gate.panel.postgame",
+                _session.StellarResonance.Rank
+            );
+            _convergence.Disabled = false;
+            _convergence.TooltipText = _locale.Tr(
+                "stellar.main_story.already_completed"
+            );
+        }
+        else
+        {
+            var readiness = _session.CheckMainStoryCompletion();
+            _convergence.Text = _locale.Tr("star_gate.panel.convergence");
+            _convergence.Disabled = !readiness.Succeeded;
+            _convergence.TooltipText = _locale.Tr(readiness.MessageKey);
+        }
         foreach (var destination in StarGateCatalog.Destinations)
         {
             _destinationButtons[destination.Id].Text =
                 _locale.Tr(destination.NameKey);
         }
         _close.Text = _locale.Tr("menu.back");
+        if (!_convergence.Disabled)
+        {
+            _convergence.CallDeferred(Control.MethodName.GrabFocus);
+        }
     }
 
     public override void _ExitTree()

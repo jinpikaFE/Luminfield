@@ -32,6 +32,26 @@ After the tutorial, the farm opens into a repeatable economy loop:
   product or claim every completed batch atomically.
 - Reinvest the proceeds in more seeds to keep expanding the farm.
 
+## Phase G release candidate
+
+The 1.0-polish milestone now closes the main story at the activated Sixfold
+Star Gate once Farming, Gathering, Crystal Mining, Fishing, and Nightwatch all
+reach level 5. The bilingual ending preserves the world and opens five-rank
+postgame Stellar Resonance bonuses instead of ending the save.
+
+Gathering is now a complete fifth skill with stable XP, two level-three
+specializations, save support, and shared preview/action yields. The frozen
+`release_balance_v1` audit covers sell margins, base drops, resource respawns,
+skill caps, daily/weekly task cadence, festival rewards, and construction cost
+bands.
+
+Settings now persist separately from the world save and include fishing assist,
+incoming damage and enemy counter speed, motion intensity, high-contrast and
+red-green target palettes, 100/110/120% text, dialogue pace/auto-advance,
+auto-run, target lock, hold-to-repeat tools, and keyboard remapping. Every
+full-screen panel receives a controller focus fallback and the standard D-pad /
+A / B navigation map.
+
 The original 48×32 farm now opens through its illuminated southern gate into a
 192×128-cell exploration world. The expanded central Lumen City sits at the
 middle of the map and connects the homestead, Whispering Woods, Starfall Meadow,
@@ -369,7 +389,9 @@ Construction, activation, last destination, travel count, target preview,
 bilingual UI, save normalization, and the original 2×2 gate atlas are all wired.
 With the Moonpearl Egg Press, complete Phase-D fishing, complete Phase-E deep
 mine progression, and this final gate closure, the planned A–F milestone is
-complete; Phase G remains the next scope.
+complete. Phase G's code, content, and local release candidate are now complete
+as well; only real startup and input acceptance on Windows and Linux remain
+open, and successful macOS exports do not substitute for those platform runs.
 
 ## Tools and backpack
 
@@ -521,7 +543,12 @@ the day early.
 | Hotbar | 1–8 | Shoulder buttons |
 | Backpack | B / Tab | Y |
 | Crafting | C | X |
+| Toggle tool target lock | R | Right stick |
 | Pause | Esc | Start |
+
+Open **Settings & Accessibility** from the title or pause menu to remap keyboard
+actions and adjust assist options. Controller bindings remain available while
+keyboard bindings are changed.
 
 ## Developer playtest scenarios
 
@@ -535,6 +562,11 @@ game keeps the normal title-screen startup.
 method. Add a new ID and flag to the registry, then add its setup binding in
 `Main`; focused tests lock the known flag catalog, uniqueness, priority, and
 normal fallback behavior.
+
+Use `--playtest-stellar-convergence` to open the completed five-skill main-story
+ending and `--playtest-accessibility-settings` to inspect the full settings and
+remapping panel. Both support deterministic visual capture through
+`--capture-playtest=<path>`.
 
 Use `--playtest-liora-event-one`, `--playtest-liora-event-two`,
 `--playtest-tavi-event-one`, and `--playtest-tavi-event-two` to open the two
@@ -747,20 +779,38 @@ dotnet test tests/Luminfield.Tests/Luminfield.Tests.csproj
 godot --headless --path . --editor --quit
 godot --headless --path . --quit-after 180
 ./scripts/export_all.sh
+./scripts/verify_phase_g_fast.sh
+./scripts/verify_release_candidate.sh
 ```
 
+Use `verify_phase_g_fast.sh` during implementation; it incrementally builds and
+runs only Phase G, save, and scenario-registry coverage. The release-candidate script is
+the final gate and intentionally runs the complete suite plus Godot startup and
+export-structure checks.
+
+The default policy is minimum sufficient validation: documentation and rule
+changes receive content and diff checks; local code changes receive a build and
+focused tests; scene, asset, localization, and UI checks are added only when
+affected. Run the full regression only for a stable delivery candidate, save or
+global-contract changes, cross-domain infrastructure changes, a focused failure
+that indicates cross-module risk, or an explicit request. A passing full gate is
+not invalidated by later README, rule, or Obsidian-only edits.
+
 The save file is written atomically to `user://saves/slot_1.json`. Corrupt saves
-are preserved with a `.broken-<timestamp>` suffix.
+are preserved with a `.broken-<timestamp>` suffix. The current contract is
+`schemaVersion: 2`: schema-v1 saves migrate additively to Gathering and Stellar
+Resonance defaults, and the latest three successful saves are retained as
+`.bak.1`–`.bak.3`; a damaged primary save recovers from the newest valid backup.
 Glow coins, the three independent processing jobs, artisan goods,
 watering-can water,
 world-resource depletion dates, weather, the pending shipping chest, placed
 Starwoven Chests with their 16-slot contents, the daily and weekly commission
 states, the Woodland Watch Starlight's partial offerings and permanent reward,
-and the 24-slot backpack are stored in the existing `schemaVersion: 1` save.
+and the 24-slot backpack are stored in the migrated `schemaVersion: 2` save.
 Liora's, Tavi's, Nemi's, Kael's, Sela's, and Orin's character-event completion
 IDs and dates use another additive projection in that same schema.
 Season, season day, and year are derived from the existing absolute day; they do
-not add a save field or change the `schemaVersion: 1` contract.
+not add another save field to the migrated `schemaVersion: 2` contract.
 Fertilized farm cells, stable quality rolls, planting days, resolved resonance
 produce, farming XP and specialization, Moonstone Paths, Starwood Fences,
 Starlight Torches, and Dewfall Sprinklers use additive fields in that same
@@ -793,6 +843,28 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-21 17:37:13 CST — Closed the final Phase G audit gaps. Controller B
+  now closes open panels without opening pause in the world; empty remaps cannot
+  erase defaults, disabling target lock releases facing, and backup recovery
+  rebuilds the primary save. Added base-drop balance guards, populated postgame
+  long-run coverage, and focused tests for applied bonuses. Corrected the 120%
+  settings layout in an Apple M3 / Metal capture, passed the 50/50 fast gate and
+  the single 605/605 final gate, then rebuilt all three platform candidates.
+
+- 2026-08-21 17:00:17 CST — Changed validation to focused checks during
+  development and one full gate for stable candidates. Documented full-suite
+  triggers, invalidation boundaries, and the rule that documentation-only
+  follow-ups do not repeat regression tests.
+
+- 2026-08-21 16:45:46 CST — Completed the Phase G release-candidate increment:
+  a persistent Gathering skill closes the five-skill catalog, the Sixfold Star
+  Gate now resolves a bilingual main-story ending and five-rank postgame
+  resonance, and `release_balance_v1` freezes economy/growth/task/festival/build
+  guardrails. Added persistent accessibility and remapping settings, controller
+  focus fallback, schema-v2 migration with three rotating backups and recovery,
+  ten-year simulation coverage, deterministic convergence/settings captures,
+  and a release-candidate verification script.
 
 - 2026-08-21 15:32:48 CST — Reorganized all 146 generated PNG assets and their
   Godot import descriptions into 33 responsibility-based leaf directories for

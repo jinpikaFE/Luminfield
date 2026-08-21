@@ -128,6 +128,8 @@ public enum PlaytestScenarioId
     StarfallRuinsStarlightRestored,
     SixfoldStarGate,
     SixfoldStarGatePanel,
+    StellarConvergence,
+    AccessibilitySettings,
     LioraEventOne,
     LioraEventTwo,
     TaviEventOne,
@@ -725,6 +727,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.SixfoldStarGatePanel,
             "--playtest-sixfold-star-gate-panel"
+        ),
+        new(
+            PlaytestScenarioId.StellarConvergence,
+            "--playtest-stellar-convergence"
+        ),
+        new(
+            PlaytestScenarioId.AccessibilitySettings,
+            "--playtest-accessibility-settings"
         ),
         new(
             PlaytestScenarioId.LioraEventOne,

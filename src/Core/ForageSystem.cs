@@ -9,6 +9,8 @@ public sealed record ForageSpawn(
 
 public sealed class ForageSystem
 {
+    public const int BaseCollectionYield = 1;
+
     private static readonly GridPosition[] NeighborOffsets =
     [
         new(0, -1),
@@ -118,7 +120,8 @@ public sealed class ForageSystem
         string locationId,
         GridPosition playerCell,
         string selectedItemId,
-        Inventory inventory
+        Inventory inventory,
+        int quantity = BaseCollectionYield
     )
     {
         var spawn = SpawnAt(target);
@@ -134,7 +137,8 @@ public sealed class ForageSystem
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return inventory.CanAdd(spawn.ItemId, 1)
+        var safeQuantity = Math.Max(1, quantity);
+        return inventory.CanAdd(spawn.ItemId, safeQuantity)
             ? ActionResult.Success(messageKey: "target.action.collect_forage")
             : ActionResult.Fail("notice.inventory_full");
     }
@@ -144,7 +148,8 @@ public sealed class ForageSystem
         string locationId,
         GridPosition playerCell,
         string selectedItemId,
-        Inventory inventory
+        Inventory inventory,
+        int quantity = BaseCollectionYield
     )
     {
         var check = CheckCollect(
@@ -152,7 +157,8 @@ public sealed class ForageSystem
             locationId,
             playerCell,
             selectedItemId,
-            inventory
+            inventory,
+            quantity
         );
         if (!check.Succeeded)
         {
@@ -160,7 +166,8 @@ public sealed class ForageSystem
         }
 
         var spawn = SpawnAt(target)!;
-        if (!inventory.Add(spawn.ItemId, 1))
+        var safeQuantity = Math.Max(1, quantity);
+        if (!inventory.Add(spawn.ItemId, safeQuantity))
         {
             return ActionResult.Fail("notice.inventory_full");
         }
@@ -169,7 +176,7 @@ public sealed class ForageSystem
         Changed?.Invoke(target);
         return ActionResult.Grant(
             spawn.ItemId,
-            1,
+            safeQuantity,
             0,
             "notice.forage_collected"
         );

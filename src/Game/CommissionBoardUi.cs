@@ -19,6 +19,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
     private readonly Label _commissionTitle;
     private readonly Label _description;
     private readonly Label _progressText;
+    private readonly Label _itemStatus;
     private readonly ProgressBar _progress;
     private readonly Label _reward;
     private readonly Label _state;
@@ -141,6 +142,8 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         progressRow.AddChild(_progress);
         progressRow.AddChild(_progressText);
         paperColumn.AddChild(progressRow);
+        _itemStatus = ThemeFactory.Label(size: 9, color: ThemeFactory.MutedInk);
+        paperColumn.AddChild(_itemStatus);
         column.AddChild(paper);
 
         var rewardRow = new HBoxContainer
@@ -233,6 +236,10 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             progress,
             definition.RequiredCount
         );
+        _itemStatus.Text = ItemStatus(
+            definition.TargetId,
+            definition.RequiredCount
+        );
         _reward.Text = _locale.Tr(
             "commission.reward",
             definition.RewardCoins
@@ -301,6 +308,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             progress,
             stage.RequiredCount
         );
+        _itemStatus.Text = ItemStatus(stage.TargetId, stage.RequiredCount);
         _reward.Text = _locale.Tr(
             "weekly_commission.reward",
             definition.RewardCoins,
@@ -356,6 +364,20 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         }
 
         ExecuteDaily();
+    }
+
+    private string ItemStatus(string itemId, int requiredCount)
+    {
+        var owned = _session.Inventory.CountFamily(itemId);
+        var donated = _session.Collection.IsDonated(itemId) ||
+            _session.Fishing.IsDonated(itemId);
+        return _locale.Tr(
+            "commission.item_status",
+            owned,
+            requiredCount,
+            _locale.Tr(donated ? "settings.yes" : "settings.no"),
+            Math.Max(0, requiredCount - owned)
+        );
     }
 
     private void ExecuteDaily()

@@ -55,7 +55,7 @@ public sealed class DewhornAnimalTests
                 .Select(animal => animal.InstanceId)
                 .ToArray()
         );
-        Assert.Equal(1, SaveService.CurrentSchemaVersion);
+        Assert.Equal(2, SaveService.CurrentSchemaVersion);
         Assert.Equal(
             session.Animals.Capture().Animals.Select(entry => entry.InstanceId),
             AnimalSystem.NormalizeSave(

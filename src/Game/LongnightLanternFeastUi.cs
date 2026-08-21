@@ -244,7 +244,7 @@ public sealed partial class LongnightLanternFeastOverlay : FullScreenUi
             button.CustomMinimumSize = new Vector2(250, 29);
             if (_locale.CurrentLocale == LocaleService.English)
             {
-                button.AddThemeFontSizeOverride("font_size", 11);
+                ThemeFactory.SetFontSize(button, 11);
             }
             button.ClipText = true;
             button.Icon = ItemAtlas(itemId);
@@ -277,8 +277,8 @@ public sealed partial class LongnightLanternFeastOverlay : FullScreenUi
                 )
             );
             button.CustomMinimumSize = new Vector2(194, 29);
-            button.AddThemeFontSizeOverride(
-                "font_size",
+            ThemeFactory.SetFontSize(
+                button,
                 _locale.CurrentLocale == LocaleService.English ? 8 : 12
             );
             button.SizeFlagsHorizontal = SizeFlags.ExpandFill;

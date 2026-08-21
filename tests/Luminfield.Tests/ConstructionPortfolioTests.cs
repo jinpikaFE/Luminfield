@@ -241,7 +241,7 @@ public sealed class ConstructionPortfolioTests
         );
 
         var captured = session.Capture();
-        Assert.Equal(1, captured.SchemaVersion);
+        Assert.Equal(SaveService.CurrentSchemaVersion, captured.SchemaVersion);
         Assert.Equal(
             ConstructionCatalog.CottageFirstUpgradeId,
             captured.Construction.ProjectId

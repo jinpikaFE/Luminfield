@@ -417,7 +417,7 @@ public sealed partial class StorageOverlay : FullScreenUi
     {
         var button = ThemeFactory.Button("");
         button.CustomMinimumSize = new Vector2(246, 28);
-        button.AddThemeFontSizeOverride("font_size", 9);
+        ThemeFactory.SetFontSize(button, 9);
         return button;
     }
 

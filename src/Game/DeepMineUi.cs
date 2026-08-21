@@ -152,7 +152,7 @@ public sealed partial class DeepMineOverlay : FullScreenUi
         {
             var button = ThemeFactory.Button("");
             button.CustomMinimumSize = new Vector2(91, 22);
-            button.AddThemeFontSizeOverride("font_size", 8);
+            ThemeFactory.SetFontSize(button, 8);
             button.Pressed += () => ChooseSpecialization(specializationId);
             specializationRow.AddChild(button);
             _specializationButtons[specializationId] = button;

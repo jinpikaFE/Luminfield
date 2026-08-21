@@ -1,4 +1,5 @@
 using Godot;
+using Luminfield.Core;
 
 namespace Luminfield.Game;
 
@@ -15,6 +16,26 @@ public static class InputSetup
     public const string CombatDodge = "combat_dodge";
     public const string HotbarPrevious = "hotbar_previous";
     public const string HotbarNext = "hotbar_next";
+    public const string TargetLock = "target_lock";
+    public const string UiAccept = "ui_accept";
+    public const string UiCancel = "ui_cancel";
+    public const string UiUp = "ui_up";
+    public const string UiDown = "ui_down";
+    public const string UiLeft = "ui_left";
+    public const string UiRight = "ui_right";
+
+    public static IReadOnlyList<string> RebindableActions { get; } =
+    [
+        MoveLeft,
+        MoveRight,
+        MoveUp,
+        MoveDown,
+        Interact,
+        Backpack,
+        Crafting,
+        CombatDodge,
+        TargetLock
+    ];
 
     public static void EnsureActions()
     {
@@ -45,6 +66,52 @@ public static class InputSetup
         AddAction(CombatDodge, 0.5f, Key.Shift, JoyButton.B);
         AddAction(HotbarPrevious, 0.5f, JoyButton.LeftShoulder);
         AddAction(HotbarNext, 0.5f, JoyButton.RightShoulder);
+        AddAction(TargetLock, 0.5f, Key.R, JoyButton.RightStick);
+        EnsureUiNavigation();
+    }
+
+    public static void ApplyKeyboardBindings(
+        AccessibilitySettings settings
+    )
+    {
+        foreach (var action in RebindableActions)
+        {
+            if (!settings.KeyboardBindings.TryGetValue(action, out var rawKey) ||
+                !Enum.IsDefined((Key)rawKey) ||
+                (Key)rawKey == Key.None)
+            {
+                continue;
+            }
+
+            foreach (var inputEvent in InputMap.ActionGetEvents(action))
+            {
+                if (inputEvent is InputEventKey)
+                {
+                    InputMap.ActionEraseEvent(action, inputEvent);
+                }
+            }
+            AddKey(action, (Key)rawKey);
+        }
+    }
+
+    private static void EnsureUiNavigation()
+    {
+        Ensure(UiAccept, 0.5f);
+        Ensure(UiCancel, 0.5f);
+        Ensure(UiUp, 0.5f);
+        Ensure(UiDown, 0.5f);
+        Ensure(UiLeft, 0.5f);
+        Ensure(UiRight, 0.5f);
+        AddButton(UiAccept, JoyButton.A);
+        AddButton(UiCancel, JoyButton.B);
+        AddButton(UiUp, JoyButton.DpadUp);
+        AddButton(UiDown, JoyButton.DpadDown);
+        AddButton(UiLeft, JoyButton.DpadLeft);
+        AddButton(UiRight, JoyButton.DpadRight);
+        AddAxis(UiUp, JoyAxis.LeftY, -1);
+        AddAxis(UiDown, JoyAxis.LeftY, 1);
+        AddAxis(UiLeft, JoyAxis.LeftX, -1);
+        AddAxis(UiRight, JoyAxis.LeftX, 1);
     }
 
     private static void AddAction(

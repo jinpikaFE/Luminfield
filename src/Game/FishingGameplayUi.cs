@@ -385,7 +385,7 @@ public sealed partial class FishingGearOverlay : FullScreenUi
     {
         var button = ThemeFactory.Button("");
         button.CustomMinimumSize = new Vector2(270, 25);
-        button.AddThemeFontSizeOverride("font_size", 10);
+        ThemeFactory.SetFontSize(button, 10);
         parent.AddChild(button);
         return button;
     }

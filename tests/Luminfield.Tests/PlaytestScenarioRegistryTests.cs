@@ -482,6 +482,14 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.SixfoldStarGatePanel
         ),
         (
+            "--playtest-stellar-convergence",
+            PlaytestScenarioId.StellarConvergence
+        ),
+        (
+            "--playtest-accessibility-settings",
+            PlaytestScenarioId.AccessibilitySettings
+        ),
+        (
             "--playtest-liora-event-one",
             PlaytestScenarioId.LioraEventOne
         ),

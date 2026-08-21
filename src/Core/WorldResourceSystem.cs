@@ -5,6 +5,9 @@ public sealed class WorldResourceSystem
     public const int CrystalRespawnDays = 2;
     public const int TreeRespawnDays = CalendarSystem.DaysPerWeek;
     public const int RenewedWoodlandTreeRespawnDays = 4;
+    public const int GatherEnergyCost = 4;
+    public const int BaseTreeYield = 2;
+    public const int BaseCrystalYield = 1;
 
     private readonly Dictionary<string, int> _depleted = new(StringComparer.Ordinal);
 
@@ -57,7 +60,8 @@ public sealed class WorldResourceSystem
         string toolId,
         int availableEnergy,
         Inventory inventory,
-        int currentDay
+        int currentDay,
+        int treeYieldBonus = 0
     )
     {
         var resource = WorldDefinition.ResourceAt(cell);
@@ -87,8 +91,7 @@ public sealed class WorldResourceSystem
             );
         }
 
-        const int energyCost = 4;
-        if (availableEnergy < energyCost)
+        if (availableEnergy < GatherEnergyCost)
         {
             return ActionResult.Fail("notice.no_energy");
         }
@@ -96,7 +99,9 @@ public sealed class WorldResourceSystem
         var itemId = resource == WorldResourceKind.Tree
             ? DataCatalog.LumenwoodId
             : DataCatalog.CrystalShardId;
-        var count = resource == WorldResourceKind.Tree ? 2 : 1;
+        var count = resource == WorldResourceKind.Tree
+            ? BaseTreeYield + Math.Max(0, treeYieldBonus)
+            : BaseCrystalYield;
         if (!inventory.Add(itemId, count))
         {
             return ActionResult.Fail("notice.inventory_full");
@@ -107,7 +112,7 @@ public sealed class WorldResourceSystem
         return ActionResult.Grant(
             itemId,
             count,
-            energyCost,
+            GatherEnergyCost,
             resource == WorldResourceKind.Tree
                 ? "notice.gathered_wood"
                 : "notice.gathered_crystal"

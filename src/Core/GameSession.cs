@@ -44,6 +44,8 @@ public sealed class GameSession
     public ConstructionSystem Construction { get; } = new();
     public StarGateSystem StarGate { get; } = new();
     public FarmingSkillSystem FarmingSkill { get; } = new();
+    public GatheringSkillSystem GatheringSkill { get; } = new();
+    public StellarResonanceSystem StellarResonance { get; } = new();
     public GleamriseSeasonGoalSystem GleamriseSeason { get; } = new();
     public FestivalSystem Festival { get; } = new();
     public AnimalSystem Animals { get; } = new();
@@ -105,6 +107,11 @@ public sealed class GameSession
     public bool ForageMapUnlocked => Collection.IsRewardClaimed(
         CollectionRewardIds.StarpathForagersGuide
     );
+    public int EffectiveWateringEnergyCost => Math.Max(
+        1,
+        FarmingSkill.WateringEnergyCost -
+            StellarResonance.WateringEnergyReduction
+    );
     public string? CurrentAnimalBuildingId =>
         AnimalBuildingSpatialCatalog.TryByLocationId(
             PlayerLocationId,
@@ -138,11 +145,29 @@ public sealed class GameSession
             ? Weather.Current.OutdoorMovementMultiplier
             : 1f;
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
+    public float FishingAssistBonus { get; private set; }
+    public float IncomingDamageMultiplier { get; private set; } = 1f;
+    public float EnemySpeedMultiplier { get; private set; } = 1f;
 
     public event Action? Changed;
     public event Action? EnergyChanged;
     public event Action? WaterChanged;
     public event Action? DayEnded;
+
+    public void ConfigureAccessibility(
+        float fishingAssistBonus,
+        float incomingDamageMultiplier,
+        float enemySpeedMultiplier
+    )
+    {
+        FishingAssistBonus = Math.Clamp(fishingAssistBonus, 0, 0.2f);
+        IncomingDamageMultiplier = Math.Clamp(
+            incomingDamageMultiplier,
+            0.5f,
+            1f
+        );
+        EnemySpeedMultiplier = Math.Clamp(enemySpeedMultiplier, 0.5f, 1f);
+    }
     public event Action? PlayerMoved;
     public event Action<string>? CollectionEntryDiscovered;
 
@@ -183,6 +208,8 @@ public sealed class GameSession
         Construction.Changed += NotifyChanged;
         StarGate.Changed += NotifyChanged;
         FarmingSkill.Changed += NotifyChanged;
+        GatheringSkill.Changed += NotifyChanged;
+        StellarResonance.Changed += NotifyChanged;
         GleamriseSeason.Changed += NotifyChanged;
         Festival.Changed += NotifyChanged;
         Animals.Changed += NotifyChanged;
@@ -232,6 +259,8 @@ public sealed class GameSession
         Construction.Reset();
         StarGate.Reset();
         FarmingSkill.Reset();
+        GatheringSkill.Reset();
+        StellarResonance.Reset();
         GleamriseSeason.Reset(Clock.Day);
         Festival.Reset();
         Animals.Reset();
@@ -297,6 +326,7 @@ public sealed class GameSession
         EnsureCompletedAnimalStarters();
         EnsureCompletedAnimalAutomation();
         FarmingSkill.Restore(save.FarmingSkill);
+        GatheringSkill.Restore(save.GatheringSkill);
         GleamriseSeason.Restore(save.GleamriseSeason, save.Day);
         ResolveFestivalAttemptsForCurrentTime();
         Resources.Restore(
@@ -308,6 +338,11 @@ public sealed class GameSession
         Forage.Restore(save.Forage, save.Day, Weather.CurrentId);
         Fishing.Restore(save.Fishing);
         FishingProgression.Restore(save.Fishing);
+        StellarResonance.Restore(
+            save.StellarResonance,
+            StarGate.Activated,
+            save.Day
+        );
         FishingMinigame.Reset();
         CrabPots.Restore(save.Fishing);
         Shipping.Restore(save.Shipping);
@@ -624,7 +659,9 @@ public sealed class GameSession
                         selected.ItemId,
                         Energy,
                         Inventory,
-                        Clock.Day
+                        Clock.Day,
+                        GatheringSkill.LumberYieldBonus +
+                            StellarResonance.GatheringYieldBonus
                     );
                     break;
                 }
@@ -643,7 +680,9 @@ public sealed class GameSession
                     selected.ItemId,
                     Energy,
                     Inventory,
-                    Clock.Day
+                    Clock.Day,
+                    GatheringSkill.LumberYieldBonus +
+                        StellarResonance.GatheringYieldBonus
                 );
                 break;
             case DataCatalog.WateringCanId:
@@ -656,7 +695,7 @@ public sealed class GameSession
                 result = Farm.TryWater(
                     target,
                     Energy,
-                    FarmingSkill.WateringEnergyCost
+                    EffectiveWateringEnergyCost
                 );
                 if (result.Succeeded)
                 {
@@ -776,6 +815,18 @@ public sealed class GameSession
                 break;
         }
 
+        if (result.Succeeded &&
+            selected.ItemId == DataCatalog.MacheteId &&
+            WorldDefinition.ResourceAt(target) == WorldResourceKind.Tree)
+        {
+            GatheringSkill.RecordSuccessfulAction(
+                GatheringSkillAction.FellTree
+            );
+            StellarResonance.RecordPostgameActivity(
+                StellarSkillKind.Gathering
+            );
+        }
+
         if (result.Succeeded && result.GrantedItemId is not null)
         {
             Commission.RecordGather(
@@ -802,7 +853,7 @@ public sealed class GameSession
 
         if (result.Succeeded && farmingSkillAction is { } successfulAction)
         {
-            FarmingSkill.RecordSuccessfulAction(successfulAction);
+            RecordFarmingSkillAction(successfulAction);
         }
 
         return result;
@@ -1407,7 +1458,7 @@ public sealed class GameSession
                 );
             }
 
-            return Energy < FarmingSkill.WateringEnergyCost
+            return Energy < EffectiveWateringEnergyCost
                 ? TargetPreview.Blocked(
                     target,
                     TargetPreviewKind.Crop,
@@ -2322,12 +2373,22 @@ public sealed class GameSession
         var selectedId = Inventory.Selected.IsEmpty
             ? string.Empty
             : Inventory.Selected.ItemId;
-        return DeepMine.Attack(
+        var result = DeepMine.Attack(
             selectedId,
             Inventory,
             Combat,
-            Collection
+            Collection,
+            StellarResonance.CombatDamageBonus,
+            IncomingDamageMultiplier,
+            EnemySpeedMultiplier
         );
+        if (result.Succeeded && result.EnemyDefeated)
+        {
+            StellarResonance.RecordPostgameActivity(
+                StellarSkillKind.Nightwatch
+            );
+        }
+        return result;
     }
 
     public CombatDodgeResult DodgeInDeepMine() =>
@@ -2346,7 +2407,8 @@ public sealed class GameSession
         var result = DeepMine.Excavate(
             ToolProgression.TierIdFor(DataCatalog.ShovelId),
             Energy,
-            Inventory
+            Inventory,
+            StellarResonance.MiningEnergyReduction
         );
         if (!result.Succeeded)
         {
@@ -2355,6 +2417,9 @@ public sealed class GameSession
 
         Energy = Math.Max(0, Energy - result.EnergyCost);
         EnergyChanged?.Invoke();
+        StellarResonance.RecordPostgameActivity(
+            StellarSkillKind.CrystalMining
+        );
         NotifyChanged();
         return result;
     }
@@ -2367,6 +2432,73 @@ public sealed class GameSession
     ) => kind == AdventureSkillKind.CrystalMining
         ? DeepMine.CrystalMiningSkill.ChooseSpecialization(specializationId)
         : DeepMine.NightwatchSkill.ChooseSpecialization(specializationId);
+
+    public ActionResult ChooseGatheringSpecialization(
+        string specializationId
+    ) => GatheringSkill.ChooseSpecialization(specializationId);
+
+    public IReadOnlyList<StellarSkillSnapshot> StellarSkillSnapshots() =>
+    [
+        new(
+            StellarSkillKind.Farming,
+            StellarResonanceCatalog.SkillNameKeys[StellarSkillKind.Farming],
+            FarmingSkill.Level,
+            FarmingSkill.MaximumLevel
+        ),
+        new(
+            StellarSkillKind.Gathering,
+            StellarResonanceCatalog.SkillNameKeys[StellarSkillKind.Gathering],
+            GatheringSkill.Level,
+            GatheringSkill.MaximumLevel
+        ),
+        new(
+            StellarSkillKind.CrystalMining,
+            StellarResonanceCatalog.SkillNameKeys[
+                StellarSkillKind.CrystalMining
+            ],
+            DeepMine.CrystalMiningSkill.Level,
+            AdventureSkillCatalog.LevelThresholds.Count - 1
+        ),
+        new(
+            StellarSkillKind.Fishing,
+            StellarResonanceCatalog.SkillNameKeys[StellarSkillKind.Fishing],
+            FishingProgression.Level,
+            FishingProgressionCatalog.LevelThresholds.Count - 1
+        ),
+        new(
+            StellarSkillKind.Nightwatch,
+            StellarResonanceCatalog.SkillNameKeys[StellarSkillKind.Nightwatch],
+            DeepMine.NightwatchSkill.Level,
+            AdventureSkillCatalog.LevelThresholds.Count - 1
+        )
+    ];
+
+    public bool AllFiveSkillsAtMaximum => StellarSkillSnapshots()
+        .All(skill => skill.IsMaximumLevel);
+
+    public ActionResult CheckMainStoryCompletion() =>
+        StellarResonance.CheckMainStoryCompletion(
+            StarGate.Activated,
+            AllFiveSkillsAtMaximum
+        );
+
+    public ActionResult CompleteMainStory()
+    {
+        if (!IsStarGateInReach(FarmLayout.StarGateCell))
+        {
+            return ActionResult.Fail("stellar.main_story.requires_star_gate");
+        }
+        if (Inventory.Selected.ItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        return StellarResonance.CompleteMainStory(
+            Clock.Day,
+            StarGate.Activated,
+            AllFiveSkillsAtMaximum
+        );
+    }
 
     public StarfallTrialDefeatResolution ResolveDeepMineDefeat()
     {
@@ -2814,7 +2946,9 @@ public sealed class GameSession
             PlayerLocationId,
             PlayerCell,
             selectedItemId,
-            Inventory
+            Inventory,
+            1 + GatheringSkill.ForageYieldBonus +
+                StellarResonance.GatheringYieldBonus
         );
         if (check.Succeeded)
         {
@@ -2856,10 +2990,18 @@ public sealed class GameSession
                 PlayerLocationId,
                 PlayerCell,
                 selectedItemId,
-                Inventory
+                Inventory,
+                1 + GatheringSkill.ForageYieldBonus +
+                    StellarResonance.GatheringYieldBonus
             );
             if (result.Succeeded && result.GrantedItemId is not null)
             {
+                GatheringSkill.RecordSuccessfulAction(
+                    GatheringSkillAction.CollectForage
+                );
+                StellarResonance.RecordPostgameActivity(
+                    StellarSkillKind.Gathering
+                );
                 Commission.RecordGather(
                     result.GrantedItemId,
                     result.GrantedItemCount
@@ -3002,7 +3144,7 @@ public sealed class GameSession
                     DataCatalog.BaseItemId(harvested.GrantedItemId),
                     harvested.GrantedItemCount
                 );
-                FarmingSkill.RecordSuccessfulAction(
+                RecordFarmingSkillAction(
                     FarmingSkillAction.Harvest
                 );
                 GleamriseSeason.RecordGatheredItem(
@@ -3063,7 +3205,7 @@ public sealed class GameSession
                 Quest.OnHarvested(
                     DataCatalog.BaseItemId(harvested.GrantedItemId)
                 );
-                FarmingSkill.RecordSuccessfulAction(
+                RecordFarmingSkillAction(
                     FarmingSkillAction.Harvest
                 );
                 GleamriseSeason.RecordGatheredItem(
@@ -3130,6 +3272,12 @@ public sealed class GameSession
             return ActionResult.Fail("notice.no_energy");
         }
 
+        var fish = Fishing.PreviewCatch(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            Weather.CurrentId
+        );
         var result = Fishing.TryCatch(
             target,
             Clock.Day,
@@ -3140,6 +3288,16 @@ public sealed class GameSession
         if (!result.Succeeded)
         {
             return result;
+        }
+
+        if (fish is not null)
+        {
+            FishingProgression.RecordCatch(
+                FishingMinigameSystem.DifficultyFor(fish)
+            );
+            StellarResonance.RecordPostgameActivity(
+                StellarSkillKind.Fishing
+            );
         }
 
         Energy = Math.Max(0, Energy - result.EnergyCost);
@@ -3195,7 +3353,11 @@ public sealed class GameSession
                 return ActionResult.Fail("fishing.gear.bait_missing");
             }
 
-            FishingMinigame.Begin(fish, FishingProgression);
+            FishingMinigame.Begin(
+                fish,
+                FishingProgression,
+                StellarResonance.FishingCatchZoneBonus + FishingAssistBonus
+            );
             FishingProgression.ClearBaitIfMissing(Inventory);
             Energy -= FishingSystem.CastEnergyCost;
             EnergyChanged?.Invoke();
@@ -3243,6 +3405,9 @@ public sealed class GameSession
         if (result.Succeeded)
         {
             FishingProgression.RecordCatch(challenge.Difficulty);
+            StellarResonance.RecordPostgameActivity(
+                StellarSkillKind.Fishing
+            );
         }
         return result;
     }
@@ -5653,6 +5818,12 @@ public sealed class GameSession
         return settlement;
     }
 
+    private void RecordFarmingSkillAction(FarmingSkillAction action)
+    {
+        FarmingSkill.RecordSuccessfulAction(action);
+        StellarResonance.RecordPostgameActivity(StellarSkillKind.Farming);
+    }
+
     public GameSaveV1 Capture() => new()
     {
         SchemaVersion = SaveService.CurrentSchemaVersion,
@@ -5701,10 +5872,12 @@ public sealed class GameSession
         CharacterEvents = CharacterEvents.Capture(),
         Construction = Construction.Capture(),
         FarmingSkill = FarmingSkill.Capture(),
+        GatheringSkill = GatheringSkill.Capture(),
         GleamriseSeason = GleamriseSeason.Capture(),
         Festival = Festival.Capture(),
         Collection = Collection.Capture(),
-        StarGate = StarGate.Capture()
+        StarGate = StarGate.Capture(),
+        StellarResonance = StellarResonance.Capture()
     };
 
     private FishingSave CaptureFishing()
@@ -6376,7 +6549,7 @@ public sealed class GameSession
             }
 
             Animals.FeedBuildingChecked(buildingId, Clock.Day, grazing);
-            FarmingSkill.RecordSuccessfulAction(
+            RecordFarmingSkillAction(
                 FarmingSkillAction.FeedAnimal
             );
             GleamriseSeason.RecordMilestone(
@@ -6431,7 +6604,7 @@ public sealed class GameSession
         try
         {
             Animals.PetChecked(instanceId, Clock.Day);
-            FarmingSkill.RecordSuccessfulAction(
+            RecordFarmingSkillAction(
                 FarmingSkillAction.PetAnimal
             );
         }
@@ -6524,7 +6697,7 @@ public sealed class GameSession
                 buildingId,
                 station.ProductBaseItemId
             );
-            FarmingSkill.RecordSuccessfulAction(
+            RecordFarmingSkillAction(
                 FarmingSkillAction.CollectAnimalProduct
             );
             if (products.Any(product =>
@@ -7111,7 +7284,7 @@ public sealed class GameSession
                 result = GreenhouseFarm.TryWater(
                     target,
                     Energy,
-                    FarmingSkill.WateringEnergyCost
+                    EffectiveWateringEnergyCost
                 );
                 if (result.Succeeded)
                 {
@@ -7168,7 +7341,7 @@ public sealed class GameSession
 
         if (result.Succeeded && farmingSkillAction is { } successfulAction)
         {
-            FarmingSkill.RecordSuccessfulAction(successfulAction);
+            RecordFarmingSkillAction(successfulAction);
         }
 
         return result;
@@ -7212,7 +7385,7 @@ public sealed class GameSession
             baseItemId,
             harvested.GrantedItemCount
         );
-        FarmingSkill.RecordSuccessfulAction(FarmingSkillAction.Harvest);
+        RecordFarmingSkillAction(FarmingSkillAction.Harvest);
         return harvested;
     }
 
@@ -7407,7 +7580,7 @@ public sealed class GameSession
                 );
             }
 
-            return Energy < FarmingSkill.WateringEnergyCost
+            return Energy < EffectiveWateringEnergyCost
                 ? TargetPreview.Blocked(
                     target,
                     TargetPreviewKind.Crop,

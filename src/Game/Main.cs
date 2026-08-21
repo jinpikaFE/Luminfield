@@ -9,6 +9,8 @@ public sealed partial class Main : Node
     private readonly LocaleService _locale = new();
     private Theme _theme = null!;
     private SaveService _saveService = null!;
+    private AccessibilitySettingsService _settingsService = null!;
+    private AccessibilitySettings _settings = null!;
     private PixelAudio _audio = null!;
     private CanvasLayer _uiLayer = null!;
     private Node2D? _world;
@@ -54,6 +56,9 @@ public sealed partial class Main : Node
     private FishingGearOverlay? _fishingGearOverlay;
     private DeepMineOverlay? _deepMineOverlay;
     private StarGateOverlay? _starGateOverlay;
+    private StellarResonanceOverlay? _stellarResonanceOverlay;
+    private MainStoryEndingOverlay? _mainStoryEndingOverlay;
+    private AccessibilitySettingsOverlay? _settingsOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
     private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FestivalShowcaseOverlay? _festivalShowcaseOverlay;
@@ -77,6 +82,13 @@ public sealed partial class Main : Node
     {
         ProcessMode = ProcessModeEnum.Always;
         InputSetup.EnsureActions();
+        _settingsService = new AccessibilitySettingsService(
+            ProjectSettings.GlobalizePath("user://settings.json")
+        );
+        _settings = _settingsService.Load();
+        InputSetup.ApplyKeyboardBindings(_settings);
+        AccessibilityRuntime.Apply(_settings);
+        ConfigureSessionAccessibility();
         DisplayServer.WindowSetMinSize(new Vector2I(960, 540));
 
         _locale.LoadJson(
@@ -184,14 +196,26 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        var pausePressed = @event.IsActionPressed(InputSetup.Pause);
+        var uiCancelPressed = @event.IsActionPressed(InputSetup.UiCancel);
+        var overlayCancelPressed = pausePressed || uiCancelPressed;
+
+        if (overlayCancelPressed &&
+            _settingsOverlay is not null)
+        {
+            CloseSettings();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (overlayCancelPressed &&
             _fishingMinigameOverlay is not null)
         {
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _fishingGearOverlay is not null)
         {
             CloseFishingGear();
@@ -199,7 +223,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _deepMineOverlay is not null)
         {
             CloseDeepMine();
@@ -207,7 +231,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _starGateOverlay is not null)
         {
             CloseStarGate();
@@ -215,7 +239,22 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
+            _stellarResonanceOverlay is not null)
+        {
+            CloseStellarResonance();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (overlayCancelPressed &&
+            _mainStoryEndingOverlay is not null)
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (overlayCancelPressed &&
             _compendiumOverlay is not null)
         {
             CloseCropCodex();
@@ -223,7 +262,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _festivalShowcaseOverlay is not null)
         {
             CloseFestivalShowcase();
@@ -231,7 +270,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _festivalShopOverlay is not null)
         {
             CloseFestivalShop();
@@ -239,7 +278,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _gleamrisePlantingOverlay is not null)
         {
             CloseGleamrisePlanting();
@@ -247,7 +286,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _gleamriseSeedExchangeOverlay is not null)
         {
             CloseGleamriseSeedExchange();
@@ -255,35 +294,35 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _shopOverlay is not null)
+        if (overlayCancelPressed && _shopOverlay is not null)
         {
             CloseShop();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _processorOverlay is not null)
+        if (overlayCancelPressed && _processorOverlay is not null)
         {
             CloseProcessor();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _shippingOverlay is not null)
+        if (overlayCancelPressed && _shippingOverlay is not null)
         {
             CloseShipping();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _commissionOverlay is not null)
+        if (overlayCancelPressed && _commissionOverlay is not null)
         {
             CloseCommissionBoard();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _constructionOverlay is not null)
         {
             CloseConstructionPanel();
@@ -291,7 +330,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _livestockAutomationOverlay is not null)
         {
             CloseLivestockAutomation();
@@ -299,7 +338,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _mailOverlay is not null)
         {
             CloseStarlightMail();
@@ -307,7 +346,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _starlightOverlay is not null)
         {
             CloseStarlightPedestal();
@@ -315,7 +354,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _kitchenOverlay is not null)
         {
             CloseKitchen();
@@ -323,7 +362,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _ingredientPantryOverlay is not null)
         {
             CloseIngredientPantry();
@@ -331,7 +370,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _cookedDishOverlay is not null)
         {
             CloseCookedDishes();
@@ -339,7 +378,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if ((@event.IsActionPressed(InputSetup.Pause) ||
+        if ((overlayCancelPressed ||
              @event.IsActionPressed(InputSetup.Crafting)) &&
             _craftingOverlay is not null)
         {
@@ -348,28 +387,28 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _farmingSpecializationOverlay is not null)
         {
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _storageOverlay is not null)
+        if (overlayCancelPressed && _storageOverlay is not null)
         {
             CloseStorage();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) && _nightlySummaryOverlay is not null)
+        if (overlayCancelPressed && _nightlySummaryOverlay is not null)
         {
             CloseNightlySummary();
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if ((@event.IsActionPressed(InputSetup.Pause) ||
+        if ((overlayCancelPressed ||
              @event.IsActionPressed(InputSetup.Backpack)) &&
             _backpackOverlay is not null)
         {
@@ -378,7 +417,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _fishingCollectionOverlay is not null)
         {
             CloseFishingCollection();
@@ -386,7 +425,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _fishingDonationOverlay is not null)
         {
             CloseFishingDonation();
@@ -394,7 +433,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if (overlayCancelPressed &&
             _gleamriseSeasonOverlay is not null)
         {
             CloseGleamriseSeasonGoals();
@@ -416,7 +455,7 @@ public sealed partial class Main : Node
             return;
         }
 
-        if (@event.IsActionPressed(InputSetup.Pause) &&
+        if ((pausePressed || (_paused && uiCancelPressed)) &&
             _dialogueOverlay is null &&
             _completionOverlay is null &&
             _shopOverlay is null &&
@@ -525,6 +564,9 @@ public sealed partial class Main : Node
         _fishingGearOverlay is not null ||
         _deepMineOverlay is not null ||
         _starGateOverlay is not null ||
+        _stellarResonanceOverlay is not null ||
+        _mainStoryEndingOverlay is not null ||
+        _settingsOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
         _festivalShowcaseOverlay is not null ||
@@ -564,6 +606,9 @@ public sealed partial class Main : Node
         _fishingGearOverlay is null &&
         _deepMineOverlay is null &&
         _starGateOverlay is null &&
+        _stellarResonanceOverlay is null &&
+        _mainStoryEndingOverlay is null &&
+        _settingsOverlay is null &&
         _gleamriseSeasonOverlay is null &&
         _farmingSpecializationOverlay is null &&
         _festivalShowcaseOverlay is null &&
@@ -629,6 +674,12 @@ public sealed partial class Main : Node
         _fishingDonationOverlay = null;
         FreeUi(_starGateOverlay);
         _starGateOverlay = null;
+        FreeUi(_stellarResonanceOverlay);
+        _stellarResonanceOverlay = null;
+        FreeUi(_mainStoryEndingOverlay);
+        _mainStoryEndingOverlay = null;
+        FreeUi(_settingsOverlay);
+        _settingsOverlay = null;
         FreeUi(_gleamriseSeasonOverlay);
         _gleamriseSeasonOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
@@ -654,7 +705,7 @@ public sealed partial class Main : Node
         _uiLayer.AddChild(_title);
         _title.NewGameRequested += StartNewGame;
         _title.ContinueRequested += ContinueGame;
-        _title.LanguageRequested += ToggleLanguage;
+        _title.LanguageRequested += OpenSettings;
         _title.QuitRequested += () => GetTree().Quit();
     }
 
@@ -914,6 +965,10 @@ public sealed partial class Main : Node
                     StartSixfoldStarGatePlaytest,
                 [PlaytestScenarioId.SixfoldStarGatePanel] =
                     StartSixfoldStarGatePanelPlaytest,
+                [PlaytestScenarioId.StellarConvergence] =
+                    StartStellarConvergencePlaytest,
+                [PlaytestScenarioId.AccessibilitySettings] =
+                    StartAccessibilitySettingsPlaytest,
                 [PlaytestScenarioId.LioraEventOne] =
                     StartLioraEventOnePlaytest,
                 [PlaytestScenarioId.LioraEventTwo] =
@@ -4745,6 +4800,51 @@ public sealed partial class Main : Node
     private void StartSixfoldStarGatePanelPlaytest() =>
         PrepareSixfoldStarGatePlaytest(openPanel: true);
 
+    private void StartStellarConvergencePlaytest()
+    {
+        PrepareSixfoldStarGatePlaytest(openPanel: false);
+        var save = _session.Capture();
+        save.FarmingSkill.Experience = FarmingSkillCatalog.Levels[^1]
+            .RequiredExperience;
+        save.GatheringSkill.Experience = GatheringSkillCatalog
+            .LevelThresholds[^1];
+        save.Fishing.Experience = FishingProgressionCatalog
+            .LevelThresholds[^1];
+        save.Mining.CrystalMiningSkill.Experience = AdventureSkillCatalog
+            .LevelThresholds[^1];
+        save.Mining.NightwatchSkill.Experience = AdventureSkillCatalog
+            .LevelThresholds[^1];
+        _session.Restore(save);
+        var result = _session.CompleteMainStory();
+        if (!result.Succeeded)
+        {
+            GD.PushError($"Could not prepare convergence playtest: {result.MessageKey}");
+            return;
+        }
+        SetWorldControls(false);
+        _mainStoryEndingOverlay = new MainStoryEndingOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _mainStoryEndingOverlay.ContinueRequested += CloseMainStoryEnding;
+        _uiLayer.AddChild(_mainStoryEndingOverlay);
+    }
+
+    private void StartAccessibilitySettingsPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _settings.FontScalePercent = 120;
+        AccessibilityRuntime.Apply(_settings, GetTree().Root);
+        _theme = ThemeFactory.CreateTheme();
+        _session.NewGame(_locale.CurrentLocale);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenSettings).CallDeferred();
+    }
+
     private void PrepareSixfoldStarGatePlaytest(bool openPanel)
     {
         PrepareStarfallRuinsStarlightPlaytest(restored: true);
@@ -6348,6 +6448,10 @@ public sealed partial class Main : Node
         _session.Restore(result.Save);
         _playing = true;
         EnsureHud();
+        if (!string.IsNullOrWhiteSpace(result.PreservedPath))
+        {
+            _hud?.ShowNotice("notice.save_recovered", 3.2);
+        }
         if (_session.InsideCottage)
         {
             ShowCottage(false);
@@ -8831,10 +8935,15 @@ public sealed partial class Main : Node
             ClosePause();
             OpenFishingGear();
         };
+        _pauseOverlay.StellarResonanceRequested += () =>
+        {
+            ClosePause();
+            OpenStellarResonance();
+        };
         _pauseOverlay.LanguageRequested += () =>
         {
-            ToggleLanguage();
-            _pauseOverlay?.RefreshText();
+            ClosePause();
+            OpenSettings();
         };
         _pauseOverlay.SaveQuitRequested += () =>
         {
@@ -8855,6 +8964,60 @@ public sealed partial class Main : Node
         FreeUi(_pauseOverlay);
         _pauseOverlay = null;
         if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenSettings()
+    {
+        if (_settingsOverlay is not null)
+        {
+            return;
+        }
+
+        if (_playing)
+        {
+            SetWorldControls(false);
+        }
+        _settingsOverlay = new AccessibilitySettingsOverlay(
+            _theme,
+            _settings,
+            _locale
+        );
+        _settingsOverlay.CloseRequested += CloseSettings;
+        _settingsOverlay.LanguageRequested += () =>
+        {
+            ToggleLanguage();
+            _settingsOverlay?.RefreshText();
+        };
+        _settingsOverlay.SettingsChanged += ApplySettings;
+        _settingsOverlay.BindingChanged += (_, _) =>
+            InputSetup.ApplyKeyboardBindings(_settings);
+        _uiLayer.AddChild(_settingsOverlay);
+    }
+
+    private void ApplySettings()
+    {
+        _settingsService.Save(_settings);
+        AccessibilityRuntime.Apply(_settings, _uiLayer);
+        ConfigureSessionAccessibility();
+    }
+
+    private void ConfigureSessionAccessibility() =>
+        _session.ConfigureAccessibility(
+            _settings.FishingCatchZoneBonus,
+            _settings.IncomingDamageMultiplier,
+            _settings.EnemySpeedMultiplier
+        );
+
+    private void CloseSettings()
+    {
+        ApplySettings();
+        FreeUi(_settingsOverlay);
+        _settingsOverlay = null;
+        _title?.RefreshText();
+        if (_playing && CanRestoreWorldControls)
         {
             SetWorldControls(true);
         }
@@ -9011,6 +9174,7 @@ public sealed partial class Main : Node
             _locale
         );
         _starGateOverlay.TravelRequested += TravelStarGate;
+        _starGateOverlay.ConvergenceRequested += BeginMainStoryFinale;
         _starGateOverlay.CloseRequested += CloseStarGate;
         _uiLayer.AddChild(_starGateOverlay);
     }
@@ -9040,6 +9204,75 @@ public sealed partial class Main : Node
         _audio.Play(PixelSound.Chime);
         ShowFarm(false);
         _hud?.ShowNotice(result.MessageKey);
+    }
+
+    private void OpenStellarResonance()
+    {
+        if (_stellarResonanceOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _stellarResonanceOverlay = new StellarResonanceOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _stellarResonanceOverlay.CloseRequested += CloseStellarResonance;
+        _uiLayer.AddChild(_stellarResonanceOverlay);
+    }
+
+    private void CloseStellarResonance()
+    {
+        FreeUi(_stellarResonanceOverlay);
+        _stellarResonanceOverlay = null;
+        SaveNow(false);
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void BeginMainStoryFinale()
+    {
+        if (_session.StellarResonance.MainStoryCompleted)
+        {
+            CloseStarGate();
+            OpenStellarResonance();
+            return;
+        }
+
+        var result = _session.CompleteMainStory();
+        if (!result.Succeeded)
+        {
+            _starGateOverlay?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        FreeUi(_starGateOverlay);
+        _starGateOverlay = null;
+        SaveNow(false);
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _mainStoryEndingOverlay = new MainStoryEndingOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _mainStoryEndingOverlay.ContinueRequested += CloseMainStoryEnding;
+        _uiLayer.AddChild(_mainStoryEndingOverlay);
+    }
+
+    private void CloseMainStoryEnding()
+    {
+        FreeUi(_mainStoryEndingOverlay);
+        _mainStoryEndingOverlay = null;
+        _hud?.ShowNotice("stellar.main_story.completed", 3.2);
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void ResolveDeepMineDefeat()
