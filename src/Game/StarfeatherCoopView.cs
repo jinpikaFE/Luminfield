@@ -155,7 +155,7 @@ public sealed partial class StarfeatherCoopView : Node2D
 internal sealed partial class StarfeatherCoopBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/starfeather_coop_interior.png"
+        "res://assets/generated/animals/starfeather/starfeather_coop_interior.png"
     );
 
     public StarfeatherCoopBackdrop()

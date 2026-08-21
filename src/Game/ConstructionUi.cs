@@ -214,6 +214,8 @@ public sealed partial class ConstructionOverlay : FullScreenUi
                 HomesteadMoonfleeceBarnArt.ProjectIconTexture(),
             ConstructionCatalog.HomesteadLivestockAutomationProjectId =>
                 LivestockAutomationArt.ProjectIconTexture(),
+            ConstructionCatalog.SixfoldStarGateProjectId =>
+                StarGateArt.ProjectIconTexture(),
             _ => null
         };
         _projectIcon.Visible = _projectIcon.Texture is not null;

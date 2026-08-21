@@ -303,6 +303,10 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-multi-processor",
             PlaytestScenarioId.MultiProcessorBatch
         ),
+        (
+            "--playtest-moonpearl-egg-press",
+            PlaytestScenarioId.MoonpearlEggPress
+        ),
         ("--playtest-archive-gift", PlaytestScenarioId.ArchiveGift),
         ("--playtest-archive", PlaytestScenarioId.Archive),
         ("--playtest-archive-door", PlaytestScenarioId.ArchiveDoor),
@@ -393,6 +397,14 @@ public sealed class PlaytestScenarioRegistryTests
         ),
         ("--playtest-fishing", PlaytestScenarioId.Fishing),
         (
+            "--playtest-fishing-minigame",
+            PlaytestScenarioId.FishingMinigame
+        ),
+        (
+            "--playtest-fishing-gear",
+            PlaytestScenarioId.FishingGear
+        ),
+        (
             "--playtest-fishing-collection",
             PlaytestScenarioId.FishingCollection
         ),
@@ -424,6 +436,7 @@ public sealed class PlaytestScenarioRegistryTests
             "--playtest-crystal-grotto-deep",
             PlaytestScenarioId.CrystalGrottoDeep
         ),
+        ("--playtest-deep-mine", PlaytestScenarioId.DeepMine),
         (
             "--playtest-mineral-codex-complete-en",
             PlaytestScenarioId.MineralCodexCompleteEnglish
@@ -459,6 +472,14 @@ public sealed class PlaytestScenarioRegistryTests
         (
             "--playtest-starfall-ruins-starlight-restored",
             PlaytestScenarioId.StarfallRuinsStarlightRestored
+        ),
+        (
+            "--playtest-sixfold-star-gate",
+            PlaytestScenarioId.SixfoldStarGate
+        ),
+        (
+            "--playtest-sixfold-star-gate-panel",
+            PlaytestScenarioId.SixfoldStarGatePanel
         ),
         (
             "--playtest-liora-event-one",

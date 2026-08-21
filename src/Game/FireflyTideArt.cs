@@ -5,7 +5,7 @@ namespace Luminfield.Game;
 internal static class FireflyTideArt
 {
     public static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/firefly_tide_props.png"
+        "res://assets/generated/activities/festivals/firefly-tide/firefly_tide_props.png"
     );
 
     public static readonly Rect2 LanternLaunchRegion =

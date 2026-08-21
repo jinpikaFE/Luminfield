@@ -265,7 +265,7 @@ public sealed partial class GleamrisePlantingFestivalView : Node2D
 internal sealed partial class GleamrisePlantingFestivalBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/gleamrise_planting_festival_backdrop.png"
+        "res://assets/generated/activities/festivals/gleamrise/gleamrise_planting_festival_backdrop.png"
     );
 
     public GleamrisePlantingFestivalBackdrop()
@@ -287,7 +287,7 @@ internal sealed partial class GleamrisePlantingFestivalBackdrop : Node2D
 internal sealed partial class GleamrisePlantingFestivalStationLayer : Node2D
 {
     private static readonly Texture2D Props = GD.Load<Texture2D>(
-        "res://assets/generated/gleamrise_planting_festival_props.png"
+        "res://assets/generated/activities/festivals/gleamrise/gleamrise_planting_festival_props.png"
     );
     private static readonly Rect2 EmptyFieldRegion = new(43, 165, 540, 425);
     private static readonly Rect2 BloomFieldRegion =

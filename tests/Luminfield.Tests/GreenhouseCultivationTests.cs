@@ -29,7 +29,7 @@ public sealed class GreenhouseCultivationTests
                 Assert.Equal(12, material.Count);
             }
         );
-        Assert.Equal(7, ConstructionCatalog.Projects.Count);
+        Assert.Equal(8, ConstructionCatalog.Projects.Count);
 
         Assert.Equal(40, GreenhouseLayout.Width);
         Assert.Equal(22, GreenhouseLayout.Height);

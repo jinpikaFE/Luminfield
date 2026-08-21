@@ -9,7 +9,7 @@ internal static class HomesteadMoonfleeceBarnArt
     public const float RegisteredBaseline = 590;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/homestead_moonfleece_barn.png"
+        "res://assets/generated/animals/moonfleece/homestead_moonfleece_barn.png"
     );
 
     public static AtlasTexture ProjectIconTexture() => new()

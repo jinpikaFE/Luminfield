@@ -8,7 +8,7 @@ internal static class StarfeatherArt
     private const int CellSize = 256;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/starfeather_chicken.png"
+        "res://assets/generated/animals/starfeather/starfeather_chicken.png"
     );
 
     private static readonly Rect2[] IconRegions =

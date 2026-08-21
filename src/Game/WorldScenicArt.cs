@@ -9,7 +9,7 @@ internal static class WorldScenicArt
 
     public static readonly Texture2D Atlas =
         GD.Load<Texture2D>(
-            "res://assets/generated/world_scenic_landmarks.png"
+            "res://assets/generated/world/exploration/world_scenic_landmarks.png"
         );
 
     public static Rect2 Region(int atlasIndex) => new(

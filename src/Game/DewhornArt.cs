@@ -8,7 +8,7 @@ internal static class DewhornArt
     private const int CellSize = 256;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/dewhorn.png"
+        "res://assets/generated/animals/dewhorn/dewhorn.png"
     );
 
     public static bool TryItemIcon(

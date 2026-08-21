@@ -170,6 +170,20 @@ public sealed class FishingSystem
             return ActionResult.Fail("notice.fish_not_biting");
         }
 
+        return CommitCatch(fish.Id, inventory, CastEnergyCost);
+    }
+
+    public ActionResult CommitCatch(
+        string fishId,
+        Inventory inventory,
+        int energyCost = CastEnergyCost
+    )
+    {
+        if (!DataCatalog.Fishes.TryGetValue(fishId, out var fish))
+        {
+            return ActionResult.Fail("notice.fish_not_biting");
+        }
+
         if (!inventory.CanAdd(fish.ItemId, 1))
         {
             return ActionResult.Fail("notice.inventory_full");
@@ -185,7 +199,7 @@ public sealed class FishingSystem
         return ActionResult.Grant(
             fish.ItemId,
             1,
-            CastEnergyCost,
+            Math.Max(0, energyCost),
             "notice.fish_caught"
         );
     }

@@ -15,7 +15,7 @@ internal static class SeasonalForageArt
     public const float CellSize = 256;
 
     public static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/seasonal_forage.png"
+        "res://assets/generated/farming/foraging/seasonal_forage.png"
     );
 
     private static readonly IReadOnlyDictionary<string, SeasonalForageArtDefinition>

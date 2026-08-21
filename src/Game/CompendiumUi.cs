@@ -871,12 +871,7 @@ public sealed partial class CompendiumOverlay : FullScreenUi
     {
         if (entry.Kind == CompendiumEntryKind.Enemy)
         {
-            return new AtlasTexture
-            {
-                Atlas = StarfallRuinsArt.CombatAtlas,
-                Region = StarfallRuinsArt.EnemyIconRegion(entry.Id),
-                FilterClip = true
-            };
+            return DeepMineArt.EnemyIcon(entry.Id);
         }
 
         return ItemTexture(entry.ItemId);

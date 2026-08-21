@@ -9,7 +9,7 @@ internal static class HomesteadStarfeatherCoopArt
     public const float RegisteredBaseline = 590;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/homestead_starfeather_coop.png"
+        "res://assets/generated/animals/starfeather/homestead_starfeather_coop.png"
     );
 
     public static AtlasTexture ProjectIconTexture() => new()

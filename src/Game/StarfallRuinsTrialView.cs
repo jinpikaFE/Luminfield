@@ -279,7 +279,7 @@ public sealed partial class StarfallRuinsTrialView : Node2D
 internal sealed partial class StarfallRuinsTrialBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/starfall_ruins_trial_interior.png"
+        "res://assets/generated/activities/combat/starfall_ruins_trial_interior.png"
     );
 
     public StarfallRuinsTrialBackdrop()

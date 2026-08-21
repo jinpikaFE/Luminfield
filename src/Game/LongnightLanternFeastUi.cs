@@ -6,7 +6,7 @@ namespace Luminfield.Game;
 internal static class LongnightLanternFeastArt
 {
     private static readonly Texture2D Props = GD.Load<Texture2D>(
-        "res://assets/generated/longnight_lantern_feast_props.png"
+        "res://assets/generated/activities/festivals/longnight/longnight_lantern_feast_props.png"
     );
 
     public static Texture2D RitualTexture(bool lit) => new AtlasTexture

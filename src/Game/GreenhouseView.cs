@@ -135,7 +135,7 @@ public sealed partial class GreenhouseView : Node2D
 internal sealed partial class GreenhouseBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/homestead_greenhouse_interior.png"
+        "res://assets/generated/features/construction/homestead_greenhouse_interior.png"
     );
 
     public GreenhouseBackdrop()

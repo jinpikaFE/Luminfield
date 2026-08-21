@@ -8,7 +8,7 @@ internal static class LivestockAutomationArt
     private const int CellSize = 627;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/livestock_automation_console.png"
+        "res://assets/generated/animals/shared/livestock_automation_console.png"
     );
 
     public static AtlasTexture ConsoleTexture(

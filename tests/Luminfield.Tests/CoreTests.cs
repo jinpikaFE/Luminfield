@@ -8988,7 +8988,7 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(GameSession.NewGameCoins - 24, result.Save.Coins);
         Assert.Equal(DataCatalog.StarbudPreserveRecipeId, result.Save.Processor.RecipeId);
         Assert.Equal(1, result.Save.Processor.RemainingNights);
-        Assert.Equal(3, result.Save.Processor.Machines.Count);
+        Assert.Equal(4, result.Save.Processor.Machines.Count);
         Assert.Equal(
             DataCatalog.StarbudPreserveRecipeId,
             result.Save.Processor.Machines.Single(entry =>

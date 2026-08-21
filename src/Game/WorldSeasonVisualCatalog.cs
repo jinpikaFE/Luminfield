@@ -28,13 +28,13 @@ public static class WorldSeasonVisualCatalog
     public const float PropAtlasCellSize = 313.5f;
 
     public const string DefaultPropAtlasTexturePath =
-        "res://assets/generated/exploration_props.png";
+        "res://assets/generated/world/exploration/exploration_props.png";
     public const string RainveilPropAtlasTexturePath =
-        "res://assets/generated/exploration_props_rainveil.png";
+        "res://assets/generated/world/exploration/exploration_props_rainveil.png";
     public const string StarharvestPropAtlasTexturePath =
-        "res://assets/generated/exploration_props_starharvest.png";
+        "res://assets/generated/world/exploration/exploration_props_starharvest.png";
     public const string LongnightPropAtlasTexturePath =
-        "res://assets/generated/exploration_props_longnight.png";
+        "res://assets/generated/world/exploration/exploration_props_longnight.png";
 
     private static readonly WorldSeasonVisualProfile Default = new(
         WorldSeasonVisualVariant.Default,

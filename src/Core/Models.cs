@@ -158,6 +158,31 @@ public sealed class MiningSave
 {
     public List<string> DepletedVeinIds { get; set; } = [];
     public int DeepestRoomReached { get; set; }
+    public int ExpeditionSeed { get; set; }
+    public bool ExpeditionActive { get; set; }
+    public int ExpeditionRoom { get; set; }
+    public int ExpeditionEnemyHealth { get; set; }
+    public int DeepestExpeditionRoom { get; set; }
+    public int StableAnchorRoom { get; set; }
+    public List<int> ClearedExpeditionRooms { get; set; } = [];
+    public List<int> ExcavatedExpeditionRooms { get; set; } = [];
+    public List<string> ClaimedExpeditionWeaponIds { get; set; } = [];
+    public AdventureSkillSave CrystalMiningSkill { get; set; } = new();
+    public AdventureSkillSave NightwatchSkill { get; set; } = new();
+}
+
+public sealed class AdventureSkillSave
+{
+    public int Experience { get; set; }
+    public int Level { get; set; }
+    public string SpecializationId { get; set; } = string.Empty;
+}
+
+public sealed class StarGateSave
+{
+    public bool Activated { get; set; }
+    public string LastDestinationId { get; set; } = string.Empty;
+    public int TravelCount { get; set; }
 }
 
 public sealed class ToolProgressionSave
@@ -193,6 +218,22 @@ public sealed class FishingSave
     public List<string> CaughtFishIds { get; set; } = [];
     public List<string> ClaimedRewardIds { get; set; } = [];
     public List<string> DonatedFishIds { get; set; } = [];
+    public string RodTierId { get; set; } = string.Empty;
+    public List<string> OwnedBobberIds { get; set; } = [];
+    public string EquippedBaitId { get; set; } = string.Empty;
+    public string EquippedBobberId { get; set; } = string.Empty;
+    public int Experience { get; set; }
+    public int Level { get; set; }
+    public string SpecializationId { get; set; } = string.Empty;
+    public List<CrabPotSave> CrabPots { get; set; } = [];
+}
+
+public sealed class CrabPotSave
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string BaitItemId { get; set; } = string.Empty;
+    public string CatchItemId { get; set; } = string.Empty;
 }
 
 public sealed class WeatherSave
@@ -541,6 +582,7 @@ public sealed class GameSaveV1
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
     public FestivalSave Festival { get; set; } = new();
     public CollectionSave Collection { get; set; } = new();
+    public StarGateSave StarGate { get; set; } = new();
 }
 
 public sealed record ActionResult(
@@ -587,6 +629,7 @@ public enum TargetPreviewKind
     GrottoSeal,
     Forage,
     Water,
+    CrabPot,
     Landmark,
     StarlightPedestal,
     Mailbox,
@@ -641,7 +684,8 @@ public enum TargetPreviewKind
     RuinsWeaponRack,
     RuinsEnemy,
     RuinsArtifact,
-    RuinsSeal
+    RuinsSeal,
+    StarGate
 }
 
 public sealed record TargetPreview(

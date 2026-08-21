@@ -9,6 +9,7 @@ public sealed partial class ToolUpgradeOverlay : FullScreenUi
     private readonly LocaleService _locale;
     private readonly GridPosition _benchTarget;
     private readonly ToolUpgradeDefinition _upgrade;
+    private readonly bool _atMaxTier;
     private readonly Label _title;
     private readonly Label _tier;
     private readonly Label _cost;
@@ -28,7 +29,15 @@ public sealed partial class ToolUpgradeOverlay : FullScreenUi
         _session = session;
         _locale = locale;
         _benchTarget = benchTarget;
-        _upgrade = ToolProgressionCatalog.ShovelBronzeStarUpgrade;
+        var currentTierId = session.ToolProgression.TierIdFor(
+            DataCatalog.ShovelId
+        );
+        var nextUpgrade = ToolProgressionCatalog.NextUpgrade(
+            DataCatalog.ShovelId,
+            currentTierId
+        );
+        _atMaxTier = nextUpgrade is null;
+        _upgrade = nextUpgrade ?? ToolProgressionCatalog.Upgrades[^1];
 
         AddChild(Dim(new Color(0.01f, 0.018f, 0.07f, 0.84f)));
         var center = new CenterContainer();
@@ -155,6 +164,14 @@ public sealed partial class ToolUpgradeOverlay : FullScreenUi
             _upgrade.RequiredNights
         );
         _close.Text = _locale.Tr("menu.back");
+
+        if (_atMaxTier)
+        {
+            _start.Disabled = true;
+            _start.Text = _locale.Tr("tool.upgrade.panel.completed");
+            _status.Text = _locale.Tr("tool.upgrade.max_tier");
+            return;
+        }
 
         if (_session.ToolProgression.IsUpgradeCompleted(_upgrade.Id))
         {

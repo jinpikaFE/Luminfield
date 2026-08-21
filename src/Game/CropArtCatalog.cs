@@ -7,7 +7,7 @@ internal static class CropArtCatalog
 {
     private static readonly Texture2D BaseCropStages =
         GD.Load<Texture2D>(
-            "res://assets/generated/crop_stages_chroma.png"
+            "res://assets/generated/farming/crops/crop_stages_chroma.png"
         );
 
     private static readonly IReadOnlyDictionary<string, Rect2[]> BaseFrames =

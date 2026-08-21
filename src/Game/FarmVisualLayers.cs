@@ -198,13 +198,13 @@ internal sealed partial class WeatherEffectView : Control
 public static class FarmBackdropCatalog
 {
     public const string DefaultTexturePath =
-        "res://assets/generated/farm_twilight_backdrop.png";
+        "res://assets/generated/world/homestead/farm_twilight_backdrop.png";
     public const string RainveilTexturePath =
-        "res://assets/generated/farm_rainveil_backdrop.png";
+        "res://assets/generated/world/homestead/farm_rainveil_backdrop.png";
     public const string StarharvestTexturePath =
-        "res://assets/generated/farm_starharvest_backdrop.png";
+        "res://assets/generated/world/homestead/farm_starharvest_backdrop.png";
     public const string LongnightTexturePath =
-        "res://assets/generated/farm_longnight_backdrop.png";
+        "res://assets/generated/world/homestead/farm_longnight_backdrop.png";
 
     public static string TexturePathForDay(int day) =>
         CalendarSystem.SeasonId(day) switch

@@ -155,7 +155,7 @@ public sealed partial class MoonfleeceBarnView : Node2D
 internal sealed partial class MoonfleeceBarnBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/moonfleece_barn_interior.png"
+        "res://assets/generated/animals/moonfleece/moonfleece_barn_interior.png"
     );
 
     public MoonfleeceBarnBackdrop()

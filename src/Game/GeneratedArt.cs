@@ -6,23 +6,26 @@ namespace Luminfield.Game;
 internal static class GeneratedArt
 {
     private static readonly Texture2D Characters =
-        GD.Load<Texture2D>("res://assets/generated/character_directions_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/characters/player/character_directions_chroma.png");
 
     private static readonly Texture2D PlayerWalkCycle =
-        GD.Load<Texture2D>("res://assets/generated/player_walk_cycle_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/characters/player/player_walk_cycle_chroma.png");
 
     private static readonly Texture2D EconomyAssets =
-        GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/features/core-loop/economy_assets_chroma.png");
 
     private static readonly Texture2D ProcessorMachines =
-        GD.Load<Texture2D>("res://assets/generated/processor_machines.png");
+        GD.Load<Texture2D>("res://assets/generated/features/processors/processor_machines.png");
+
+    private static readonly Texture2D MoonpearlEggPress =
+        GD.Load<Texture2D>("res://assets/generated/features/processors/moonpearl_egg_press.png");
 
     private static readonly Texture2D PhaseAAssets =
-        GD.Load<Texture2D>("res://assets/generated/phase_a_systems.png");
+        GD.Load<Texture2D>("res://assets/generated/features/core-loop/phase_a_systems.png");
 
     private static readonly Texture2D LongnightSnowWeather =
         GD.Load<Texture2D>(
-            "res://assets/generated/longnight_snow_weather.png"
+            "res://assets/generated/world/weather/longnight_snow_weather.png"
         );
 
     private static readonly Rect2[] LongnightSnowflakeRegions =
@@ -44,91 +47,91 @@ internal static class GeneratedArt
         new(1172, 610, 266, 262);
 
     private static readonly Texture2D CropExpansion =
-        GD.Load<Texture2D>("res://assets/generated/crop_expansion.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/crop_expansion.png");
 
     private static readonly Texture2D GleamriseCrops =
-        GD.Load<Texture2D>("res://assets/generated/gleamrise_crops.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/gleamrise_crops.png");
 
     private static readonly Texture2D GleamriseResonance =
-        GD.Load<Texture2D>("res://assets/generated/gleamrise_resonance.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/gleamrise_resonance.png");
 
     private static readonly Texture2D RainveilCrops =
-        GD.Load<Texture2D>("res://assets/generated/rainveil_crops.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/rainveil_crops.png");
 
     private static readonly Texture2D StarharvestCrops =
-        GD.Load<Texture2D>("res://assets/generated/starharvest_crops.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/starharvest_crops.png");
 
     private static readonly Texture2D StarwovenChest =
-        GD.Load<Texture2D>("res://assets/generated/starwoven_chest.png");
+        GD.Load<Texture2D>("res://assets/generated/features/storage/starwoven_chest.png");
 
     private static readonly Texture2D FarmPlaceables =
-        GD.Load<Texture2D>("res://assets/generated/farm_placeables.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/placeables/farm_placeables.png");
 
     private static readonly Texture2D CropQualityFertilizer =
         GD.Load<Texture2D>(
-            "res://assets/generated/crop_quality_fertilizer.png"
+            "res://assets/generated/farming/crops/crop_quality_fertilizer.png"
         );
 
     private static readonly Texture2D VillageLandmarks =
         GD.Load<Texture2D>(
-            "res://assets/generated/village_landmarks.png"
+            "res://assets/generated/locations/village/village_landmarks.png"
         );
 
     private static readonly Texture2D TwilightEmporiumExterior =
         GD.Load<Texture2D>(
-            "res://assets/generated/twilight_emporium_exterior.png"
+            "res://assets/generated/locations/village/twilight_emporium_exterior.png"
         );
 
     private static readonly Texture2D StarlightPostExterior =
         GD.Load<Texture2D>(
-            "res://assets/generated/starlight_post_exterior.png"
+            "res://assets/generated/locations/village/starlight_post_exterior.png"
         );
 
     private static readonly Texture2D StarfallWatchExterior =
         GD.Load<Texture2D>(
-            "res://assets/generated/starfall_watch_exterior.png"
+            "res://assets/generated/locations/village/starfall_watch_exterior.png"
         );
 
     private static readonly Texture2D VillageNpcs =
         GD.Load<Texture2D>(
-            "res://assets/generated/village_npcs.png"
+            "res://assets/generated/characters/npcs/village_npcs.png"
         );
 
     private static readonly Texture2D VillageNpcsExpansion =
         GD.Load<Texture2D>(
-            "res://assets/generated/village_npcs_expansion.png"
+            "res://assets/generated/characters/npcs/village_npcs_expansion.png"
         );
 
     private static readonly Texture2D VillageNpcsWave2 =
         GD.Load<Texture2D>(
-            "res://assets/generated/village_npcs_wave_2.png"
+            "res://assets/generated/characters/npcs/village_npcs_wave_2.png"
         );
 
     private static readonly Texture2D VillageNpcsWave3 =
         GD.Load<Texture2D>(
-            "res://assets/generated/village_npcs_wave_3.png"
+            "res://assets/generated/characters/npcs/village_npcs_wave_3.png"
         );
 
     private static readonly Texture2D RelationshipGifts =
         GD.Load<Texture2D>(
-            "res://assets/generated/relationship_gifts.png"
+            "res://assets/generated/features/relationships/relationship_gifts.png"
         );
 
     private static readonly Texture2D DailyCommissionBoard =
-        GD.Load<Texture2D>("res://assets/generated/daily_commission_board.png");
+        GD.Load<Texture2D>("res://assets/generated/features/commissions/daily_commission_board.png");
 
     private static readonly Texture2D WoodlandStarlightPedestal =
         GD.Load<Texture2D>(
-            "res://assets/generated/woodland_starlight_pedestal.png"
+            "res://assets/generated/features/starlights/woodland_starlight_pedestal.png"
         );
 
     private static readonly Texture2D StarlightMailbox =
         GD.Load<Texture2D>(
-            "res://assets/generated/starlight_mailbox.png"
+            "res://assets/generated/features/mail/starlight_mailbox.png"
         );
 
     private static readonly Texture2D OrchardHives =
-        GD.Load<Texture2D>("res://assets/generated/orchard_hives.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/orchard/orchard_hives.png");
 
     private static readonly IReadOnlyDictionary<string, int> CropExpansionRows =
         new Dictionary<string, int>(StringComparer.Ordinal)
@@ -457,7 +460,10 @@ internal static class GeneratedArt
     public static Sprite2D CreateMoonwellInfuserSprite() =>
         CreateEconomySprite(MoonwellInfuserRegion, 70);
 
-    public static Sprite2D CreateProcessorMachineSprite(string machineId)
+    public static Sprite2D CreateProcessorMachineSprite(
+        string machineId,
+        ProcessorMachineState? state = null
+    )
     {
         var source = machineId switch
         {
@@ -467,6 +473,8 @@ internal static class GeneratedArt
                 new Rect2(404, 50, 344, 430),
             ProcessorCatalog.StarweaveDryingLoomId =>
                 new Rect2(788, 50, 344, 430),
+            ProcessorCatalog.MoonpearlEggPressId =>
+                MoonpearlEggPressRegion(state),
             _ => throw new KeyNotFoundException(
                 $"Unknown processor machine id '{machineId}'."
             )
@@ -474,7 +482,28 @@ internal static class GeneratedArt
         var targetHeight = machineId == ProcessorCatalog.MoonwellInfuserId
             ? 62f
             : 56f;
-        return CreateProcessorMachineSprite(source, targetHeight);
+        var texture = machineId == ProcessorCatalog.MoonpearlEggPressId
+            ? MoonpearlEggPress
+            : ProcessorMachines;
+        return CreateProcessorMachineSprite(texture, source, targetHeight);
+    }
+
+    public static void SetProcessorMachineState(
+        Sprite2D sprite,
+        string machineId,
+        ProcessorMachineState state
+    )
+    {
+        if (machineId != ProcessorCatalog.MoonpearlEggPressId)
+        {
+            return;
+        }
+
+        var source = MoonpearlEggPressRegion(state);
+        sprite.Texture = MoonpearlEggPress;
+        sprite.RegionRect = source;
+        sprite.Offset = new Vector2(0, -source.Size.Y / 2f);
+        sprite.Scale = Vector2.One * (56f / source.Size.Y);
     }
 
     public static Sprite2D CreateShippingBinSprite(bool open)
@@ -1136,6 +1165,8 @@ internal static class GeneratedArt
                 (ProcessorMachines, new Rect2(450, 590, 252, 340)),
             DataCatalog.CloudleafTeaId =>
                 (ProcessorMachines, new Rect2(825, 670, 270, 270)),
+            DataCatalog.StarfeatherCreamId =>
+                (MoonpearlEggPress, new Rect2(0, 627, 627, 627)),
             _ => (null!, default)
         };
 
@@ -1153,10 +1184,28 @@ internal static class GeneratedArt
                 new Rect2(450, 590, 252, 340),
             DataCatalog.CloudleafTeaId =>
                 new Rect2(825, 670, 270, 270),
+            DataCatalog.StarfeatherCreamId =>
+                new Rect2(0, 627, 627, 627),
             _ => default
         };
-        texture = ProcessorMachines;
+        texture = itemId == DataCatalog.StarfeatherCreamId
+            ? MoonpearlEggPress
+            : ProcessorMachines;
         return region.Size != Vector2.Zero;
+    }
+
+    private static Rect2 MoonpearlEggPressRegion(
+        ProcessorMachineState? state
+    )
+    {
+        if (state?.IsReady == true)
+        {
+            return new Rect2(627, 627, 627, 627);
+        }
+
+        return state?.IsIdle == false
+            ? new Rect2(627, 0, 627, 627)
+            : new Rect2(0, 0, 627, 627);
     }
 
     public static void SetPlayerFrame(
@@ -1238,6 +1287,7 @@ internal static class GeneratedArt
     }
 
     private static Sprite2D CreateProcessorMachineSprite(
+        Texture2D texture,
         Rect2 source,
         float targetHeight
     )
@@ -1245,7 +1295,7 @@ internal static class GeneratedArt
         var scale = targetHeight / source.Size.Y;
         return new Sprite2D
         {
-            Texture = ProcessorMachines,
+            Texture = texture,
             RegionEnabled = true,
             RegionRect = source,
             Offset = new Vector2(0, -source.Size.Y / 2f),
@@ -1309,14 +1359,14 @@ internal static class GeneratedArt
 internal sealed partial class CottageBackdrop : Node2D
 {
     private static readonly Texture2D BaseBackground =
-        GD.Load<Texture2D>("res://assets/generated/cottage_twilight_interior.png");
+        GD.Load<Texture2D>("res://assets/generated/locations/cottage/cottage_twilight_interior.png");
     private static readonly Texture2D UpgradedBackground =
         GD.Load<Texture2D>(
-            "res://assets/generated/cottage_first_upgrade_interior.png"
+            "res://assets/generated/locations/cottage/cottage_first_upgrade_interior.png"
         );
     private static readonly Texture2D SecondUpgradeBackground =
         GD.Load<Texture2D>(
-            "res://assets/generated/cottage_second_upgrade_interior.png"
+            "res://assets/generated/locations/cottage/cottage_second_upgrade_interior.png"
         );
     private readonly GameSession _session;
 
@@ -1352,7 +1402,7 @@ internal sealed partial class ArchiveBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/moonlit_archive_interior.png"
+            "res://assets/generated/locations/village/moonlit_archive_interior.png"
         );
 
     public ArchiveBackdrop()
@@ -1375,7 +1425,7 @@ internal sealed partial class WorkshopBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/moonstone_workshop_interior.png"
+            "res://assets/generated/locations/village/moonstone_workshop_interior.png"
         );
 
     public WorkshopBackdrop()
@@ -1398,7 +1448,7 @@ internal sealed partial class TeaHouseBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/starweaver_tea_house_interior.png"
+            "res://assets/generated/locations/village/starweaver_tea_house_interior.png"
         );
 
     public TeaHouseBackdrop()
@@ -1421,7 +1471,7 @@ internal sealed partial class TwilightEmporiumBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/twilight_emporium_interior.png"
+            "res://assets/generated/locations/village/twilight_emporium_interior.png"
         );
 
     public TwilightEmporiumBackdrop()
@@ -1444,7 +1494,7 @@ internal sealed partial class StarlightPostBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/starlight_post_interior.png"
+            "res://assets/generated/locations/village/starlight_post_interior.png"
         );
 
     public StarlightPostBackdrop()
@@ -1467,7 +1517,7 @@ internal sealed partial class StarfallWatchBackdrop : Node2D
 {
     private static readonly Texture2D Background =
         GD.Load<Texture2D>(
-            "res://assets/generated/starfall_watch_interior.png"
+            "res://assets/generated/locations/village/starfall_watch_interior.png"
         );
 
     public StarfallWatchBackdrop()
@@ -1578,7 +1628,7 @@ internal sealed partial class GeneratedOrchardLayer : Node2D
 internal sealed partial class GeneratedCropLayer : Node2D
 {
     private static readonly Texture2D Crops =
-        GD.Load<Texture2D>("res://assets/generated/crop_stages_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/farming/crops/crop_stages_chroma.png");
 
     private static readonly Rect2[] StarbudFrames =
     [

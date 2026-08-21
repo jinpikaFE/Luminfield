@@ -8,7 +8,7 @@ internal static class MoonfleeceArt
     private const int CellSize = 256;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/moonfleece_sheep.png"
+        "res://assets/generated/animals/moonfleece/moonfleece_sheep.png"
     );
 
     public static bool TryItemIcon(

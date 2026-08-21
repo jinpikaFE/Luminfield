@@ -6,7 +6,7 @@ namespace Luminfield.Game;
 internal static class FestivalArt
 {
     private static readonly Texture2D Props = GD.Load<Texture2D>(
-        "res://assets/generated/starharvest_market_props.png"
+        "res://assets/generated/activities/festivals/starharvest/starharvest_market_props.png"
     );
 
     public static Texture2D BadgeTexture() => new AtlasTexture

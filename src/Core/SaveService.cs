@@ -609,6 +609,15 @@ public sealed class SaveService
         save.Construction = ConstructionSystem.NormalizeSave(
             save.Construction
         );
+        var starGateCompleted = save.Construction.Projects.Any(project =>
+            project.ProjectId ==
+                ConstructionCatalog.SixfoldStarGateProjectId &&
+            project.Completed
+        );
+        save.StarGate = StarGateSystem.NormalizeSave(
+            save.StarGate,
+            starGateCompleted
+        );
         save.Animals = AnimalSystem.NormalizeSave(save.Animals, save.Day);
         if (AnimalBuildingSpatialCatalog.TryByLocationId(
                 save.Player.LocationId,

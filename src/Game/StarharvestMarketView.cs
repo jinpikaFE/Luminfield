@@ -257,7 +257,7 @@ public sealed partial class StarharvestMarketView : Node2D
 internal sealed partial class StarharvestMarketBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/starharvest_market_backdrop.png"
+        "res://assets/generated/activities/festivals/starharvest/starharvest_market_backdrop.png"
     );
 
     public StarharvestMarketBackdrop()
@@ -279,7 +279,7 @@ internal sealed partial class StarharvestMarketBackdrop : Node2D
 internal sealed partial class StarharvestMarketStationLayer : Node2D
 {
     private static readonly Texture2D Props = GD.Load<Texture2D>(
-        "res://assets/generated/starharvest_market_props.png"
+        "res://assets/generated/activities/festivals/starharvest/starharvest_market_props.png"
     );
     private static readonly Rect2 EmptyExhibitRegion =
         new(36, 155, 555, 352);

@@ -6,7 +6,7 @@ namespace Luminfield.Game;
 public static class CottageKitchenArt
 {
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/cottage_kitchen_assets.png"
+        "res://assets/generated/locations/cottage/cottage_kitchen_assets.png"
     );
 
     private const float CellWidth = 384;

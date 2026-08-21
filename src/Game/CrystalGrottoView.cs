@@ -200,7 +200,7 @@ public sealed partial class CrystalGrottoView : Node2D
 internal sealed partial class CrystalGrottoBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/crystal_grotto_survey_interior.png"
+        "res://assets/generated/activities/mining/crystal_grotto_survey_interior.png"
     );
 
     public CrystalGrottoBackdrop()

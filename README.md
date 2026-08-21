@@ -294,12 +294,11 @@ different cooked dishes and one selected homestead gift, adds the complete
 return gift, records the annual score/award/gift/rite result, and grants an
 independent Lantern Knot balance. A four-offer stall spends only Lantern Knots;
 the rite never mutates any regional Starlight.
-To unlock Phase F's stable Phase-D dependencies, the working tree also includes
-24 stable fish, adjacent-water catches conditioned by region, season, weather,
-and time, a 24/24 Fish Codex, and the fourth Moonwater Resonance Starlight. The
-codex is therefore 5/8 categories and Starlights are 4/6. The full fishing
-minigame, tackle, and crab pots remain unfinished Phase-D scope, so this slice
-is not represented as complete Phase D. Firefly Tide opens on Rainveil day 12
+Phase D now includes 24 stable fish, adjacent-water catches conditioned by
+region, season, weather, and time, a line-control minigame, three rod tiers,
+bait, bobbers, crab pots, levels 0–5 with two specializations, a 24/24 Fish
+Codex, and the fourth Moonwater Resonance Starlight. Firefly Tide opens on
+Rainveil day 12
 from 18:00 to 23:00 in an independent wetland scene with all sixteen villagers,
 four real facilities, and a Glowmark stall. Its activity atomically consumes
 exactly three different Moonwater fish only on final launch, records the annual
@@ -311,29 +310,30 @@ Fish Codex. With the Hand selected, a discovered fish currently held in the
 backpack can be donated exactly once; successful donation removes one fish and
 persists its stable ID. Undiscovered, missing, repeated, wrong-tool, and
 outside-Archive attempts leave inventory and donation state unchanged.
-To unlock Phase F's stable Phase-E mining dependencies, the twenty-eighth slice
-adds the fixed five-room `crystal_grotto_survey`, four stable minerals, a
-two-night Bronze-Star shovel upgrade, the 4/4 `codex_minerals` category, and the
-fifth Crystal Vale Attunement Starlight. The basic shovel reaches the first two
+Phase E retains the fixed five-room `crystal_grotto_survey`, four stable
+minerals, and the fifth Crystal Vale Attunement Starlight, then continues from
+its depth anchor into a deterministic twelve-room deep mine with four stable
+anchors, six enemy families, three weapons, combat/dodge/drop/defeat recovery,
+four shovel tiers, and independent level 0–5 Crystal Mining and Nightwatch
+specializations. The survey also provides the 4/4 `codex_minerals` category and
+a two-night Bronze-Star shovel upgrade. The basic shovel reaches the first two
 ore families; an atomic 420-coin, 6 Lumenslate, and 3 Moonvein upgrade breaks the
 seal and unlocks Prismheart and Stariron. Reaching room five records a stable
 survey anchor. The Crystal Vale Starlight combines four-mineral contributions,
 the shovel milestone, and that depth anchor, then opens the later Starfall Ruins
-trial route. Starlights are now 5/6 and the compendium 6/8. This fixed survey is
-not represented as Phase E's procedural mine, 6–8 enemies, weapon/life combat,
-or four-tier tool progression.
+trial route. Phase E's generated-mine, combat, weapon, tool, and skill contracts
+are therefore complete while keeping the fixed survey as its authored entrance.
 The twenty-ninth slice adds the fixed three-room `starfall_ruins_trial`, six
 enemy instances across three stable enemy families, the Moonsteel Shortblade,
 real-time attacks and dodge invulnerability, trial health, and next-day defeat
 recovery. Clearing rooms persists while partial-room damage safely resets.
 Four unique artifacts can be recovered only after their rooms are cleared and
 then donated atomically to the Moonlit Archive. First real recovery and first
-real defeat complete the 4/4 Artifact Codex and 3/3 Enemy Codex. Their four
+real defeat complete the 4/4 Artifact Codex and 6/6 Enemy Codex. Their four
 collection milestones restore the sixth Starfall Ruins Remembrance Starlight,
 bringing Starlights to 6/6 and the compendium to 8/8 without automatically
-building or activating a Star Gate. This compatibility trial does not replace
-Phase E's procedural mine, broader 6–8-enemy roster, full weapon system, or
-four-tier tool progression.
+building or activating a Star Gate. The expanded Enemy Codex now contains all
+six stable enemy families.
 The eleventh slice adds the Starfeather Coop and its first chicken: three-night
 construction, juvenile-to-adult growth, clear-day grazing, rainy/Longnight
 sheltering, daily feeding and petting, visible mood feedback, and atomic
@@ -361,11 +361,15 @@ two weeks. A valid same-day weather value from an old save remains authoritative
 while a fixed snow-day forecast is corrected without adding schema fields. The
 Longnight world aspect now extends the same date-derived, in-place visual refresh
 to all six non-homestead regions without changing resources, collision, weather,
-or saves. Phase F is paused at this snapshot rather than marked complete: the
-2×2 `starfall_sixfold_gate` chroma/runtime atlas is prepared and visually checked,
-but there is no Star Gate business state, construction, interaction preview,
-travel, save data, localization, or test coverage yet. Full Phase-D fishing and
-Phase-E procedural-mining/combat scope also remain separate backlog.
+or saves. After all six Starlights and the workshop, greenhouse, and second
+cottage upgrade are complete, the eighth construction project builds the
+Sixfold Star Gate over five nights for stable-ID materials and coins. The Hand
+then attunes its dormant state and opens six persistent regional travel routes.
+Construction, activation, last destination, travel count, target preview,
+bilingual UI, save normalization, and the original 2×2 gate atlas are all wired.
+With the Moonpearl Egg Press, complete Phase-D fishing, complete Phase-E deep
+mine progression, and this final gate closure, the planned A–F milestone is
+complete; Phase G remains the next scope.
 
 ## Tools and backpack
 
@@ -696,6 +700,15 @@ relationship events from the villagers' real schedule projections. Use
 real character target, and `--playtest-relationship-mails-en` for the English
 mail panel containing all five new event-gated letters and real attachments.
 
+## Asset layout
+
+Project assets are organized by source and runtime responsibility. Original
+generated art lives below `assets/generated/` in dedicated activity, animal,
+character, farming, feature, location, UI, world, or legacy subdirectories; the
+generated root contains documentation only. Source atlases, runtime textures,
+and their Godot import descriptions stay together. See `assets/README.md` and
+`assets/generated/README.md` for the routing and migration rules.
+
 ## Local toolchain
 
 The implementation is pinned to:
@@ -780,6 +793,23 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-21 15:32:48 CST — Reorganized all 146 generated PNG assets and their
+  Godot import descriptions into 33 responsibility-based leaf directories for
+  NPCs and player characters, animals, farming, activities, feature points,
+  locations, UI, world visuals, and inactive legacy sources. All repository
+  resource references and documented paths now follow the new layout; pixel
+  content, stable atlas indices, and gameplay state remain unchanged.
+
+- 2026-08-21 15:11:34 CST — Closed the complete A–F milestone. Phase C now has
+  the Moonpearl Egg Press and Starfeather Cream; Phase D has line-control fishing,
+  rod/tackle upgrades, crab pots, and fishing specializations; Phase E has a
+  deterministic twelve-room deep mine, six enemies, three weapons, four shovel
+  tiers, and dual adventure skills. Phase F now ends with an atomic five-night
+  Sixfold Star Gate build, Hand attunement, six regional routes, additive save
+  state, object preview, and bilingual UI. New generated atlases were processed
+  into strict binary-alpha runtime assets and checked in Apple M3 / Metal
+  captures; validation details are recorded in the completion handoff.
 
 - 2026-08-21 13:13:10 CST — Completed the first central-city and world-space rebuild. The
   city is now a 64×64-cell four-way travel hub; all six enterable buildings,

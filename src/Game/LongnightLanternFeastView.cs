@@ -235,7 +235,7 @@ public sealed partial class LongnightLanternFeastView : Node2D
 internal sealed partial class LongnightLanternFeastBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/longnight_lantern_feast_backdrop.png"
+        "res://assets/generated/activities/festivals/longnight/longnight_lantern_feast_backdrop.png"
     );
 
     public LongnightLanternFeastBackdrop()
@@ -257,7 +257,7 @@ internal sealed partial class LongnightLanternFeastBackdrop : Node2D
 internal sealed partial class LongnightLanternFeastStationLayer : Node2D
 {
     private static readonly Texture2D Props = GD.Load<Texture2D>(
-        "res://assets/generated/longnight_lantern_feast_props.png"
+        "res://assets/generated/activities/festivals/longnight/longnight_lantern_feast_props.png"
     );
     private static readonly Rect2 TableRegion = new(43, 297, 540, 293);
     private static readonly Rect2 GiftRegion = new(739, 100, 402, 490);

@@ -50,6 +50,10 @@ public sealed partial class Main : Node
     private BackpackOverlay? _backpackOverlay;
     private FishingCollectionOverlay? _fishingCollectionOverlay;
     private FishingDonationOverlay? _fishingDonationOverlay;
+    private FishingMinigameOverlay? _fishingMinigameOverlay;
+    private FishingGearOverlay? _fishingGearOverlay;
+    private DeepMineOverlay? _deepMineOverlay;
+    private StarGateOverlay? _starGateOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
     private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FestivalShowcaseOverlay? _festivalShowcaseOverlay;
@@ -177,6 +181,37 @@ public sealed partial class Main : Node
     {
         if (!_playing)
         {
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _fishingMinigameOverlay is not null)
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _fishingGearOverlay is not null)
+        {
+            CloseFishingGear();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _deepMineOverlay is not null)
+        {
+            CloseDeepMine();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed(InputSetup.Pause) &&
+            _starGateOverlay is not null)
+        {
+            CloseStarGate();
+            GetViewport().SetInputAsHandled();
             return;
         }
 
@@ -486,6 +521,10 @@ public sealed partial class Main : Node
         _backpackOverlay is not null ||
         _fishingCollectionOverlay is not null ||
         _fishingDonationOverlay is not null ||
+        _fishingMinigameOverlay is not null ||
+        _fishingGearOverlay is not null ||
+        _deepMineOverlay is not null ||
+        _starGateOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
         _farmingSpecializationOverlay is not null ||
         _festivalShowcaseOverlay is not null ||
@@ -521,6 +560,10 @@ public sealed partial class Main : Node
         _backpackOverlay is null &&
         _fishingCollectionOverlay is null &&
         _fishingDonationOverlay is null &&
+        _fishingMinigameOverlay is null &&
+        _fishingGearOverlay is null &&
+        _deepMineOverlay is null &&
+        _starGateOverlay is null &&
         _gleamriseSeasonOverlay is null &&
         _farmingSpecializationOverlay is null &&
         _festivalShowcaseOverlay is null &&
@@ -584,6 +627,8 @@ public sealed partial class Main : Node
         _fishingCollectionOverlay = null;
         FreeUi(_fishingDonationOverlay);
         _fishingDonationOverlay = null;
+        FreeUi(_starGateOverlay);
+        _starGateOverlay = null;
         FreeUi(_gleamriseSeasonOverlay);
         _gleamriseSeasonOverlay = null;
         FreeUi(_farmingSpecializationOverlay);
@@ -776,6 +821,8 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.Processor] = StartProcessorPlaytest,
                 [PlaytestScenarioId.MultiProcessorBatch] =
                     StartMultiProcessorBatchPlaytest,
+                [PlaytestScenarioId.MoonpearlEggPress] =
+                    StartMoonpearlEggPressPlaytest,
                 [PlaytestScenarioId.ArchiveGift] = StartArchiveGiftPlaytest,
                 [PlaytestScenarioId.Archive] = StartArchivePlaytest,
                 [PlaytestScenarioId.ArchiveDoor] = StartArchiveDoorPlaytest,
@@ -824,6 +871,10 @@ public sealed partial class Main : Node
                 [PlaytestScenarioId.ForageCodexRewardClaimedEnglish] =
                     StartForageCodexRewardClaimedEnglishPlaytest,
                 [PlaytestScenarioId.Fishing] = StartFishingPlaytest,
+                [PlaytestScenarioId.FishingMinigame] =
+                    StartFishingMinigamePlaytest,
+                [PlaytestScenarioId.FishingGear] =
+                    StartFishingGearPlaytest,
                 [PlaytestScenarioId.FishingCollection] =
                     StartFishingCollectionPlaytest,
                 [PlaytestScenarioId.FishingDonation] =
@@ -840,6 +891,7 @@ public sealed partial class Main : Node
                     StartCrystalGrottoUpgradePlaytest,
                 [PlaytestScenarioId.CrystalGrottoDeep] =
                     StartCrystalGrottoDeepPlaytest,
+                [PlaytestScenarioId.DeepMine] = StartDeepMinePlaytest,
                 [PlaytestScenarioId.MineralCodexCompleteEnglish] =
                     StartMineralCodexCompleteEnglishPlaytest,
                 [PlaytestScenarioId.CrystalValeStarlightPanel] =
@@ -858,6 +910,10 @@ public sealed partial class Main : Node
                     StartStarfallRuinsStarlightPanelPlaytest,
                 [PlaytestScenarioId.StarfallRuinsStarlightRestored] =
                     StartStarfallRuinsStarlightRestoredPlaytest,
+                [PlaytestScenarioId.SixfoldStarGate] =
+                    StartSixfoldStarGatePlaytest,
+                [PlaytestScenarioId.SixfoldStarGatePanel] =
+                    StartSixfoldStarGatePanelPlaytest,
                 [PlaytestScenarioId.LioraEventOne] =
                     StartLioraEventOnePlaytest,
                 [PlaytestScenarioId.LioraEventTwo] =
@@ -1131,6 +1187,29 @@ public sealed partial class Main : Node
         Callable.From(
             () => OpenProcessor(ProcessorCatalog.PrismPreserveVatId)
         ).CallDeferred();
+    }
+
+    private void StartMoonpearlEggPressPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Inventory.Add(DataCatalog.StarfeatherEggId, 2);
+        _session.StartProcessing(
+            ProcessorCatalog.MoonpearlEggPressId,
+            DataCatalog.StarfeatherCreamRecipeId
+        );
+        var focus = ProcessorCatalog.Machine(
+            ProcessorCatalog.MoonpearlEggPressId
+        ).Position;
+        _session.SetPlayerState(
+            focus.X * 16 + 8,
+            (focus.Y + 1) * 16 + 8,
+            false
+        );
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
     }
 
     private void StartCottagePlaytest()
@@ -4347,6 +4426,29 @@ public sealed partial class Main : Node
         ShowFarm(false);
     }
 
+    private void StartFishingMinigamePlaytest()
+    {
+        StartFishingPlaytest();
+        Callable.From(() => OpenFishingMinigame(new GridPosition(38, 21)))
+            .CallDeferred();
+    }
+
+    private void StartFishingGearPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Coins = 1800;
+        save.Fishing.Experience = 150;
+        save.Fishing.Level = 3;
+        _session.Restore(save);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        Callable.From(OpenFishingGear).CallDeferred();
+    }
+
     private void StartFishingCollectionPlaytest()
     {
         FreeUi(_title);
@@ -4494,6 +4596,23 @@ public sealed partial class Main : Node
         ShowCrystalGrotto(false);
     }
 
+    private void StartDeepMinePlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        _session.SetPlayerLocation(
+            CrystalGrottoSurveyLayout.DepthAnchorCell.X * 16 + 8,
+            (CrystalGrottoSurveyLayout.DepthAnchorCell.Y + 1) * 16 + 8,
+            PlayerLocationIds.CrystalGrottoSurvey
+        );
+        _session.DeepMine.Start(_session.Clock.Day, _session.Inventory);
+        _playing = true;
+        EnsureHud();
+        ShowCrystalGrotto(false);
+        Callable.From(OpenDeepMine).CallDeferred();
+    }
+
     private void StartMineralCodexCompleteEnglishPlaytest()
     {
         _locale.SetLocale(LocaleService.English);
@@ -4619,6 +4738,63 @@ public sealed partial class Main : Node
 
     private void StartStarfallRuinsStarlightRestoredPlaytest() =>
         PrepareStarfallRuinsStarlightPlaytest(restored: true);
+
+    private void StartSixfoldStarGatePlaytest() =>
+        PrepareSixfoldStarGatePlaytest(openPanel: false);
+
+    private void StartSixfoldStarGatePanelPlaytest() =>
+        PrepareSixfoldStarGatePlaytest(openPanel: true);
+
+    private void PrepareSixfoldStarGatePlaytest(bool openPanel)
+    {
+        PrepareStarfallRuinsStarlightPlaytest(restored: true);
+        var save = _session.Capture();
+        save.Construction = new ConstructionSave
+        {
+            Projects =
+            [
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog.CottageFirstUpgradeId,
+                    Completed = true
+                },
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog
+                        .HomesteadWorkshopProjectId,
+                    Completed = true
+                },
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog
+                        .HomesteadGreenhouseProjectId,
+                    Completed = true
+                },
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog.CottageSecondUpgradeId,
+                    Completed = true
+                },
+                new ConstructionProjectSave
+                {
+                    ProjectId = ConstructionCatalog
+                        .SixfoldStarGateProjectId,
+                    Completed = true
+                }
+            ]
+        };
+        save.StarGate = new StarGateSave { Activated = true };
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = FarmLayout.StarGateCell.X * 16 + 8;
+        save.Player.Y = (FarmLayout.StarGateCell.Y - 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+        ShowFarm(false);
+        if (openPanel)
+        {
+            Callable.From(OpenStarGate).CallDeferred();
+        }
+    }
 
     private GameSaveV1 PrepareStarfallRuinsPlaytestSave()
     {
@@ -7022,11 +7198,47 @@ public sealed partial class Main : Node
     private void UseFarmTarget(GridPosition target)
     {
         var selectedId = _session.Inventory.Selected.ItemId;
+        if (selectedId == DataCatalog.FishingRodId &&
+            WorldDefinition.IsWaterSource(target))
+        {
+            OpenFishingMinigame(target);
+            return;
+        }
+
+        if (target == CrystalGrottoSurveyLayout.DepthAnchorCell &&
+            _session.InsideCrystalGrottoSurvey)
+        {
+            var anchorResult = _session.UseSelected(target);
+            if (!anchorResult.Succeeded)
+            {
+                _hud?.ShowNotice(anchorResult.MessageKey);
+                return;
+            }
+
+            _hud?.ShowNotice(anchorResult.MessageKey);
+            if (_session.DeepMine.Active)
+            {
+                OpenDeepMine();
+            }
+            return;
+        }
+
         var result = _session.UseSelected(target);
         if (!result.Succeeded)
         {
             _hud?.ShowNotice(result.MessageKey);
             return;
+        }
+
+        if (result.MessageKey == "star_gate.travel_opened")
+        {
+            OpenStarGate();
+            return;
+        }
+
+        if (result.MessageKey == "star_gate.activated")
+        {
+            SaveNow(false);
         }
 
         if (result.MessageKey == "animal.automation.panel.opened" &&
@@ -8614,6 +8826,11 @@ public sealed partial class Main : Node
             ClosePause();
             OpenFishingCollection();
         };
+        _pauseOverlay.FishingGearRequested += () =>
+        {
+            ClosePause();
+            OpenFishingGear();
+        };
         _pauseOverlay.LanguageRequested += () =>
         {
             ToggleLanguage();
@@ -8668,6 +8885,171 @@ public sealed partial class Main : Node
         {
             SetWorldControls(true);
         }
+    }
+
+    private void OpenFishingMinigame(GridPosition target)
+    {
+        if (_fishingMinigameOverlay is not null)
+        {
+            return;
+        }
+
+        var result = _session.BeginFishingChallenge(target);
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        SetWorldControls(false);
+        _audio.Play(PixelSound.Water);
+        _fishingMinigameOverlay = new FishingMinigameOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _fishingMinigameOverlay.Finished += ResolveFishingMinigame;
+        _uiLayer.AddChild(_fishingMinigameOverlay);
+    }
+
+    private void ResolveFishingMinigame()
+    {
+        var result = _session.ResolveFishingChallenge();
+        FreeUi(_fishingMinigameOverlay);
+        _fishingMinigameOverlay = null;
+        _hud?.ShowNotice(result.MessageKey, 2.2);
+        _audio.Play(result.Succeeded ? PixelSound.Harvest : PixelSound.Step);
+        SaveNow(false);
+
+        if (_session.FishingProgression.CanChooseSpecialization)
+        {
+            Callable.From(OpenFishingGear).CallDeferred();
+            return;
+        }
+
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenFishingGear()
+    {
+        if (_fishingGearOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _fishingGearOverlay = new FishingGearOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _fishingGearOverlay.CloseRequested += CloseFishingGear;
+        _fishingGearOverlay.GearChanged += () =>
+        {
+            _audio.Play(PixelSound.Chime);
+            SaveNow(false);
+        };
+        _uiLayer.AddChild(_fishingGearOverlay);
+    }
+
+    private void CloseFishingGear()
+    {
+        FreeUi(_fishingGearOverlay);
+        _fishingGearOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenDeepMine()
+    {
+        if (_deepMineOverlay is not null || !_session.DeepMine.Active)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _deepMineOverlay = new DeepMineOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _deepMineOverlay.CloseRequested += CloseDeepMine;
+        _deepMineOverlay.ProgressChanged += () => SaveNow(false);
+        _deepMineOverlay.DefeatRequested += ResolveDeepMineDefeat;
+        _uiLayer.AddChild(_deepMineOverlay);
+    }
+
+    private void CloseDeepMine()
+    {
+        _session.DeepMine.Leave();
+        FreeUi(_deepMineOverlay);
+        _deepMineOverlay = null;
+        SaveNow(false);
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void OpenStarGate()
+    {
+        if (_starGateOverlay is not null || !_session.StarGate.Activated)
+        {
+            return;
+        }
+
+        _audio.Play(PixelSound.Chime);
+        SetWorldControls(false);
+        _starGateOverlay = new StarGateOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _starGateOverlay.TravelRequested += TravelStarGate;
+        _starGateOverlay.CloseRequested += CloseStarGate;
+        _uiLayer.AddChild(_starGateOverlay);
+    }
+
+    private void CloseStarGate()
+    {
+        FreeUi(_starGateOverlay);
+        _starGateOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
+    private void TravelStarGate(string destinationId)
+    {
+        var result = _session.TravelStarGate(destinationId);
+        if (!result.Succeeded)
+        {
+            _starGateOverlay?.ShowNotice(result.MessageKey);
+            return;
+        }
+
+        FreeUi(_starGateOverlay);
+        _starGateOverlay = null;
+        SaveNow(false);
+        _audio.Play(PixelSound.Chime);
+        ShowFarm(false);
+        _hud?.ShowNotice(result.MessageKey);
+    }
+
+    private void ResolveDeepMineDefeat()
+    {
+        FreeUi(_deepMineOverlay);
+        _deepMineOverlay = null;
+        var result = _session.ResolveDeepMineDefeat();
+        SaveNow(false);
+        ShowCrystalGrotto(false);
+        _hud?.ShowNotice(result.MessageKey, 2.6);
     }
 
     private void OpenFishingDonation()
@@ -8776,6 +9158,7 @@ public sealed partial class Main : Node
         _commissionOverlay?.RefreshText();
         _mailOverlay?.RefreshText();
         _starlightOverlay?.RefreshText();
+        _starGateOverlay?.RefreshText();
         _craftingOverlay?.RefreshText();
         _kitchenOverlay?.RefreshText();
         _ingredientPantryOverlay?.RefreshText();

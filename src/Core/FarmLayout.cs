@@ -20,6 +20,8 @@ public static class FarmLayout
     public static readonly GridPosition MoonfleeceBarnDoorCell = new(42, 20);
     public static readonly GridPosition MoonfleeceBarnReturnCell = new(42, 21);
     public static readonly GridPosition HomesteadStarlightCell = new(30, 12);
+    public static readonly GridPosition StarGateCell = new(24, 7);
+    public static readonly GridPosition StarGateArrivalCell = new(24, 10);
 
     private static readonly HashSet<GridPosition> StaticBlocked =
     [
@@ -35,7 +37,14 @@ public static class FarmLayout
         new(35, 12), new(36, 12), new(37, 12),
         new(35, 13), new(36, 13), new(37, 13),
         new(35, 14), new(36, 14), new(37, 14),
+        ProcessorCatalog.Machine(
+            ProcessorCatalog.MoonpearlEggPressId
+        ).Position,
         new(26, 10), new(28, 10),
+        new(22, 4), new(23, 4), new(24, 4), new(25, 4), new(26, 4),
+        new(22, 5), new(23, 5), new(24, 5), new(25, 5), new(26, 5),
+        new(22, 6), new(23, 6), new(24, 6), new(25, 6), new(26, 6),
+        new(22, 7), new(23, 7), StarGateCell, new(25, 7), new(26, 7),
         MiraCell,
         CottageDoorCell,
         ShopCell,

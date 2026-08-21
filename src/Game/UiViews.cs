@@ -777,13 +777,13 @@ internal sealed partial class HudChrome : Control
 internal sealed partial class HotbarSlotContent : Control
 {
     private static readonly Texture2D ItemIcons =
-        GD.Load<Texture2D>("res://assets/generated/item_icons_final.png");
+        GD.Load<Texture2D>("res://assets/generated/ui/items/item_icons_final.png");
     private static readonly Texture2D EconomyIcons =
-        GD.Load<Texture2D>("res://assets/generated/economy_assets_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/features/core-loop/economy_assets_chroma.png");
     private static readonly Texture2D ToolIcons =
-        GD.Load<Texture2D>("res://assets/generated/tool_backpack_icons_chroma.png");
+        GD.Load<Texture2D>("res://assets/generated/ui/tools/tool_backpack_icons_chroma.png");
     private static readonly Texture2D FishingIcons =
-        GD.Load<Texture2D>("res://assets/generated/fishing_icons.png");
+        GD.Load<Texture2D>("res://assets/generated/activities/fishing/fishing_icons.png");
     private const float ToolIconCell = 443.5f;
 
     private readonly Label _key;
@@ -1011,6 +1011,11 @@ internal sealed partial class HotbarSlotContent : Control
         out Rect2 region
     )
     {
+        if (FishingGearArt.TryItemIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         texture = FishingIcons;
         if (itemId == DataCatalog.FishingRodId)
         {
@@ -2215,6 +2220,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly Button _resume;
     private readonly Button _gleamriseGoals;
     private readonly Button _fishingCollection;
+    private readonly Button _fishingGear;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2226,7 +2232,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 248) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(300, 282) };
         center.AddChild(panel);
         var column = new VBoxContainer
         {
@@ -2239,12 +2245,14 @@ public sealed partial class PauseOverlay : FullScreenUi
         _resume = ThemeFactory.Button("");
         _gleamriseGoals = ThemeFactory.Button("");
         _fishingCollection = ThemeFactory.Button("");
+        _fishingGear = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
         column.AddChild(_resume);
         column.AddChild(_gleamriseGoals);
         column.AddChild(_fishingCollection);
+        column.AddChild(_fishingGear);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
@@ -2252,6 +2260,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _gleamriseGoals.Pressed += () => GleamriseGoalsRequested?.Invoke();
         _fishingCollection.Pressed += () =>
             FishingCollectionRequested?.Invoke();
+        _fishingGear.Pressed += () => FishingGearRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2261,6 +2270,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     public event Action? ResumeRequested;
     public event Action? GleamriseGoalsRequested;
     public event Action? FishingCollectionRequested;
+    public event Action? FishingGearRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -2270,6 +2280,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _resume.Text = _locale.Tr("menu.resume");
         _gleamriseGoals.Text = _locale.Tr("menu.gleamrise_goals");
         _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
+        _fishingGear.Text = _locale.Tr("menu.fishing_gear");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }
@@ -2372,7 +2383,7 @@ public sealed partial class FadeTransition : ColorRect
 internal sealed partial class TitleBackdrop : Control
 {
     private readonly Texture2D _background =
-        GD.Load<Texture2D>("res://assets/generated/farm_twilight_backdrop.png");
+        GD.Load<Texture2D>("res://assets/generated/world/homestead/farm_twilight_backdrop.png");
     private double _time;
 
     public TitleBackdrop()

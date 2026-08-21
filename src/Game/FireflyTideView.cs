@@ -231,7 +231,7 @@ public sealed partial class FireflyTideView : Node2D
 internal sealed partial class FireflyTideBackdrop : Node2D
 {
     private static readonly Texture2D Background = GD.Load<Texture2D>(
-        "res://assets/generated/firefly_tide_backdrop.png"
+        "res://assets/generated/activities/festivals/firefly-tide/firefly_tide_backdrop.png"
     );
 
     public FireflyTideBackdrop()

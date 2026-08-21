@@ -19,11 +19,15 @@ public sealed class GameSession
     public ExplorationSystem Exploration { get; } = new();
     public WorldResourceSystem Resources { get; } = new();
     public MiningSystem Mining { get; } = new();
+    public DeepMineSystem DeepMine { get; } = new();
     public ToolProgressionSystem ToolProgression { get; } = new();
     public CombatSystem Combat { get; } = new();
     public StarfallRuinsTrialSystem StarfallRuinsTrial { get; } = new();
     public ForageSystem Forage { get; } = new();
     public FishingSystem Fishing { get; } = new();
+    public FishingProgressionSystem FishingProgression { get; } = new();
+    public FishingMinigameSystem FishingMinigame { get; } = new();
+    public CrabPotSystem CrabPots { get; } = new();
     public WeatherSystem Weather { get; } = new();
     public ShippingBinSystem Shipping { get; } = new();
     public CraftingSystem Crafting { get; } = new();
@@ -38,6 +42,7 @@ public sealed class GameSession
     public MailSystem Mail { get; } = new();
     public CharacterEventSystem CharacterEvents { get; } = new();
     public ConstructionSystem Construction { get; } = new();
+    public StarGateSystem StarGate { get; } = new();
     public FarmingSkillSystem FarmingSkill { get; } = new();
     public GleamriseSeasonGoalSystem GleamriseSeason { get; } = new();
     public FestivalSystem Festival { get; } = new();
@@ -154,11 +159,15 @@ public sealed class GameSession
         Exploration.Changed += NotifyChanged;
         Resources.Changed += _ => NotifyChanged();
         Mining.Changed += _ => NotifyChanged();
+        DeepMine.Changed += NotifyChanged;
         ToolProgression.Changed += NotifyChanged;
         Combat.Changed += NotifyChanged;
         StarfallRuinsTrial.Changed += NotifyChanged;
         Forage.Changed += _ => NotifyChanged();
         Fishing.Changed += NotifyChanged;
+        FishingProgression.Changed += NotifyChanged;
+        FishingMinigame.Changed += NotifyChanged;
+        CrabPots.Changed += NotifyChanged;
         Weather.Changed += NotifyChanged;
         Shipping.Changed += NotifyChanged;
         Kitchen.Changed += NotifyChanged;
@@ -172,6 +181,7 @@ public sealed class GameSession
         Mail.Changed += NotifyChanged;
         CharacterEvents.Changed += NotifyChanged;
         Construction.Changed += NotifyChanged;
+        StarGate.Changed += NotifyChanged;
         FarmingSkill.Changed += NotifyChanged;
         GleamriseSeason.Changed += NotifyChanged;
         Festival.Changed += NotifyChanged;
@@ -198,12 +208,16 @@ public sealed class GameSession
         Exploration.Reset();
         Resources.Reset();
         Mining.Reset();
+        DeepMine.Reset();
         ToolProgression.Reset();
         Combat.Reset();
         StarfallRuinsTrial.Reset();
         Weather.Reset(Clock.Day);
         Forage.Reset(Clock.Day, Weather.CurrentId);
         Fishing.Reset();
+        FishingProgression.Reset();
+        FishingMinigame.Reset();
+        CrabPots.Reset();
         Shipping.Reset();
         Kitchen.Reset();
         Storage.Reset();
@@ -216,6 +230,7 @@ public sealed class GameSession
         Mail.Reset();
         CharacterEvents.Reset();
         Construction.Reset();
+        StarGate.Reset();
         FarmingSkill.Reset();
         GleamriseSeason.Reset(Clock.Day);
         Festival.Reset();
@@ -252,6 +267,7 @@ public sealed class GameSession
         Exploration.Restore(save.Exploration);
         Festival.Restore(save.Festival);
         Mining.Restore(save.Mining);
+        DeepMine.Restore(save.Mining);
         ToolProgression.Restore(save.ToolProgression);
         Combat.Restore(save.Combat);
         StarfallRuinsTrial.Restore(save.StarfallRuinsTrial);
@@ -271,6 +287,12 @@ public sealed class GameSession
         Mail.Restore(save.Mail);
         CharacterEvents.Restore(save.CharacterEvents, save.Day);
         Construction.Restore(save.Construction);
+        StarGate.Restore(
+            save.StarGate,
+            Construction.IsCompletedFor(
+                ConstructionCatalog.SixfoldStarGateProjectId
+            )
+        );
         Animals.Restore(save.Animals, save.Day);
         EnsureCompletedAnimalStarters();
         EnsureCompletedAnimalAutomation();
@@ -285,6 +307,9 @@ public sealed class GameSession
         Weather.Restore(save.Weather, save.Day);
         Forage.Restore(save.Forage, save.Day, Weather.CurrentId);
         Fishing.Restore(save.Fishing);
+        FishingProgression.Restore(save.Fishing);
+        FishingMinigame.Reset();
+        CrabPots.Restore(save.Fishing);
         Shipping.Restore(save.Shipping);
         Kitchen.Restore(save.Kitchen);
         Commission.Restore(save.Commission, save.Day);
@@ -481,6 +506,16 @@ public sealed class GameSession
             return UseGreenhouseSelected(target);
         }
 
+        if (CrabPots.HasPot(target))
+        {
+            if (selected.ItemId != DataCatalog.HandId)
+            {
+                return ActionResult.Fail("notice.needs_hand");
+            }
+
+            return CrabPots.Interact(target, Inventory, Fishing);
+        }
+
         if (Forage.SpawnAt(target) is not null)
         {
             return CollectForage(target);
@@ -520,6 +555,11 @@ public sealed class GameSession
         if (target == FarmLayout.HomesteadWorkbenchCell)
         {
             return OpenHomesteadWorkbench(target);
+        }
+
+        if (target == FarmLayout.StarGateCell)
+        {
+            return UseStarGate(target, selected.ItemId);
         }
 
         if (StarlightSpatialCatalog.TryAtCell(
@@ -635,6 +675,11 @@ public sealed class GameSession
                 var item = DataCatalog.Item(selected.ItemId);
                 if (item.Kind == ItemKind.Placeable)
                 {
+                    if (item.Id == DataCatalog.MoonreedCrabPotId)
+                    {
+                        return CrabPots.Place(target, Inventory);
+                    }
+
                     if (item.Id == DataCatalog.StarwovenChestId)
                     {
                         return Storage.Place(
@@ -850,6 +895,10 @@ public sealed class GameSession
 
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
+        if (CrabPots.HasPot(target))
+        {
+            return PreviewCrabPot(target, selectedId);
+        }
         if (Forage.SpawnAt(target) is not null)
         {
             return PreviewForage(target, selectedId);
@@ -916,6 +965,11 @@ public sealed class GameSession
             }
 
             return TargetPreview.Neutral(target);
+        }
+
+        if (target == FarmLayout.StarGateCell)
+        {
+            return PreviewStarGate(target, selectedId);
         }
 
         if (StarlightSpatialCatalog.TryAtCell(
@@ -1463,11 +1517,90 @@ public sealed class GameSession
             );
     }
 
+    private TargetPreview PreviewCrabPot(
+        GridPosition target,
+        string selectedId
+    )
+    {
+        if (selectedId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                target,
+                TargetPreviewKind.CrabPot,
+                "target.need.hand"
+            );
+        }
+
+        var pot = CrabPots.PotAt(target);
+        if (pot.IsReady)
+        {
+            var fish = DataCatalog.Fishes[pot.CatchItemId];
+            if (!Inventory.CanAdd(fish.ItemId, 1))
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.CrabPot,
+                    "target.blocked.backpack_full"
+                );
+            }
+
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.CrabPot,
+                "target.action.collect_crab_pot"
+            );
+        }
+
+        if (pot.IsBaited)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.CrabPot,
+                "target.status.crab_pot_waiting"
+            );
+        }
+
+        var hasBait = Inventory.Count(DataCatalog.GlowgrubBaitId) > 0 ||
+            Inventory.Count(DataCatalog.MoonmoteBaitId) > 0;
+        if (!hasBait)
+        {
+            return TargetPreview.Blocked(
+                target,
+                TargetPreviewKind.CrabPot,
+                "target.blocked.crab_pot_needs_bait"
+            );
+        }
+
+        return TargetPreview.Available(
+            target,
+            TargetPreviewKind.CrabPot,
+            "target.action.bait_crab_pot"
+        );
+    }
+
     private TargetPreview PreviewWaterSource(
         GridPosition target,
         string selectedId
     )
     {
+        if (selectedId == DataCatalog.MoonreedCrabPotId)
+        {
+            if (CrabPots.Pots.Count >= CrabPotSystem.MaximumPlacedPots)
+            {
+                return TargetPreview.Blocked(
+                    target,
+                    TargetPreviewKind.CrabPot,
+                    "target.blocked.crab_pot_limit"
+                );
+            }
+
+            return TargetPreview.Available(
+                target,
+                TargetPreviewKind.CrabPot,
+                "target.action.place_crab_pot"
+            );
+        }
+
         if (selectedId == DataCatalog.BucketId)
         {
             return WateringCanWater >= MaxWateringCanWater
@@ -1950,10 +2083,11 @@ public sealed class GameSession
         }
 
         var enemy = StarfallRuinsTrial.Enemy(enemyInstanceId);
+        var weapon = StarfallRuinsTrialCatalog.Weapon(selectedItemId);
         var dx = PlayerX - enemy.CurrentX;
         var dy = PlayerY - enemy.CurrentY;
         return MathF.Sqrt(dx * dx + dy * dy) <=
-            StarfallRuinsTrialCatalog.MoonsteelShortblade.RangePixels
+            weapon.RangePixels
                 ? ActionResult.Success(messageKey: "combat.attack.ready")
                 : ActionResult.Fail("combat.target_out_of_range");
     }
@@ -1975,10 +2109,12 @@ public sealed class GameSession
         BeginChangedBatch();
         try
         {
-            Combat.BeginCheckedAttack(DataCatalog.MoonsteelShortbladeId);
+            var weaponItemId = Inventory.Selected.ItemId;
+            var weapon = StarfallRuinsTrialCatalog.Weapon(weaponItemId);
+            Combat.BeginCheckedAttack(weaponItemId);
             var damage = StarfallRuinsTrial.ApplyDamageChecked(
                 enemyInstanceId,
-                StarfallRuinsTrialCatalog.MoonsteelShortblade.Damage
+                weapon.Damage
             );
             if (damage.EnemyDefeated)
             {
@@ -2153,9 +2289,11 @@ public sealed class GameSession
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return Mining.FifthRoomAnchorReached
-            ? ActionResult.Fail("mining.anchor_already_active")
-            : ActionResult.Success(messageKey: "mining.anchor_ready");
+        return ActionResult.Success(
+            messageKey: Mining.FifthRoomAnchorReached
+                ? "deep_mine.ready"
+                : "mining.anchor_ready"
+        );
     }
 
     public ActionResult ActivateCrystalGrottoDepthAnchor(
@@ -2168,10 +2306,94 @@ public sealed class GameSession
             return check;
         }
 
+        if (Mining.FifthRoomAnchorReached)
+        {
+            return DeepMine.Start(Clock.Day, Inventory);
+        }
+
         Mining.ReachRoom(CrystalGrottoSurveyLayout.RoomCount);
         Starlight.RefreshRewardUnlocks(StarlightProgress());
         NotifyChanged();
         return ActionResult.Success(messageKey: "mining.anchor_activated");
+    }
+
+    public DeepMineAttackResult AttackDeepMineEnemy()
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        return DeepMine.Attack(
+            selectedId,
+            Inventory,
+            Combat,
+            Collection
+        );
+    }
+
+    public CombatDodgeResult DodgeInDeepMine() =>
+        DeepMine.PrepareDodge(Combat);
+
+    public void AdvanceDeepMineCombat(float deltaSeconds)
+    {
+        if (DeepMine.Active)
+        {
+            Combat.Advance(deltaSeconds);
+        }
+    }
+
+    public ActionResult ExcavateDeepMineRoom()
+    {
+        var result = DeepMine.Excavate(
+            ToolProgression.TierIdFor(DataCatalog.ShovelId),
+            Energy,
+            Inventory
+        );
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        Energy = Math.Max(0, Energy - result.EnergyCost);
+        EnergyChanged?.Invoke();
+        NotifyChanged();
+        return result;
+    }
+
+    public ActionResult AdvanceDeepMineRoom() => DeepMine.AdvanceRoom();
+
+    public ActionResult ChooseAdventureSpecialization(
+        AdventureSkillKind kind,
+        string specializationId
+    ) => kind == AdventureSkillKind.CrystalMining
+        ? DeepMine.CrystalMiningSkill.ChooseSpecialization(specializationId)
+        : DeepMine.NightwatchSkill.ChooseSpecialization(specializationId);
+
+    public StarfallTrialDefeatResolution ResolveDeepMineDefeat()
+    {
+        if (!DeepMine.Active || !Combat.IsDefeated)
+        {
+            return new StarfallTrialDefeatResolution(
+                false,
+                "combat.defeat.not_ready"
+            );
+        }
+
+        var settlement = EndDay();
+        Energy = 50;
+        EnergyChanged?.Invoke();
+        Combat.RestoreFullHealth();
+        DeepMine.RecoverFromDefeat();
+        SetPlayerLocation(
+            CrystalGrottoSurveyLayout.SafeArrivalCell.X * 16 + 8,
+            CrystalGrottoSurveyLayout.SafeArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.CrystalGrottoSurvey
+        );
+        NotifyChanged();
+        return new StarfallTrialDefeatResolution(
+            true,
+            "deep_mine.defeat_recovered",
+            settlement
+        );
     }
 
     public ActionResult InspectCrystalGrottoSeal(GridPosition target)
@@ -2253,7 +2475,9 @@ public sealed class GameSession
                 return TargetPreview.Available(
                     target,
                     TargetPreviewKind.MineDepthAnchor,
-                    "target.action.activate_depth_anchor"
+                    Mining.FifthRoomAnchorReached
+                        ? "target.action.enter_deep_mine"
+                        : "target.action.activate_depth_anchor"
                 );
             }
 
@@ -2266,13 +2490,7 @@ public sealed class GameSession
                 );
             }
 
-            return anchorCheck.MessageKey == "mining.anchor_already_active"
-                ? TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.MineDepthAnchor,
-                    anchorCheck.MessageKey
-                )
-                : TargetPreview.Neutral(target);
+            return TargetPreview.Neutral(target);
         }
 
         if (target == CrystalGrottoSurveyLayout.SealCell)
@@ -2490,10 +2708,10 @@ public sealed class GameSession
 
             return check.MessageKey switch
             {
-                "combat.requires_shortblade" => TargetPreview.NeedsTool(
+                "combat.requires_weapon" => TargetPreview.NeedsTool(
                     target,
                     TargetPreviewKind.RuinsEnemy,
-                    "target.need.shortblade"
+                    "target.need.weapon"
                 ),
                 "combat.enemy_defeated" or "combat.attack.cooldown" or
                     "combat.target_out_of_range" or
@@ -2929,6 +3147,222 @@ public sealed class GameSession
         Changed?.Invoke();
         return result;
     }
+
+    public ActionResult BeginFishingChallenge(GridPosition target)
+    {
+        if (!WorldDefinition.IsWaterSource(target))
+        {
+            return ActionResult.Fail("notice.not_fishing_water");
+        }
+        if (FishingMinigame.IsActive)
+        {
+            return ActionResult.Fail("fishing.minigame.active");
+        }
+        if (Energy < FishingSystem.CastEnergyCost)
+        {
+            return ActionResult.Fail("notice.no_energy");
+        }
+
+        var fish = Fishing.PreviewCatch(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            Weather.CurrentId
+        );
+        if (fish is null)
+        {
+            return ActionResult.Fail("notice.fish_not_biting");
+        }
+        if (!Inventory.CanAdd(fish.ItemId, 1))
+        {
+            return ActionResult.Fail("notice.inventory_full");
+        }
+
+        var baitId = FishingProgression.EquippedBaitId;
+        if (!string.IsNullOrWhiteSpace(baitId) &&
+            Inventory.Count(baitId) <= 0)
+        {
+            FishingProgression.ClearBaitIfMissing(Inventory);
+            baitId = string.Empty;
+        }
+
+        BeginChangedBatch();
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(baitId) &&
+                !Inventory.Remove(baitId, 1))
+            {
+                return ActionResult.Fail("fishing.gear.bait_missing");
+            }
+
+            FishingMinigame.Begin(fish, FishingProgression);
+            FishingProgression.ClearBaitIfMissing(Inventory);
+            Energy -= FishingSystem.CastEnergyCost;
+            EnergyChanged?.Invoke();
+            NotifyChanged();
+        }
+        finally
+        {
+            EndChangedBatch();
+        }
+
+        return ActionResult.Success(
+            FishingSystem.CastEnergyCost,
+            "fishing.minigame.started"
+        );
+    }
+
+    public FishingChallengeSnapshot AdvanceFishingChallenge(
+        float deltaSeconds,
+        bool reeling
+    ) => FishingMinigame.Advance(deltaSeconds, reeling);
+
+    public ActionResult ResolveFishingChallenge()
+    {
+        var challenge = FishingMinigame.Snapshot();
+        if (challenge.Status == FishingChallengeStatus.Active)
+        {
+            return ActionResult.Fail("fishing.minigame.active");
+        }
+        if (challenge.Status == FishingChallengeStatus.Idle)
+        {
+            return ActionResult.Fail("fishing.minigame.idle");
+        }
+
+        FishingMinigame.Reset();
+        if (challenge.Status == FishingChallengeStatus.Failed)
+        {
+            return ActionResult.Fail("fishing.minigame.failed");
+        }
+
+        var result = Fishing.CommitCatch(
+            challenge.FishId,
+            Inventory,
+            0
+        );
+        if (result.Succeeded)
+        {
+            FishingProgression.RecordCatch(challenge.Difficulty);
+        }
+        return result;
+    }
+
+    public ActionResult PurchaseFishingGear(string itemId)
+    {
+        var offer = FishingProgressionCatalog.GearOffers.FirstOrDefault(
+            candidate => candidate.ItemId == itemId
+        );
+        if (offer is null)
+        {
+            return ActionResult.Fail("fishing.gear.unknown");
+        }
+        if (FishingProgression.Level < offer.RequiredLevel)
+        {
+            return ActionResult.Fail("fishing.gear.level_locked");
+        }
+        if (offer.Kind == FishingGearOfferKind.Bobber &&
+            FishingProgression.OwnsBobber(itemId))
+        {
+            return ActionResult.Fail("fishing.gear.already_owned");
+        }
+        if (Coins < offer.CoinCost)
+        {
+            return ActionResult.Fail("shop.not_enough_coins");
+        }
+        if (!HasFishingMaterials(offer.Materials))
+        {
+            return ActionResult.Fail("fishing.gear.materials_missing");
+        }
+        if (offer.Kind != FishingGearOfferKind.Bobber &&
+            !Inventory.CanAdd(offer.ItemId, offer.Quantity))
+        {
+            return ActionResult.Fail("notice.inventory_full");
+        }
+
+        BeginChangedBatch();
+        try
+        {
+            if (offer.Materials.Count > 0 &&
+                !Inventory.TryRemoveMany(offer.Materials))
+            {
+                return ActionResult.Fail("fishing.gear.materials_changed");
+            }
+
+            if (offer.Kind == FishingGearOfferKind.Bobber)
+            {
+                FishingProgression.RegisterOwnedBobber(offer.ItemId);
+            }
+            else if (!Inventory.Add(offer.ItemId, offer.Quantity))
+            {
+                return ActionResult.Fail("notice.inventory_full");
+            }
+
+            Coins -= offer.CoinCost;
+            NotifyChanged();
+        }
+        finally
+        {
+            EndChangedBatch();
+        }
+
+        return ActionResult.Success(messageKey: "fishing.gear.purchased");
+    }
+
+    public ActionResult UpgradeFishingRod()
+    {
+        var next = FishingProgressionCatalog.RodTiers.FirstOrDefault(tier =>
+            tier.Rank == FishingProgression.RodTier.Rank + 1
+        );
+        if (next is null)
+        {
+            return ActionResult.Fail("fishing.rod.max_tier");
+        }
+        if (FishingProgression.Level < next.RequiredLevel)
+        {
+            return ActionResult.Fail("fishing.gear.level_locked");
+        }
+        if (Coins < next.CoinCost)
+        {
+            return ActionResult.Fail("shop.not_enough_coins");
+        }
+        if (!HasFishingMaterials(next.Materials))
+        {
+            return ActionResult.Fail("fishing.gear.materials_missing");
+        }
+
+        BeginChangedBatch();
+        try
+        {
+            if (!Inventory.TryRemoveMany(next.Materials))
+            {
+                return ActionResult.Fail("fishing.gear.materials_changed");
+            }
+            Coins -= next.CoinCost;
+            FishingProgression.ApplyNextRodTier();
+            NotifyChanged();
+        }
+        finally
+        {
+            EndChangedBatch();
+        }
+
+        return ActionResult.Success(messageKey: "fishing.rod.upgraded");
+    }
+
+    public ActionResult EquipFishingBait(string itemId) =>
+        FishingProgression.EquipBait(itemId, Inventory);
+
+    public ActionResult EquipFishingBobber(string itemId) =>
+        FishingProgression.EquipBobber(itemId);
+
+    public ActionResult ChooseFishingSpecialization(string specializationId) =>
+        FishingProgression.ChooseSpecialization(specializationId);
+
+    private bool HasFishingMaterials(
+        IReadOnlyList<CraftingIngredient> materials
+    ) => materials.All(material =>
+        Inventory.Count(material.ItemId) >= material.Count
+    );
 
     public bool InteractWithMira()
     {
@@ -4073,12 +4507,138 @@ public sealed class GameSession
     private ActionResult CheckToolUpgradeAccess(GridPosition target)
         => CheckCrystalGrottoUpgradeBench(target);
 
+    public bool StarGateVisible =>
+        Starlight.StarfallSixfoldConvergenceUnlocked ||
+        Construction.PhaseFor(
+            ConstructionCatalog.SixfoldStarGateProjectId
+        ) != ConstructionPhase.NotStarted ||
+        StarGate.Activated;
+
+    private ActionResult UseStarGate(
+        GridPosition target,
+        string selectedItemId
+    )
+    {
+        if (!IsStarGateInReach(target) || !StarGateVisible)
+        {
+            return ActionResult.Fail("star_gate.unavailable");
+        }
+
+        var projectId = ConstructionCatalog.SixfoldStarGateProjectId;
+        var phase = Construction.PhaseFor(projectId);
+        if (phase == ConstructionPhase.NotStarted)
+        {
+            return ActionResult.Fail("star_gate.construction_required");
+        }
+
+        if (phase == ConstructionPhase.InProgress)
+        {
+            return ActionResult.Fail("star_gate.construction_in_progress");
+        }
+
+        if (selectedItemId != DataCatalog.HandId)
+        {
+            return ActionResult.Fail("notice.needs_hand");
+        }
+
+        if (!StarGate.Activated)
+        {
+            return StarGate.Activate(constructionCompleted: true);
+        }
+
+        return ActionResult.Success(messageKey: "star_gate.travel_opened");
+    }
+
+    private TargetPreview PreviewStarGate(
+        GridPosition target,
+        string selectedItemId
+    )
+    {
+        if (!IsStarGateInReach(target) || !StarGateVisible)
+        {
+            return TargetPreview.Neutral(target);
+        }
+
+        var phase = Construction.PhaseFor(
+            ConstructionCatalog.SixfoldStarGateProjectId
+        );
+        if (phase == ConstructionPhase.NotStarted)
+        {
+            return TargetPreview.Blocked(
+                FarmLayout.StarGateCell,
+                TargetPreviewKind.StarGate,
+                "star_gate.construction_required"
+            );
+        }
+
+        if (phase == ConstructionPhase.InProgress)
+        {
+            return TargetPreview.Blocked(
+                FarmLayout.StarGateCell,
+                TargetPreviewKind.StarGate,
+                "star_gate.construction_in_progress"
+            );
+        }
+
+        if (selectedItemId != DataCatalog.HandId)
+        {
+            return TargetPreview.NeedsTool(
+                FarmLayout.StarGateCell,
+                TargetPreviewKind.StarGate,
+                "target.need.hand"
+            );
+        }
+
+        var actionKey = StarGate.Activated
+            ? "target.action.open_star_gate"
+            : "target.action.activate_star_gate";
+        return TargetPreview.Available(
+            FarmLayout.StarGateCell,
+            TargetPreviewKind.StarGate,
+            actionKey
+        );
+    }
+
+    private bool IsStarGateInReach(GridPosition target) =>
+        PlayerLocationId == PlayerLocationIds.World &&
+        target == FarmLayout.StarGateCell &&
+        Math.Abs(PlayerCell.X - target.X) +
+            Math.Abs(PlayerCell.Y - target.Y) == 1;
+
+    public ActionResult TravelStarGate(string destinationId)
+    {
+        var result = StarGate.Travel(destinationId);
+        if (!result.Succeeded ||
+            !StarGateCatalog.TryDestination(
+                destinationId,
+                out var destination
+            ))
+        {
+            return result;
+        }
+
+        SetPlayerLocation(
+            destination.ArrivalCell.X * 16 + 8,
+            destination.ArrivalCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        return result;
+    }
+
     public ActionResult StartConstruction(string projectId)
     {
         var access = CheckConstructionStartAccess();
         if (!access.Succeeded)
         {
             return access;
+        }
+
+        if (projectId == ConstructionCatalog.SixfoldStarGateProjectId &&
+            !Starlight.StarfallSixfoldConvergenceUnlocked)
+        {
+            return ActionResult.Fail(
+                "construction.sixfold_star_gate.requires_six_lights"
+            );
         }
 
         var check = Construction.CheckStart(projectId, Inventory, Coins);
@@ -5081,6 +5641,7 @@ public sealed class GameSession
         );
         Weather.AdvanceToDay(Clock.Day);
         Forage.ResolveDay(Clock.Day, Weather.CurrentId);
+        CrabPots.ResolveNight(Clock.Day, Weather.CurrentId, Fishing);
         if (Weather.Current.AutoWatersCrops)
         {
             Farm.ApplyWeatherWatering();
@@ -5120,12 +5681,12 @@ public sealed class GameSession
         Processor = Processor.Capture(),
         Exploration = Exploration.Capture(),
         Resources = Resources.Capture(),
-        Mining = Mining.Capture(),
+        Mining = CaptureMining(),
         ToolProgression = ToolProgression.Capture(),
         Combat = Combat.Capture(),
         StarfallRuinsTrial = StarfallRuinsTrial.Capture(),
         Forage = Forage.Capture(),
-        Fishing = Fishing.Capture(),
+        Fishing = CaptureFishing(),
         Weather = Weather.Capture(),
         Shipping = Shipping.Capture(),
         Kitchen = Kitchen.Capture(),
@@ -5142,8 +5703,24 @@ public sealed class GameSession
         FarmingSkill = FarmingSkill.Capture(),
         GleamriseSeason = GleamriseSeason.Capture(),
         Festival = Festival.Capture(),
-        Collection = Collection.Capture()
+        Collection = Collection.Capture(),
+        StarGate = StarGate.Capture()
     };
+
+    private FishingSave CaptureFishing()
+    {
+        var save = Fishing.Capture();
+        FishingProgression.CaptureInto(save);
+        CrabPots.CaptureInto(save);
+        return save;
+    }
+
+    private MiningSave CaptureMining()
+    {
+        var save = Mining.Capture();
+        DeepMine.CaptureInto(save);
+        return save;
+    }
 
     public ActionResult ChooseFarmingSpecialization(
         string specializationId

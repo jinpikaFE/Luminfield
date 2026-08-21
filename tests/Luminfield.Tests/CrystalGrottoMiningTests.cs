@@ -253,10 +253,15 @@ public sealed class CrystalGrottoMiningTests
         Assert.True(session.PreviewSelectedTarget(anchor).IsAvailable);
         Assert.True(session.UseSelected(anchor).Succeeded);
         Assert.True(session.Mining.FifthRoomAnchorReached);
+        var deepMinePreview = session.PreviewSelectedTarget(anchor);
+        Assert.Equal(TargetPreviewState.Available, deepMinePreview.State);
         Assert.Equal(
-            TargetPreviewState.Blocked,
-            session.PreviewSelectedTarget(anchor).State
+            "target.action.enter_deep_mine",
+            deepMinePreview.LabelKey
         );
+        Assert.True(session.UseSelected(anchor).Succeeded);
+        Assert.True(session.DeepMine.Active);
+        session.Inventory.Select(0);
 
         var exit = CrystalGrottoSurveyLayout.ExitCell;
         session.SetPlayerLocation(

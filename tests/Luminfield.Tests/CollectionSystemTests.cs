@@ -29,13 +29,13 @@ public sealed class CollectionSystemTests
         Assert.Equal(24, CompendiumCatalog.FishEntries.Count);
         Assert.Equal(4, CompendiumCatalog.MineralEntries.Count);
         Assert.Equal(4, CompendiumCatalog.ArtifactEntries.Count);
-        Assert.Equal(3, CompendiumCatalog.EnemyEntries.Count);
+        Assert.Equal(6, CompendiumCatalog.EnemyEntries.Count);
         Assert.Equal(
             DataCatalog.CookedDishItemIds,
             CompendiumCatalog.CookingEntries.Select(entry => entry.Id)
         );
         Assert.Equal(
-            71,
+            74,
             CompendiumCatalog.EntriesInOrder
                 .Select(entry => entry.Id)
                 .Distinct(StringComparer.Ordinal)

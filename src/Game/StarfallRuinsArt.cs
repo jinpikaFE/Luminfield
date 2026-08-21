@@ -15,15 +15,15 @@ internal static class StarfallRuinsArt
     private const float CellSize = 256;
 
     public static readonly Texture2D CombatAtlas = GD.Load<Texture2D>(
-        "res://assets/generated/starfall_ruins_combat.png"
+        "res://assets/generated/activities/combat/starfall_ruins_combat.png"
     );
 
     public static readonly Texture2D ArtifactAtlas = GD.Load<Texture2D>(
-        "res://assets/generated/starfall_ruins_artifacts.png"
+        "res://assets/generated/activities/combat/starfall_ruins_artifacts.png"
     );
 
     public static readonly Texture2D StarlightAtlas = GD.Load<Texture2D>(
-        "res://assets/generated/starfall_ruins_starlight_pedestal.png"
+        "res://assets/generated/features/starlights/starfall_ruins_starlight_pedestal.png"
     );
 
     private static readonly IReadOnlyDictionary<string, int> EnemyRows =
@@ -98,6 +98,11 @@ internal static class StarfallRuinsArt
         out Rect2 region
     )
     {
+        if (DeepMineArt.TryWeaponIcon(itemId, out texture, out region))
+        {
+            return true;
+        }
+
         texture = ArtifactAtlas;
         if (ArtifactColumns.TryGetValue(itemId, out var column))
         {

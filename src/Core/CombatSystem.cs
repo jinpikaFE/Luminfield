@@ -97,9 +97,9 @@ public sealed class CombatSystem
             return ActionResult.Fail("combat.player_defeated");
         }
 
-        if (weaponItemId != DataCatalog.MoonsteelShortbladeId)
+        if (!StarfallRuinsTrialCatalog.TryWeapon(weaponItemId, out _))
         {
-            return ActionResult.Fail("combat.requires_shortblade");
+            return ActionResult.Fail("combat.requires_weapon");
         }
 
         return _attackCooldownRemaining <= 0
@@ -116,8 +116,9 @@ public sealed class CombatSystem
             );
         }
 
-        _attackCooldownRemaining =
-            StarfallRuinsTrialCatalog.MoonsteelShortblade.CooldownSeconds;
+        _attackCooldownRemaining = StarfallRuinsTrialCatalog
+            .Weapon(weaponItemId)
+            .CooldownSeconds;
         Changed?.Invoke();
     }
 

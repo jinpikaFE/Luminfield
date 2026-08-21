@@ -32,6 +32,8 @@ public static class ConstructionCatalog
         "homestead_moonfleece_barn";
     public const string HomesteadLivestockAutomationProjectId =
         "homestead_livestock_automation";
+    public const string SixfoldStarGateProjectId =
+        "sixfold_star_gate";
 
     public static ConstructionProjectDefinition CottageFirstUpgrade { get; } =
         new(
@@ -150,6 +152,30 @@ public static class ConstructionCatalog
         ])
     );
 
+    public static ConstructionProjectDefinition SixfoldStarGate { get; } =
+        new(
+            SixfoldStarGateProjectId,
+            "construction.sixfold_star_gate.name",
+            "construction.sixfold_star_gate.description",
+            2400,
+            Array.AsReadOnly(
+            [
+                new CraftingIngredient(DataCatalog.LumenwoodId, 60),
+                new CraftingIngredient(DataCatalog.CrystalShardId, 20),
+                new CraftingIngredient(DataCatalog.PrismheartOreId, 8),
+                new CraftingIngredient(DataCatalog.StarironOreId, 12)
+            ]),
+            5,
+            PrerequisiteFailureKey:
+                "construction.sixfold_star_gate.requires_homestead",
+            RequiredProjectIds: Array.AsReadOnly(
+            [
+                HomesteadWorkshopProjectId,
+                HomesteadGreenhouseProjectId,
+                CottageSecondUpgradeId
+            ])
+        );
+
     public static IReadOnlyList<ConstructionProjectDefinition> Projects
         { get; } = Array.AsReadOnly(
         [
@@ -159,7 +185,8 @@ public static class ConstructionCatalog
             HomesteadGreenhouse,
             HomesteadStarfeatherCoop,
             HomesteadMoonfleeceBarn,
-            HomesteadLivestockAutomation
+            HomesteadLivestockAutomation,
+            SixfoldStarGate
         ]);
 
     private static readonly IReadOnlyDictionary<

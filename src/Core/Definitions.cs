@@ -335,6 +335,11 @@ public static class DataCatalog
     public const string WateringCanId = "watering_can";
     public const string BucketId = "water_bucket";
     public const string FishingRodId = "fishing_rod";
+    public const string GlowgrubBaitId = "glowgrub_bait";
+    public const string MoonmoteBaitId = "moonmote_bait";
+    public const string StillwaterBobberId = "stillwater_bobber";
+    public const string StormglassBobberId = "stormglass_bobber";
+    public const string MoonreedCrabPotId = "moonreed_crab_pot";
     public const string StarbudSeedId = "starbud_seed";
     public const string StarbudId = "starbud";
     public const string StarbudLuminousId = "starbud_luminous";
@@ -425,6 +430,7 @@ public static class DataCatalog
     public const string StarbudPreserveId = "starbud_preserve";
     public const string MoonrootTonicId = "moonroot_tonic";
     public const string CloudleafTeaId = "cloudleaf_tea";
+    public const string StarfeatherCreamId = "starfeather_cream";
     public const string LumenwoodId = "lumenwood";
     public const string CrystalShardId = "crystal_shard";
     public const string LumenSlateOreId = "lumen_slate_ore";
@@ -499,6 +505,8 @@ public static class DataCatalog
     public const string StarbudPreserveRecipeId = "recipe_starbud_preserve";
     public const string MoonrootTonicRecipeId = "recipe_moonroot_tonic";
     public const string CloudleafTeaRecipeId = "recipe_cloudleaf_tea";
+    public const string StarfeatherCreamRecipeId =
+        "recipe_starfeather_cream";
     public const string StarwovenChestRecipeId = "recipe_starwoven_chest";
     public const string MoonstonePathRecipeId = "recipe_moonstone_path";
     public const string StarwoodFenceRecipeId = "recipe_starwood_fence";
@@ -552,6 +560,8 @@ public static class DataCatalog
     public const string CrystalRuinsPassageRewardId =
         "starlight_reward_crystal_ruins_passage";
     public const string MoonsteelShortbladeId = "moonsteel_shortblade";
+    public const string CrystalPikeId = "crystal_pike";
+    public const string MoonarcBowId = "moonarc_bow";
     public const string DawnpathCompassId = "artifact_dawnpath_compass";
     public const string TideglassTabletId = "artifact_tideglass_tablet";
     public const string HushedGleambellId = "artifact_hushed_gleambell";
@@ -590,6 +600,36 @@ public static class DataCatalog
                 ItemKind.Tool,
                 1,
                 "item.fishing_rod"
+            ),
+            [GlowgrubBaitId] = new(
+                GlowgrubBaitId,
+                ItemKind.Resource,
+                99,
+                "item.glowgrub_bait"
+            ),
+            [MoonmoteBaitId] = new(
+                MoonmoteBaitId,
+                ItemKind.Resource,
+                99,
+                "item.moonmote_bait"
+            ),
+            [StillwaterBobberId] = new(
+                StillwaterBobberId,
+                ItemKind.Tool,
+                1,
+                "item.stillwater_bobber"
+            ),
+            [StormglassBobberId] = new(
+                StormglassBobberId,
+                ItemKind.Tool,
+                1,
+                "item.stormglass_bobber"
+            ),
+            [MoonreedCrabPotId] = new(
+                MoonreedCrabPotId,
+                ItemKind.Placeable,
+                99,
+                "item.moonreed_crab_pot"
             ),
             [StarbudSeedId] = new(
                 StarbudSeedId,
@@ -1294,6 +1334,13 @@ public static class DataCatalog
                 "item.cloudleaf_tea",
                 SellPrice: 62
             ),
+            [StarfeatherCreamId] = new(
+                StarfeatherCreamId,
+                ItemKind.Artisan,
+                99,
+                "item.starfeather_cream",
+                SellPrice: 132
+            ),
             [LumenwoodId] = new(
                 LumenwoodId,
                 ItemKind.Resource,
@@ -1734,6 +1781,18 @@ public static class DataCatalog
                 1,
                 "item.moonsteel_shortblade"
             ),
+            [CrystalPikeId] = new(
+                CrystalPikeId,
+                ItemKind.Weapon,
+                1,
+                "item.crystal_pike"
+            ),
+            [MoonarcBowId] = new(
+                MoonarcBowId,
+                ItemKind.Weapon,
+                1,
+                "item.moonarc_bow"
+            ),
             [DawnpathCompassId] = new(
                 DawnpathCompassId,
                 ItemKind.Artifact,
@@ -1827,6 +1886,7 @@ public static class DataCatalog
         StarbudPreserveId,
         MoonrootTonicId,
         CloudleafTeaId,
+        StarfeatherCreamId,
         MoonplumId,
         StarhoneyId,
         StarfeatherEggId,
@@ -2071,6 +2131,9 @@ public static class DataCatalog
 
     public static readonly IReadOnlyList<string> StorableItemIds =
     [
+        GlowgrubBaitId,
+        MoonmoteBaitId,
+        MoonreedCrabPotId,
         StarbudSeedId,
         StarbudId,
         StarbudLuminousId,
@@ -2157,6 +2220,7 @@ public static class DataCatalog
         StarbudPreserveId,
         MoonrootTonicId,
         CloudleafTeaId,
+        StarfeatherCreamId,
         MoonplumSaplingId,
         MoonplumId,
         StarhoneyId,
@@ -2215,6 +2279,8 @@ public static class DataCatalog
         DewfallSprinklerId,
         GlowcombHiveId,
         MoonsteelShortbladeId,
+        CrystalPikeId,
+        MoonarcBowId,
         DawnpathCompassId,
         TideglassTabletId,
         HushedGleambellId,
@@ -2729,6 +2795,15 @@ public static class DataCatalog
                 1,
                 2,
                 "recipe.cloudleaf_tea"
+            ),
+            [StarfeatherCreamRecipeId] = new(
+                StarfeatherCreamRecipeId,
+                StarfeatherEggId,
+                1,
+                StarfeatherCreamId,
+                1,
+                1,
+                "recipe.starfeather_cream"
             )
         };
 
@@ -3424,6 +3499,7 @@ public static class ProcessorCatalog
     public const string MoonwellInfuserId = "machine_moonwell_infuser";
     public const string PrismPreserveVatId = "machine_prism_preserve_vat";
     public const string StarweaveDryingLoomId = "machine_starweave_drying_loom";
+    public const string MoonpearlEggPressId = "machine_moonpearl_egg_press";
     public const string MainMachineId = MoonwellInfuserId;
 
     public static readonly IReadOnlyDictionary<string, ProcessorMachineDefinition>
@@ -3451,6 +3527,12 @@ public static class ProcessorCatalog
                 new GridPosition(37, 12),
                 "processor.machine.drying_loom",
                 [DataCatalog.CloudleafTeaRecipeId]
+            ),
+            [MoonpearlEggPressId] = new(
+                MoonpearlEggPressId,
+                new GridPosition(34, 14),
+                "processor.machine.moonpearl_egg_press",
+                [DataCatalog.StarfeatherCreamRecipeId]
             )
         };
 

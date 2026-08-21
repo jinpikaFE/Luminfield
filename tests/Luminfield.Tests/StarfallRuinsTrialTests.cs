@@ -7,7 +7,7 @@ namespace Luminfield.Tests;
 public sealed class StarfallRuinsTrialTests
 {
     [Fact]
-    public void CatalogFreezesThreeRoomsEnemiesArtifactsWeaponAndSixthLight()
+    public void CatalogFreezesRoomsExpandedEnemiesArtifactsWeaponsAndSixthLight()
     {
         Assert.Equal("starfall_ruins_trial", PlayerLocationIds.StarfallRuinsTrial);
         Assert.Equal(new GridPosition(127, 104),
@@ -19,7 +19,7 @@ public sealed class StarfallRuinsTrialTests
         Assert.False(WorldDefinition.IsBlocked(
             StarfallRuinsTrialLayout.WorldReturnCell));
         Assert.Equal(3, StarfallRuinsTrialCatalog.Rooms.Count);
-        Assert.Equal(3, StarfallRuinsTrialCatalog.Enemies.Count);
+        Assert.Equal(6, StarfallRuinsTrialCatalog.Enemies.Count);
         Assert.Equal(6, StarfallRuinsTrialCatalog.EnemyInstances.Count);
         Assert.Equal(4, StarfallRuinsTrialCatalog.Artifacts.Count);
         Assert.Equal(
@@ -42,7 +42,7 @@ public sealed class StarfallRuinsTrialTests
             StarfallRuinsTrialCatalog.MoonsteelShortblade.CooldownSeconds);
 
         Assert.Collection(
-            StarfallRuinsTrialCatalog.Enemies,
+            StarfallRuinsTrialCatalog.Enemies.Take(3),
             shardling =>
             {
                 Assert.Equal("enemy_shardling", shardling.Id);
@@ -79,7 +79,7 @@ public sealed class StarfallRuinsTrialTests
             Assert.Contains(artifact.ItemId, DataCatalog.StorableItemIds);
         });
         Assert.Equal(4, CompendiumCatalog.ArtifactEntries.Count);
-        Assert.Equal(3, CompendiumCatalog.EnemyEntries.Count);
+        Assert.Equal(6, CompendiumCatalog.EnemyEntries.Count);
         Assert.Equal(4, DataCatalog.StarfallRuinsStarlight.Nodes.Count);
         Assert.True(DataCatalog.StarfallRuinsStarlight
             .RequiresManualActivation);

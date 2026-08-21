@@ -24,6 +24,7 @@ public sealed partial class FarmView : Node2D
         FarmLayout.MoonfleeceBarnDoorCell;
     public static readonly GridPosition HomesteadStarlightCell =
         FarmLayout.HomesteadStarlightCell;
+    public static readonly GridPosition StarGateCell = FarmLayout.StarGateCell;
     public static readonly GridPosition WoodlandStarlightCell =
         WorldDefinition.WoodlandStarlightCell;
     public static readonly GridPosition MeadowStarlightCell =
@@ -55,8 +56,11 @@ public sealed partial class FarmView : Node2D
     private readonly Sprite2D _shippingBin;
     private readonly Sprite2D _commissionBoard;
     private readonly Sprite2D _starlightMailbox;
+    private readonly Dictionary<string, Sprite2D> _processorSprites =
+        new(StringComparer.Ordinal);
     private readonly Node2D _storageChestLayer;
     private readonly Node2D _farmObjectLayer;
+    private readonly Node2D _crabPotLayer;
     private GridPosition? _openStorageChest;
     private bool _commissionBoardOpen;
 
@@ -127,6 +131,11 @@ public sealed partial class FarmView : Node2D
                 new Vector2(0, 7),
             ZIndex = 7
         });
+        AddChild(new StarGateVisual(session)
+        {
+            Position = CellCenter(StarGateCell) + new Vector2(0, -28),
+            ZIndex = 7
+        });
         AddChild(new MoteField(new Rect2(0, 0, FarmSystem.MapWidth * 16, FarmSystem.MapHeight * 16)));
 
         var mira = GeneratedArt.CreateMiraSprite();
@@ -153,7 +162,10 @@ public sealed partial class FarmView : Node2D
 
         foreach (var definition in ProcessorCatalog.Machines.Values)
         {
-            var machine = GeneratedArt.CreateProcessorMachineSprite(definition.Id);
+            var machine = GeneratedArt.CreateProcessorMachineSprite(
+                definition.Id,
+                session.Processor.Machine(definition.Id)
+            );
             machine.Name = definition.Id;
             machine.Position = CellCenter(definition.Position) + new Vector2(0, 8);
             machine.ZIndex = 7;
@@ -163,6 +175,7 @@ public sealed partial class FarmView : Node2D
                 Position = new Vector2(0, 1),
                 ZIndex = -1
             });
+            _processorSprites[definition.Id] = machine;
             AddChild(machine);
         }
 
@@ -220,6 +233,15 @@ public sealed partial class FarmView : Node2D
         };
         AddChild(_farmObjectLayer);
         RebuildFarmObjects();
+
+        _crabPotLayer = new Node2D
+        {
+            Name = "MoonreedCrabPots",
+            ZIndex = 6,
+            YSortEnabled = true
+        };
+        AddChild(_crabPotLayer);
+        RebuildCrabPots();
 
         _player = new PlayerController(
             CanOccupy,
@@ -318,9 +340,11 @@ public sealed partial class FarmView : Node2D
         session.Shipping.Changed += RefreshShippingBin;
         session.Storage.Changed += RefreshStorageChests;
         session.FarmObjects.Changed += RefreshFarmObjects;
+        session.CrabPots.Changed += RebuildCrabPots;
         session.Commission.Changed += RefreshCommissionBoard;
         session.WeeklyCommission.Changed += RefreshCommissionBoard;
         session.Mail.Changed += RefreshStarlightMailbox;
+        session.Processor.Changed += RefreshProcessorMachines;
         UpdateLighting();
     }
 
@@ -488,6 +512,11 @@ public sealed partial class FarmView : Node2D
         if (nearbyStarlight is not null)
         {
             return _session.PreviewSelectedTarget(nearbyStarlight.Cell);
+        }
+
+        if (target == StarGateCell || IsAdjacent(player, StarGateCell))
+        {
+            return _session.PreviewSelectedTarget(StarGateCell);
         }
 
         var nearbyAnimal = _session.VisibleAnimalProjections
@@ -785,6 +814,14 @@ public sealed partial class FarmView : Node2D
             return;
         }
 
+        if (target == StarGateCell ||
+            IsAdjacent(_player.CurrentCell, StarGateCell))
+        {
+            UseRequested?.Invoke(StarGateCell);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         var villager = ResolveVillageNpcTarget(
             target,
             _player.CurrentCell
@@ -930,6 +967,7 @@ public sealed partial class FarmView : Node2D
         _session.Commission.Changed -= RefreshCommissionBoard;
         _session.WeeklyCommission.Changed -= RefreshCommissionBoard;
         _session.Mail.Changed -= RefreshStarlightMailbox;
+        _session.Processor.Changed -= RefreshProcessorMachines;
     }
 
     private TileMapLayer Layer(string name, TileSet tileSet, int zIndex)
@@ -1079,6 +1117,18 @@ public sealed partial class FarmView : Node2D
             _shippingBin,
             _session.Shipping.PendingItemCount > 0
         );
+    }
+
+    private void RefreshProcessorMachines()
+    {
+        foreach (var pair in _processorSprites)
+        {
+            GeneratedArt.SetProcessorMachineState(
+                pair.Value,
+                pair.Key,
+                _session.Processor.Machine(pair.Key)
+            );
+        }
     }
 
     public void SetCommissionBoardOpen(bool open)
@@ -1234,6 +1284,23 @@ public sealed partial class FarmView : Node2D
             }
 
             _farmObjectLayer.AddChild(sprite);
+        }
+    }
+
+    private void RebuildCrabPots()
+    {
+        foreach (var child in _crabPotLayer.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var state in _session.CrabPots.Pots.Values)
+        {
+            var sprite = FishingGearArt.CreateCrabPotSprite(state);
+            sprite.Name = $"MoonreedCrabPot_{state.Position.X}_{state.Position.Y}";
+            sprite.Position = CellCenter(state.Position) + new Vector2(0, 6);
+            sprite.ZIndex = state.Position.Y;
+            _crabPotLayer.AddChild(sprite);
         }
     }
 
@@ -1818,6 +1885,33 @@ internal sealed partial class TargetCursor : Node2D
                 DrawArc(origin + new Vector2(8, 8), 7 + pulse, 0, Mathf.Tau, 20, line, 1.5f);
                 DrawArc(origin + new Vector2(8, 8), 12 + pulse * 2, 0, Mathf.Tau, 24, new Color(accent, 0.35f), 1);
                 break;
+            case TargetPreviewKind.CrabPot:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -20),
+                        new Vector2(38, 36)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-11, -20),
+                        new Vector2(38, 36)
+                    ),
+                    line,
+                    false,
+                    1.6f
+                );
+                DrawArc(
+                    origin + new Vector2(8, 3),
+                    18 + pulse,
+                    0,
+                    Mathf.Tau,
+                    24,
+                    line,
+                    1.3f
+                );
+                break;
             case TargetPreviewKind.Crop:
                 DrawRect(
                     new Rect2(
@@ -2326,6 +2420,33 @@ internal sealed partial class TargetCursor : Node2D
                     1.2f
                 );
                 break;
+            case TargetPreviewKind.StarGate:
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-34, -70),
+                        new Vector2(84, 86)
+                    ),
+                    fill
+                );
+                DrawRect(
+                    new Rect2(
+                        origin + new Vector2(-34, -70),
+                        new Vector2(84, 86)
+                    ),
+                    line,
+                    false,
+                    1.8f
+                );
+                DrawArc(
+                    origin + new Vector2(8, -29),
+                    41 + pulse * 2,
+                    0,
+                    Mathf.Tau,
+                    32,
+                    new Color(accent, 0.38f),
+                    1.2f
+                );
+                break;
             case TargetPreviewKind.Bed:
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), fill);
                 DrawRect(new Rect2(origin + new Vector2(-8, -10), new Vector2(32, 26)), line, false, 1.5f);
@@ -2627,8 +2748,10 @@ internal sealed partial class TargetCursor : Node2D
         TargetPreviewKind.MineDepthAnchor => -54,
         TargetPreviewKind.GrottoSeal => -58,
         TargetPreviewKind.Forage => -39,
+        TargetPreviewKind.CrabPot => -42,
         TargetPreviewKind.Landmark => -56,
         TargetPreviewKind.StarlightPedestal => -62,
+        TargetPreviewKind.StarGate => 30,
         TargetPreviewKind.Crop => -34,
         TargetPreviewKind.Bed => -25,
         TargetPreviewKind.FestivalPortal => -76,

@@ -9,7 +9,7 @@ public sealed class ConstructionPortfolioTests
     [Fact]
     public void CatalogUsesStableUniqueIdsAndValidProjectDefinitions()
     {
-        Assert.Equal(7, ConstructionCatalog.Projects.Count);
+        Assert.Equal(8, ConstructionCatalog.Projects.Count);
         Assert.Equal(
             ConstructionCatalog.Projects.Count,
             ConstructionCatalog.Projects

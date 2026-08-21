@@ -8,7 +8,7 @@ internal static class CrystalGrottoArt
     public const float CellSize = 256;
 
     public static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/crystal_grotto_assets.png"
+        "res://assets/generated/activities/mining/crystal_grotto_assets.png"
     );
 
     private static readonly IReadOnlyDictionary<string, int> MineralColumns =
@@ -66,7 +66,7 @@ internal static class CrystalGrottoArt
 internal static class CrystalValeStarlightArt
 {
     public static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/crystal_vale_starlight_pedestal.png"
+        "res://assets/generated/features/starlights/crystal_vale_starlight_pedestal.png"
     );
 
     private static readonly Rect2 DormantRegion =

@@ -343,19 +343,62 @@ public sealed class MiningSystem
         DeepestRoomReached = DeepestRoomReached
     };
 
-    public static MiningSave NormalizeSave(MiningSave? save) => new()
+    public static MiningSave NormalizeSave(MiningSave? save)
     {
-        DepletedVeinIds = (save?.DepletedVeinIds ?? [])
-            .Where(id => MiningCatalog.TryVein(id, out _))
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToList(),
-        DeepestRoomReached = Math.Clamp(
-            save?.DeepestRoomReached ?? 0,
+        var expeditionRoom = Math.Clamp(
+            save?.ExpeditionRoom ?? 0,
             0,
-            CrystalGrottoSurveyLayout.RoomCount
-        )
-    };
+            DeepMineCatalog.MaximumRoom
+        );
+        var active = save?.ExpeditionActive == true && expeditionRoom > 0;
+        return new MiningSave
+        {
+            DepletedVeinIds = (save?.DepletedVeinIds ?? [])
+                .Where(id => MiningCatalog.TryVein(id, out _))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToList(),
+            DeepestRoomReached = Math.Clamp(
+                save?.DeepestRoomReached ?? 0,
+                0,
+                CrystalGrottoSurveyLayout.RoomCount
+            ),
+            ExpeditionSeed = Math.Max(0, save?.ExpeditionSeed ?? 0),
+            ExpeditionActive = active,
+            ExpeditionRoom = active ? expeditionRoom : 0,
+            ExpeditionEnemyHealth = active
+                ? Math.Max(0, save?.ExpeditionEnemyHealth ?? 0)
+                : 0,
+            DeepestExpeditionRoom = Math.Clamp(
+                save?.DeepestExpeditionRoom ?? 0,
+                0,
+                DeepMineCatalog.MaximumRoom
+            ),
+            StableAnchorRoom = NormalizeAnchor(
+                save?.StableAnchorRoom ?? 0
+            ),
+            ClearedExpeditionRooms = NormalizeRooms(
+                save?.ClearedExpeditionRooms
+            ),
+            ExcavatedExpeditionRooms = NormalizeRooms(
+                save?.ExcavatedExpeditionRooms
+            ),
+            ClaimedExpeditionWeaponIds =
+                (save?.ClaimedExpeditionWeaponIds ?? [])
+                .Where(id => StarfallRuinsTrialCatalog.TryWeapon(id, out _))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToList(),
+            CrystalMiningSkill = NormalizeAdventureSkill(
+                save?.CrystalMiningSkill,
+                AdventureSkillKind.CrystalMining
+            ),
+            NightwatchSkill = NormalizeAdventureSkill(
+                save?.NightwatchSkill,
+                AdventureSkillKind.Nightwatch
+            )
+        };
+    }
 
     public static IReadOnlySet<string> CompletedMilestoneIds(
         MiningSave? save
@@ -381,4 +424,40 @@ public sealed class MiningSystem
 
     private static int Distance(GridPosition left, GridPosition right) =>
         Math.Abs(left.X - right.X) + Math.Abs(left.Y - right.Y);
+
+    private static int NormalizeAnchor(int room)
+    {
+        var normalized = Math.Clamp(room, 0, DeepMineCatalog.MaximumRoom);
+        return normalized - normalized % DeepMineCatalog.AnchorInterval;
+    }
+
+    private static List<int> NormalizeRooms(IEnumerable<int>? rooms) =>
+        (rooms ?? [])
+        .Where(room => room is >= 1 and <= DeepMineCatalog.MaximumRoom)
+        .Distinct()
+        .Order()
+        .ToList();
+
+    private static AdventureSkillSave NormalizeAdventureSkill(
+        AdventureSkillSave? save,
+        AdventureSkillKind kind
+    )
+    {
+        var experience = Math.Clamp(save?.Experience ?? 0, 0, 999999);
+        var level = AdventureSkillProgression.LevelFor(experience);
+        var specializationId = save?.SpecializationId ?? string.Empty;
+        if (level < 3 || !AdventureSkillCatalog.IsSpecialization(
+                kind,
+                specializationId
+            ))
+        {
+            specializationId = string.Empty;
+        }
+        return new AdventureSkillSave
+        {
+            Experience = experience,
+            Level = level,
+            SpecializationId = specializationId
+        };
+    }
 }

@@ -9,7 +9,7 @@ internal static class HomesteadWorkshopArt
     public const float RegisteredBaseline = 590;
 
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/homestead_workshop.png"
+        "res://assets/generated/features/construction/homestead_workshop.png"
     );
 
     public static AtlasTexture ProjectIconTexture() => new()

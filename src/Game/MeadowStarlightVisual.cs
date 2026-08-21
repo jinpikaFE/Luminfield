@@ -5,7 +5,7 @@ namespace Luminfield.Game;
 internal static class MeadowStarlightArt
 {
     public static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/meadow_starlight_pedestal.png"
+        "res://assets/generated/features/starlights/meadow_starlight_pedestal.png"
     );
 
     private static readonly Rect2 DormantRegion = new(54, 70, 520, 520);

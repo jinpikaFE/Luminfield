@@ -79,6 +79,7 @@ public enum PlaytestScenarioId
     Economy,
     Processor,
     MultiProcessorBatch,
+    MoonpearlEggPress,
     ArchiveGift,
     Archive,
     ArchiveDoor,
@@ -105,6 +106,8 @@ public enum PlaytestScenarioId
     ForageCodexRewardReady,
     ForageCodexRewardClaimedEnglish,
     Fishing,
+    FishingMinigame,
+    FishingGear,
     FishingCollection,
     FishingDonation,
     FishCodexPartial,
@@ -113,6 +116,7 @@ public enum PlaytestScenarioId
     CrystalGrottoBasic,
     CrystalGrottoUpgrade,
     CrystalGrottoDeep,
+    DeepMine,
     MineralCodexCompleteEnglish,
     CrystalValeStarlightPanel,
     CrystalValeStarlightRestored,
@@ -122,6 +126,8 @@ public enum PlaytestScenarioId
     ArtifactCodexDonationEnglish,
     StarfallRuinsStarlightPanel,
     StarfallRuinsStarlightRestored,
+    SixfoldStarGate,
+    SixfoldStarGatePanel,
     LioraEventOne,
     LioraEventTwo,
     TaviEventOne,
@@ -539,6 +545,10 @@ public sealed class PlaytestScenarioRegistry
             PlaytestScenarioId.MultiProcessorBatch,
             "--playtest-multi-processor"
         ),
+        new(
+            PlaytestScenarioId.MoonpearlEggPress,
+            "--playtest-moonpearl-egg-press"
+        ),
         new(PlaytestScenarioId.ArchiveGift, "--playtest-archive-gift"),
         new(PlaytestScenarioId.Archive, "--playtest-archive"),
         new(PlaytestScenarioId.ArchiveDoor, "--playtest-archive-door"),
@@ -632,6 +642,14 @@ public sealed class PlaytestScenarioRegistry
         ),
         new(PlaytestScenarioId.Fishing, "--playtest-fishing"),
         new(
+            PlaytestScenarioId.FishingMinigame,
+            "--playtest-fishing-minigame"
+        ),
+        new(
+            PlaytestScenarioId.FishingGear,
+            "--playtest-fishing-gear"
+        ),
+        new(
             PlaytestScenarioId.FishingCollection,
             "--playtest-fishing-collection"
         ),
@@ -663,6 +681,7 @@ public sealed class PlaytestScenarioRegistry
             PlaytestScenarioId.CrystalGrottoDeep,
             "--playtest-crystal-grotto-deep"
         ),
+        new(PlaytestScenarioId.DeepMine, "--playtest-deep-mine"),
         new(
             PlaytestScenarioId.MineralCodexCompleteEnglish,
             "--playtest-mineral-codex-complete-en"
@@ -698,6 +717,14 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarfallRuinsStarlightRestored,
             "--playtest-starfall-ruins-starlight-restored"
+        ),
+        new(
+            PlaytestScenarioId.SixfoldStarGate,
+            "--playtest-sixfold-star-gate"
+        ),
+        new(
+            PlaytestScenarioId.SixfoldStarGatePanel,
+            "--playtest-sixfold-star-gate-panel"
         ),
         new(
             PlaytestScenarioId.LioraEventOne,

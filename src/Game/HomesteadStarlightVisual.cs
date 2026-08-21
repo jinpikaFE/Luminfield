@@ -6,7 +6,7 @@ namespace Luminfield.Game;
 internal static class HomesteadStarlightArt
 {
     private static readonly Texture2D Atlas = GD.Load<Texture2D>(
-        "res://assets/generated/homestead_starlight_pedestal.png"
+        "res://assets/generated/features/starlights/homestead_starlight_pedestal.png"
     );
     private static readonly Rect2 DormantRegion = new(54, 70, 520, 520);
     private static readonly Rect2 RestoredRegion = new(681, 70, 520, 520);

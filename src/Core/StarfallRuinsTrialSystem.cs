@@ -135,6 +135,10 @@ public static class StarfallRuinsTrialCatalog
     public const string PrismWispEnemyId = "enemy_prism_wisp";
     public const string HollowSentinelEnemyId =
         "enemy_hollow_sentinel";
+    public const string MoonshardMiteEnemyId = "enemy_moonshard_mite";
+    public const string VeilwingBatEnemyId = "enemy_veilwing_bat";
+    public const string StarironBurrowerEnemyId =
+        "enemy_stariron_burrower";
 
     public static WeaponDefinition MoonsteelShortblade { get; } = new(
         DataCatalog.MoonsteelShortbladeId,
@@ -142,6 +146,28 @@ public static class StarfallRuinsTrialCatalog
         24,
         0.45f
     );
+
+    public static WeaponDefinition CrystalPike { get; } = new(
+        DataCatalog.CrystalPikeId,
+        14,
+        40,
+        0.65f
+    );
+
+    public static WeaponDefinition MoonarcBow { get; } = new(
+        DataCatalog.MoonarcBowId,
+        8,
+        112,
+        0.8f
+    );
+
+    public static IReadOnlyList<WeaponDefinition> Weapons { get; } =
+        Array.AsReadOnly(
+        [
+            MoonsteelShortblade,
+            CrystalPike,
+            MoonarcBow
+        ]);
 
     public static IReadOnlyList<EnemyDefinition> Enemies { get; } =
         Array.AsReadOnly(
@@ -171,6 +197,32 @@ public static class StarfallRuinsTrialCatalog
                 0.9f,
                 EnemyAttackKind.AreaOfEffect,
                 AreaRadiusPixels: 36
+            ),
+            new EnemyDefinition(
+                MoonshardMiteEnemyId,
+                26,
+                7,
+                52,
+                0.38f,
+                EnemyAttackKind.Melee
+            ),
+            new EnemyDefinition(
+                VeilwingBatEnemyId,
+                30,
+                8,
+                44,
+                0.55f,
+                EnemyAttackKind.Projectile,
+                ProjectileSpeedPixelsPerSecond: 92
+            ),
+            new EnemyDefinition(
+                StarironBurrowerEnemyId,
+                62,
+                14,
+                20,
+                1.05f,
+                EnemyAttackKind.AreaOfEffect,
+                AreaRadiusPixels: 42
             )
         ]);
 
@@ -228,6 +280,11 @@ public static class StarfallRuinsTrialCatalog
             definition => definition.Id,
             StringComparer.Ordinal
         );
+    private static readonly IReadOnlyDictionary<string, WeaponDefinition>
+        WeaponsByItemId = Weapons.ToDictionary(
+            definition => definition.ItemId,
+            StringComparer.Ordinal
+        );
     private static readonly IReadOnlyDictionary<string,
         StarfallTrialEnemyDefinition> InstancesById =
         EnemyInstances.ToDictionary(
@@ -257,6 +314,18 @@ public static class StarfallRuinsTrialCatalog
             ? definition
             : throw new KeyNotFoundException(
                 $"Unknown enemy id '{enemyId}'."
+            );
+
+    public static bool TryWeapon(
+        string? itemId,
+        out WeaponDefinition weapon
+    ) => WeaponsByItemId.TryGetValue(itemId ?? string.Empty, out weapon!);
+
+    public static WeaponDefinition Weapon(string itemId) =>
+        WeaponsByItemId.TryGetValue(itemId, out var weapon)
+            ? weapon
+            : throw new KeyNotFoundException(
+                $"Unknown weapon item id '{itemId}'."
             );
 
     public static bool TryEnemyInstance(
