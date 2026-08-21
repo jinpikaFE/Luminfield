@@ -257,7 +257,9 @@ internal sealed partial class SouthernWorldGate : Node2D
 {
     private const float PathAtlasCell = 627;
     private static readonly Texture2D PathAtlas =
-        GD.Load<Texture2D>("res://assets/generated/moonstone_path_tiles.png");
+        GD.Load<Texture2D>(
+            "res://assets/generated/farming/placeables/moonstone_path_tiles.png"
+        );
 
     public SouthernWorldGate()
     {

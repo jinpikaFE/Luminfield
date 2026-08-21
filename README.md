@@ -844,6 +844,10 @@ Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
 
+- 2026-08-21 17:49:21 CST — Corrected the merged southern world-gate atlas
+  reference to the categorized farming asset. Added a fast source audit that
+  fails when a literal runtime asset path points to a missing repository file.
+
 - 2026-08-21 17:37:13 CST — Closed the final Phase G audit gaps. Controller B
   now closes open panels without opening pause in the world; empty remaps cannot
   erase defaults, disabling target lock releases facing, and backup recovery
