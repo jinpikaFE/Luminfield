@@ -42,28 +42,29 @@ public sealed record WorldPropPlacement(
 
 public static class WorldDefinition
 {
-    public const int Width = 192;
-    public const int Height = 128;
+    public const int Width = 256;
+    public const int Height = 192;
     public const int ChunkSize = 32;
     public const int ChunkColumns = Width / ChunkSize;
     public const int ChunkRows = Height / ChunkSize;
+    public static readonly GridArea BeginnerZoneBounds = new(0, 0, 63, 63);
     public const string WoodlandStarlightLandmarkId = "woods_lantern";
-    public static readonly GridPosition WoodlandStarlightCell = new(34, 72);
+    public static readonly GridPosition WoodlandStarlightCell = new(34, 104);
     public const string MeadowStarlightLandmarkId =
         "meadow_starlight";
-    public static readonly GridPosition MeadowStarlightCell = new(74, 26);
+    public static readonly GridPosition MeadowStarlightCell = new(82, 24);
     public static readonly GridArea MeadowStarlightReservedArea =
-        new(72, 22, 76, 26);
+        new(80, 20, 84, 24);
     public const string MoonwaterStarlightLandmarkId = "wetland_monolith";
-    public static readonly GridPosition MoonwaterStarlightCell = new(164, 43);
+    public static readonly GridPosition MoonwaterStarlightCell = new(230, 48);
     public const string CrystalWellLandmarkId = "crystal_well";
-    public static readonly GridPosition CrystalWellCell = new(78, 105);
+    public static readonly GridPosition CrystalWellCell = new(84, 158);
     public const string FireflyTideGateLandmarkId =
         "firefly_tide_gate";
-    public static readonly GridPosition FireflyTideGateCell = new(162, 60);
+    public static readonly GridPosition FireflyTideGateCell = new(226, 70);
     public const string StarfallRuinsStarlightLandmarkId = "ruins_pillar";
     public static readonly GridPosition StarfallRuinsStarlightCell =
-        new(121, 105);
+        new(160, 158);
     public const string StarfallRuinsTrialGateLandmarkId =
         "starfall_ruins_trial_gate";
 
@@ -117,106 +118,116 @@ public static class WorldDefinition
             -1,
             "world.landmark.starfall_ruins_trial_gate"
         ),
-        new("southern_cache", new GridPosition(173, 104), 12, "world.landmark.southern_cache")
+        new(
+            "southern_cache",
+            new GridPosition(226, 172),
+            12,
+            "world.landmark.southern_cache"
+        )
     ];
 
     public static readonly IReadOnlyList<WorldScenicLandmark>
         ScenicLandmarks =
         [
             new(
-                "woods_moonroot_grove",
-                new GridPosition(45, 52),
+                "beginner_moon_lantern_arch",
+                new GridPosition(52, 49),
                 0,
-                new GridArea(39, 43, 51, 52),
-                [new GridArea(41, 49, 49, 52)]
+                new GridArea(44, 39, 60, 49),
+                [
+                    new GridArea(45, 42, 48, 45),
+                    new GridArea(56, 42, 59, 45)
+                ]
             ),
             new(
                 "meadow_moonflower_circle",
-                new GridPosition(108, 14),
+                new GridPosition(136, 14),
                 1,
-                new GridArea(103, 6, 113, 14),
-                [new GridArea(104, 12, 112, 14)]
+                new GridArea(131, 6, 141, 14),
+                [new GridArea(132, 12, 140, 14)]
             ),
             new(
-                "crystal_stepped_ridge",
-                new GridPosition(86, 112),
+                "woods_moonroot_grove",
+                new GridPosition(52, 112),
                 2,
-                new GridArea(80, 101, 92, 112),
-                [new GridArea(81, 108, 91, 112)]
+                new GridArea(46, 103, 58, 112),
+                [new GridArea(48, 109, 56, 112)]
             ),
             new(
                 "wetland_boardwalk_islet",
-                new GridPosition(148, 48),
+                new GridPosition(214, 56),
                 3,
-                new GridArea(142, 40, 154, 48),
-                [new GridArea(145, 46, 151, 48)]
+                new GridArea(208, 48, 220, 56),
+                [new GridArea(211, 54, 217, 56)]
+            ),
+            new(
+                "crystal_stepped_ridge",
+                new GridPosition(92, 174),
+                4,
+                new GridArea(86, 163, 98, 174),
+                [new GridArea(87, 170, 97, 174)]
             ),
             new(
                 "ruins_broken_colonnade",
-                new GridPosition(145, 124),
-                4,
-                new GridArea(139, 114, 151, 124),
-                [new GridArea(140, 120, 150, 124)]
-            ),
-            new(
-                "village_orchard_pergola",
-                new GridPosition(121, 70),
+                new GridPosition(184, 178),
                 5,
-                new GridArea(115, 62, 127, 70),
-                [new GridArea(117, 67, 125, 70)]
+                new GridArea(178, 168, 190, 178),
+                [new GridArea(179, 174, 189, 178)]
             ),
             new(
-                "village_transit_pavilion",
-                VillageCatalog.VillageCenterCell,
+                "city_civic_garden_pavilion",
+                new GridPosition(148, 54),
                 6,
-                new GridArea(92, 57, 100, 64),
-                []
+                new GridArea(140, 45, 156, 54),
+                [
+                    new GridArea(141, 49, 144, 54),
+                    new GridArea(152, 49, 155, 54)
+                ]
             ),
             new(
-                "east_wayfinding_cairn",
-                new GridPosition(132, 58),
+                "city_facilities_gateway",
+                new GridPosition(128, 112),
                 7,
-                new GridArea(128, 51, 136, 58),
-                [new GridArea(130, 55, 134, 58)]
+                new GridArea(119, 102, 137, 112),
+                [
+                    new GridArea(120, 106, 123, 112),
+                    new GridArea(133, 106, 136, 112)
+                ]
             )
         ];
 
     public static readonly IReadOnlyList<WorldPropPlacement> CuratedProps =
     [
-        new(new GridPosition(27, 46), 0),
-        new(new GridPosition(31, 50), 4),
-        new(new GridPosition(54, 43), 1),
-        new(new GridPosition(50, 76), 5),
-        new(new GridPosition(29, 91), 8),
-        new(new GridPosition(44, 92), 1),
-        new(new GridPosition(56, 101), 4),
-        new(new GridPosition(26, 110), 11),
-        new(new GridPosition(54, 18), 13),
-        new(new GridPosition(61, 24), 4),
-        new(new GridPosition(82, 14), 13),
-        new(new GridPosition(91, 27), 13),
-        new(new GridPosition(106, 24), 8),
-        new(new GridPosition(118, 18), 5),
-        new(new GridPosition(66, 106), 2),
-        new(new GridPosition(74, 115), 3),
-        new(new GridPosition(100, 114), 2),
-        new(new GridPosition(80, 118), 7),
-        new(new GridPosition(139, 24), 14),
-        new(new GridPosition(171, 19), 15),
-        new(new GridPosition(134, 79), 14),
-        new(new GridPosition(177, 75), 1),
-        new(new GridPosition(145, 86), 8),
-        new(new GridPosition(171, 88), 5),
-        new(new GridPosition(184, 52), 14),
-        new(new GridPosition(117, 116), 7),
-        new(new GridPosition(132, 118), 3),
-        new(new GridPosition(158, 102), 7),
-        new(new GridPosition(169, 117), 13),
-        new(new GridPosition(182, 118), 7),
-        new(new GridPosition(66, 55), 13),
-        new(new GridPosition(123, 38), 13),
-        new(new GridPosition(67, 91), 13),
-        new(new GridPosition(123, 91), 13)
+        new(new GridPosition(28, 88), 0),
+        new(new GridPosition(52, 88), 5),
+        new(new GridPosition(29, 121), 8),
+        new(new GridPosition(48, 134), 1),
+        new(new GridPosition(56, 165), 4),
+        new(new GridPosition(26, 176), 11),
+        new(new GridPosition(72, 14), 13),
+        new(new GridPosition(106, 26), 4),
+        new(new GridPosition(154, 14), 13),
+        new(new GridPosition(184, 28), 5),
+        new(new GridPosition(70, 154), 2),
+        new(new GridPosition(76, 178), 3),
+        new(new GridPosition(108, 166), 2),
+        new(new GridPosition(119, 183), 7),
+        new(new GridPosition(202, 22), 14),
+        new(new GridPosition(242, 18), 15),
+        new(new GridPosition(198, 28), 14),
+        new(new GridPosition(244, 76), 1),
+        new(new GridPosition(214, 92), 8),
+        new(new GridPosition(238, 88), 5),
+        new(new GridPosition(248, 24), 14),
+        new(new GridPosition(138, 146), 7),
+        new(new GridPosition(154, 182), 3),
+        new(new GridPosition(202, 134), 7),
+        new(new GridPosition(222, 166), 13),
+        new(new GridPosition(244, 182), 7),
+        new(new GridPosition(68, 70), 13),
+        new(new GridPosition(188, 42), 13),
+        new(new GridPosition(68, 112), 13),
+        new(new GridPosition(188, 104), 13)
     ];
 
     private static readonly IReadOnlyDictionary<GridPosition, int>
@@ -255,6 +266,9 @@ public static class WorldDefinition
     public static bool IsHomeCell(GridPosition cell) =>
         cell.X is >= 0 and < FarmSystem.MapWidth &&
         cell.Y is >= 0 and < FarmSystem.MapHeight;
+
+    public static bool IsBeginnerZoneCell(GridPosition cell) =>
+        BeginnerZoneBounds.Contains(cell);
 
     public static ChunkPosition GetChunk(GridPosition cell) =>
         new(cell.X / ChunkSize, cell.Y / ChunkSize);
@@ -295,7 +309,7 @@ public static class WorldDefinition
 
     public static WorldBiome GetBiome(GridPosition cell)
     {
-        if (IsHomeCell(cell))
+        if (IsBeginnerZoneCell(cell))
         {
             return WorldBiome.Home;
         }
@@ -305,22 +319,23 @@ public static class WorldDefinition
             return WorldBiome.LumenVillage;
         }
 
-        if (cell.X < 64 && cell.Y >= 32)
+        if (cell.X < 64 && cell.Y >= 64)
         {
             return WorldBiome.WhisperingWoods;
         }
 
-        if (cell.X < 128 && cell.Y < 32)
+        if (cell.X is >= 64 and < 192 && cell.Y < 32)
         {
             return WorldBiome.StarfallMeadow;
         }
 
-        if (cell.X >= 128 && cell.Y < 96)
+        if (cell.X >= 192 && cell.Y < 96)
         {
             return WorldBiome.MoonwaterWetlands;
         }
 
-        if (cell.X >= 112 && cell.Y >= 96)
+        if ((cell.X >= 192 && cell.Y >= 96) ||
+            (cell.X >= 128 && cell.Y >= 128))
         {
             return WorldBiome.StarfallRuins;
         }
@@ -342,33 +357,42 @@ public static class WorldDefinition
 
     public static bool IsPath(GridPosition cell)
     {
-        var farmGate = cell.X is >= 18 and <= 20 &&
-            cell.Y is >= 29 and <= 65;
-        var eastWestRoad = cell.Y is >= 62 and <= 65 &&
-            cell.X is >= 18 and <= 176;
-        var northSouthRoad = cell.X is >= 94 and <= 97 &&
-            cell.Y is >= 16 and <= 118;
-        var meadowLoop = cell.Y is >= 20 and <= 23 &&
-            cell.X is >= 48 and <= 126;
-        var southernRoad = cell.Y is >= 96 and <= 99 && cell.X is >= 36 and <= 176;
-        var crystalValeBranch = cell.X is >= 76 and <= 79 &&
-            cell.Y is >= 96 and <= 107;
-        var crystalGrottoLink = cell.Y is >= 104 and <= 107 &&
-            cell.X is >= 70 and <= 79;
-        var wetlandRoad = cell.X is >= 159 and <= 162 &&
-            cell.Y is >= 47 and <= 108;
-        var wetlandCauseway = cell.Y is >= 70 and <= 73 &&
-            cell.X is >= 126 and <= 162;
-        var monolithBranch = cell.Y is >= 42 and <= 48 &&
-            cell.X is >= 159 and <= 166;
-        var woodsBranch = cell.Y is >= 72 and <= 75 &&
+        if (IsScenicBlocked(cell))
+        {
+            return false;
+        }
+
+        var farmGate = cell.X is >= 17 and <= 21 &&
+            cell.Y is >= 29 and <= 48;
+        var beginnerLink = cell.Y is >= 44 and <= 51 &&
+            cell.X is >= 18 and <= 72;
+        var eastWestRoad = cell.Y is >= 74 and <= 85 &&
+            cell.X is >= 18 and <= 238;
+        var northSouthRoad = cell.X is >= 122 and <= 133 &&
+            cell.Y is >= 16 and <= 176;
+        var meadowLoop = cell.Y is >= 18 and <= 25 &&
+            cell.X is >= 64 and <= 190;
+        var southernRoad = cell.Y is >= 138 and <= 145 &&
+            cell.X is >= 36 and <= 238;
+        var crystalValeBranch = cell.X is >= 80 and <= 87 &&
+            cell.Y is >= 128 and <= 158;
+        var crystalGrottoLink = cell.Y is >= 138 and <= 145 &&
+            cell.X is >= 70 and <= 85;
+        var wetlandRoad = cell.X is >= 222 and <= 229 &&
+            cell.Y is >= 36 and <= 112;
+        var wetlandCauseway = cell.Y is >= 76 and <= 83 &&
+            cell.X is >= 190 and <= 227;
+        var monolithBranch = cell.Y is >= 44 and <= 51 &&
+            cell.X is >= 224 and <= 232;
+        var woodsBranch = cell.Y is >= 76 and <= 83 &&
             cell.X is >= 19 and <= 63;
-        var woodsLoop = cell.X is >= 40 and <= 43 &&
-            cell.Y is >= 64 and <= 99;
-        var ruinsBranch = cell.Y is >= 108 and <= 111 &&
-            cell.X is >= 96 and <= 176;
+        var woodsLoop = cell.X is >= 38 and <= 45 &&
+            cell.Y is >= 64 and <= 176;
+        var ruinsBranch = cell.Y is >= 154 and <= 161 &&
+            cell.X is >= 126 and <= 238;
         return farmGate || eastWestRoad || northSouthRoad || meadowLoop ||
-            southernRoad || crystalValeBranch || crystalGrottoLink ||
+            beginnerLink || southernRoad || crystalValeBranch ||
+            crystalGrottoLink ||
             wetlandRoad || wetlandCauseway ||
             monolithBranch || woodsBranch || woodsLoop || ruinsBranch ||
             VillageCatalog.IsVillagePath(cell);
@@ -381,15 +405,21 @@ public static class WorldDefinition
             return false;
         }
 
-        if (IsScenicReservedCell(cell))
+        if (IsScenicReservedCell(cell) &&
+            GetBiome(cell) != WorldBiome.MoonwaterWetlands)
         {
             return false;
         }
 
         if (GetBiome(cell) == WorldBiome.MoonwaterWetlands)
         {
-            var dx = (cell.X - 160) / 29f;
-            var dy = (cell.Y - 39) / 21f;
+            if (IsWetlandScenicIslet(cell))
+            {
+                return false;
+            }
+
+            var dx = (cell.X - 224) / 27f;
+            var dy = (cell.Y - 45) / 22f;
             if (dx * dx + dy * dy < 1)
             {
                 return true;
@@ -401,11 +431,19 @@ public static class WorldDefinition
 
         if (GetBiome(cell) == WorldBiome.CrystalVale)
         {
-            var streamX = 83 + (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
+            var streamX = 83 +
+                (int)MathF.Round(MathF.Sin(cell.Y * 0.16f) * 4);
             return Math.Abs(cell.X - streamX) <= 2;
         }
 
         return false;
+    }
+
+    private static bool IsWetlandScenicIslet(GridPosition cell)
+    {
+        var dx = (cell.X - 214) / 7f;
+        var dy = (cell.Y - 54) / 5f;
+        return dx * dx + dy * dy <= 1f;
     }
 
     public static bool IsWaterSource(GridPosition cell) =>
@@ -457,7 +495,8 @@ public static class WorldDefinition
         }
 
         if (IsMeadowStarlightReservedCell(cell) ||
-            IsScenicReservedCell(cell))
+            IsScenicReservedCell(cell) ||
+            CityExpansionLayout.IsReserved(cell))
         {
             return -1;
         }
@@ -486,58 +525,51 @@ public static class WorldDefinition
                 return -1;
             }
 
-            return roll switch
-            {
-                < 2 => 13,
-                < 4 => 4,
-                < 5 => 5,
-                _ => -1
-            };
+            return -1;
         }
 
         return GetBiome(cell) switch
         {
             WorldBiome.WhisperingWoods => roll switch
             {
-                < 4 => 0,
-                < 7 => 1,
-                < 11 => 4,
-                < 14 => 5,
-                < 16 => 3,
+                < 1 => 0,
+                < 2 => 1,
+                < 3 => 4,
+                < 4 => 5,
+                < 5 => 3,
                 _ => -1
             },
             WorldBiome.StarfallMeadow => roll switch
             {
-                < 2 => 0,
-                < 5 => 4,
-                < 11 => 13,
-                < 13 => 2,
-                < 15 => 5,
+                < 1 => 0,
+                < 2 => 4,
+                < 3 => 13,
+                < 4 => 5,
                 _ => -1
             },
             WorldBiome.CrystalVale => roll switch
             {
-                < 6 => 2,
-                < 10 => 3,
-                < 13 => 13,
-                < 15 => 0,
+                < 2 => 2,
+                < 3 => 3,
+                < 4 => 13,
+                < 5 => 0,
                 _ => -1
             },
             WorldBiome.MoonwaterWetlands => roll switch
             {
-                < 7 => 14,
-                < 10 => 1,
-                < 13 => 3,
-                < 16 => 5,
+                < 2 => 14,
+                < 3 => 1,
+                < 4 => 3,
+                < 5 => 5,
                 _ => -1
             },
             WorldBiome.StarfallRuins => roll switch
             {
-                < 4 => 7,
-                < 7 => 3,
-                < 10 => 5,
-                < 13 => 13,
-                < 15 => 2,
+                < 1 => 7,
+                < 2 => 3,
+                < 3 => 5,
+                < 4 => 13,
+                < 5 => 2,
                 _ => -1
             },
             _ => -1
@@ -556,7 +588,7 @@ public static class WorldDefinition
             var blockedRightEdge = cell.X == FarmSystem.MapWidth - 1;
             var blockedBottomEdge =
                 cell.Y == FarmSystem.MapHeight - 1 &&
-                cell.X is not (>= 18 and <= 20);
+                cell.X is not (>= 17 and <= 21);
             return blockedRightEdge || blockedBottomEdge;
         }
 
@@ -566,6 +598,11 @@ public static class WorldDefinition
         }
 
         if (VillageCatalog.IsBlocked(cell))
+        {
+            return true;
+        }
+
+        if (CityExpansionLayout.IsBlocked(cell))
         {
             return true;
         }
@@ -607,6 +644,7 @@ public static class WorldDefinition
             IsWater(cell) ||
             IsMeadowStarlightReservedCell(cell) ||
             IsScenicReservedCell(cell) ||
+            CityExpansionLayout.IsReserved(cell) ||
             LandmarkAt(cell) is not null)
         {
             return WorldResourceKind.None;

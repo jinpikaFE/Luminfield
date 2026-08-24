@@ -18,7 +18,10 @@ public sealed partial class LongnightLanternFeastView : Node2D
         YSortEnabled = true;
         AddChild(new LongnightLanternFeastBackdrop());
         AddChild(new LongnightLanternFeastStationLayer(session));
-        AddChild(new LongnightLanternFeastNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.LongnightLanternFeast
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

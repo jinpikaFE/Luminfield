@@ -999,13 +999,26 @@ public sealed class CropQualityAndFertilizerTests
 public sealed class WorldDefinitionTests
 {
     [Fact]
-    public void LargeWorldIsSixByFourChunksAndSixteenTimesTheFarmArea()
+    public void RestructuredWorldIsEightBySixChunksAndKeepsTheFarmFocused()
     {
-        Assert.Equal(6, WorldDefinition.ChunkColumns);
-        Assert.Equal(4, WorldDefinition.ChunkRows);
+        Assert.Equal(8, WorldDefinition.ChunkColumns);
+        Assert.Equal(6, WorldDefinition.ChunkRows);
         Assert.Equal(
-            FarmSystem.MapWidth * FarmSystem.MapHeight * 16,
+            FarmSystem.MapWidth * FarmSystem.MapHeight * 32,
             WorldDefinition.Width * WorldDefinition.Height
+        );
+        Assert.Equal(
+            new GridArea(0, 0, 63, 63),
+            WorldDefinition.BeginnerZoneBounds
+        );
+        Assert.True(WorldDefinition.IsHomeCell(new GridPosition(47, 31)));
+        Assert.False(WorldDefinition.IsHomeCell(new GridPosition(48, 31)));
+        Assert.True(WorldDefinition.IsBeginnerZoneCell(
+            new GridPosition(63, 63)
+        ));
+        Assert.Equal(
+            WorldBiome.Home,
+            WorldDefinition.GetBiome(new GridPosition(60, 40))
         );
     }
 
@@ -1050,6 +1063,68 @@ public sealed class WorldDefinitionTests
                 visited.Contains
             );
         }
+    }
+
+    [Fact]
+    public void BeginnerProcessorsUseASpacedProcessingTerrace()
+    {
+        var machines = ProcessorCatalog.Machines.Values
+            .OrderBy(machine => machine.Position.X)
+            .ToArray();
+
+        var expected = new HashSet<GridPosition>
+        {
+            new(34, 34),
+            new(42, 34),
+            new(34, 40),
+            new(42, 40)
+        };
+        Assert.True(expected.SetEquals(
+            machines.Select(machine => machine.Position)
+        ));
+        Assert.All(machines, machine =>
+        {
+            Assert.True(FarmLayout.IsStaticBlocked(machine.Position));
+            Assert.False(WorldDefinition.IsHomeCell(machine.Position));
+            Assert.False(WorldDefinition.IsBlocked(machine.Position));
+        });
+        for (var left = 0; left < machines.Length; left++)
+        {
+            for (var right = left + 1; right < machines.Length; right++)
+            {
+                var distance = Math.Abs(
+                    machines[left].Position.X - machines[right].Position.X
+                ) + Math.Abs(
+                    machines[left].Position.Y - machines[right].Position.Y
+                );
+                Assert.True(distance >= 6);
+            }
+        }
+        Assert.Equal(new GridPosition(45, 10), FarmLayout.ShopCell);
+    }
+
+    [Fact]
+    public void ExpandedRoadJunctionsKeepTheirVisibleCorridorsWalkable()
+    {
+        var corridorCells = new List<GridPosition>();
+        corridorCells.AddRange(Enumerable.Range(44, 17)
+            .Select(x => new GridPosition(x, 48)));
+        corridorCells.AddRange(Enumerable.Range(110, 37)
+            .Select(x => new GridPosition(x, 80)));
+        corridorCells.AddRange(Enumerable.Range(74, 12)
+            .Select(y => new GridPosition(128, y)));
+        corridorCells.AddRange(Enumerable.Range(222, 8)
+            .Select(x => new GridPosition(x, 80)));
+        corridorCells.AddRange(Enumerable.Range(76, 8)
+            .Select(y => new GridPosition(42, y)));
+        corridorCells.AddRange(Enumerable.Range(80, 8)
+            .Select(x => new GridPosition(x, 142)));
+
+        Assert.All(corridorCells, cell =>
+        {
+            Assert.True(WorldDefinition.IsPath(cell));
+            Assert.False(WorldDefinition.IsBlocked(cell));
+        });
     }
 
     [Fact]
@@ -3700,8 +3775,8 @@ public sealed class VillageSystemTests
     {
         var worldPath = NpcPathfinder.FindPath(
             PlayerLocationIds.World,
-            new GridPosition(82, 51),
-            new GridPosition(107, 54)
+            new GridPosition(76, 60),
+            new GridPosition(158, 63)
         );
         Assert.NotEmpty(worldPath);
         Assert.All(worldPath, cell =>
@@ -3742,7 +3817,7 @@ public sealed class VillageSystemTests
         var invalidPrevious = new VillageNpcState(
             definition,
             PlayerLocationIds.World,
-            new GridPosition(86, 36),
+            new GridPosition(94, 45),
             NpcFacing.Down,
             entry.DialogueKey
         );
@@ -3913,22 +3988,27 @@ public sealed class VillageSystemTests
             }
         }
 
-        var weekday = village.AllCurrentNpcs(1, 10 * 60)
-            .ToDictionary(npc => npc.Definition.Id);
-        var restday = village.AllCurrentNpcs(7, 10 * 60)
-            .ToDictionary(npc => npc.Definition.Id);
-        Assert.All(VillageCatalog.Npcs.Keys, npcId =>
+        Assert.All(VillageCatalog.Npcs.Values, definition =>
+        {
+            var weekday = NpcScheduleSystem.SelectEntry(
+                definition,
+                1,
+                10 * 60,
+                WeatherSystem.WeatherForDay(1)
+            );
+            var restday = NpcScheduleSystem.SelectEntry(
+                definition,
+                CalendarSystem.DaysPerWeek,
+                10 * 60,
+                WeatherSystem.WeatherForDay(CalendarSystem.DaysPerWeek)
+            );
+            Assert.NotNull(weekday);
+            Assert.NotNull(restday);
             Assert.NotEqual(
-                (
-                    weekday[npcId].LocationId,
-                    weekday[npcId].Position
-                ),
-                (
-                    restday[npcId].LocationId,
-                    restday[npcId].Position
-                )
-            )
-        );
+                (weekday.LocationId, weekday.Position),
+                (restday.LocationId, restday.Position)
+            );
+        });
     }
 
     [Fact]
@@ -5582,7 +5662,7 @@ public sealed class VillageSystemTests
         Assert.False(WorldDefinition.IsBlocked(
             VillageCatalog.StarfallWatchDoorCell
         ));
-        Assert.True(WorldDefinition.IsBlocked(new GridPosition(70, 70)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(70, 85)));
         Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
             PlayerLocationIds.World,
             VillageCatalog.StarfallWatchDoorCell
@@ -5644,61 +5724,43 @@ public sealed class VillageSystemTests
                 .Select(landmark => landmark.AtlasIndex)
                 .Order()
         );
-        Assert.True(WorldDefinition.IsBlocked(new GridPosition(86, 36)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(94, 45)));
         Assert.False(WorldDefinition.IsBlocked(
             VillageCatalog.VillageGateCell
         ));
         Assert.True(WorldDefinition.IsPath(
             VillageCatalog.VillageGateCell
         ));
-        Assert.False(WorldDefinition.IsBlocked(
-            VillageCatalog.TwilightEmporiumDoorCell
-        ));
-        Assert.False(WorldDefinition.IsBlocked(new GridPosition(
-            VillageCatalog.TwilightEmporiumDoorCell.X,
-            VillageCatalog.TwilightEmporiumDoorCell.Y + 1
-        )));
-        Assert.True(WorldDefinition.IsPath(
-            VillageCatalog.TwilightEmporiumDoorCell
-        ));
-        Assert.True(WorldDefinition.IsPath(new GridPosition(
-            VillageCatalog.TwilightEmporiumDoorCell.X,
-            VillageCatalog.TwilightEmporiumDoorCell.Y + 1
-        )));
-        Assert.False(WorldDefinition.IsBlocked(
-            VillageCatalog.StarlightPostDoorCell
-        ));
-        Assert.True(WorldDefinition.IsPath(
-            VillageCatalog.StarlightPostDoorCell
-        ));
-        Assert.True(WorldDefinition.IsPath(new GridPosition(
-            VillageCatalog.StarlightPostDoorCell.X,
-            VillageCatalog.StarlightPostDoorCell.Y + 1
-        )));
-        Assert.False(WorldDefinition.IsBlocked(
+        var publicDoors = new[]
+        {
+            VillageCatalog.MoonlitArchiveDoorCell,
+            VillageCatalog.MoonstoneWorkshopDoorCell,
+            VillageCatalog.StarweaverTeaHouseDoorCell,
+            VillageCatalog.TwilightEmporiumDoorCell,
+            VillageCatalog.StarlightPostDoorCell,
             VillageCatalog.StarfallWatchDoorCell
-        ));
-        Assert.True(WorldDefinition.IsPath(
-            VillageCatalog.StarfallWatchDoorCell
-        ));
-        Assert.True(WorldDefinition.IsPath(new GridPosition(84, 52)));
-        Assert.False(WorldDefinition.IsBlocked(new GridPosition(110, 54)));
-        Assert.True(WorldDefinition.IsBlocked(new GridPosition(110, 45)));
-        Assert.Equal(
-            WorldBiome.LumenVillage,
-            WorldDefinition.GetBiome(new GridPosition(97, 48))
-        );
+        };
+        Assert.All(publicDoors, door =>
+        {
+            var approach = new GridPosition(door.X, door.Y + 1);
+            Assert.False(WorldDefinition.IsBlocked(door));
+            Assert.False(WorldDefinition.IsBlocked(approach));
+            Assert.True(WorldDefinition.IsPath(door));
+            Assert.True(WorldDefinition.IsPath(approach));
+            Assert.Equal(WorldBiome.LumenVillage,
+                WorldDefinition.GetBiome(door));
+        });
     }
 
     [Fact]
     public void ExpandedVillageOccupiesWorldCenterAndConnectsAllDirections()
     {
         Assert.Equal(
-            new GridArea(64, 32, 127, 95),
+            new GridArea(64, 32, 191, 127),
             VillageCatalog.VillageBounds
         );
         Assert.Equal(
-            new GridPosition(96, 64),
+            new GridPosition(128, 80),
             VillageCatalog.VillageCenterCell
         );
         Assert.Equal(
@@ -5708,10 +5770,10 @@ public sealed class VillageSystemTests
 
         var exits = new[]
         {
-            new GridPosition(96, VillageCatalog.VillageBounds.MinY),
-            new GridPosition(96, VillageCatalog.VillageBounds.MaxY),
-            new GridPosition(VillageCatalog.VillageBounds.MinX, 64),
-            new GridPosition(VillageCatalog.VillageBounds.MaxX, 64)
+            new GridPosition(128, VillageCatalog.VillageBounds.MinY),
+            new GridPosition(128, VillageCatalog.VillageBounds.MaxY),
+            new GridPosition(VillageCatalog.VillageBounds.MinX, 80),
+            new GridPosition(VillageCatalog.VillageBounds.MaxX, 80)
         };
         Assert.All(exits, cell =>
         {
@@ -5721,24 +5783,67 @@ public sealed class VillageSystemTests
 
         Assert.Equal(
             WorldBiome.WhisperingWoods,
-            WorldDefinition.GetBiome(new GridPosition(63, 64))
+            WorldDefinition.GetBiome(new GridPosition(63, 100))
         );
         Assert.Equal(
             WorldBiome.StarfallMeadow,
-            WorldDefinition.GetBiome(new GridPosition(96, 31))
+            WorldDefinition.GetBiome(new GridPosition(128, 31))
         );
         Assert.Equal(
             WorldBiome.MoonwaterWetlands,
-            WorldDefinition.GetBiome(new GridPosition(128, 64))
+            WorldDefinition.GetBiome(new GridPosition(192, 64))
         );
         Assert.Equal(
             WorldBiome.CrystalVale,
-            WorldDefinition.GetBiome(new GridPosition(80, 100))
+            WorldDefinition.GetBiome(new GridPosition(84, 158))
         );
         Assert.Equal(
             WorldBiome.StarfallRuins,
-            WorldDefinition.GetBiome(new GridPosition(112, 96))
+            WorldDefinition.GetBiome(new GridPosition(192, 128))
         );
+    }
+
+    [Fact]
+    public void LateGameFacilitiesFormAPassableSouthernCityDistrict()
+    {
+        var doors = new[]
+        {
+            FarmLayout.GreenhouseDoorCell,
+            FarmLayout.StarfeatherCoopDoorCell,
+            FarmLayout.MoonfleeceBarnDoorCell
+        };
+        var approaches = new[]
+        {
+            FarmLayout.GreenhouseReturnCell,
+            FarmLayout.StarfeatherCoopReturnCell,
+            FarmLayout.MoonfleeceBarnReturnCell
+        };
+
+        Assert.All(doors, door =>
+        {
+            Assert.True(VillageCatalog.IsVillageCell(door));
+            Assert.False(WorldDefinition.IsHomeCell(door));
+            Assert.True(WorldDefinition.IsBlocked(door));
+            Assert.Equal(-1, WorldDefinition.PropAtlasIndex(door));
+        });
+        Assert.All(approaches, approach =>
+        {
+            Assert.True(VillageCatalog.IsVillageCell(approach));
+            Assert.False(WorldDefinition.IsBlocked(approach));
+            Assert.True(WorldDefinition.IsPath(approach));
+            Assert.Equal(-1, WorldDefinition.PropAtlasIndex(approach));
+        });
+        Assert.True(WorldDefinition.IsBlocked(
+            FarmLayout.HomesteadWorkbenchCell
+        ));
+        Assert.True(WorldDefinition.IsBlocked(
+            FarmLayout.HomesteadStarlightCell
+        ));
+        Assert.True(WorldDefinition.IsBlocked(FarmLayout.StarGateCell));
+        Assert.False(WorldDefinition.IsBlocked(
+            FarmLayout.StarGateArrivalCell
+        ));
+        Assert.True(WorldDefinition.IsPath(FarmLayout.StarGateArrivalCell));
     }
 
     [Fact]
@@ -5826,7 +5931,7 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void VillageDecorationsAreDeterministicAndDoNotBlockRoutes()
+    public void VillageDecorationsAreCuratedAndDoNotBlockRoutes()
     {
         var cells = Enumerable
             .Range(
@@ -5849,7 +5954,18 @@ public sealed class VillageSystemTests
             .Where(value => value.AtlasIndex >= 0)
             .ToList();
 
-        Assert.True(decorations.Count >= 20);
+        var curated = WorldDefinition.CuratedProps
+            .Where(value => VillageCatalog.IsVillageCell(value.Position))
+            .Select(value => (
+                Cell: value.Position,
+                AtlasIndex: value.AtlasIndex
+            ))
+            .OrderBy(value => value.Cell.Y)
+            .ThenBy(value => value.Cell.X)
+            .ToList();
+
+        Assert.NotEmpty(curated);
+        Assert.Equal(curated, decorations);
         Assert.Equal(
             decorations,
             cells
@@ -9924,7 +10040,7 @@ public sealed class SaveServiceTests : IDisposable
     {
         var path = Path.Combine(_directory, "slot_1.json");
         Directory.CreateDirectory(_directory);
-        var blockedCell = new GridPosition(45, 52);
+        var blockedCell = new GridPosition(45, 44);
         Assert.True(WorldDefinition.IsBlocked(blockedCell));
         File.WriteAllText(
             path,
@@ -9952,7 +10068,7 @@ public sealed class SaveServiceTests : IDisposable
         Assert.Equal(expected.Y * 16 + 8, repaired.Save.Player.Y);
         Assert.False(WorldDefinition.IsBlocked(expected));
 
-        var legalCell = VillageCatalog.VillageCenterCell;
+        var legalCell = VillageCatalog.StarfallWatchDoorCell;
         Assert.False(WorldDefinition.IsBlocked(legalCell));
         File.WriteAllText(
             path,

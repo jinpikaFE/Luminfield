@@ -52,21 +52,28 @@ auto-run, target lock, hold-to-repeat tools, and keyboard remapping. Every
 full-screen panel receives a controller focus fallback and the standard D-pad /
 A / B navigation map.
 
-The original 48×32 farm now opens through its illuminated southern gate into a
-192×128-cell exploration world. The expanded central Lumen City sits at the
-middle of the map and connects the homestead, Whispering Woods, Starfall Meadow,
-Crystal Vale, Moonwater Wetlands, and Starfall Ruins through four radial roads,
-so no outer region requires a long detour around the map edge. The world is
-loaded in 32×32-cell chunks; only the current 3×3 neighborhood remains active,
-so the camera can travel across the full map without constructing every region
-at once.
+The original 48×32 farm remains the cultivation core of a new 64×64 beginner
+district, which now opens through its illuminated eastern arch into a 256×192-
+cell exploration world. Central Lumen City occupies a 128×96 hub and connects
+the homestead, Whispering Woods, Starfall Meadow, Crystal Vale, Moonwater
+Wetlands, and Starfall Ruins through a wider civic road network. Public
+services, the civic plaza, commerce, and late-game facilities each have a
+separate district instead of competing for the same small center. The world is
+loaded as an 8×6 grid of 32×32-cell chunks; only the current 3×3 neighborhood
+remains active, so the camera can travel across the full map without
+constructing every region at once. This one-time topology rebuild establishes a
+new world-coordinate baseline and does not migrate old map positions.
 
-The outer regions now combine a restrained procedural detail layer with 34
-fixed compositions and eight large original scenic landmarks instead of dense,
-repeated props. Moonroot Grove, the Moonflower Circle, the stepped Crystal
-Ridge, the wetland boardwalk islet, and the broken ruins colonnade give each
-region a distinct visual memory while Core still owns paths, collision,
-resources, NPCs, and save state.
+The exploration world now follows the homestead's full-backdrop composition.
+Four seasonal global masters, four 64×64 beginner-district masters, four
+128×96 city masters, and eleven high-detail 64×64 sector masters are composed
+offline into four continuous 4096×3072 seasonal backdrops. Runtime swaps one
+complete backdrop instead of drawing tiled ground and isolated scenic stickers;
+procedural trees, crystals, and forage remain only at interaction density. Core
+still owns roads, water, collision, resources, NPCs, facilities, and save state.
+The city layer is now assembled from four overlapping high-detail quadrants and
+one dedicated civic-plaza refinement at its native 2048×1536 runtime size,
+instead of upscaling a 1448×1086 single image.
 
 The top-right minimap reveals chunks as the player enters them, keeps
 undiscovered territory hidden, marks discovered landmarks, and stores the
@@ -74,16 +81,22 @@ exploration state in the regular save file.
 
 ## Central Lumen City and sixteen villagers
 
-- The central city now occupies a 64×64-cell district around the radial-road
-  junction. The Moonlit Archive, Starweaver Tea House, Moonstone Workshop,
-  Twilight Emporium, Starlight Post, and Starfall Watch are distributed across
-  its upper and lower terraces; all eleven existing exterior landmarks have
-  been migrated to the new layout.
+- The central city now occupies a 128×96-cell district. The Moonlit Archive,
+  Moonstone Workshop, and Starlight Post form the western services quarter;
+  the civic pavilion anchors the center; the Starweaver Tea House, Twilight
+  Emporium, and Starfall Watch form the eastern commerce quarter. The
+  construction workbench, greenhouse, Starfeather Coop, Moonfleece Barn,
+  city Starlight, and Sixfold Star Gate now have a dedicated southern facility
+  band; all eleven existing exterior landmarks have been migrated to the new
+  layout.
 - All sixteen current villagers follow deterministic four-direction tile paths
   at each ten-minute clock tick. Day 7, Lanternrest, gives each of them a
   separate rest-day route. They avoid world/interior
   collision geometry, one another, the player, exterior doors, interior exits,
   and the village gate; cross-scene work shifts hand off at safe entrance cells.
+  Every real one-cell step now interpolates over 0.48 seconds and shares the
+  player's two-step sway, bob, horizontal lean, and animated shadow across the
+  world, all six interiors, and all four festival scenes.
 - Schedules now select data-driven weather and season entries before the base
   route while keeping Lanternrest at the highest priority. Rain moves Nemi,
   Sela, and Orin into open interiors; stardust wind changes Tavi, Elowen, and
@@ -843,6 +856,30 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-24 14:00:21 CST — Separated the beginner processors, cleared the
+  moon-lantern arch and widened cross-region road corridors, and moved the city
+  starlight and star gate off the civic arteries. Rebuilt the city from four
+  overlapping high-detail generations plus a dedicated plaza refinement at a
+  native 2048×1536, and gave all sixteen NPCs shared smooth grid-step movement,
+  two-step sway, bob, and dynamic shadows across world, interior, and festival
+  scenes without adding save state.
+
+- 2026-08-24 12:54:06 CST — Rebuilt exploration art around the homestead's
+  complete-backdrop model. Twenty-three project source images now compose four
+  continuous 4096×3072 seasonal world masters from global, beginner, city, and
+  eleven high-detail sector generations. Runtime and minimap use the seasonal
+  masters directly, tiled ground and scenic stickers are removed, procedural
+  decoration density is reduced, and the rejected atlas approach is archived.
+
+- 2026-08-24 10:49:33 CST — Rebuilt the world as a 256×192, 8×6-chunk map with
+  a 64×64 beginner district and a 128×96 central city. Re-zoned public service,
+  civic, commercial, and late-game facility districts; migrated entrances,
+  festivals, NPC schedules, roads, collisions, minimap bounds, and deterministic
+  playtests to the new coordinate baseline. Added original generated district
+  ground and eight topology-specific scenic landmarks, archived the superseded
+  scenic atlas, and cached static forage candidates so ten-year simulation
+  remains within budget after expansion.
 
 - 2026-08-21 17:49:21 CST — Corrected the merged southern world-gate atlas
   reference to the categorized farming asset. Added a fast source audit that

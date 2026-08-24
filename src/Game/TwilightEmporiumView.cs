@@ -22,7 +22,10 @@ public sealed partial class TwilightEmporiumView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new TwilightEmporiumBackdrop());
-        AddChild(new TwilightEmporiumNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.TwilightEmporium
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

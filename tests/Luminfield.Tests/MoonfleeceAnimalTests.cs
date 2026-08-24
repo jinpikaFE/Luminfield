@@ -124,7 +124,7 @@ public sealed class MoonfleeceAnimalTests
     }
 
     [Fact]
-    public void ClearDayProjectsSheepToAvailablePastureAndBlockedPastureNeedsFeed()
+    public void ClearDayProjectsSheepToReservedCityPasture()
     {
         var session = RestoredBarnSession(
             barnCompleted: true,
@@ -162,23 +162,12 @@ public sealed class MoonfleeceAnimalTests
             ).ToList()
         };
         session.Restore(save);
-        session.SetPlayerLocation(
-            MoonfleeceBarnLayout.FeedTroughCell.X * 16 + 8,
-            (MoonfleeceBarnLayout.FeedTroughCell.Y + 1) * 16 + 8,
-            PlayerLocationIds.MoonfleeceBarn
-        );
-        Assert.DoesNotContain(
+        Assert.Contains(
             session.VisibleAnimalProjections,
             candidate => candidate.IsOutdoors &&
                 candidate.BuildingId == AnimalCatalog.MoonfleeceBarnId
         );
-        Assert.Equal(
-            "animal.feed.insufficient_fodder",
-            session.CheckAnimalFeedTrough(
-                AnimalCatalog.MoonfleeceBarnId,
-                MoonfleeceBarnLayout.FeedTroughCell
-            ).MessageKey
-        );
+        Assert.Empty(session.Capture().Storage.Chests);
     }
 
     [Fact]
@@ -263,26 +252,31 @@ public sealed class MoonfleeceAnimalTests
     }
 
     [Fact]
-    public void BarnApproachAndPastureAreProtectedForNewPlacements()
+    public void BarnApproachAndPastureBelongToTheSouthernCityDistrict()
     {
         var farm = new FarmSystem();
         Assert.All(
             MoonfleeceBarnLayout.WorldPastureCells.Append(
                 FarmLayout.MoonfleeceBarnReturnCell
             ),
-            cell => Assert.True(
-                FarmLayout.IsAnimalBuildingProtectedCell(cell)
-            )
+            cell =>
+            {
+                Assert.True(FarmLayout.IsAnimalBuildingProtectedCell(cell));
+                Assert.True(VillageCatalog.IsVillageCell(cell));
+                Assert.False(WorldDefinition.IsHomeCell(cell));
+                Assert.False(WorldDefinition.IsBlocked(cell));
+                Assert.Equal(-1, WorldDefinition.PropAtlasIndex(cell));
+            }
         );
 
         var storage = new StorageSystem();
         Assert.Equal(
-            ChestPlacementIssue.Blocked,
+            ChestPlacementIssue.NotHome,
             storage.CheckPlacement(FarmLayout.MoonfleeceBarnReturnCell, farm)
         );
         var orchard = new OrchardSystem();
         Assert.Equal(
-            OrchardPlacementIssue.Blocked,
+            OrchardPlacementIssue.NotHome,
             orchard.CheckTreePlacement(
                 MoonfleeceBarnLayout.WorldPastureCells[0],
                 farm,

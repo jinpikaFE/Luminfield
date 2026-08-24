@@ -1093,6 +1093,8 @@ public sealed partial class Main : Node
                     StartRainveilWorldTreeRainPlaytest,
                 [PlaytestScenarioId.StarharvestWorldCrystalStardust] =
                     StartStarharvestWorldCrystalStardustPlaytest,
+                [PlaytestScenarioId.WorldBeginnerArch] =
+                    StartWorldBeginnerArchPlaytest,
                 [PlaytestScenarioId.WorldWoodsGrove] =
                     StartWorldWoodsGrovePlaytest,
                 [PlaytestScenarioId.WorldMeadowCircle] =
@@ -1103,6 +1105,8 @@ public sealed partial class Main : Node
                     StartWorldWetlandIsletPlaytest,
                 [PlaytestScenarioId.WorldRuinsColonnade] =
                     StartWorldRuinsColonnadePlaytest,
+                [PlaytestScenarioId.WorldFacilitiesGateway] =
+                    StartWorldFacilitiesGatewayPlaytest,
                 [PlaytestScenarioId.World] = StartWorldPlaytest,
                 [PlaytestScenarioId.Gate] = StartGatePlaytest,
                 [PlaytestScenarioId.Backpack] = StartBackpackPlaytest,
@@ -4003,7 +4007,7 @@ public sealed partial class Main : Node
         StartVillagePlaytestWorld(
             1,
             13 * 60 + 30,
-            new GridPosition(97, 45)
+            new GridPosition(104, 61)
         );
     }
 
@@ -6135,23 +6139,29 @@ public sealed partial class Main : Node
 
     private void StartWorldPlaytest()
     {
-        StartWorldScenicPlaytest(new GridPosition(97, 63));
+        StartWorldScenicPlaytest(VillageCatalog.VillageCenterCell);
     }
 
+    private void StartWorldBeginnerArchPlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(52, 52));
+
     private void StartWorldWoodsGrovePlaytest() =>
-        StartWorldScenicPlaytest(new GridPosition(39, 47));
+        StartWorldScenicPlaytest(new GridPosition(52, 116));
 
     private void StartWorldMeadowCirclePlaytest() =>
-        StartWorldScenicPlaytest(new GridPosition(103, 10));
+        StartWorldScenicPlaytest(new GridPosition(136, 17));
 
     private void StartWorldCrystalRidgePlaytest() =>
-        StartWorldScenicPlaytest(new GridPosition(80, 106));
+        StartWorldScenicPlaytest(new GridPosition(92, 178));
 
     private void StartWorldWetlandIsletPlaytest() =>
-        StartWorldScenicPlaytest(new GridPosition(142, 44));
+        StartWorldScenicPlaytest(new GridPosition(214, 60));
 
     private void StartWorldRuinsColonnadePlaytest() =>
-        StartWorldScenicPlaytest(new GridPosition(139, 120));
+        StartWorldScenicPlaytest(new GridPosition(184, 182));
+
+    private void StartWorldFacilitiesGatewayPlaytest() =>
+        StartWorldScenicPlaytest(new GridPosition(128, 110));
 
     private void StartWorldScenicPlaytest(GridPosition playerCell)
     {

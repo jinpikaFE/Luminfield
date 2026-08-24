@@ -39,11 +39,17 @@ public sealed class GreenhouseCultivationTests
             new GridPosition(20, 18),
             GreenhouseLayout.SafeArrivalCell
         );
-        Assert.Equal(new GridPosition(38, 10), FarmLayout.GreenhouseDoorCell);
+        Assert.Equal(new GridPosition(136, 116), FarmLayout.GreenhouseDoorCell);
         Assert.Equal(
-            new GridPosition(38, 11),
+            new GridPosition(136, 117),
             FarmLayout.GreenhouseReturnCell
         );
+        Assert.True(VillageCatalog.IsVillageCell(
+            FarmLayout.GreenhouseDoorCell
+        ));
+        Assert.False(WorldDefinition.IsHomeCell(
+            FarmLayout.GreenhouseDoorCell
+        ));
 
         var expectedBeds = new HashSet<GridPosition>();
         AddBed(expectedBeds, 12, 14, 7, 8);

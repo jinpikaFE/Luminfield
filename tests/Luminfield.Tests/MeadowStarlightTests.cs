@@ -35,8 +35,8 @@ public sealed class MeadowStarlightTests
         Assert.True(WorldDefinition.IsBlocked(
             WorldDefinition.MeadowStarlightCell
         ));
-        Assert.True(WorldDefinition.IsPath(new GridPosition(74, 23)));
-        Assert.False(WorldDefinition.IsBlocked(new GridPosition(74, 25)));
+        Assert.True(WorldDefinition.IsPath(new GridPosition(82, 21)));
+        Assert.False(WorldDefinition.IsBlocked(new GridPosition(82, 25)));
         Assert.Equal(
             DataCatalog.MeadowStarlightId,
             StarlightSpatialCatalog.ForPedestal(
@@ -44,9 +44,9 @@ public sealed class MeadowStarlightTests
             ).PedestalId
         );
 
-        for (var y = 22; y <= 26; y++)
+        for (var y = 20; y <= 24; y++)
         {
-            for (var x = 72; x <= 76; x++)
+            for (var x = 80; x <= 84; x++)
             {
                 var cell = new GridPosition(x, y);
                 Assert.True(WorldDefinition.IsMeadowStarlightReservedCell(

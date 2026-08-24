@@ -284,6 +284,7 @@ public static class NpcNavigationMap
 
 public static class NpcPathfinder
 {
+    private const int MaximumStaticPathCacheEntries = 65536;
     private static readonly GridPosition[] Directions =
     [
         new(0, -1),
@@ -291,12 +292,56 @@ public static class NpcPathfinder
         new(1, 0),
         new(0, 1)
     ];
+    private static readonly object StaticPathCacheLock = new();
+    private static readonly Dictionary<
+        (string LocationId, GridPosition Start, GridPosition Destination),
+        IReadOnlyList<GridPosition>
+    > StaticPathCache = [];
 
     public static IReadOnlyList<GridPosition> FindPath(
         string locationId,
         GridPosition start,
         GridPosition destination,
         IReadOnlySet<GridPosition>? additionalBlocked = null
+    )
+    {
+        if (additionalBlocked is not null)
+        {
+            return FindPathUncached(
+                locationId,
+                start,
+                destination,
+                additionalBlocked
+            );
+        }
+
+        var key = (locationId, start, destination);
+        lock (StaticPathCacheLock)
+        {
+            if (StaticPathCache.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+        }
+
+        var path = FindPathUncached(locationId, start, destination, null);
+        lock (StaticPathCacheLock)
+        {
+            if (StaticPathCache.Count >= MaximumStaticPathCacheEntries)
+            {
+                StaticPathCache.Clear();
+            }
+
+            StaticPathCache[key] = path;
+        }
+        return path;
+    }
+
+    private static IReadOnlyList<GridPosition> FindPathUncached(
+        string locationId,
+        GridPosition start,
+        GridPosition destination,
+        IReadOnlySet<GridPosition>? additionalBlocked
     )
     {
         if (!NpcNavigationMap.IsNpcPassable(locationId, start) ||
@@ -310,39 +355,74 @@ public static class NpcPathfinder
             return [start];
         }
 
-        var frontier = new Queue<GridPosition>();
+        var frontier = new PriorityQueue<
+            (GridPosition Cell, int Cost),
+            (int Estimate, int Order)
+        >();
         var parents = new Dictionary<GridPosition, GridPosition>();
-        frontier.Enqueue(start);
+        var costs = new Dictionary<GridPosition, int> { [start] = 0 };
+        var order = 0;
+        frontier.Enqueue(
+            (start, 0),
+            (ManhattanDistance(start, destination), order)
+        );
         parents[start] = start;
 
         while (frontier.Count > 0)
         {
-            var current = frontier.Dequeue();
+            var currentEntry = frontier.Dequeue();
+            var current = currentEntry.Cell;
+            if (!costs.TryGetValue(current, out var currentCost) ||
+                currentEntry.Cost != currentCost)
+            {
+                continue;
+            }
+
+            if (current == destination)
+            {
+                return Reconstruct(parents, start, destination);
+            }
+
             foreach (var direction in Directions)
             {
                 var next = new GridPosition(
                     current.X + direction.X,
                     current.Y + direction.Y
                 );
-                if (parents.ContainsKey(next) ||
-                    !NpcNavigationMap.IsNpcPassable(locationId, next) ||
+                if (!NpcNavigationMap.IsNpcPassable(locationId, next) ||
                     additionalBlocked?.Contains(next) == true)
                 {
                     continue;
                 }
 
-                parents[next] = current;
-                if (next == destination)
+                var nextCost = currentCost + 1;
+                if (costs.TryGetValue(next, out var knownCost) &&
+                    nextCost >= knownCost)
                 {
-                    return Reconstruct(parents, start, destination);
+                    continue;
                 }
 
-                frontier.Enqueue(next);
+                parents[next] = current;
+                costs[next] = nextCost;
+                order++;
+                frontier.Enqueue(
+                    (next, nextCost),
+                    (
+                        nextCost + ManhattanDistance(next, destination),
+                        order
+                    )
+                );
             }
         }
 
         return [];
     }
+
+    private static int ManhattanDistance(
+        GridPosition start,
+        GridPosition destination
+    ) => Math.Abs(start.X - destination.X) +
+        Math.Abs(start.Y - destination.Y);
 
     private static IReadOnlyList<GridPosition> Reconstruct(
         IReadOnlyDictionary<GridPosition, GridPosition> parents,
@@ -700,6 +780,26 @@ public sealed class NpcScheduleSystem
             staticPath[1] == playerOccupied.Value.Position)
         {
             return WaitingState(definition, entry, previous);
+        }
+
+        if (staticPath.Count > 1 && !blocked.Contains(staticPath[1]))
+        {
+            return StateAt(
+                definition,
+                entry,
+                staticPath[1],
+                FacingForStep(previous.Position, staticPath[1])
+            );
+        }
+
+        if (staticPath.Count == 1)
+        {
+            return AnchorState(definition, entry);
+        }
+
+        if (staticPath.Count == 0)
+        {
+            return AnchorState(definition, entry);
         }
 
         var path = NpcPathfinder.FindPath(

@@ -13,9 +13,9 @@ public sealed class CrystalGrottoMiningTests
         Assert.Equal(5, CrystalGrottoSurveyLayout.RoomCount);
         Assert.Equal(40, CrystalGrottoSurveyLayout.Width);
         Assert.Equal(22, CrystalGrottoSurveyLayout.Height);
-        Assert.Equal(new GridPosition(70, 108),
+        Assert.Equal(new GridPosition(74, 142),
             CrystalGrottoSurveyLayout.WorldEntryCell);
-        Assert.Equal(new GridPosition(70, 109),
+        Assert.Equal(new GridPosition(74, 143),
             CrystalGrottoSurveyLayout.WorldReturnCell);
         Assert.Equal(new GridPosition(20, 20),
             CrystalGrottoSurveyLayout.ExitCell);

@@ -18,7 +18,10 @@ public sealed partial class GleamrisePlantingFestivalView : Node2D
         YSortEnabled = true;
         AddChild(new GleamrisePlantingFestivalBackdrop());
         AddChild(new GleamrisePlantingFestivalStationLayer(session));
-        AddChild(new GleamrisePlantingFestivalNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.GleamrisePlantingFestival
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

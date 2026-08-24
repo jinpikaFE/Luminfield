@@ -3509,7 +3509,7 @@ public static class ProcessorCatalog
         {
             [MoonwellInfuserId] = new(
                 MoonwellInfuserId,
-                new GridPosition(36, 14),
+                new GridPosition(34, 34),
                 "processor.machine.moonwell",
                 [
                     DataCatalog.MoonrootTonicRecipeId,
@@ -3518,19 +3518,19 @@ public static class ProcessorCatalog
             ),
             [PrismPreserveVatId] = new(
                 PrismPreserveVatId,
-                new GridPosition(35, 12),
+                new GridPosition(42, 34),
                 "processor.machine.prism_vat",
                 [DataCatalog.StarbudPreserveRecipeId]
             ),
             [StarweaveDryingLoomId] = new(
                 StarweaveDryingLoomId,
-                new GridPosition(37, 12),
+                new GridPosition(34, 40),
                 "processor.machine.drying_loom",
                 [DataCatalog.CloudleafTeaRecipeId]
             ),
             [MoonpearlEggPressId] = new(
                 MoonpearlEggPressId,
-                new GridPosition(34, 14),
+                new GridPosition(42, 40),
                 "processor.machine.moonpearl_egg_press",
                 [DataCatalog.StarfeatherCreamRecipeId]
             )

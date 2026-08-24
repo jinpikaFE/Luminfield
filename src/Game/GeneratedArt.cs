@@ -480,8 +480,8 @@ internal static class GeneratedArt
             )
         };
         var targetHeight = machineId == ProcessorCatalog.MoonwellInfuserId
-            ? 62f
-            : 56f;
+            ? 48f
+            : 46f;
         var texture = machineId == ProcessorCatalog.MoonpearlEggPressId
             ? MoonpearlEggPress
             : ProcessorMachines;

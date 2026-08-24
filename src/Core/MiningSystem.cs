@@ -20,8 +20,8 @@ public static class CrystalGrottoSurveyLayout
     public const int RoomCount = 5;
     public const int Width = 40;
     public const int Height = 22;
-    public static readonly GridPosition WorldEntryCell = new(70, 108);
-    public static readonly GridPosition WorldReturnCell = new(70, 109);
+    public static readonly GridPosition WorldEntryCell = new(74, 142);
+    public static readonly GridPosition WorldReturnCell = new(74, 143);
     public static readonly GridPosition ExitCell = new(20, 20);
     public static readonly GridPosition SafeArrivalCell = new(20, 18);
     public static readonly GridPosition UpgradeBenchCell = new(17, 16);

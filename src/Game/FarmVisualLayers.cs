@@ -228,7 +228,7 @@ internal sealed partial class FarmBackdrop : Sprite2D
         Position = Vector2.Zero;
         Scale = new Vector2(0.5f, 0.5f);
         TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-        ZIndex = -100;
+        ZIndex = -110;
         RefreshTexture();
         session.Clock.TimeChanged += RefreshTexture;
     }
@@ -250,6 +250,70 @@ internal sealed partial class FarmBackdrop : Sprite2D
 
         Texture = GD.Load<Texture2D>(texturePath);
         _texturePath = texturePath;
+    }
+}
+
+internal sealed partial class WorldBackdrop : Node2D
+{
+    private const float CellSize = 16;
+    private readonly GameSession _session;
+    private readonly Sprite2D _world;
+    private WorldSeasonVisualVariant? _variant;
+
+    public WorldBackdrop(GameSession session)
+    {
+        _session = session;
+        YSortEnabled = false;
+        _world = CreateSprite("WorldMaster", -120);
+        AddChild(_world);
+        RefreshTextures();
+        session.Clock.TimeChanged += RefreshTextures;
+    }
+
+    public override void _ExitTree()
+    {
+        _session.Clock.TimeChanged -= RefreshTextures;
+    }
+
+    private void RefreshTextures()
+    {
+        var profile = WorldSeasonVisualCatalog.ForDay(_session.Clock.Day);
+        if (_variant == profile.Variant)
+        {
+            return;
+        }
+
+        SetTexture(
+            _world,
+            profile.WorldBackdropTexturePath,
+            WorldDefinition.Width,
+            WorldDefinition.Height
+        );
+        _variant = profile.Variant;
+    }
+
+    private static Sprite2D CreateSprite(string name, int zIndex) => new()
+    {
+        Name = name,
+        Centered = false,
+        Position = Vector2.Zero,
+        TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+        ZIndex = zIndex
+    };
+
+    private static void SetTexture(
+        Sprite2D sprite,
+        string texturePath,
+        int widthInCells,
+        int heightInCells
+    )
+    {
+        var texture = GD.Load<Texture2D>(texturePath);
+        sprite.Texture = texture;
+        sprite.Scale = new Vector2(
+            widthInCells * CellSize / texture.GetWidth(),
+            heightInCells * CellSize / texture.GetHeight()
+        );
     }
 }
 

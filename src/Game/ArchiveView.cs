@@ -20,7 +20,10 @@ public sealed partial class ArchiveView : Node2D
         YSortEnabled = true;
         AddChild(new ArchiveBackdrop());
         AddChild(new ArchiveArtifactDisplay(session));
-        AddChild(new ArchiveNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.MoonlitArchive
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

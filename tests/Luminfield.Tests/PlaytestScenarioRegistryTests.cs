@@ -722,6 +722,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.StarharvestWorldCrystalStardust
         ),
         (
+            "--playtest-world-beginner-arch",
+            PlaytestScenarioId.WorldBeginnerArch
+        ),
+        (
             "--playtest-world-woods-grove",
             PlaytestScenarioId.WorldWoodsGrove
         ),
@@ -740,6 +744,10 @@ public sealed class PlaytestScenarioRegistryTests
         (
             "--playtest-world-ruins-colonnade",
             PlaytestScenarioId.WorldRuinsColonnade
+        ),
+        (
+            "--playtest-world-facilities-gateway",
+            PlaytestScenarioId.WorldFacilitiesGateway
         ),
         ("--playtest-world", PlaytestScenarioId.World),
         ("--playtest-gate", PlaytestScenarioId.Gate),

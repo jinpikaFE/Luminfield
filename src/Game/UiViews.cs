@@ -643,18 +643,20 @@ internal sealed partial class MinimapView : Control
 {
     private static readonly Vector2 MapOrigin = new(6, 6);
     private static readonly Vector2 MapSize = new(120, 80);
-    private static readonly Texture2D GroundAtlas =
-        GD.Load<Texture2D>(WorldSeasonVisualCatalog.GroundAtlasTexturePath);
     private readonly GameSession _session;
+    private Texture2D _backdrop = null!;
+    private WorldSeasonVisualVariant? _backdropVariant;
 
     public MinimapView(GameSession session)
     {
         _session = session;
         MouseFilter = MouseFilterEnum.Ignore;
+        RefreshBackdrop();
         session.PlayerMoved += OnWorldChanged;
         session.Exploration.Changed += OnWorldChanged;
         session.Forage.Changed += OnForageChanged;
         session.Collection.Changed += OnWorldChanged;
+        session.Clock.TimeChanged += RefreshBackdrop;
     }
 
     public override void _Draw()
@@ -690,20 +692,16 @@ internal sealed partial class MinimapView : Control
                         rect,
                         x,
                         y,
-                        new Color("#17213c")
+                        new Color("#27304a")
                     );
                     continue;
                 }
 
-                var sample = new GridPosition(
-                    x * WorldDefinition.ChunkSize + WorldDefinition.ChunkSize / 2,
-                    y * WorldDefinition.ChunkSize + WorldDefinition.ChunkSize / 2
-                );
                 DrawChunkTexture(
                     rect,
                     x,
                     y,
-                    BiomeColor(WorldDefinition.GetBiome(sample))
+                    Colors.White
                 );
                 DrawLine(
                     rect.Position,
@@ -714,14 +712,41 @@ internal sealed partial class MinimapView : Control
             }
         }
 
-        var homeRect = new Rect2(
+        var beginnerRect = new Rect2(
+            MapOrigin,
+            new Vector2(
+                (WorldDefinition.BeginnerZoneBounds.MaxX + 1) /
+                    (float)WorldDefinition.Width * MapSize.X,
+                (WorldDefinition.BeginnerZoneBounds.MaxY + 1) /
+                    (float)WorldDefinition.Height * MapSize.Y
+            )
+        );
+        DrawRect(beginnerRect, new Color("#f3ca78cc"), false, 1.5f);
+
+        var farmRect = new Rect2(
             MapOrigin,
             new Vector2(
                 FarmSystem.MapWidth / (float)WorldDefinition.Width * MapSize.X,
                 FarmSystem.MapHeight / (float)WorldDefinition.Height * MapSize.Y
             )
         );
-        DrawRect(homeRect, new Color("#f3ca78aa"), false, 1);
+        DrawRect(farmRect, new Color("#8bf0d0cc"), false, 1);
+
+        var cityRect = new Rect2(
+            WorldToMap(
+                VillageCatalog.VillageBounds.MinX,
+                VillageCatalog.VillageBounds.MinY
+            ),
+            new Vector2(
+                (VillageCatalog.VillageBounds.MaxX -
+                    VillageCatalog.VillageBounds.MinX + 1) /
+                    (float)WorldDefinition.Width * MapSize.X,
+                (VillageCatalog.VillageBounds.MaxY -
+                    VillageCatalog.VillageBounds.MinY + 1) /
+                    (float)WorldDefinition.Height * MapSize.Y
+            )
+        );
+        DrawRect(cityRect, new Color("#86d9ffcc"), false, 1.5f);
 
         foreach (var landmark in WorldDefinition.Landmarks)
         {
@@ -777,11 +802,25 @@ internal sealed partial class MinimapView : Control
         _session.Exploration.Changed -= OnWorldChanged;
         _session.Forage.Changed -= OnForageChanged;
         _session.Collection.Changed -= OnWorldChanged;
+        _session.Clock.TimeChanged -= RefreshBackdrop;
     }
 
     private void OnWorldChanged() => QueueRedraw();
 
     private void OnForageChanged(GridPosition _) => QueueRedraw();
+
+    private void RefreshBackdrop()
+    {
+        var profile = WorldSeasonVisualCatalog.ForDay(_session.Clock.Day);
+        if (_backdropVariant == profile.Variant)
+        {
+            return;
+        }
+
+        _backdrop = GD.Load<Texture2D>(profile.WorldBackdropTexturePath);
+        _backdropVariant = profile.Variant;
+        QueueRedraw();
+    }
 
     private void DrawChunkTexture(
         Rect2 rect,
@@ -790,13 +829,19 @@ internal sealed partial class MinimapView : Control
         Color modulate
     )
     {
-        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
-        var variant = (chunkX + chunkY * 3) %
-            WorldSeasonVisualCatalog.GroundAtlasColumns;
+        var sourceWidth = _backdrop.GetWidth() /
+            (float)WorldDefinition.ChunkColumns;
+        var sourceHeight = _backdrop.GetHeight() /
+            (float)WorldDefinition.ChunkRows;
         DrawTextureRectRegion(
-            GroundAtlas,
+            _backdrop,
             rect,
-            new Rect2(variant * cellSize, 0, cellSize, cellSize),
+            new Rect2(
+                chunkX * sourceWidth,
+                chunkY * sourceHeight,
+                sourceWidth,
+                sourceHeight
+            ),
             modulate
         );
     }
@@ -807,17 +852,6 @@ internal sealed partial class MinimapView : Control
             y / WorldDefinition.Height * MapSize.Y
         );
 
-    private static Color BiomeColor(WorldBiome biome) => biome switch
-    {
-        WorldBiome.Home => new Color("#31545d"),
-        WorldBiome.WhisperingWoods => new Color("#173a42"),
-        WorldBiome.StarfallMeadow => new Color("#2c6660"),
-        WorldBiome.LumenVillage => new Color("#476b70"),
-        WorldBiome.CrystalVale => new Color("#24536b"),
-        WorldBiome.MoonwaterWetlands => new Color("#14506a"),
-        WorldBiome.StarfallRuins => new Color("#45456d"),
-        _ => new Color("#17233f")
-    };
 }
 
 internal sealed partial class HudChrome : Control

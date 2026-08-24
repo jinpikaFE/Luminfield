@@ -22,13 +22,7 @@ public static class MoonfleeceBarnLayout
         ]);
 
     public static readonly IReadOnlyList<GridPosition> WorldPastureCells =
-        Array.AsReadOnly<GridPosition>(
-        [
-            new(40, 18),
-            new(41, 18),
-            new(42, 18),
-            new(43, 18)
-        ]);
+        CityExpansionLayout.MoonfleecePastureCells;
 
     public static bool IsInBounds(GridPosition position) =>
         position.X >= 0 &&

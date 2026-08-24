@@ -19,6 +19,11 @@ public sealed class ForageSystem
         new(-1, 0)
     ];
 
+    private static readonly Lazy<IReadOnlyDictionary<
+        WorldBiome,
+        GridPosition[]
+    >> CandidateCellsByBiome = new(BuildCandidateCellsByBiome);
+
     private readonly Dictionary<string, ForageSpawn> _spawns =
         new(StringComparer.Ordinal);
 
@@ -260,6 +265,27 @@ public sealed class ForageSystem
         NeighborOffsets.Any(offset => IsStaticApproach(cell, offset));
 
     private static IEnumerable<GridPosition> CandidateCells(WorldBiome biome)
+    {
+        return CandidateCellsByBiome.Value.TryGetValue(biome, out var cells)
+            ? cells
+            : Array.Empty<GridPosition>();
+    }
+
+    private static IReadOnlyDictionary<WorldBiome, GridPosition[]>
+        BuildCandidateCellsByBiome()
+    {
+        return ForageCatalog.Slots
+            .Select(slot => slot.Biome)
+            .Distinct()
+            .ToDictionary(
+                biome => biome,
+                biome => ScanCandidateCells(biome).ToArray()
+            );
+    }
+
+    private static IEnumerable<GridPosition> ScanCandidateCells(
+        WorldBiome biome
+    )
     {
         for (var y = 1; y < WorldDefinition.Height - 1; y++)
         {

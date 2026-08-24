@@ -18,6 +18,8 @@
 | `world/` | 家园、大世界与天气 |
 | `legacy/` | 当前运行时不加载的历史资源 |
 
+`world/overworld/` 是 256×192 大世界完整主图的最末级目录，统一存放基础季、雨幕季、星熟季和长夜季的生成源图、运行时图与导入描述。主图只承担静态环境构图，不编码道路、水域、碰撞、资源、设施或存档状态。
+
 ## 归档规则
 
 - 按运行时职责归档，不按生成批次、里程碑阶段或制作工具归档。
@@ -29,9 +31,13 @@
 ## 运行时资产
 
 - `ui/items/unknown_item_seal.png`：从已验收 `features/starlights/woodland_starlight_pedestal.png` 的封印节点区域 `(110,655,480,480)` 确定性裁切、去透明边并最近邻缩放到 26×26 后居中到 32×32 的独立未知物品星纹。它只在损坏或未来未登记物品 ID 缺失正式图标时显示，明确区别于合法背包；正常启动会遍历全部稳定 `DataCatalog.Items` 并报告任何缺图 ID。
-- `world/terrain/world_ground_biomes_source.png`：128×256、4×8 的确定性地表来源图，每格 32×32。七行地面依次对应家园外围、低语林地、星落草甸、微光村庄、辉晶谷、月水湿地和星落遗迹，末行为水面；素材分别从已验收 `world/homestead/farm_twilight_backdrop.png`、`farming/placeables/moonstone_path_tiles.png`、`activities/mining/crystal_grotto_survey_interior.png`、`activities/festivals/firefly-tide/firefly_tide_backdrop.png` 与 `activities/combat/starfall_ruins_trial_interior.png` 的空地或水面区域裁切，未调用新提示，也不承载地貌、阻挡、资源或季相状态。
-- `world/terrain/world_ground_biomes.png`：将来源逐格灰阶、自动拉平、以 `+level 82%,96%` 收敛为低对比底纹并最近邻缩放得到的 64×128、4×8 运行时图集，每格 16×16。`WorldChunkGround` 以稳定生物群落选择前七行、以世界格哈希选择列变体，并继续叠加季相调制；最后一行固定为水面。六个外部生物群不再只靠同一底纹换色区分，同时不会让地面纹理压过角色和资源；村庄行使用四个完整月石道路单元缩略来源，路径本身仍复用 `farming/placeables/moonstone_path_tiles.png`。
-- `world/terrain/world_shore_tiles.png`：64×64、4×4 的透明像素岸线图集，索引为北、东、南、西相邻陆地四位掩码。每个 16×16 单元包含 1–3 像素的浅水亮边和不规则泡光断点；`WorldChunkGround` 只读查询 `WorldDefinition.IsWater` 邻域后覆盖到水格，平滑水陆正交断面。水域、道路、碰撞、地标与存档语义没有改变。
+- `world/overworld/world_master_<季节>_source.png` / `world_master_<季节>.png`：基础季、雨幕季、星熟季和长夜季的四组 1448×1086 RGB 全局构图源图与同目录运行派生图，冻结 256×192 世界的左上家园、中央城区、林地、草甸、湿地、晶谷、遗迹和主干道路关系，作为离线合成的连续底层与迷你地图构图基准。
+- `world/overworld/beginner_master_<季节>_source.png` / `beginner_master_<季节>.png`：四组 1254×1254 初始区母图，按 64×64 格覆盖左上初始区，并为原 48×32 家园背景保留核心叠加位置。派生图仅在东、南边缘保留 80 像素 alpha 过渡；运行时最终读取合成主图，不直接加载该中间层。
+- `world/overworld/city_quadrant_<方向>_gleamrise_source.png`：中央城区西北、东北、西南、东南四张重叠生成源图，原始尺寸为 1416–1424×1104–1111 RGB。每张都以旧城区对应裁片为唯一结构参考，冻结道路中线、路口、桥、水岸、建筑基底、围栏和边缘出口，只提高像素簇密度、材质和灯光细节；无透明、无色键，不烘焙 NPC、动物、设施或交互状态。
+- `world/overworld/city_center_gleamrise_source.png`：1254×1254 RGB 中央广场精修源图，覆盖四分区交汇处，以单一青绿晶体喷泉、同心圆广场和四向道路消除分区融合重影；冻结道路宽度、建筑基底、水渠和边缘出口，无透明、无色键。
+- `world/overworld/city_master_<季节>_source.png` / `city_master_<季节>.png`：四组原生 2048×1536、4:3 中央城区母图，覆盖 128×96 格公共服务、市民广场、商业与南侧设施带。`compose_world_master_backdrops.py` 将四张重叠分区下采样到 1152×896，以 256 像素重叠融合，再用 850×850 中央广场精修图压住四向交汇；季相由同一几何确定性调色派生，派生图四边保留 72 像素 alpha 过渡。城区图不再把 1448×1086 单图放大到运行尺寸，真实设施位置与碰撞仍来自 Core。
+- `world/overworld/sector_<列>_<行>_gleamrise_source.png` / `.png`：除 `(0,0)` 初始区外的 11 组 1254×1254 高清世界分区母图，按 4×3、每区 64×64 格组织。每张分别生成对应林地、草甸、城区、湿地、晶谷或遗迹细节；派生图四边保留 80 像素 alpha，用作离线合成输入而非运行时叠层。
+- `world/overworld/world_composite_<季节>.png`：由全局、初始区、城区和 11 张高清分区源图合成的四张 4096×3072 RGB 最终主图。外围分区以 96/128 像素余量加权融合；中央城区以内圈完整覆盖、边缘 96 像素羽化接回外围，避免较低清晰度的分区面板再次稀释原生城区。`WorldBackdrop` 按绝对日期一次加载当前季节单图，迷你地图读取同图对应区块；不再运行时绘制分区地砖、岸线或独立景观贴纸。
 - `farming/soil/farm_soil_tiles_source.png`：从已验收 `world/homestead/farm_twilight_backdrop.png` 的四块空农田区域 `(416,512)`、`(448,512)`、`(672,512)`、`(704,512)` 分别裁切 32×32 后横向拼接得到的 128×32 确定性来源图；未调用新的生成提示，不承载开垦、浇水、肥料或作物状态。
 - `farming/soil/farm_soil_tiles.png`：将四格来源分别灰阶、自动拉平并以 `+level 74%,100%` 收敛明度，再最近邻缩放为四个 16×16 变体；每格复用旧耕地八边形足迹生成二值 alpha，最终为 64×16 RGBA。`FarmSoilStateLayer` 仅按稳定格坐标选择纹理，并以干土暖紫褐或湿土冷青蓝调制；真实开垦与湿润状态仍只来自对应 `FarmSystem.Tiles`。
 - `ui/branding/luminfield_app_icon.png`：512×512 应用图标。以 `world/homestead/farm_twilight_backdrop.png` 的 `(768,256,640,640)` 区域作为暮色水岸背景，最近邻缩放并压暗；再从 `features/starlights/starfall_sixfold_gate.png` 右下单元裁出六光点亮门、去除透明边并最近邻缩放到 390 像素包络，居中下移 40 像素确定性合成。未调用新的生成提示或色键处理；`project.godot` 与 macOS 导出预设共用此图，替换旧的程序化矩形 SVG 图标。
@@ -156,6 +162,17 @@
 
 ## 生成提示词摘要
 
+大世界完整主图：以 256×192 格拓扑参考图和既有家园完整背景为构图约束，生成
+四季全局 4:3 母图、四季 1:1 初始区母图、四季 4:3 中央城区母图，以及其余
+11 个 1:1 高清分区母图。统一 3/4 俯视、硬边像素簇、暮色靛蓝、青绿晶光、暖金
+灯路和 16×16 世界格的视觉密度；各区分别冻结道路出口、功能留白、地貌主题与
+相邻区域方向。禁止人物、动物、文字、UI、网格、白昼蓝天、模糊油画、等距菱形、
+商业游戏相似布局，以及把碰撞、资源状态或任务进度烘焙进画面。
+
+主图派生：生成源图保持原尺寸和 RGB；中间运行图按区域职责添加透明过渡边。
+最终使用 `compose_world_master_backdrops.py` 把 11 张高清分区、季节初始区、季节
+城区和季节全局构图离线融合为 4096×3072 RGB 单图，避免运行时多图硬切或糊带。
+
 环境图：原创魔法暮色农场，俯视 3/4 视角，左上木屋、右上玻璃植物房、中央六块空种植床、右下池塘和码头、左下瀑布、靛蓝森林边界，32-bit 像素画质感；禁止人物、文字、UI、色板、徽标和水印。
 
 环境修订：只移除六块种植床中的作物和光点，替换为空的深色犁沟土壤，保留建筑、水体、植被、灯光、路径与构图。
@@ -258,16 +275,22 @@
 
 星织牧务中枢控制台：以内置图像生成制作 `animals/shared/livestock_automation_console_chroma.png` / `animals/shared/livestock_automation_console.png` 的 1254×1254、严格 2×2 原创图集。行表示自动收集箱空/有产物，列表示草料仓空/有草料；四格保持同一月牙料斗、星织抽屉、3/4 俯视轮廓与 `y=590` 基线，右下同时用作 42×42 施工项目图标。生成器返回精确尺寸的透明 RGBA；本地先以 alpha 二值化取主体，再逐格最近邻等比规范到不超过 460×485、水平居中和统一基线，透明运行图 alpha 仅含 0/255，色键源图以纯 `#ff00ff` 合成。运行时地图实体约 46×49 像素。图集只投影草料/产物是否为空；稳定项目 `homestead_livestock_automation`、两栋各自的 28 份草料和 12 件产物缓冲、原子喂收、品质和 schema-v1 存档均由 Core 持有。
 
-大世界景观图集：`world/exploration/world_scenic_landmarks_chroma.png` 与
-`world/exploration/world_scenic_landmarks.png` 为 1536×1024、严格 4×2 的原创色键源图与透明
-运行图。索引 0–7 依次为林地月根树丛、草甸月花环、晶谷阶梯晶脊、湿地栈桥岛、
-遗迹断柱廊、城区果园廊架、中央星路亭和东路指引石堆；8 格均非空，运行图 alpha
-只含 0/255，可见近品红像素为 0。`WorldScenicArt` 按冻结索引和各景观高度最近邻
-绘制；景观保留区、局部碰撞、道路、资源、节日、NPC 与旧档安全落点继续由 Core
-定义，图集不承载任何业务或存档状态。Apple M3 / Metal 截图 374–379 已检查中央
-城区和五处外围景观的完整构图、像素密度、道路关系与遮挡。
+被否决的大世界地砖、岸线与独立景观图集已全部迁入 `legacy/`，包含
+`world_ground_biomes*`、`world_shore_tiles*`、`world_district_ground*`、
+`world_scenic_landmarks*` 和 `world_restructured_landmarks*`。这些文件只保留制作
+追溯，代码、场景和最终主图合成均不再引用。
 
 ## 变更记录
+
+- 2026-08-24 14:00:21 CST：以旧城区四个重叠裁片分别生成高清西北、东北、西南、东南分区，并补充独立中央广场精修图；离线合成为四组原生 2048×1536 城区母图与 4096×3072 四季世界主图，消除旧 1448×1086 单图放大模糊。记录结构冻结、重叠融合、无色键处理及 Core 继续持有道路/碰撞/设施状态的边界。
+
+- 2026-08-24 12:54:06 CST：批量生成四季全局、四季初始区、四季中央城区和
+  11 个高清世界分区，共保留 23 张项目生成源图；以离线余量融合输出四张
+  4096×3072 连续季节主图。完成尺寸、RGB/RGBA、裁切边界、最近邻显示、跨区接缝、
+  初始区、城区、水晶岭与长夜季 Apple M3 / Metal 实画检查；旧地砖、岸线和两代
+  独立景观方案迁入 `legacy/`，运行时不再引用。
+
+- 2026-08-24 10:49:33 CST：为 256×192 世界重构新增 `world/terrain/world_district_ground_source.png` / `.png` 的 4×4 分区地表与 `world/exploration/world_restructured_landmarks_chroma.png` / `.png` 的 4×2 拓扑景观；完成尺寸、色彩模式、单元非空、二值 alpha、色键残留、裁切边界、落地基线和 8 张 Apple M3 / Metal 实画检查。旧版 `world_scenic_landmarks*` 迁入 `legacy/`，新旧素材均不承载道路、碰撞、NPC、节庆或存档状态。
 
 - 2026-08-21 15:32:48 CST：将 146 张原创生成 PNG 及对应 Godot 导入描述按运行时职责拆分到 33 个最末级目录；同步更新代码、资源描述与文档路径，并新增禁止根目录堆放、源图/运行图同目录、`legacy/` 禁止运行时引用和移动后完整校验规则。素材像素内容、稳定图集索引与业务状态没有改变。
 

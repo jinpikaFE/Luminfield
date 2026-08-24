@@ -80,6 +80,7 @@ public sealed partial class FarmView : Node2D
         _cropLayer.Visible = false;
         _propLayer.Visible = false;
 
+        AddChild(new WorldBackdrop(session));
         _worldStreamer = new WorldChunkStreamer(session);
         _worldStreamer.RegionEntered += key => RegionEntered?.Invoke(key);
         AddChild(_worldStreamer);
@@ -1419,6 +1420,11 @@ public sealed partial class FarmView : Node2D
             return false;
         }
 
+        if (FarmLayout.IsStaticBlocked(cell))
+        {
+            return false;
+        }
+
         if (!WorldDefinition.IsHomeCell(cell))
         {
             if (WorldDefinition.IsBoundaryCell(cell))
@@ -1459,8 +1465,7 @@ public sealed partial class FarmView : Node2D
             return false;
         }
 
-        if (FarmLayout.IsStaticBlocked(cell) ||
-            _session.Farm.IsReserved(cell) ||
+        if (_session.Farm.IsReserved(cell) ||
             _session.Storage.HasChest(cell) ||
             _session.FarmObjects.BlocksMovement(cell) ||
             _session.Orchard.BlocksMovement(cell))

@@ -18,6 +18,11 @@ internal sealed partial class WorldChunkStreamer : Node2D
         _seasonVisual = WorldSeasonVisualCatalog.ForDay(session.Clock.Day);
         _seasonPropAtlas = LoadPropAtlas(_seasonVisual);
         ZIndex = -95;
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.World,
+            zIndex: 6
+        ));
         session.Clock.TimeChanged += RefreshSeasonVisual;
     }
 
@@ -74,7 +79,6 @@ internal sealed partial class WorldChunkStreamer : Node2D
             var node = new WorldChunk(
                 chunk,
                 _session,
-                _seasonVisual,
                 _seasonPropAtlas
             );
             _loaded[chunk] = node;
@@ -101,7 +105,7 @@ internal sealed partial class WorldChunkStreamer : Node2D
         _seasonPropAtlas = atlas;
         foreach (var chunk in _loaded.Values)
         {
-            chunk.ApplySeasonVisual(next, atlas);
+            chunk.ApplySeasonVisual(atlas);
         }
     }
 
@@ -112,13 +116,11 @@ internal sealed partial class WorldChunkStreamer : Node2D
 
 internal sealed partial class WorldChunk : Node2D
 {
-    private readonly WorldChunkGround _ground;
     private readonly WorldChunkProps _props;
 
     public WorldChunk(
         ChunkPosition chunk,
         GameSession session,
-        WorldSeasonVisualProfile seasonVisual,
         Texture2D seasonPropAtlas
     )
     {
@@ -126,183 +128,19 @@ internal sealed partial class WorldChunk : Node2D
             chunk.X * WorldDefinition.ChunkSize * 16,
             chunk.Y * WorldDefinition.ChunkSize * 16
         );
-        _ground = new WorldChunkGround(chunk, seasonVisual);
         _props = new WorldChunkProps(
             chunk,
             session,
             seasonPropAtlas
         );
-        AddChild(_ground);
         AddChild(_props);
         AddChild(new WorldChunkForage(chunk, session));
-        AddChild(new WorldVillageChunk(chunk, session));
+        AddChild(new WorldVillageChunk(chunk));
     }
 
-    public void ApplySeasonVisual(
-        WorldSeasonVisualProfile profile,
-        Texture2D propAtlas
-    )
+    public void ApplySeasonVisual(Texture2D propAtlas)
     {
-        _ground.SetVisual(profile);
-        _props.SetVisual(profile, propAtlas);
-    }
-}
-
-internal sealed partial class WorldChunkGround : Node2D
-{
-    private const float PathAtlasCell = 627;
-    private static readonly Texture2D GroundAtlas =
-        GD.Load<Texture2D>(WorldSeasonVisualCatalog.GroundAtlasTexturePath);
-    private static readonly Texture2D ShoreAtlas =
-        GD.Load<Texture2D>(WorldSeasonVisualCatalog.ShoreAtlasTexturePath);
-    private static readonly Texture2D PathAtlas =
-        GD.Load<Texture2D>("res://assets/generated/farming/placeables/moonstone_path_tiles.png");
-
-    private readonly ChunkPosition _chunk;
-    private WorldSeasonVisualProfile _visual;
-
-    public WorldChunkGround(
-        ChunkPosition chunk,
-        WorldSeasonVisualProfile visual
-    )
-    {
-        _chunk = chunk;
-        _visual = visual;
-        ZIndex = -2;
-        TextureFilter = TextureFilterEnum.Nearest;
-    }
-
-    public void SetVisual(WorldSeasonVisualProfile visual)
-    {
-        if (_visual.Variant == visual.Variant)
-        {
-            return;
-        }
-
-        _visual = visual;
-        QueueRedraw();
-    }
-
-    public override void _Draw()
-    {
-        for (var localY = 0; localY < WorldDefinition.ChunkSize; localY++)
-        {
-            for (var localX = 0; localX < WorldDefinition.ChunkSize; localX++)
-            {
-                var cell = new GridPosition(
-                    _chunk.X * WorldDefinition.ChunkSize + localX,
-                    _chunk.Y * WorldDefinition.ChunkSize + localY
-                );
-                if (WorldDefinition.IsHomeCell(cell))
-                {
-                    continue;
-                }
-
-                var origin = new Vector2(localX * 16, localY * 16);
-                var hash = WorldDefinition.Hash(cell.X, cell.Y);
-                var biome = WorldDefinition.GetBiome(cell);
-
-                if (WorldDefinition.IsWater(cell))
-                {
-                    DrawWater(origin, cell, hash);
-                }
-                else if (WorldDefinition.IsPath(cell))
-                {
-                    DrawPath(origin, hash);
-                }
-                else
-                {
-                    DrawGround(origin, biome, hash);
-                }
-            }
-        }
-    }
-
-    private void DrawGround(Vector2 origin, WorldBiome biome, uint hash)
-    {
-        DrawGroundTile(
-            origin,
-            hash,
-            WorldSeasonVisualCatalog.GroundAtlasRow(biome),
-            GroundColor(biome) * _visual.GroundModulate
-        );
-    }
-
-    private void DrawWater(Vector2 origin, GridPosition cell, uint hash)
-    {
-        DrawGroundTile(
-            origin,
-            hash,
-            WorldSeasonVisualCatalog.WaterAtlasRow,
-            new Color("#0f5a70") * _visual.WaterModulate
-        );
-
-        var shoreMask = WorldSeasonVisualCatalog.ShoreMaskAt(cell);
-        if (shoreMask == 0)
-        {
-            return;
-        }
-
-        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
-        DrawTextureRectRegion(
-            ShoreAtlas,
-            new Rect2(origin, new Vector2(cellSize, cellSize)),
-            new Rect2(
-                shoreMask % WorldSeasonVisualCatalog.ShoreAtlasColumns * cellSize,
-                shoreMask / WorldSeasonVisualCatalog.ShoreAtlasColumns * cellSize,
-                cellSize,
-                cellSize
-            ),
-            new Color("#9bc3a8") * _visual.DetailModulate
-        );
-    }
-
-    private void DrawGroundTile(
-        Vector2 origin,
-        uint hash,
-        int atlasRow,
-        Color modulate
-    )
-    {
-        var variant = (int)(hash % WorldSeasonVisualCatalog.GroundAtlasColumns);
-        var cellSize = WorldSeasonVisualCatalog.GroundAtlasCellSize;
-        DrawTextureRectRegion(
-            GroundAtlas,
-            new Rect2(origin, new Vector2(cellSize, cellSize)),
-            new Rect2(variant * cellSize, atlasRow * cellSize, cellSize, cellSize),
-            modulate
-        );
-    }
-
-    private void DrawPath(Vector2 origin, uint hash)
-    {
-        var variant = (int)(hash % 4);
-        var source = new Rect2(
-            variant % 2 * PathAtlasCell,
-            variant / 2 * PathAtlasCell,
-            PathAtlasCell,
-            PathAtlasCell
-        );
-        DrawTextureRectRegion(
-            PathAtlas,
-            new Rect2(origin, new Vector2(16, 16)),
-            source,
-            _visual.PathModulate
-        );
-    }
-
-    private static Color GroundColor(WorldBiome biome)
-    {
-        return biome switch
-        {
-            WorldBiome.WhisperingWoods => new Color("#184754"),
-            WorldBiome.StarfallMeadow => new Color("#28665e"),
-            WorldBiome.LumenVillage => new Color("#355966"),
-            WorldBiome.CrystalVale => new Color("#24586a"),
-            WorldBiome.MoonwaterWetlands => new Color("#1d5664"),
-            WorldBiome.StarfallRuins => new Color("#35456a"),
-            _ => new Color("#102d3a")
-        };
+        _props.SetVisual(propAtlas);
     }
 }
 
@@ -330,10 +168,7 @@ internal sealed partial class WorldChunkProps : Node2D
         session.Starlight.Changed += OnStarlightChanged;
     }
 
-    public void SetVisual(
-        WorldSeasonVisualProfile profile,
-        Texture2D atlas
-    )
+    public void SetVisual(Texture2D atlas)
     {
         _atlas = atlas;
         QueueRedraw();
@@ -341,8 +176,6 @@ internal sealed partial class WorldChunkProps : Node2D
 
     public override void _Draw()
     {
-        DrawScenicLandmarks();
-
         for (var localY = 0; localY < WorldDefinition.ChunkSize; localY++)
         {
             for (var localX = 0; localX < WorldDefinition.ChunkSize; localX++)
@@ -419,34 +252,6 @@ internal sealed partial class WorldChunkProps : Node2D
                 );
                 DrawTextureRectRegion(_atlas, destination, source);
             }
-        }
-    }
-
-    private void DrawScenicLandmarks()
-    {
-        foreach (var landmark in WorldDefinition.ScenicLandmarks
-                     .Where(value =>
-                         WorldDefinition.GetChunk(value.Position) == _chunk
-                     )
-                     .OrderBy(value => value.Position.Y)
-                     .ThenBy(value => value.Position.X))
-        {
-            var source = WorldScenicArt.Region(landmark.AtlasIndex);
-            var height = WorldScenicArt.DrawHeight(landmark.AtlasIndex);
-            var width = height * source.Size.X / source.Size.Y;
-            var localX = landmark.Position.X -
-                _chunk.X * WorldDefinition.ChunkSize;
-            var localY = landmark.Position.Y -
-                _chunk.Y * WorldDefinition.ChunkSize;
-            var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
-            DrawTextureRectRegion(
-                WorldScenicArt.Atlas,
-                new Rect2(
-                    anchor - new Vector2(width / 2, height),
-                    new Vector2(width, height)
-                ),
-                source
-            );
         }
     }
 
@@ -641,16 +446,12 @@ internal sealed partial class WorldChunkProps : Node2D
 internal sealed partial class WorldVillageChunk : Node2D
 {
     private readonly ChunkPosition _chunk;
-    private readonly GameSession _session;
 
-    public WorldVillageChunk(ChunkPosition chunk, GameSession session)
+    public WorldVillageChunk(ChunkPosition chunk)
     {
         _chunk = chunk;
-        _session = session;
         ZIndex = 5;
         TextureFilter = TextureFilterEnum.Nearest;
-        session.Clock.TimeChanged += OnTimeChanged;
-        session.Weather.Changed += OnTimeChanged;
     }
 
     public override void _Draw()
@@ -665,27 +466,6 @@ internal sealed partial class WorldVillageChunk : Node2D
             DrawLandmark(landmark);
         }
 
-        foreach (var npc in _session.Village
-                     .CurrentNpcs(
-                         _session.Clock.Day,
-                         _session.Clock.MinuteOfDay,
-                         PlayerLocationIds.World,
-                         _session.PlayerCell
-                     )
-                     .Where(value =>
-                         WorldDefinition.GetChunk(value.Position) == _chunk
-                     )
-                     .OrderBy(value => value.Position.Y)
-                     .ThenBy(value => value.Position.X))
-        {
-            DrawNpc(npc);
-        }
-    }
-
-    public override void _ExitTree()
-    {
-        _session.Clock.TimeChanged -= OnTimeChanged;
-        _session.Weather.Changed -= OnTimeChanged;
     }
 
     private void DrawLandmark(VillageLandmarkDefinition landmark)
@@ -764,31 +544,6 @@ internal sealed partial class WorldVillageChunk : Node2D
         var anchor = LocalAnchor(cell);
         DrawTextureRectRegion(
             GeneratedArt.StarfallWatchExteriorTexture,
-            new Rect2(
-                anchor - new Vector2(width / 2, height),
-                new Vector2(width, height)
-            ),
-            source
-        );
-    }
-
-    private void DrawNpc(VillageNpcState npc)
-    {
-            var art = NpcArtCatalog.Resolve(
-                npc.Definition.Id,
-                npc.Facing
-            );
-            var source = art.Region;
-            var height = art.TargetHeight;
-        var width = height * source.Size.X / source.Size.Y;
-        var anchor = LocalAnchor(npc.Position);
-        DrawCircle(
-            anchor - new Vector2(0, 1),
-            7,
-            new Color(0.01f, 0.03f, 0.08f, 0.44f)
-        );
-        DrawTextureRectRegion(
-                art.Texture,
             new Rect2(
                 anchor - new Vector2(width / 2, height),
                 new Vector2(width, height)

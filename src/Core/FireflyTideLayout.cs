@@ -7,8 +7,8 @@ public static class FireflyTideLayout
 
     // Keep the festival layout self-contained. Referencing WorldDefinition here
     // creates a static initialization cycle through VillageCatalog festival slots.
-    public static readonly GridPosition WorldEntryCell = new(162, 60);
-    public static readonly GridPosition WorldReturnCell = new(161, 60);
+    public static readonly GridPosition WorldEntryCell = new(226, 70);
+    public static readonly GridPosition WorldReturnCell = new(225, 70);
     public static readonly GridPosition ExitCell = new(20, 20);
     public static readonly GridPosition SafeArrivalCell = new(20, 19);
     public static readonly GridPosition LanternLaunchCell = new(20, 14);

@@ -94,12 +94,36 @@ public sealed class NpcExpansionTests
                         weatherId
                     );
                     Assert.Equal(VillageCatalog.Npcs.Count, current.Count);
-                    Assert.Equal(
-                        current.Count,
-                        current.Select(state =>
+                    var uniqueCellCount = current
+                        .Select(state =>
                             (state.LocationId, state.Position)
-                        ).Distinct().Count()
-                    );
+                        )
+                        .Distinct()
+                        .Count();
+                    if (uniqueCellCount != current.Count)
+                    {
+                        var duplicateCells = current
+                            .GroupBy(state =>
+                                (state.LocationId, state.Position)
+                            )
+                            .Where(group => group.Count() > 1)
+                            .Select(group =>
+                                $"{group.Key.LocationId}:" +
+                                $"{group.Key.Position}=" +
+                                string.Join(
+                                    ",",
+                                    group.Select(state =>
+                                        state.Definition.Id
+                                    )
+                                )
+                            )
+                            .ToArray();
+                        Assert.Fail(
+                            $"day={day}, weather={weatherId}, " +
+                            $"minute={minute}: " +
+                            string.Join("; ", duplicateCells)
+                        );
+                    }
                     Assert.All(current, state =>
                     {
                         Assert.True(NpcNavigationMap.IsNpcPassable(

@@ -178,40 +178,40 @@ public static class VillageCatalog
     public const string StarlightPostLandmarkId = "starlight_post";
     public const string StarfallWatchLandmarkId = "starfall_watch";
 
-    public static readonly GridArea VillageBounds = new(64, 32, 127, 95);
-    public static readonly GridPosition VillageCenterCell = new(96, 64);
-    public static readonly GridPosition VillageGateCell = new(97, 86);
-    public static readonly GridPosition MoonlitArchiveDoorCell = new(82, 50);
+    public static readonly GridArea VillageBounds = new(64, 32, 191, 127);
+    public static readonly GridPosition VillageCenterCell = new(128, 80);
+    public static readonly GridPosition VillageGateCell = new(128, 127);
+    public static readonly GridPosition MoonlitArchiveDoorCell = new(100, 59);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
     public static readonly GridPosition MoonlitArchiveDeskCell = new(20, 9);
     public static readonly GridArea MoonlitArchiveDeskArea =
         new(16, 8, 23, 11);
     public static readonly GridPosition MoonstoneWorkshopDoorCell =
-        new(81, 76);
+        new(98, 98);
     public static readonly GridPosition MoonstoneWorkshopExitCell =
         new(20, 19);
     public static readonly GridPosition MoonRuneWorkbenchCell =
         new(20, 9);
     public static readonly GridPosition StarweaverTeaHouseDoorCell =
-        new(111, 52);
+        new(158, 62);
     public static readonly GridPosition StarweaverTeaHouseExitCell =
         new(20, 19);
     public static readonly GridPosition StarwovenTeaCounterCell =
         new(20, 9);
     public static readonly GridPosition TwilightEmporiumDoorCell =
-        new(115, 90);
+        new(166, 98);
     public static readonly GridPosition TwilightEmporiumExitCell =
         new(20, 19);
     public static readonly GridPosition TravelManifestCell =
         new(20, 8);
     public static readonly GridPosition StarlightPostDoorCell =
-        new(70, 50);
+        new(76, 59);
     public static readonly GridPosition StarlightPostExitCell =
         new(20, 19);
     public static readonly GridPosition RouteSortingCounterCell =
         new(20, 8);
     public static readonly GridPosition StarfallWatchDoorCell =
-        new(70, 76);
+        new(76, 98);
     public static readonly GridPosition StarfallWatchExitCell =
         new(20, 19);
     public static readonly GridPosition SealRouteTableCell =
@@ -255,28 +255,28 @@ public static class VillageCatalog
             MoonlitArchiveDoorCell,
             0,
             "village.landmark.archive",
-            [new GridArea(77, 36, 88, 48)]
+            [new GridArea(94, 45, 106, 57)]
         ),
         new(
             StarweaverTeaHouseLandmarkId,
             StarweaverTeaHouseDoorCell,
             1,
             "village.landmark.tea_house",
-            [new GridArea(104, 38, 116, 50)]
+            [new GridArea(151, 48, 165, 60)]
         ),
         new(
             MoonstoneWorkshopLandmarkId,
             MoonstoneWorkshopDoorCell,
             2,
             "village.landmark.workshop",
-            [new GridArea(76, 62, 88, 74)]
+            [new GridArea(91, 84, 104, 96)]
         ),
         new(
             "starlight_well",
-            new GridPosition(86, 68),
+            new GridPosition(112, 72),
             3,
             "village.landmark.well",
-            [new GridArea(82, 60, 90, 68)]
+            [new GridArea(108, 64, 116, 72)]
         ),
         new(
             VillageGateLandmarkId,
@@ -284,51 +284,51 @@ public static class VillageCatalog
             4,
             "world.landmark.village_gate",
             [
-                new GridArea(92, 80, 93, 86),
-                new GridArea(101, 80, 103, 86)
+                new GridArea(121, 120, 123, 127),
+                new GridArea(133, 120, 135, 127)
             ]
         ),
         new(
             "village_sign",
-            new GridPosition(89, 84),
+            new GridPosition(116, 118),
             5,
             "village.landmark.sign",
-            [new GridArea(89, 84, 89, 84)]
+            [new GridArea(116, 118, 116, 118)]
         ),
         new(
             "lantern_bench",
-            new GridPosition(108, 68),
+            new GridPosition(146, 74),
             6,
             "village.landmark.bench",
-            [new GridArea(105, 68, 111, 68)]
+            [new GridArea(143, 74, 149, 74)]
         ),
         new(
             "glowflower_cart",
-            new GridPosition(115, 74),
+            new GridPosition(174, 82),
             7,
             "village.landmark.flower_cart",
-            [new GridArea(114, 72, 116, 74)]
+            [new GridArea(173, 80, 175, 82)]
         ),
         new(
             TwilightEmporiumLandmarkId,
             TwilightEmporiumDoorCell,
             8,
             "village.landmark.twilight_emporium",
-            [new GridArea(111, 78, 119, 88)]
+            [new GridArea(162, 86, 170, 96)]
         ),
         new(
             StarlightPostLandmarkId,
             StarlightPostDoorCell,
             9,
             "village.landmark.starlight_post",
-            [new GridArea(65, 36, 76, 48)]
+            [new GridArea(69, 45, 82, 57)]
         ),
         new(
             StarfallWatchLandmarkId,
             StarfallWatchDoorCell,
             10,
             "village.landmark.starfall_watch",
-            [new GridArea(65, 62, 76, 74)]
+            [new GridArea(69, 84, 82, 96)]
         )
     ];
 
@@ -1545,27 +1545,34 @@ public static class VillageCatalog
             return false;
         }
 
-        var eastWestSpine = cell.Y is >= 62 and <= 66;
-        var northSouthSpine = cell.X is >= 94 and <= 98;
-        var northLane = cell.Y is >= 50 and <= 56 &&
-            cell.X is >= 68 and <= 115;
-        var southLane = cell.Y is >= 76 and <= 79 &&
-            cell.X is >= 68 and <= 115;
-        var southMarketLane = cell.Y is >= 88 and <= 91 &&
-            cell.X is >= 97 and <= 115;
-        var westRing = cell.X is >= 68 and <= 71 &&
-            cell.Y is >= 50 and <= 79;
-        var eastRing = cell.X is >= 113 and <= 116 &&
-            cell.Y is >= 50 and <= 91;
-        var centralPlaza = cell.X is >= 88 and <= 104 &&
-            cell.Y is >= 56 and <= 72;
-        var northApproach = cell.X is >= 80 and <= 84 &&
-            cell.Y is >= 48 and <= 56;
-        var southApproach = cell.X is >= 79 and <= 83 &&
-            cell.Y is >= 74 and <= 82;
+        var eastWestSpine = cell.Y is >= 78 and <= 82;
+        var northSouthSpine = cell.X is >= 126 and <= 130;
+        var northLane = cell.Y is >= 58 and <= 64 &&
+            cell.X is >= 72 and <= 168;
+        var southLane = cell.Y is >= 96 and <= 101 &&
+            cell.X is >= 72 and <= 172;
+        var southMarketLane = cell.Y is >= 116 and <= 121 &&
+            cell.X is >= 108 and <= 186;
+        var westRing = cell.X is >= 72 and <= 77 &&
+            cell.Y is >= 58 and <= 101;
+        var eastRing = cell.X is >= 162 and <= 167 &&
+            cell.Y is >= 58 and <= 121;
+        var centralPlaza = cell.X is >= 108 and <= 150 &&
+            cell.Y is >= 64 and <= 92;
+        var eastPromenade = cell.X is >= 146 and <= 176 &&
+            cell.Y is >= 68 and <= 104;
+        var cityGardenLane = cell.X is >= 90 and <= 176 &&
+            cell.Y is >= 106 and <= 112;
+        var archiveApproach = cell.X is >= 98 and <= 102 &&
+            cell.Y is >= 56 and <= 64;
+        var workshopApproach = cell.X is >= 96 and <= 100 &&
+            cell.Y is >= 94 and <= 102;
+        var expansionLane = cell.Y is >= 114 and <= 120 &&
+            cell.X is >= 108 and <= 186;
         return eastWestSpine || northSouthSpine || northLane ||
             southLane || southMarketLane || westRing || eastRing ||
-            centralPlaza || northApproach || southApproach;
+            centralPlaza || eastPromenade || cityGardenLane ||
+            archiveApproach || workshopApproach || expansionLane;
     }
 
     public static bool IsBlocked(GridPosition cell) =>
@@ -1607,7 +1614,7 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         PlayerLocationIds.World,
-        position,
+        RelocateWorldScheduleCell(position),
         facing,
         dialogueKey,
         weekdayIndices,
@@ -1762,7 +1769,9 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         locationId,
-        position,
+        locationId == PlayerLocationIds.World
+            ? RelocateWorldScheduleCell(position)
+            : position,
         facing,
         dialogueKey,
         [],
@@ -1770,6 +1779,75 @@ public static class VillageCatalog
         [],
         WeatherSchedulePriority
     );
+
+    private static GridPosition RelocateWorldScheduleCell(
+        GridPosition legacyCell
+    )
+    {
+        var x = VillageCenterCell.X +
+            (legacyCell.X - 96) * 2;
+        var y = VillageCenterCell.Y +
+            (int)MathF.Round((legacyCell.Y - 64) * 1.5f);
+        var relocated = new GridPosition(x, y);
+        if (CityExpansionLayout.FacilityGatewayReservedArea.Contains(
+                relocated
+            ))
+        {
+            relocated = new GridPosition(relocated.X, relocated.Y - 16);
+        }
+        if (IsScheduleCellAvailable(relocated))
+        {
+            return relocated;
+        }
+
+        for (var distance = 1; distance <= 16; distance++)
+        {
+            for (var offsetY = -distance;
+                 offsetY <= distance;
+                 offsetY++)
+            {
+                var offsetX = distance - Math.Abs(offsetY);
+                var left = new GridPosition(
+                    relocated.X - offsetX,
+                    relocated.Y + offsetY
+                );
+                if (IsScheduleCellAvailable(left))
+                {
+                    return left;
+                }
+
+                if (offsetX == 0)
+                {
+                    continue;
+                }
+
+                var right = new GridPosition(
+                    relocated.X + offsetX,
+                    relocated.Y + offsetY
+                );
+                if (IsScheduleCellAvailable(right))
+                {
+                    return right;
+                }
+            }
+        }
+
+        return VillageCenterCell;
+    }
+
+    private static bool IsScheduleCellAvailable(GridPosition cell) =>
+        IsVillageCell(cell) &&
+        IsVillagePath(cell) &&
+        !IsBlocked(cell) &&
+        !CityExpansionLayout.IsBlocked(cell) &&
+        !CityExpansionLayout.FacilityGatewayReservedArea.Contains(cell) &&
+        cell != MoonlitArchiveDoorCell &&
+        cell != MoonstoneWorkshopDoorCell &&
+        cell != StarweaverTeaHouseDoorCell &&
+        cell != TwilightEmporiumDoorCell &&
+        cell != StarlightPostDoorCell &&
+        cell != StarfallWatchDoorCell &&
+        cell != VillageGateCell;
 
     private static NpcScheduleEntry SeasonSlot(
         int startHour,
@@ -1783,7 +1861,9 @@ public static class VillageCatalog
         startHour * 60,
         endHour * 60,
         locationId,
-        position,
+        locationId == PlayerLocationIds.World
+            ? RelocateWorldScheduleCell(position)
+            : position,
         facing,
         dialogueKey,
         [],

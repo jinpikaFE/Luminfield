@@ -18,7 +18,10 @@ public sealed partial class StarharvestMarketView : Node2D
         YSortEnabled = true;
         AddChild(new StarharvestMarketBackdrop());
         AddChild(new StarharvestMarketStationLayer(session));
-        AddChild(new StarharvestMarketNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.StarharvestMarket
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

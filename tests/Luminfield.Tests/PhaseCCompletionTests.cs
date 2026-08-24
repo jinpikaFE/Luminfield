@@ -15,7 +15,7 @@ public sealed class PhaseCCompletionTests
             DataCatalog.StarfeatherCreamRecipeId
         );
 
-        Assert.Equal(new GridPosition(34, 14), machine.Position);
+        Assert.Equal(new GridPosition(42, 40), machine.Position);
         Assert.True(FarmLayout.IsStaticBlocked(machine.Position));
         Assert.Equal(DataCatalog.StarfeatherEggId, recipe.InputItemId);
         Assert.Equal(DataCatalog.StarfeatherCreamId, recipe.OutputItemId);

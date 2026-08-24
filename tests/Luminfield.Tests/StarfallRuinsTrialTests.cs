@@ -10,9 +10,9 @@ public sealed class StarfallRuinsTrialTests
     public void CatalogFreezesRoomsExpandedEnemiesArtifactsWeaponsAndSixthLight()
     {
         Assert.Equal("starfall_ruins_trial", PlayerLocationIds.StarfallRuinsTrial);
-        Assert.Equal(new GridPosition(127, 104),
+        Assert.Equal(new GridPosition(170, 158),
             StarfallRuinsTrialLayout.WorldEntryCell);
-        Assert.Equal(new GridPosition(127, 103),
+        Assert.Equal(new GridPosition(170, 159),
             StarfallRuinsTrialLayout.WorldReturnCell);
         Assert.Equal(40, StarfallRuinsTrialLayout.Width);
         Assert.Equal(22, StarfallRuinsTrialLayout.Height);

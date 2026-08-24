@@ -19,7 +19,10 @@ public sealed partial class WorkshopView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new WorkshopBackdrop());
-        AddChild(new WorkshopNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.MoonstoneWorkshop
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

@@ -75,8 +75,8 @@ public static class StarfallRuinsTrialLayout
 {
     public const int Width = 40;
     public const int Height = 22;
-    public static readonly GridPosition WorldEntryCell = new(127, 104);
-    public static readonly GridPosition WorldReturnCell = new(127, 103);
+    public static readonly GridPosition WorldEntryCell = new(170, 158);
+    public static readonly GridPosition WorldReturnCell = new(170, 159);
     public static readonly GridPosition ExitCell = new(20, 20);
     public static readonly GridPosition SafeArrivalCell = new(20, 18);
     public static readonly GridPosition WeaponRackCell = new(17, 17);

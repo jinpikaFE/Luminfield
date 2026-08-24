@@ -15,13 +15,7 @@ public static class StarfeatherCoopLayout
     public static readonly GridPosition IndoorAnimalCell = new(20, 13);
 
     public static readonly IReadOnlyList<GridPosition> WorldPastureCells =
-        Array.AsReadOnly<GridPosition>(
-        [
-            new(6, 12),
-            new(5, 12),
-            new(7, 12),
-            new(6, 13)
-        ]);
+        CityExpansionLayout.StarfeatherPastureCells;
 
     public static bool IsInBounds(GridPosition position) =>
         position.X >= 0 &&

@@ -22,7 +22,10 @@ public sealed partial class StarlightPostView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new StarlightPostBackdrop());
-        AddChild(new StarlightPostNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.StarlightPost
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

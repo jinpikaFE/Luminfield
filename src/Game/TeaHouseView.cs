@@ -19,7 +19,10 @@ public sealed partial class TeaHouseView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new TeaHouseBackdrop());
-        AddChild(new TeaHouseNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.StarweaverTeaHouse
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

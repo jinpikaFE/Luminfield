@@ -22,7 +22,10 @@ public sealed partial class StarfallWatchView : Node2D
         _session = session;
         YSortEnabled = true;
         AddChild(new StarfallWatchBackdrop());
-        AddChild(new StarfallWatchNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.StarfallWatch
+        ));
 
         _player = new PlayerController(CanOccupy)
         {

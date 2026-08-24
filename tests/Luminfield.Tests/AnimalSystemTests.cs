@@ -133,21 +133,26 @@ public sealed class AnimalSystemTests
     }
 
     [Fact]
-    public void CoopApproachAndPastureRejectNewPlacementButPreserveLegacyData()
+    public void CoopApproachAndPastureBelongToTheSouthernCityDistrict()
     {
         var farm = new FarmSystem();
         var approach = FarmLayout.StarfeatherCoopReturnCell;
         Assert.True(FarmLayout.IsStarfeatherCoopApproachCell(approach));
         Assert.All(
             StarfeatherCoopLayout.WorldPastureCells.Append(approach),
-            cell => Assert.True(
-                FarmLayout.IsStarfeatherCoopProtectedCell(cell)
-            )
+            cell =>
+            {
+                Assert.True(FarmLayout.IsStarfeatherCoopProtectedCell(cell));
+                Assert.True(VillageCatalog.IsVillageCell(cell));
+                Assert.False(WorldDefinition.IsHomeCell(cell));
+                Assert.False(WorldDefinition.IsBlocked(cell));
+                Assert.Equal(-1, WorldDefinition.PropAtlasIndex(cell));
+            }
         );
 
         var storage = new StorageSystem();
         Assert.Equal(
-            ChestPlacementIssue.Blocked,
+            ChestPlacementIssue.NotHome,
             storage.CheckPlacement(approach, farm)
         );
         storage.Restore(
@@ -161,12 +166,12 @@ public sealed class AnimalSystemTests
             },
             farm
         );
-        Assert.True(storage.HasChest(approach));
+        Assert.False(storage.HasChest(approach));
 
         var emptyStorage = new StorageSystem();
         var farmObjects = new FarmObjectSystem();
         Assert.Equal(
-            FarmObjectPlacementIssue.Blocked,
+            FarmObjectPlacementIssue.NotHome,
             farmObjects.CheckPlacement(
                 DataCatalog.StarwoodFenceId,
                 approach,
@@ -187,14 +192,11 @@ public sealed class AnimalSystemTests
             farm,
             emptyStorage
         );
-        Assert.Equal(
-            DataCatalog.StarwoodFenceId,
-            farmObjects.ItemAt(approach)
-        );
+        Assert.Null(farmObjects.ItemAt(approach));
 
         var orchard = new OrchardSystem();
         Assert.Equal(
-            OrchardPlacementIssue.Blocked,
+            OrchardPlacementIssue.NotHome,
             orchard.CheckTreePlacement(
                 approach,
                 farm,
@@ -216,11 +218,11 @@ public sealed class AnimalSystemTests
             emptyStorage,
             new FarmObjectSystem()
         );
-        Assert.True(orchard.HasFruitTree(approach));
+        Assert.False(orchard.HasFruitTree(approach));
     }
 
     [Fact]
-    public void ExhaustedPastureKeepsChickenInsideAndRequiresFodder()
+    public void CityPastureCannotBeExhaustedByFarmSavePlacements()
     {
         var save = CompletedCoopSave();
         save.MinuteOfDay = 9 * 60;
@@ -238,24 +240,11 @@ public sealed class AnimalSystemTests
         session.NewGame();
         session.Restore(save);
 
-        Assert.Null(session.StarfeatherChickenWorldCell);
-        Assert.False(session.StarfeatherChickenCanGrazeToday);
-        Assert.False(session.StarfeatherChickenIsOutdoors);
-        Assert.Null(session.VisibleStarfeatherChickenCell);
-
-        session.SetPlayerLocation(
-            StarfeatherCoopLayout.FeedTroughCell.X * 16 + 8,
-            (StarfeatherCoopLayout.FeedTroughCell.Y + 1) * 16 + 8,
-            PlayerLocationIds.StarfeatherCoop
-        );
-        var before = JsonSerializer.Serialize(session.Capture());
-        Assert.Equal(
-            "animal.feed.insufficient_fodder",
-            session.FeedStarfeatherCoop(
-                StarfeatherCoopLayout.FeedTroughCell
-            ).MessageKey
-        );
-        Assert.Equal(before, JsonSerializer.Serialize(session.Capture()));
+        Assert.NotNull(session.StarfeatherChickenWorldCell);
+        Assert.True(session.StarfeatherChickenCanGrazeToday);
+        Assert.True(session.StarfeatherChickenIsOutdoors);
+        Assert.NotNull(session.VisibleStarfeatherChickenCell);
+        Assert.Empty(session.Capture().Storage.Chests);
     }
 
     [Fact]

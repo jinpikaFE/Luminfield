@@ -49,61 +49,46 @@ public sealed class WorldSeasonVisualCatalogTests
             WorldSeasonVisualCatalog.LongnightPropAtlasTexturePath,
             longnight.PropAtlasTexturePath
         );
-        Assert.NotEqual(baseline.GroundModulate, rainveil.GroundModulate);
-        Assert.NotEqual(rainveil.GroundModulate, starharvest.GroundModulate);
-        Assert.NotEqual(starharvest.GroundModulate, longnight.GroundModulate);
+        Assert.Equal(
+            WorldSeasonVisualCatalog.DefaultWorldBackdropTexturePath,
+            baseline.WorldBackdropTexturePath
+        );
+        Assert.Equal(
+            WorldSeasonVisualCatalog.RainveilWorldBackdropTexturePath,
+            rainveil.WorldBackdropTexturePath
+        );
+        Assert.Equal(
+            WorldSeasonVisualCatalog.StarharvestWorldBackdropTexturePath,
+            starharvest.WorldBackdropTexturePath
+        );
+        Assert.Equal(
+            WorldSeasonVisualCatalog.LongnightWorldBackdropTexturePath,
+            longnight.WorldBackdropTexturePath
+        );
         Assert.Same(rainveil, WorldSeasonVisualCatalog.ForDay(28));
         Assert.Same(starharvest, WorldSeasonVisualCatalog.ForDay(42));
         Assert.Same(longnight, WorldSeasonVisualCatalog.ForDay(56));
     }
 
     [Fact]
-    public void AtlasContractKeepsAllExistingPropIndices()
+    public void CompositeMasterBackdropKeepsExistingPropAtlasContract()
     {
-        Assert.Equal(4, WorldSeasonVisualCatalog.GroundAtlasColumns);
-        Assert.Equal(8, WorldSeasonVisualCatalog.GroundAtlasRows);
-        Assert.Equal(16, WorldSeasonVisualCatalog.GroundAtlasCellSize);
-        Assert.Equal(7, WorldSeasonVisualCatalog.WaterAtlasRow);
-        Assert.Equal(4, WorldSeasonVisualCatalog.ShoreAtlasColumns);
-        Assert.Equal(4, WorldSeasonVisualCatalog.ShoreAtlasRows);
         Assert.Equal(
-            "res://assets/generated/world/terrain/world_ground_biomes.png",
-            WorldSeasonVisualCatalog.GroundAtlasTexturePath
+            "res://assets/generated/world/overworld/world_composite_gleamrise.png",
+            WorldSeasonVisualCatalog.DefaultWorldBackdropTexturePath
         );
         Assert.Equal(
-            "res://assets/generated/world/terrain/world_shore_tiles.png",
-            WorldSeasonVisualCatalog.ShoreAtlasTexturePath
+            4,
+            new[] { 14, 15, 29, 43 }
+                .Select(day => WorldSeasonVisualCatalog.ForDay(day)
+                    .WorldBackdropTexturePath)
+                .Distinct()
+                .Count()
         );
         Assert.Equal(4, WorldSeasonVisualCatalog.PropAtlasColumns);
         Assert.Equal(4, WorldSeasonVisualCatalog.PropAtlasRows);
         Assert.Equal(16, WorldSeasonVisualCatalog.PropAtlasEntryCount);
         Assert.Equal(313.5f, WorldSeasonVisualCatalog.PropAtlasCellSize);
-    }
-
-    [Fact]
-    public void GroundRowsAndShoreMasksFollowStableWorldTopology()
-    {
-        foreach (var biome in Enum.GetValues<WorldBiome>())
-        {
-            Assert.Equal((int)biome, WorldSeasonVisualCatalog.GroundAtlasRow(biome));
-        }
-
-        var waterCells = Enumerable.Range(0, WorldDefinition.Width)
-            .SelectMany(x => Enumerable.Range(0, WorldDefinition.Height)
-                .Select(y => new GridPosition(x, y)))
-            .Where(WorldDefinition.IsWater)
-            .ToArray();
-
-        Assert.NotEmpty(waterCells);
-        Assert.Contains(waterCells, cell =>
-            WorldSeasonVisualCatalog.ShoreMaskAt(cell) == 0);
-        Assert.Contains(waterCells, cell =>
-            WorldSeasonVisualCatalog.ShoreMaskAt(cell) != 0);
-        Assert.All(waterCells, cell => Assert.InRange(
-            WorldSeasonVisualCatalog.ShoreMaskAt(cell),
-            0,
-            15
-        ));
     }
 
     [Fact]

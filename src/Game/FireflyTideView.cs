@@ -15,7 +15,10 @@ public sealed partial class FireflyTideView : Node2D
         YSortEnabled = true;
         AddChild(new FireflyTideBackdrop());
         AddChild(new FireflyTideStationLayer(session));
-        AddChild(new FireflyTideNpcLayer(session));
+        AddChild(new NpcActorLayer(
+            session,
+            PlayerLocationIds.FireflyTide
+        ));
 
         _player = new PlayerController(CanOccupy)
         {
