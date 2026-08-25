@@ -57,6 +57,7 @@ public sealed partial class Main : Node
     private DeepMineOverlay? _deepMineOverlay;
     private StarGateOverlay? _starGateOverlay;
     private StellarResonanceOverlay? _stellarResonanceOverlay;
+    private JourneyRecapOverlay? _journeyRecapOverlay;
     private MainStoryEndingOverlay? _mainStoryEndingOverlay;
     private AccessibilitySettingsOverlay? _settingsOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
@@ -117,6 +118,10 @@ public sealed partial class Main : Node
 
         _session.NewGame(_locale.CurrentLocale);
         _session.CollectionEntryDiscovered += OnCollectionEntryDiscovered;
+        _session.StarlightPedestalRestored += pedestalId =>
+            Callable.From(() => TryShowRestoredStarlightStory(
+                pedestalId
+            )).CallDeferred();
         _locale.LocaleChanged += OnLocaleChanged;
         ShowTitle();
 
@@ -231,6 +236,14 @@ public sealed partial class Main : Node
             _deepMineOverlay is not null)
         {
             CloseDeepMine();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (overlayCancelPressed &&
+            _journeyRecapOverlay is not null)
+        {
+            CloseJourneyRecap();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -569,6 +582,7 @@ public sealed partial class Main : Node
         _deepMineOverlay is not null ||
         _starGateOverlay is not null ||
         _stellarResonanceOverlay is not null ||
+        _journeyRecapOverlay is not null ||
         _mainStoryEndingOverlay is not null ||
         _settingsOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
@@ -611,6 +625,7 @@ public sealed partial class Main : Node
         _deepMineOverlay is null &&
         _starGateOverlay is null &&
         _stellarResonanceOverlay is null &&
+        _journeyRecapOverlay is null &&
         _mainStoryEndingOverlay is null &&
         _settingsOverlay is null &&
         _gleamriseSeasonOverlay is null &&
@@ -638,6 +653,7 @@ public sealed partial class Main : Node
         _pauseOverlay = null;
         FreeUi(_dialogueOverlay);
         _dialogueOverlay = null;
+        _session.StarlightStory.CancelActive();
         FreeUi(_completionOverlay);
         _completionOverlay = null;
         FreeUi(_shopOverlay);
@@ -680,6 +696,8 @@ public sealed partial class Main : Node
         _starGateOverlay = null;
         FreeUi(_stellarResonanceOverlay);
         _stellarResonanceOverlay = null;
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
         FreeUi(_mainStoryEndingOverlay);
         _mainStoryEndingOverlay = null;
         FreeUi(_settingsOverlay);
@@ -971,32 +989,84 @@ public sealed partial class Main : Node
                     StartSixfoldStarGatePanelPlaytest,
                 [PlaytestScenarioId.StellarConvergence] =
                     StartStellarConvergencePlaytest,
+                [PlaytestScenarioId.Story01WoodlandDiscovery] =
+                    StartStory01WoodlandDiscoveryPlaytest,
+                [PlaytestScenarioId.Story01WoodlandRestoration] =
+                    StartStory01WoodlandRestorationPlaytest,
+                [PlaytestScenarioId.Story01WoodlandResponse] =
+                    StartStory01WoodlandResponsePlaytest,
+                [PlaytestScenarioId.Story01WoodlandRevisitEnglish] =
+                    StartStory01WoodlandRevisitEnglishPlaytest,
+                [PlaytestScenarioId.Story01FinalRevisitEnglish] =
+                    StartStory01FinalRevisitEnglishPlaytest,
+                [PlaytestScenarioId.Story01FinalRevisitPageTwoEnglish] =
+                    () => StartStory01FinalRevisitEnglishPlaytest(2),
+                [PlaytestScenarioId.Story01FinalRevisitPageThreeEnglish] =
+                    () => StartStory01FinalRevisitEnglishPlaytest(3),
+                [PlaytestScenarioId.Story01HomesteadResponse] =
+                    StartStory01HomesteadResponsePlaytest,
+                [PlaytestScenarioId.Story01MeadowResponse] =
+                    StartStory01MeadowResponsePlaytest,
+                [PlaytestScenarioId.Story01MoonwaterResponse] =
+                    StartStory01MoonwaterResponsePlaytest,
+                [PlaytestScenarioId.Story01CrystalValeResponse] =
+                    StartStory01CrystalValeResponsePlaytest,
+                [PlaytestScenarioId.Story01StarfallRuinsResponse] =
+                    StartStory01StarfallRuinsResponsePlaytest,
                 [PlaytestScenarioId.AccessibilitySettings] =
                     StartAccessibilitySettingsPlaytest,
                 [PlaytestScenarioId.LioraEventOne] =
                     StartLioraEventOnePlaytest,
                 [PlaytestScenarioId.LioraEventTwo] =
                     StartLioraEventTwoPlaytest,
+                [PlaytestScenarioId.LioraEventThree] =
+                    StartLioraEventThreePlaytest,
+                [PlaytestScenarioId.LioraEventFour] =
+                    StartLioraEventFourPlaytest,
                 [PlaytestScenarioId.TaviEventOne] =
                     StartTaviEventOnePlaytest,
                 [PlaytestScenarioId.TaviEventTwo] =
                     StartTaviEventTwoPlaytest,
+                [PlaytestScenarioId.TaviEventThree] =
+                    StartTaviEventThreePlaytest,
+                [PlaytestScenarioId.TaviEventFour] =
+                    StartTaviEventFourPlaytest,
                 [PlaytestScenarioId.NemiEventOne] =
                     StartNemiEventOnePlaytest,
                 [PlaytestScenarioId.NemiEventTwo] =
                     StartNemiEventTwoPlaytest,
+                [PlaytestScenarioId.NemiEventThree] =
+                    StartNemiEventThreePlaytest,
+                [PlaytestScenarioId.NemiEventFour] =
+                    StartNemiEventFourPlaytest,
                 [PlaytestScenarioId.KaelEventOne] =
                     StartKaelEventOnePlaytest,
                 [PlaytestScenarioId.KaelEventTwo] =
                     StartKaelEventTwoPlaytest,
+                [PlaytestScenarioId.KaelEventThree] =
+                    StartKaelEventThreePlaytest,
+                [PlaytestScenarioId.KaelEventFour] =
+                    StartKaelEventFourPlaytest,
                 [PlaytestScenarioId.SelaEventOne] =
                     StartSelaEventOnePlaytest,
                 [PlaytestScenarioId.SelaEventTwo] =
                     StartSelaEventTwoPlaytest,
+                [PlaytestScenarioId.SelaEventThree] =
+                    StartSelaEventThreePlaytest,
+                [PlaytestScenarioId.SelaEventFour] =
+                    StartSelaEventFourPlaytest,
+                [PlaytestScenarioId.HaldenEventThree] =
+                    StartHaldenEventThreePlaytest,
+                [PlaytestScenarioId.HaldenEventFour] =
+                    StartHaldenEventFourPlaytest,
                 [PlaytestScenarioId.OrinEventOne] =
                     StartOrinEventOnePlaytest,
                 [PlaytestScenarioId.OrinEventTwo] =
                     StartOrinEventTwoPlaytest,
+                [PlaytestScenarioId.OrinEventThree] =
+                    StartOrinEventThreePlaytest,
+                [PlaytestScenarioId.OrinEventFour] =
+                    StartOrinEventFourPlaytest,
                 [PlaytestScenarioId.ElowenEventOne] =
                     StartElowenEventOnePlaytest,
                 [PlaytestScenarioId.ElowenEventTwo] =
@@ -1005,6 +1075,190 @@ public sealed partial class Main : Node
                     StartVessaEventOnePlaytest,
                 [PlaytestScenarioId.VessaEventTwo] =
                     StartVessaEventTwoPlaytest,
+                [PlaytestScenarioId.VessaEventThree] =
+                    StartVessaEventThreePlaytest,
+                [PlaytestScenarioId.VessaEventFour] =
+                    StartVessaEventFourPlaytest,
+                [PlaytestScenarioId.NpcALioraRainResponse] =
+                    StartNpcALioraRainResponsePlaytest,
+                [PlaytestScenarioId.NpcATaviLongnightResponse] =
+                    StartNpcATaviLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcAVessaStardustResponse] =
+                    StartNpcAVessaStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcAOrinLongnightSnowResponse] =
+                    StartNpcAOrinLongnightSnowResponsePlaytest,
+                [PlaytestScenarioId.NpcAGroupEvent] =
+                    StartNpcAGroupEventPlaytest,
+                [PlaytestScenarioId.NpcAGroupEventEnglish] =
+                    StartNpcAGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcAGroupEventPageTwoEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageThreeEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageFourEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageFiveEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventWrongTool] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.NpcBNemiStardustResponse] =
+                    StartNpcBNemiStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcBKaelLongnightResponse] =
+                    StartNpcBKaelLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcBSelaStarharvestResponse] =
+                    StartNpcBSelaStarharvestResponsePlaytest,
+                [PlaytestScenarioId.NpcBHaldenStardustResponse] =
+                    StartNpcBHaldenStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcBGroupEvent] =
+                    StartNpcBGroupEventPlaytest,
+                [PlaytestScenarioId.NpcBGroupEventEnglish] =
+                    StartNpcBGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcBGroupEventPageTwoEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageThreeEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageFourEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageFiveEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventWrongTool] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.ElowenEventThree] =
+                    StartElowenEventThreePlaytest,
+                [PlaytestScenarioId.ElowenEventFour] =
+                    StartElowenEventFourPlaytest,
+                [PlaytestScenarioId.MaveaEventThree] =
+                    StartMaveaEventThreePlaytest,
+                [PlaytestScenarioId.MaveaEventFour] =
+                    StartMaveaEventFourPlaytest,
+                [PlaytestScenarioId.SivrenEventThree] =
+                    StartSivrenEventThreePlaytest,
+                [PlaytestScenarioId.SivrenEventFour] =
+                    StartSivrenEventFourPlaytest,
+                [PlaytestScenarioId.DorrikEventThree] =
+                    StartDorrikEventThreePlaytest,
+                [PlaytestScenarioId.DorrikEventFour] =
+                    StartDorrikEventFourPlaytest,
+                [PlaytestScenarioId.NpcCElowenRainveilResponse] =
+                    StartNpcCElowenRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcCMaveaRainResponse] =
+                    StartNpcCMaveaRainResponsePlaytest,
+                [PlaytestScenarioId.NpcCSivrenStarharvestResponse] =
+                    StartNpcCSivrenStarharvestResponsePlaytest,
+                [PlaytestScenarioId.NpcCDorrikRainveilResponse] =
+                    StartNpcCDorrikRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcCGroupEvent] =
+                    StartNpcCGroupEventPlaytest,
+                [PlaytestScenarioId.NpcCGroupEventEnglish] =
+                    StartNpcCGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcCGroupEventPageTwoEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageThreeEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageFourEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageFiveEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventWrongTool] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.YvaraEventThree] =
+                    StartYvaraEventThreePlaytest,
+                [PlaytestScenarioId.YvaraEventFour] =
+                    StartYvaraEventFourPlaytest,
+                [PlaytestScenarioId.BrialEventThree] =
+                    StartBrialEventThreePlaytest,
+                [PlaytestScenarioId.BrialEventFour] =
+                    StartBrialEventFourPlaytest,
+                [PlaytestScenarioId.PavriEventThree] =
+                    StartPavriEventThreePlaytest,
+                [PlaytestScenarioId.PavriEventFour] =
+                    StartPavriEventFourPlaytest,
+                [PlaytestScenarioId.RovenEventThree] =
+                    StartRovenEventThreePlaytest,
+                [PlaytestScenarioId.RovenEventFour] =
+                    StartRovenEventFourPlaytest,
+                [PlaytestScenarioId.NpcDYvaraRainResponse] =
+                    StartNpcDYvaraRainResponsePlaytest,
+                [PlaytestScenarioId.NpcDBrialLongnightResponse] =
+                    StartNpcDBrialLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcDPavriRainveilResponse] =
+                    StartNpcDPavriRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcDRovenRainResponse] =
+                    StartNpcDRovenRainResponsePlaytest,
+                [PlaytestScenarioId.NpcDGroupEvent] =
+                    StartNpcDGroupEventPlaytest,
+                [PlaytestScenarioId.NpcDGroupEventEnglish] =
+                    StartNpcDGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcDGroupEventPageTwoEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageThreeEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageFourEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageFiveEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventWrongTool] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
                 [PlaytestScenarioId.VessaEventWrongTool] =
                     StartVessaEventWrongToolPlaytest,
                 [PlaytestScenarioId.RelationshipMailsEnglish] =
@@ -4823,21 +5077,329 @@ public sealed partial class Main : Node
         save.Mining.NightwatchSkill.Experience = AdventureSkillCatalog
             .LevelThresholds[^1];
         _session.Restore(save);
-        var result = _session.CompleteMainStory();
-        if (!result.Succeeded)
+        BeginMainStoryFinale();
+    }
+
+    private void StartStory01WoodlandDiscoveryPlaytest()
+    {
+        FreeUi(_title);
+        _title = null;
+        _locale.SetLocale(LocaleService.SimplifiedChinese);
+        _session.NewGame(_locale.CurrentLocale);
+        _session.Quest.Restore(new QuestSave
         {
-            GD.PushError($"Could not prepare convergence playtest: {result.MessageKey}");
+            Stage = QuestStage.Complete
+        });
+        var pedestal = WorldDefinition.WoodlandStarlightCell;
+        _session.SetPlayerLocation(
+            pedestal.X * 16 + 8,
+            (pedestal.Y + 1) * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _session.Inventory.Select(0);
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (!_session.UseSelected(pedestal).Succeeded)
+        {
+            GD.PushError("Could not prepare STORY-01 woodland discovery.");
             return;
         }
-        SetWorldControls(false);
-        _mainStoryEndingOverlay = new MainStoryEndingOverlay(
-            _theme,
-            _session,
-            _locale
-        );
-        _mainStoryEndingOverlay.ContinueRequested += CloseMainStoryEnding;
-        _uiLayer.AddChild(_mainStoryEndingOverlay);
+        Callable.From(() => OpenStarlightPedestalFromWorld(
+            DataCatalog.WoodlandStarlightId
+        )).CallDeferred();
     }
+
+    private void StartStory01WoodlandRestorationPlaytest()
+    {
+        _locale.SetLocale(LocaleService.SimplifiedChinese);
+        var save = PrepareStory01WoodlandSave(day: 1);
+        save.StarlightStory = Story01Save(
+            (StarlightStoryCatalog.WoodlandDiscoveryId, 1)
+        );
+        RestoreWorldPlaytest(save);
+        Callable.From(() =>
+        {
+            var story = _session.BeginStarlightRestorationStory(
+                DataCatalog.WoodlandStarlightId
+            );
+            if (story is null)
+            {
+                GD.PushError("Could not prepare STORY-01 restoration story.");
+                return;
+            }
+            ShowStarlightStory(story);
+        }).CallDeferred();
+    }
+
+    private void StartStory01WoodlandResponsePlaytest()
+    {
+        _locale.SetLocale(LocaleService.SimplifiedChinese);
+        var save = PrepareStory01WoodlandSave(day: 2);
+        save.StarlightStory = Story01Save(
+            (StarlightStoryCatalog.WoodlandDiscoveryId, 1),
+            (StarlightStoryCatalog.WoodlandRestorationId, 1)
+        );
+        RestoreWorldPlaytest(save);
+        Callable.From(() =>
+        {
+            if (_dialogueOverlay is null)
+            {
+                GD.PushError("Could not prepare STORY-01 woodland response.");
+            }
+        }).CallDeferred();
+    }
+
+    private void StartStory01WoodlandRevisitEnglishPlaytest()
+    {
+        _locale.SetLocale(LocaleService.English);
+        var save = PrepareStory01WoodlandSave(day: 2);
+        save.MinuteOfDay = 10 * 60;
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        save.Village = new VillageSave
+        {
+            MetNpcIds = [VillageCatalog.LioraId]
+        };
+        save.StarlightStory = Story01Save(
+            (StarlightStoryCatalog.WoodlandDiscoveryId, 1),
+            (StarlightStoryCatalog.WoodlandRestorationId, 1),
+            (StarlightStoryCatalog.WoodlandResponseId, 2)
+        );
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+        var liora = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            save.Day,
+            save.MinuteOfDay
+        );
+        if (liora is null || liora.LocationId != PlayerLocationIds.MoonlitArchive)
+        {
+            GD.PushError("Could not resolve Liora for STORY-01 revisit.");
+            return;
+        }
+        liora = PlacePlayerAdjacentForPlaytest(liora);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        var target = liora.Position;
+        Callable.From(() => TalkToVillager(target)).CallDeferred();
+    }
+
+    private void StartStory01FinalRevisitEnglishPlaytest() =>
+        StartStory01FinalRevisitEnglishPlaytest(1);
+
+    private void StartStory01FinalRevisitEnglishPlaytest(int page)
+    {
+        _locale.SetLocale(LocaleService.English);
+        PrepareStarfallRuinsStarlightPlaytest(restored: true);
+        var save = _session.Capture();
+        save.Day = 30;
+        save.MinuteOfDay = 10 * 60;
+        save.Player.LocationId = PlayerLocationIds.MoonlitArchive;
+        var orderedNpcs = VillageCatalog.Npcs.Values
+            .OrderBy(npc => npc.ScheduleOrder)
+            .ToArray();
+        save.Village = new VillageSave
+        {
+            MetNpcIds = orderedNpcs.Select(npc => npc.Id).ToList(),
+            Relationships = orderedNpcs.Select((npc, index) =>
+                new VillageRelationshipSave
+                {
+                    NpcId = npc.Id,
+                    Points = Math.Max(1, 100 - index)
+                }
+            ).ToList()
+        };
+        save.Exploration = new ExplorationSave
+        {
+            DiscoveredChunks = Enumerable.Range(
+                    0,
+                    WorldDefinition.ChunkRows
+                )
+                .SelectMany(y => Enumerable.Range(
+                    0,
+                    WorldDefinition.ChunkColumns
+                ).Select(x => WorldDefinition.ChunkId(
+                    new ChunkPosition(x, y)
+                )))
+                .ToList()
+        };
+        save.StarlightStory = Story01Save(
+            (StarlightStoryCatalog.StarfallRuinsDiscoveryId, 29),
+            (StarlightStoryCatalog.StarfallRuinsRestorationId, 29),
+            (StarlightStoryCatalog.StarfallRuinsResponseId, 30)
+        );
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+        var liora = VillageCatalog.CurrentNpc(
+            VillageCatalog.LioraId,
+            save.Day,
+            save.MinuteOfDay
+        );
+        if (liora is null || liora.LocationId != PlayerLocationIds.MoonlitArchive)
+        {
+            GD.PushError("Could not resolve final STORY-01 Liora revisit.");
+            return;
+        }
+        liora = PlacePlayerAdjacentForPlaytest(liora);
+        _playing = true;
+        EnsureHud();
+        ShowArchive(false);
+        var target = liora.Position;
+        Callable.From(() =>
+        {
+            TalkToVillager(target);
+            for (var index = 1; index < page; index++)
+            {
+                _dialogueOverlay?.AdvanceOnePageForPlaytest();
+            }
+        }).CallDeferred();
+    }
+
+    private void StartStory01HomesteadResponsePlaytest() =>
+        StartStory01ResponsePlaytest(
+            DataCatalog.HomesteadStarlightId,
+            WorldBiome.Home,
+            FarmLayout.HomesteadStoryResponseCell,
+            StarlightStoryCatalog.HomesteadDiscoveryId,
+            StarlightStoryCatalog.HomesteadRestorationId
+        );
+
+    private void StartStory01MeadowResponsePlaytest() =>
+        StartStory01ResponsePlaytest(
+            DataCatalog.MeadowStarlightId,
+            WorldBiome.StarfallMeadow,
+            WorldDefinition.MeadowStarlightCell,
+            StarlightStoryCatalog.MeadowDiscoveryId,
+            StarlightStoryCatalog.MeadowRestorationId
+        );
+
+    private void StartStory01MoonwaterResponsePlaytest() =>
+        StartStory01ResponsePlaytest(
+            DataCatalog.MoonwaterStarlightId,
+            WorldBiome.MoonwaterWetlands,
+            WorldDefinition.MoonwaterStarlightCell,
+            StarlightStoryCatalog.MoonwaterDiscoveryId,
+            StarlightStoryCatalog.MoonwaterRestorationId
+        );
+
+    private void StartStory01CrystalValeResponsePlaytest() =>
+        StartStory01ResponsePlaytest(
+            DataCatalog.CrystalValeStarlightId,
+            WorldBiome.StarfallRuins,
+            StarfallRuinsTrialLayout.WorldEntryCell,
+            StarlightStoryCatalog.CrystalValeDiscoveryId,
+            StarlightStoryCatalog.CrystalValeRestorationId
+        );
+
+    private void StartStory01StarfallRuinsResponsePlaytest() =>
+        StartStory01ResponsePlaytest(
+            DataCatalog.StarfallRuinsStarlightId,
+            WorldBiome.LumenVillage,
+            FarmLayout.StarGateCell,
+            StarlightStoryCatalog.StarfallRuinsDiscoveryId,
+            StarlightStoryCatalog.StarfallRuinsRestorationId
+        );
+
+    private void StartStory01ResponsePlaytest(
+        string pedestalId,
+        WorldBiome biome,
+        GridPosition responseCell,
+        string discoveryId,
+        string restorationId
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _locale.SetLocale(LocaleService.SimplifiedChinese);
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 2;
+        save.MinuteOfDay = 10 * 60;
+        save.Quest.Stage = QuestStage.Complete;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = responseCell.X * 16 + 8;
+        save.Player.Y = responseCell.Y * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        _session.Restore(save);
+
+        var definition = DataCatalog.StarlightPedestal(pedestalId);
+        _session.Starlight.Restore(
+            new StarlightSave
+            {
+                Pedestals = [CompletedPedestalSave(definition)]
+            },
+            CompletedStarlightProgressContext(definition)
+        );
+        _session.SetPlayerLocation(
+            responseCell.X * 16 + 8,
+            responseCell.Y * 16 + 8,
+            PlayerLocationIds.World
+        );
+        _session.StarlightStory.Restore(
+            Story01Save((discoveryId, 1), (restorationId, 1)),
+            _session.Clock.Day,
+            new StarlightStoryProgressContext(
+                _session.Clock.Day,
+                PlayerLocationIds.World,
+                biome,
+                new HashSet<string>(
+                    [pedestalId],
+                    StringComparer.Ordinal
+                ),
+                new HashSet<string>(
+                    [pedestalId],
+                    StringComparer.Ordinal
+                ),
+                new HashSet<string>(StringComparer.Ordinal),
+                StarlightStoryProgressContext.ExploredBiomesFrom(
+                    _session.Exploration.DiscoveredChunks
+                ),
+                new HashSet<string>(StringComparer.Ordinal),
+                false,
+                responseCell
+            )
+        );
+
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+    }
+
+    private GameSaveV1 PrepareStory01WoodlandSave(int day)
+    {
+        FreeUi(_title);
+        _title = null;
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        var pedestal = WorldDefinition.WoodlandStarlightCell;
+        save.Day = day;
+        save.MinuteOfDay = 10 * 60;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.X = pedestal.X * 16 + 8;
+        save.Player.Y = (pedestal.Y + 1) * 16 + 8;
+        save.Player.SelectedSlot = 0;
+        save.Quest.Stage = QuestStage.Complete;
+        save.Starlight = new StarlightSave
+        {
+            Pedestals =
+            [
+                CompletedPedestalSave(DataCatalog.WoodlandStarlight)
+            ]
+        };
+        return save;
+    }
+
+    private static StarlightStorySave Story01Save(
+        params (string BeatId, int CompletedDay)[] entries
+    ) => new()
+    {
+        Entries = entries.Select(entry => new StarlightStoryEntrySave
+        {
+            BeatId = entry.BeatId,
+            CompletedDay = entry.CompletedDay
+        }).ToList()
+    };
 
     private void StartAccessibilitySettingsPlaytest()
     {
@@ -5023,6 +5585,27 @@ public sealed partial class Main : Node
             .ToList()
     };
 
+    private static StarlightProgressContext CompletedStarlightProgressContext(
+        StarlightPedestalDefinition definition
+    ) => new(
+        definition.Nodes
+            .Where(node =>
+                node.SourceKind == StarlightNodeSourceKind.FestivalResults
+            )
+            .SelectMany(node => node.SourceIds ?? [])
+            .ToHashSet(StringComparer.Ordinal),
+        definition.Nodes
+            .Where(node => node.SourceKind == StarlightNodeSourceKind.Milestones)
+            .SelectMany(node => node.SourceIds ?? [])
+            .ToHashSet(StringComparer.Ordinal),
+        definition.Nodes
+            .Where(node =>
+                node.SourceKind == StarlightNodeSourceKind.PedestalRewards
+            )
+            .SelectMany(node => node.SourceIds ?? [])
+            .ToHashSet(StringComparer.Ordinal)
+    );
+
     private void RestoreWorldPlaytest(GameSaveV1 save)
     {
         _session.Restore(save);
@@ -5171,6 +5754,16 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartLioraEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcALioraMarginOfLivingRoutesId
+        );
+
+    private void StartLioraEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcALioraFirstUncopiedChartId
+        );
+
     private void StartArchivePlaytest(
         bool openDialogue,
         bool giveGift
@@ -5245,6 +5838,16 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartTaviEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcATaviStoneThatAnswersFootstepsId
+        );
+
+    private void StartTaviEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcATaviJointWithRoomToMoveId
+        );
+
     private void StartNemiEventOnePlaytest()
     {
         StartCatalogCharacterEventPlaytest(
@@ -5258,6 +5861,16 @@ public sealed partial class Main : Node
             CharacterEventCatalog.NemiStarChartRouteId
         );
     }
+
+    private void StartNemiEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBNemiDeliveryThatNeededNoAnswerId
+        );
+
+    private void StartNemiEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBNemiHookForHerOwnMailbagId
+        );
 
     private void StartKaelEventOnePlaytest()
     {
@@ -5273,6 +5886,16 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartKaelEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBKaelPatrolLeftUnfinishedOnPurposeId
+        );
+
+    private void StartKaelEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBKaelLastMarkerOnTheReturnBoardId
+        );
+
     private void StartSelaEventOnePlaytest()
     {
         StartCatalogCharacterEventPlaytest(
@@ -5286,6 +5909,26 @@ public sealed partial class Main : Node
             CharacterEventCatalog.SelaSharedForgeRhythmId
         );
     }
+
+    private void StartSelaEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBSelaInstructionsBeyondHerHandsId
+        );
+
+    private void StartSelaEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBSelaHammerFittedToHerHandId
+        );
+
+    private void StartHaldenEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBHaldenBowlThatDidNotNeedEmptyingId
+        );
+
+    private void StartHaldenEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcBHaldenBellHeChoseNotToRingId
+        );
 
     private void StartOrinEventOnePlaytest()
     {
@@ -5301,6 +5944,16 @@ public sealed partial class Main : Node
         );
     }
 
+    private void StartOrinEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcAOrinOrderHeDeclinedId
+        );
+
+    private void StartOrinEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcAOrinCaseHeUnpackedId
+        );
+
     private void StartElowenEventOnePlaytest() =>
         StartCatalogCharacterEventPlaytest(
             CharacterEventCatalog.ElowenTideMarksAtTheWellId
@@ -5309,6 +5962,86 @@ public sealed partial class Main : Node
     private void StartElowenEventTwoPlaytest() =>
         StartCatalogCharacterEventPlaytest(
             CharacterEventCatalog.ElowenWaterlineReadTogetherId
+        );
+
+    private void StartElowenEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCElowenWaterWithTwoHonestNamesId
+        );
+
+    private void StartElowenEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCElowenMarkerAllowedToDriftId
+        );
+
+    private void StartMaveaEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCMaveaRecipeThatChangedWithTheTableId
+        );
+
+    private void StartMaveaEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCMaveaLastJarOpenedOnAnOrdinaryDayId
+        );
+
+    private void StartSivrenEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCSivrenTwoMemoriesUnderOneDateId
+        );
+
+    private void StartSivrenEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCSivrenFirstPersonFootnoteId
+        );
+
+    private void StartDorrikEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCDorrikMaintenancePathBehindTheBraceId
+        );
+
+    private void StartDorrikEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcCDorrikPlanReturnedToItsUsersId
+        );
+
+    private void StartYvaraEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDYvaraTheDaySheLeftTheCaseClosedId
+        );
+
+    private void StartYvaraEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDYvaraASeedRecordInTwoHandsId
+        );
+
+    private void StartBrialEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDBrialTheOrchardRoundWithAnEmptyBasketId
+        );
+
+    private void StartBrialEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDBrialThePruningMarkHeErasedId
+        );
+
+    private void StartPavriEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDPavriTheCuffTestedInMotionId
+        );
+
+    private void StartPavriEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDPavriOneStitchBesideTheOldId
+        );
+
+    private void StartRovenEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDRovenTheCornerPeopleAlreadyChoseId
+        );
+
+    private void StartRovenEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcDRovenARouteForAnOrdinaryDayId
         );
 
     private void StartVessaEventOnePlaytest() =>
@@ -5320,6 +6053,360 @@ public sealed partial class Main : Node
         StartCatalogCharacterEventPlaytest(
             CharacterEventCatalog.VessaPathThatListensBackId
         );
+
+    private void StartVessaEventThreePlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcAVessaPatchLeftUngatheredId
+        );
+
+    private void StartVessaEventFourPlaytest() =>
+        StartCatalogCharacterEventPlaytest(
+            CharacterEventCatalog.NpcAVessaCupBrewedForHerselfId
+        );
+
+    private void StartNpcALioraRainResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.LioraId,
+            day: 1,
+            DataCatalog.RainWeatherId,
+            "village.npc.liora.weather_rain"
+        );
+
+    private void StartNpcATaviLongnightResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.TaviId,
+            day: 43,
+            DataCatalog.ClearWeatherId,
+            "village.npc.tavi.season_longnight"
+        );
+
+    private void StartNpcAVessaStardustResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.VessaId,
+            day: 1,
+            DataCatalog.StardustWindWeatherId,
+            "village.npc.vessa.weather_stardust"
+        );
+
+    private void StartNpcAOrinLongnightSnowResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.OrinId,
+            day: 43,
+            DataCatalog.LongnightSnowWeatherId,
+            "village.npc.orin.weather_longnight_snow"
+        );
+
+    private void StartNpcBNemiStardustResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.NemiId,
+            day: 1,
+            DataCatalog.StardustWindWeatherId,
+            "village.npc.nemi.weather_stardust"
+        );
+
+    private void StartNpcBKaelLongnightResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.KaelId,
+            day: 43,
+            DataCatalog.ClearWeatherId,
+            "village.npc.kael.season_longnight"
+        );
+
+    private void StartNpcBSelaStarharvestResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.SelaId,
+            day: 29,
+            DataCatalog.ClearWeatherId,
+            "village.npc.sela.season_starharvest"
+        );
+
+    private void StartNpcBHaldenStardustResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.HaldenId,
+            day: 1,
+            DataCatalog.StardustWindWeatherId,
+            "village.npc.halden.weather_stardust"
+        );
+
+    private void StartNpcCElowenRainveilResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.ElowenId,
+            day: 15,
+            DataCatalog.ClearWeatherId,
+            "village.npc.elowen.season_rainveil"
+        );
+
+    private void StartNpcCMaveaRainResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.MaveaId,
+            day: 1,
+            DataCatalog.RainWeatherId,
+            "village.npc.mavea.weather_rain"
+        );
+
+    private void StartNpcCSivrenStarharvestResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.SivrenId,
+            day: 29,
+            DataCatalog.ClearWeatherId,
+            "village.npc.sivren.season_starharvest"
+        );
+
+    private void StartNpcCDorrikRainveilResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.DorrikId,
+            day: 15,
+            DataCatalog.ClearWeatherId,
+            "village.npc.dorrik.season_rainveil"
+        );
+
+    private void StartNpcDYvaraRainResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.YvaraId,
+            day: 1,
+            DataCatalog.RainWeatherId,
+            "village.npc.yvara.weather_rain",
+            minuteOfDay: 11 * 60
+        );
+
+    private void StartNpcDBrialLongnightResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.BrialId,
+            day: 43,
+            DataCatalog.ClearWeatherId,
+            "village.npc.brial.season_longnight",
+            minuteOfDay: 10 * 60
+        );
+
+    private void StartNpcDPavriRainveilResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.PavriId,
+            day: 15,
+            DataCatalog.ClearWeatherId,
+            "village.npc.pavri.season_rainveil",
+            minuteOfDay: 10 * 60
+        );
+
+    private void StartNpcDRovenRainResponsePlaytest() =>
+        StartNpcConditionResponsePlaytest(
+            VillageCatalog.RovenId,
+            day: 1,
+            DataCatalog.RainWeatherId,
+            "village.npc.roven.weather_rain"
+        );
+
+    private void StartNpcConditionResponsePlaytest(
+        string npcId,
+        int day,
+        string weatherId,
+        string expectedDialogueKey,
+        int minuteOfDay = 14 * 60
+    )
+    {
+        FreeUi(_title);
+        _title = null;
+        _locale.SetLocale(LocaleService.SimplifiedChinese);
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = day;
+        save.MinuteOfDay = minuteOfDay;
+        save.Locale = LocaleService.SimplifiedChinese;
+        save.Weather = new WeatherSave
+        {
+            Day = day,
+            CurrentId = weatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Village = new VillageSave { MetNpcIds = [npcId] };
+        var catalogNpc = VillageCatalog.CurrentNpc(
+            npcId,
+            day,
+            minuteOfDay,
+            weatherId
+        );
+        if (catalogNpc is null ||
+            catalogNpc.DialogueKey != expectedDialogueKey)
+        {
+            GD.PushError(
+                $"Could not resolve NPC condition response {expectedDialogueKey}."
+            );
+            return;
+        }
+        save.Player.LocationId = catalogNpc.LocationId;
+        save.Player.X = 8;
+        save.Player.Y = 8;
+        _session.Restore(save);
+        _session.Inventory.Select(0);
+        var npc = _session.Village.CurrentNpcs(
+                day,
+                minuteOfDay,
+                catalogNpc.LocationId,
+                _session.PlayerCell
+            )
+            .SingleOrDefault(state => state.Definition.Id == npcId);
+        if (npc is null || npc.DialogueKey != expectedDialogueKey)
+        {
+            GD.PushError(
+                $"Could not project NPC condition response {expectedDialogueKey}."
+            );
+            return;
+        }
+        npc = PlacePlayerAdjacentForPlaytest(npc);
+        _playing = true;
+        EnsureHud();
+        ShowCharacterEventLocation(catalogNpc.LocationId);
+        var target = npc.Position;
+        Callable.From(() => TalkToVillager(target)).CallDeferred();
+    }
+
+    private void StartNpcAGroupEventPlaytest() =>
+        StartNpcAGroupEventPlaytest(LocaleService.SimplifiedChinese);
+
+    private void StartNpcAGroupEventEnglishPlaytest() =>
+        StartNpcAGroupEventPlaytest(LocaleService.English);
+
+    private void StartNpcAGroupEventPlaytest(
+        string locale,
+        int page = 1,
+        bool wrongTool = false
+    ) => StartGroupCharacterEventPlaytest(
+        GroupCharacterEventCatalog.NpcAFourRoutesOneLanternId,
+        locale,
+        page,
+        wrongTool
+    );
+
+    private void StartNpcBGroupEventPlaytest() =>
+        StartNpcBGroupEventPlaytest(LocaleService.SimplifiedChinese);
+
+    private void StartNpcBGroupEventEnglishPlaytest() =>
+        StartNpcBGroupEventPlaytest(LocaleService.English);
+
+    private void StartNpcBGroupEventPlaytest(
+        string locale,
+        int page = 1,
+        bool wrongTool = false
+    ) => StartGroupCharacterEventPlaytest(
+        GroupCharacterEventCatalog.NpcBLastLampWaitsForReturnId,
+        locale,
+        page,
+        wrongTool
+    );
+
+    private void StartNpcCGroupEventPlaytest() =>
+        StartNpcCGroupEventPlaytest(LocaleService.SimplifiedChinese);
+
+    private void StartNpcCGroupEventEnglishPlaytest() =>
+        StartNpcCGroupEventPlaytest(LocaleService.English);
+
+    private void StartNpcCGroupEventPlaytest(
+        string locale,
+        int page = 1,
+        bool wrongTool = false
+    ) => StartGroupCharacterEventPlaytest(
+        GroupCharacterEventCatalog.NpcCOneOpenCornerFourUsesId,
+        locale,
+        page,
+        wrongTool
+    );
+
+    private void StartNpcDGroupEventPlaytest() =>
+        StartNpcDGroupEventPlaytest(LocaleService.SimplifiedChinese);
+
+    private void StartNpcDGroupEventEnglishPlaytest() =>
+        StartNpcDGroupEventPlaytest(LocaleService.English);
+
+    private void StartNpcDGroupEventPlaytest(
+        string locale,
+        int page = 1,
+        bool wrongTool = false
+    ) => StartGroupCharacterEventPlaytest(
+        GroupCharacterEventCatalog.NpcDOneBenchFourKindsOfReadinessId,
+        locale,
+        page,
+        wrongTool
+    );
+
+    private void StartGroupCharacterEventPlaytest(
+        string eventId,
+        string locale,
+        int page,
+        bool wrongTool
+    )
+    {
+        var definition = GroupCharacterEventCatalog.ById[eventId];
+        FreeUi(_title);
+        _title = null;
+        _locale.SetLocale(locale);
+        _session.NewGame(_locale.CurrentLocale);
+        var save = _session.Capture();
+        save.Day = 7;
+        save.MinuteOfDay = definition.RequiredStartMinute + 60;
+        save.Locale = locale;
+        save.Player.LocationId = PlayerLocationIds.World;
+        save.Player.SelectedSlot = 0;
+        save.Weather = new WeatherSave
+        {
+            Day = save.Day,
+            CurrentId = DataCatalog.ClearWeatherId,
+            ForecastId = DataCatalog.ClearWeatherId
+        };
+        save.Village = new VillageSave
+        {
+            MetNpcIds = definition.ParticipantNpcIds.ToList(),
+            Relationships = definition.ParticipantNpcIds.Select(npcId =>
+                new VillageRelationshipSave
+                {
+                    NpcId = npcId,
+                    Points = definition.RequiredRelationshipPoints,
+                    LastTalkDay = save.Day
+                }
+            ).ToList()
+        };
+        save.CharacterEvents = new CharacterEventSave
+        {
+            Entries = definition.ParticipantNpcIds.SelectMany(npcId =>
+                CharacterEventCatalog.Definitions
+                    .Where(eventDefinition =>
+                        eventDefinition.NpcId == npcId
+                    )
+                    .OrderBy(eventDefinition =>
+                        eventDefinition.RequiredRelationshipPoints)
+                    .Select((eventDefinition, index) =>
+                        new CharacterEventEntrySave
+                        {
+                            EventId = eventDefinition.Id,
+                            CompletedDay = index + 1
+                        }
+                    )
+            ).ToList()
+        };
+        _session.Restore(save);
+        _session.Inventory.Select(wrongTool ? 1 : 0);
+        var triggerNpc = _session.Village.CurrentNpcs(
+                save.Day,
+                save.MinuteOfDay,
+                PlayerLocationIds.World
+            )
+            .Single(npc => npc.Definition.Id == definition.TriggerNpcId);
+        triggerNpc = PlacePlayerAdjacentForPlaytest(triggerNpc);
+
+        _playing = true;
+        EnsureHud();
+        ShowFarm(false);
+        if (!wrongTool)
+        {
+            var target = triggerNpc.Position;
+            Callable.From(() =>
+            {
+                TalkToVillager(target);
+                for (var index = 1; index < page; index++)
+                {
+                    _dialogueOverlay?.AdvanceOnePageForPlaytest();
+                }
+            }).CallDeferred();
+        }
+    }
 
     private void StartVessaEventWrongToolPlaytest() =>
         StartCatalogCharacterEventPlaytest(
@@ -5482,6 +6569,12 @@ public sealed partial class Main : Node
         var save = _session.Capture();
         save.Day = trigger.Day;
         save.MinuteOfDay = trigger.Minute;
+        save.Weather = new WeatherSave
+        {
+            Day = trigger.Day,
+            CurrentId = WeatherSystem.WeatherForDay(trigger.Day),
+            ForecastId = WeatherSystem.WeatherForDay(trigger.Day + 1)
+        };
         save.Player.LocationId = definition.RequiredLocationId;
         save.Player.X = 8;
         save.Player.Y = 8;
@@ -5498,18 +6591,19 @@ public sealed partial class Main : Node
                 }
             ]
         };
-        if (definition.RequiredPreviousEventId is not null)
+        var prerequisiteIds = CharacterEventPrerequisiteIds(definition);
+        if (prerequisiteIds.Count > 0)
         {
             save.CharacterEvents = new CharacterEventSave
             {
-                Entries =
-                [
+                Entries = prerequisiteIds.Select((id, index) =>
                     new CharacterEventEntrySave
                     {
-                        EventId = definition.RequiredPreviousEventId,
-                        CompletedDay = trigger.Day - 1
+                        EventId = id,
+                        CompletedDay = trigger.Day -
+                            prerequisiteIds.Count + index
                     }
-                ]
+                ).ToList()
             };
         }
         _session.Restore(save);
@@ -5518,7 +6612,8 @@ public sealed partial class Main : Node
         var npc = _session.Village.CurrentNpcs(
                 trigger.Day,
                 trigger.Minute,
-                definition.RequiredLocationId
+                definition.RequiredLocationId,
+                _session.PlayerCell
             )
             .FirstOrDefault(state =>
                 state.Definition.Id == definition.NpcId
@@ -5658,7 +6753,10 @@ public sealed partial class Main : Node
         CharacterEventDefinition definition
     )
     {
-        var firstDay = definition.RequiredPreviousEventId is null ? 1 : 2;
+        var firstDay = Math.Max(
+            5,
+            CharacterEventPrerequisiteIds(definition).Count + 1
+        );
         var npc = VillageCatalog.Npcs[definition.NpcId];
         for (var day = firstDay;
              day <= CalendarSystem.DaysPerYear;
@@ -5687,6 +6785,24 @@ public sealed partial class Main : Node
         throw new InvalidOperationException(
             $"No schedule trigger exists for {definition.Id}."
         );
+    }
+
+    private static IReadOnlyList<string> CharacterEventPrerequisiteIds(
+        CharacterEventDefinition definition
+    )
+    {
+        var reversed = new List<string>();
+        var prerequisiteId = definition.RequiredPreviousEventId;
+        while (prerequisiteId is not null)
+        {
+            reversed.Add(prerequisiteId);
+            prerequisiteId = CharacterEventCatalog.ById[
+                prerequisiteId
+            ].RequiredPreviousEventId;
+        }
+
+        reversed.Reverse();
+        return reversed;
     }
 
     private void StartWorkshopPlaytest()
@@ -6725,17 +7841,18 @@ public sealed partial class Main : Node
         _farm.ShippingRequested += OpenShipping;
         _farm.CommissionRequested += OpenCommissionBoard;
         _farm.MailRequested += OpenStarlightMail;
-        _farm.StarlightRequested += OpenStarlightPedestal;
+        _farm.StarlightRequested += OpenStarlightPedestalFromWorld;
         _farm.VillagerRequested += TalkToVillager;
         _farm.StorageRequested += OpenStorage;
         _farm.HomesteadWorkbenchRequested +=
             OpenHomesteadConstructionPanel;
         _farm.NoticeRequested += key => _hud?.ShowNotice(key);
-        _farm.RegionEntered += key => _hud?.ShowNotice(key, 2.6);
-        _farm.StepRequested += () => _audio.Play(PixelSound.Step);
+        _farm.RegionEntered += HandleRegionEntered;
+        _farm.StepRequested += HandleWorldStep;
         _world = _farm;
         AddChild(_world);
         MoveChild(_world, 1);
+        _farm.EmitCurrentRegion();
         if (fromCottage)
         {
             _hud?.ShowNotice("notice.leave_cottage");
@@ -7494,6 +8611,17 @@ public sealed partial class Main : Node
         }
 
         _audio.Play(PixelSound.Chime);
+        if (conversation.StarlightStory is { } starlightStory)
+        {
+            ShowStarlightStory(starlightStory);
+            return;
+        }
+        if (conversation.GroupCharacterEvent is { } groupCharacterEvent)
+        {
+            ShowGroupCharacterEvent(groupCharacterEvent);
+            return;
+        }
+
         var icon = conversation.GiftReaction is { } giftReaction
             ? GeneratedArt.GiftReactionIcon(giftReaction)
             : GeneratedArt.RelationshipIcon(
@@ -7532,6 +8660,35 @@ public sealed partial class Main : Node
             },
             icon,
             relationshipStatus
+        );
+    }
+
+    private void ShowGroupCharacterEvent(
+        GroupCharacterEventDialogue groupEvent
+    )
+    {
+        var speakerKeys = groupEvent.Pages
+            .Select(page => VillageCatalog.Npcs[
+                page.SpeakerNpcId
+            ].NameKey)
+            .ToArray();
+        ShowDialoguePages(
+            speakerKeys[0],
+            groupEvent.Pages.Select(page => page.DialogueKey).ToArray(),
+            () =>
+            {
+                var completion = _session.CompleteGroupCharacterEvent(
+                    groupEvent.EventId
+                );
+                if (!completion.Succeeded)
+                {
+                    _hud?.ShowNotice(completion.MessageKey);
+                    return;
+                }
+
+                SaveNow(false);
+            },
+            speakerKeys: speakerKeys
         );
     }
 
@@ -8663,6 +9820,21 @@ public sealed partial class Main : Node
         DataCatalog.WoodlandStarlightId
     );
 
+    private void OpenStarlightPedestalFromWorld(string pedestalId)
+    {
+        var story = _session.BeginNextPedestalStory(pedestalId);
+        if (story is not null)
+        {
+            ShowStarlightStory(
+                story,
+                () => OpenStarlightPedestalFromWorld(pedestalId)
+            );
+            return;
+        }
+
+        OpenStarlightPedestal(pedestalId);
+    }
+
     private void OpenStarlightPedestal(string pedestalId)
     {
         if (_starlightOverlay is not null)
@@ -8671,7 +9843,6 @@ public sealed partial class Main : Node
         }
 
         SetWorldControls(false);
-        _session.Starlight.Discover(pedestalId);
         _starlightOverlay = new StarlightPedestalOverlay(
             _theme,
             _session,
@@ -8684,7 +9855,30 @@ public sealed partial class Main : Node
             _audio.Play(PixelSound.Chime);
             SaveNow(false);
         };
+        _starlightOverlay.StoryBeatRequested += ResumeStarlightStory;
         _uiLayer.AddChild(_starlightOverlay);
+    }
+
+    private void ResumeStarlightStory(string pedestalId)
+    {
+        CloseStarlightPedestal();
+        OpenStarlightPedestalFromWorld(pedestalId);
+    }
+
+    private void TryShowRestoredStarlightStory(string pedestalId)
+    {
+        if (!_playing ||
+            _dialogueOverlay is not null ||
+            _farm is null)
+        {
+            return;
+        }
+
+        var story = _session.BeginNextPedestalStory(pedestalId);
+        if (story is not null)
+        {
+            ShowStarlightStory(story);
+        }
     }
 
     private void CloseStarlightPedestal()
@@ -8808,27 +10002,110 @@ public sealed partial class Main : Node
         IReadOnlyList<string> dialogueKeys,
         Action closed,
         Texture2D? icon = null,
-        string status = ""
+        string status = "",
+        IReadOnlyList<IReadOnlyList<object>>? dialogueArguments = null,
+        IReadOnlyList<string>? speakerKeys = null
     )
     {
         SetWorldControls(false);
         _dialogueOverlay = new DialogueOverlay(_theme, _locale);
         _dialogueOverlay.ShowDialoguePages(
             _locale.Tr(speakerKey),
-            dialogueKeys.Select(key => _locale.Tr(key)).ToList(),
+            dialogueKeys.Select((key, index) =>
+            {
+                var arguments = dialogueArguments is not null &&
+                    index < dialogueArguments.Count
+                        ? dialogueArguments[index]
+                            .Select(ResolveStarlightStoryArgument)
+                            .ToArray()
+                        : [];
+                return _locale.Tr(key, arguments);
+            }).ToList(),
             () =>
             {
                 _dialogueOverlay = null;
                 closed();
                 if (CanRestoreWorldControls)
                 {
+                    TryShowCurrentRegionStory();
+                }
+                if (CanRestoreWorldControls)
+                {
                     SetWorldControls(true);
                 }
             },
             icon,
-            status
+            status,
+            speakerKeys?.Select(key => _locale.Tr(key)).ToArray()
         );
         _uiLayer.AddChild(_dialogueOverlay);
+    }
+
+    private void ShowStarlightStory(
+        StarlightStoryDialogue story,
+        Action? closed = null
+    )
+    {
+        ShowDialoguePages(
+            story.SpeakerKey,
+            story.DialogueKeys,
+            () =>
+            {
+                var result = _session.CompleteStarlightStoryBeat(
+                    story.BeatId
+                );
+                if (!result.Succeeded)
+                {
+                    _hud?.ShowNotice(result.MessageKey);
+                    return;
+                }
+
+                SaveNow(false);
+                closed?.Invoke();
+            },
+            status: _locale.Tr(story.StatusKey),
+            dialogueArguments: story.DialogueArguments
+        );
+    }
+
+    private object ResolveStarlightStoryArgument(object argument) =>
+        argument is StarlightStoryLocalizedListArgument list
+            ? list.Keys.Count == 0
+                ? _locale.Tr(list.EmptyKey)
+                : string.Join(
+                    _locale.Tr(list.SeparatorKey),
+                    list.Keys.Select(key => _locale.Tr(key))
+                )
+            : argument;
+
+    private void HandleWorldStep()
+    {
+        _audio.Play(PixelSound.Step);
+        TryShowCurrentRegionStory();
+    }
+
+    private void HandleRegionEntered(string regionKey)
+    {
+        _hud?.ShowNotice(regionKey, 2.6);
+        TryShowCurrentRegionStory();
+    }
+
+    private void TryShowCurrentRegionStory()
+    {
+        if (_dialogueOverlay is not null ||
+            _farm is null ||
+            _session.PlayerLocationId != PlayerLocationIds.World)
+        {
+            return;
+        }
+
+        var story = _session.BeginStarlightRegionResponse(
+            WorldDefinition.GetBiome(_session.PlayerCell)
+        );
+        if (story is not null)
+        {
+            ShowStarlightStory(story);
+        }
     }
 
     private static string RelationshipTierKey(
@@ -9257,13 +10534,41 @@ public sealed partial class Main : Node
             return;
         }
 
-        var result = _session.CompleteMainStory();
-        if (!result.Succeeded)
+        if (_journeyRecapOverlay is not null)
         {
-            _starGateOverlay?.ShowNotice(result.MessageKey);
             return;
         }
 
+        var readiness = _session.CheckMainStoryCompletion();
+        if (!readiness.Succeeded)
+        {
+            _starGateOverlay?.ShowNotice(readiness.MessageKey);
+            return;
+        }
+
+        SetWorldControls(false);
+        _journeyRecapOverlay = new JourneyRecapOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _journeyRecapOverlay.ConfirmRequested += ConfirmMainStoryFinale;
+        _journeyRecapOverlay.CloseRequested += CloseJourneyRecap;
+        _uiLayer.AddChild(_journeyRecapOverlay);
+    }
+
+    private void ConfirmMainStoryFinale()
+    {
+        var result = _session.CompleteMainStory();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            CloseJourneyRecap();
+            return;
+        }
+
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
         FreeUi(_starGateOverlay);
         _starGateOverlay = null;
         SaveNow(false);
@@ -9276,6 +10581,16 @@ public sealed partial class Main : Node
         );
         _mainStoryEndingOverlay.ContinueRequested += CloseMainStoryEnding;
         _uiLayer.AddChild(_mainStoryEndingOverlay);
+    }
+
+    private void CloseJourneyRecap()
+    {
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void CloseMainStoryEnding()

@@ -215,6 +215,169 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
     }
 }
 
+public sealed partial class JourneyRecapOverlay : FullScreenUi
+{
+    public JourneyRecapOverlay(
+        Theme theme,
+        GameSession session,
+        LocaleService locale
+    ) : base(theme)
+    {
+        var snapshot = session.JourneyRecap();
+        AddChild(Dim(new Color(0.005f, 0.012f, 0.055f, 0.94f)));
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
+
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(520, 332)
+        };
+        panel.AddThemeStyleboxOverride(
+            "panel",
+            ThemeFactory.Box(
+                new Color("#101a3afa"),
+                ThemeFactory.Gold,
+                2,
+                14
+            )
+        );
+        center.AddChild(panel);
+
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 7);
+        panel.AddChild(column);
+
+        var title = ThemeFactory.Label(
+            locale.Tr("story01.recap.title"),
+            22,
+            ThemeFactory.Mint
+        );
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(title);
+
+        var subtitle = ThemeFactory.Label(
+            locale.Tr("story01.recap.subtitle"),
+            11,
+            ThemeFactory.Gold
+        );
+        subtitle.HorizontalAlignment = HorizontalAlignment.Center;
+        subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        column.AddChild(subtitle);
+
+        AddSummaryLine(
+            column,
+            locale.Tr(
+                "story01.recap.lights",
+                snapshot.RestoredPedestalIds.Count,
+                snapshot.TotalPedestalCount
+            )
+        );
+        var lights = new GridContainer
+        {
+            Columns = 2,
+            CustomMinimumSize = new Vector2(470, 66)
+        };
+        lights.AddThemeConstantOverride("h_separation", 8);
+        lights.AddThemeConstantOverride("v_separation", 2);
+        column.AddChild(lights);
+        foreach (var starlight in snapshot.Starlights)
+        {
+            var name = locale.Tr(DataCatalog.StarlightPedestal(
+                starlight.PedestalId
+            ).NameKey);
+            var text = starlight.RestorationStoryDay is { } day
+                ? locale.Tr("story01.recap.light.recorded", name, day)
+                : locale.Tr(
+                    starlight.Restored
+                        ? "story01.recap.light.legacy"
+                        : "story01.recap.light.unrestored",
+                    name
+                );
+            var label = ThemeFactory.Label(text, 9);
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            label.CustomMinimumSize = new Vector2(228, 20);
+            lights.AddChild(label);
+        }
+        AddSummaryLine(
+            column,
+            locale.Tr(
+                "story01.recap.relationships",
+                snapshot.MetNpcCount,
+                snapshot.TrustedFriendCount,
+                snapshot.KindredLightCount
+            )
+        );
+        var companions = snapshot.TopCompanions.Count == 0
+            ? locale.Tr("story01.recap.companions.none")
+            : string.Join(
+                locale.Tr("story01.recap.list.separator"),
+                snapshot.TopCompanions.Select(companion => locale.Tr(
+                    "story01.recap.companion.entry",
+                    locale.Tr(VillageCatalog.Npcs[
+                        companion.NpcId
+                    ].NameKey),
+                    companion.RelationshipPoints
+                ))
+            );
+        AddSummaryLine(
+            column,
+            locale.Tr("story01.recap.companions", companions)
+        );
+        AddSummaryLine(
+            column,
+            locale.Tr(
+                "story01.recap.exploration",
+                snapshot.ExploredChunkCount,
+                snapshot.TotalChunkCount,
+                snapshot.ExploredRegionCount,
+                snapshot.TotalRegionCount
+            )
+        );
+        AddSummaryLine(
+            column,
+            locale.Tr(
+                "story01.recap.events",
+                snapshot.CompletedCharacterEventCount,
+                snapshot.TotalCharacterEventCount,
+                snapshot.CompletedStarlightStoryBeatCount,
+                snapshot.TotalStarlightStoryBeatCount
+            )
+        );
+
+        var buttons = new HBoxContainer();
+        buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        buttons.AddThemeConstantOverride("separation", 10);
+        column.AddChild(buttons);
+
+        var back = ThemeFactory.Button(locale.Tr("story01.recap.back"));
+        back.CustomMinimumSize = new Vector2(170, 28);
+        back.Pressed += () => CloseRequested?.Invoke();
+        buttons.AddChild(back);
+
+        var confirm = ThemeFactory.Button(locale.Tr("story01.recap.confirm"));
+        confirm.CustomMinimumSize = new Vector2(190, 28);
+        confirm.Pressed += () => ConfirmRequested?.Invoke();
+        buttons.AddChild(confirm);
+        confirm.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    public event Action? ConfirmRequested;
+    public event Action? CloseRequested;
+
+    private static void AddSummaryLine(
+        VBoxContainer column,
+        string text
+    )
+    {
+        var label = ThemeFactory.Label(text, 11);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.CustomMinimumSize = new Vector2(470, 22);
+        column.AddChild(label);
+    }
+}
+
 public sealed partial class MainStoryEndingOverlay : FullScreenUi
 {
     public MainStoryEndingOverlay(

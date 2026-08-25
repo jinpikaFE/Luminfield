@@ -16,10 +16,11 @@ public sealed class RelationshipCompletionTests
     ];
 
     [Fact]
-    public void EveryCatalogNpcHasTwoOrderedThreePageEventsAndRelationshipMail()
+    public void EveryCatalogNpcHasItsOrderedThreePageEventsAndRelationshipMail()
     {
         Assert.Equal(
-            VillageCatalog.Npcs.Count * 2,
+            VillageCatalog.Npcs.Count * 2 +
+                CharacterEventCatalog.FourEventNpcIds.Count * 2,
             CharacterEventCatalog.Definitions.Count
         );
 
@@ -29,11 +30,23 @@ public sealed class RelationshipCompletionTests
                 .Where(definition => definition.NpcId == npc.Id)
                 .OrderBy(definition => definition.RequiredRelationshipPoints)
                 .ToArray();
-            Assert.Equal(2, chain.Length);
-            Assert.Equal(25, chain[0].RequiredRelationshipPoints);
-            Assert.Equal(60, chain[1].RequiredRelationshipPoints);
-            Assert.Null(chain[0].RequiredPreviousEventId);
-            Assert.Equal(chain[0].Id, chain[1].RequiredPreviousEventId);
+            var expectedThresholds = CharacterEventCatalog.FourEventNpcIds.Contains(
+                npc.Id
+            )
+                ? new[] { 25, 60, 75, 90 }
+                : new[] { 25, 60 };
+            Assert.Equal(expectedThresholds.Length, chain.Length);
+            for (var index = 0; index < chain.Length; index++)
+            {
+                Assert.Equal(
+                    expectedThresholds[index],
+                    chain[index].RequiredRelationshipPoints
+                );
+                Assert.Equal(
+                    index == 0 ? null : chain[index - 1].Id,
+                    chain[index].RequiredPreviousEventId
+                );
+            }
             Assert.All(chain, definition =>
             {
                 Assert.Equal(3, definition.DialogueKeys.Count);

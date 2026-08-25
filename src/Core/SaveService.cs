@@ -696,6 +696,12 @@ public sealed class SaveService
             save.CharacterEvents,
             save.Day
         );
+        save.GroupCharacterEvents =
+            GroupCharacterEventSystem.NormalizeSave(
+                save.GroupCharacterEvents,
+                save.Day,
+                save.CharacterEvents
+            );
         save.Construction = ConstructionSystem.NormalizeSave(
             save.Construction
         );
@@ -712,6 +718,40 @@ public sealed class SaveService
             save.StellarResonance,
             save.StarGate.Activated,
             save.Day
+        );
+        var storyPlayerCell = new GridPosition(
+            (int)MathF.Floor(save.Player.X / 16),
+            (int)MathF.Floor(save.Player.Y / 16)
+        );
+        var storyCurrentBiome =
+            save.Player.LocationId == PlayerLocationIds.World &&
+            WorldDefinition.IsInBounds(storyPlayerCell)
+                ? WorldDefinition.GetBiome(storyPlayerCell)
+                : (WorldBiome?)null;
+        save.StarlightStory = StarlightStorySystem.NormalizeSave(
+            save.StarlightStory,
+            save.Day,
+            new StarlightStoryProgressContext(
+                save.Day,
+                save.Player.LocationId,
+                storyCurrentBiome,
+                save.Starlight.Pedestals
+                    .Where(state => state.Discovered)
+                    .Select(state => state.PedestalId)
+                    .ToHashSet(StringComparer.Ordinal),
+                save.Starlight.Pedestals
+                    .Where(state => state.RewardUnlocked)
+                    .Select(state => state.PedestalId)
+                    .ToHashSet(StringComparer.Ordinal),
+                save.Village.MetNpcIds.ToHashSet(StringComparer.Ordinal),
+                StarlightStoryProgressContext.ExploredBiomesFrom(
+                    save.Exploration.DiscoveredChunks
+                ),
+                save.CharacterEvents.Entries
+                    .Select(entry => entry.EventId)
+                    .ToHashSet(StringComparer.Ordinal),
+                save.StellarResonance.MainStoryCompleted
+            )
         );
         save.Animals = AnimalSystem.NormalizeSave(save.Animals, save.Day);
         if (AnimalBuildingSpatialCatalog.TryByLocationId(

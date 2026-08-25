@@ -67,6 +67,7 @@ public sealed class StarlightSystem
         CompletedNodeCountFor(DataCatalog.WoodlandStarlightId);
 
     public event Action? Changed;
+    public event Action<string>? PedestalRestored;
 
     public StarlightPedestalDefinition Definition(string pedestalId) =>
         DataCatalog.StarlightPedestal(pedestalId);
@@ -272,6 +273,10 @@ public sealed class StarlightSystem
         }
 
         Changed?.Invoke();
+        if (activated)
+        {
+            PedestalRestored?.Invoke(pedestalId);
+        }
         var messageKey = "starlight.contributed";
         if (activated)
         {
@@ -294,7 +299,7 @@ public sealed class StarlightSystem
         StarlightProgressContext? context = null
     )
     {
-        var changed = false;
+        var restoredPedestalIds = new List<string>();
         foreach (var pedestal in DataCatalog.StarlightPedestals.Values)
         {
             var state = StateForPedestal(pedestal.Id);
@@ -307,15 +312,19 @@ public sealed class StarlightSystem
 
             state.RewardUnlocked = true;
             state.Discovered = true;
-            changed = true;
+            restoredPedestalIds.Add(pedestal.Id);
         }
 
-        if (changed)
+        if (restoredPedestalIds.Count > 0)
         {
             Changed?.Invoke();
+            foreach (var pedestalId in restoredPedestalIds)
+            {
+                PedestalRestored?.Invoke(pedestalId);
+            }
         }
 
-        return changed;
+        return restoredPedestalIds.Count > 0;
     }
 
     public ActionResult CheckManualActivation(
@@ -360,6 +369,7 @@ public sealed class StarlightSystem
         state.Discovered = true;
         state.RewardUnlocked = true;
         Changed?.Invoke();
+        PedestalRestored?.Invoke(pedestalId);
         return check;
     }
 

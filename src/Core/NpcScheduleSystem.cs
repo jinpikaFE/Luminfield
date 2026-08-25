@@ -728,7 +728,13 @@ public sealed class NpcScheduleSystem
             var desiredCell = (desired.LocationId, desired.Position);
             if (reserved.Contains(desiredCell))
             {
-                desired = WaitOrFallback(definition, entry, previous, reserved);
+                desired = WaitOrFallback(
+                    definition,
+                    entry,
+                    previous,
+                    reserved,
+                    blocked
+                );
                 desiredCell = (desired.LocationId, desired.Position);
             }
 
@@ -840,7 +846,8 @@ public sealed class NpcScheduleSystem
         VillageNpcDefinition definition,
         NpcScheduleEntry entry,
         VillageNpcState previous,
-        IReadOnlySet<(string LocationId, GridPosition Position)> reserved
+        IReadOnlySet<(string LocationId, GridPosition Position)> reserved,
+        IReadOnlySet<GridPosition> blocked
     )
     {
         var previousCell = (previous.LocationId, previous.Position);
@@ -849,7 +856,29 @@ public sealed class NpcScheduleSystem
             return WaitingState(definition, entry, previous);
         }
 
-        return AnchorState(definition, entry);
+        var occupied = blocked.Concat(
+                reserved
+                    .Where(cell => cell.LocationId == previous.LocationId)
+                    .Select(cell => cell.Position)
+            )
+            .ToHashSet();
+        var replacement = NearestSafeCell(
+            previous.LocationId,
+            previous.Position,
+            occupied
+        );
+        if (replacement is null)
+        {
+            return WaitingState(definition, entry, previous);
+        }
+
+        return new VillageNpcState(
+            definition,
+            previous.LocationId,
+            replacement.Value,
+            FacingForStep(previous.Position, replacement.Value),
+            entry.DialogueKey
+        );
     }
 
     private static VillageNpcState WaitingState(
