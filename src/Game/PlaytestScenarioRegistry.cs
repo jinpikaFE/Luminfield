@@ -129,23 +129,111 @@ public enum PlaytestScenarioId
     SixfoldStarGate,
     SixfoldStarGatePanel,
     StellarConvergence,
+    Story01WoodlandDiscovery,
+    Story01WoodlandRestoration,
+    Story01WoodlandResponse,
+    Story01WoodlandRevisitEnglish,
+    Story01FinalRevisitEnglish,
+    Story01FinalRevisitPageTwoEnglish,
+    Story01FinalRevisitPageThreeEnglish,
+    Story01HomesteadResponse,
+    Story01MeadowResponse,
+    Story01MoonwaterResponse,
+    Story01CrystalValeResponse,
+    Story01StarfallRuinsResponse,
     AccessibilitySettings,
     LioraEventOne,
     LioraEventTwo,
+    LioraEventThree,
+    LioraEventFour,
     TaviEventOne,
     TaviEventTwo,
+    TaviEventThree,
+    TaviEventFour,
     NemiEventOne,
     NemiEventTwo,
+    NemiEventThree,
+    NemiEventFour,
     KaelEventOne,
     KaelEventTwo,
+    KaelEventThree,
+    KaelEventFour,
     SelaEventOne,
     SelaEventTwo,
+    SelaEventThree,
+    SelaEventFour,
+    HaldenEventThree,
+    HaldenEventFour,
     OrinEventOne,
     OrinEventTwo,
+    OrinEventThree,
+    OrinEventFour,
     ElowenEventOne,
     ElowenEventTwo,
     VessaEventOne,
     VessaEventTwo,
+    VessaEventThree,
+    VessaEventFour,
+    NpcALioraRainResponse,
+    NpcATaviLongnightResponse,
+    NpcAVessaStardustResponse,
+    NpcAOrinLongnightSnowResponse,
+    NpcAGroupEvent,
+    NpcAGroupEventEnglish,
+    NpcAGroupEventPageTwoEnglish,
+    NpcAGroupEventPageThreeEnglish,
+    NpcAGroupEventPageFourEnglish,
+    NpcAGroupEventPageFiveEnglish,
+    NpcAGroupEventWrongTool,
+    NpcBNemiStardustResponse,
+    NpcBKaelLongnightResponse,
+    NpcBSelaStarharvestResponse,
+    NpcBHaldenStardustResponse,
+    NpcBGroupEvent,
+    NpcBGroupEventEnglish,
+    NpcBGroupEventPageTwoEnglish,
+    NpcBGroupEventPageThreeEnglish,
+    NpcBGroupEventPageFourEnglish,
+    NpcBGroupEventPageFiveEnglish,
+    NpcBGroupEventWrongTool,
+    ElowenEventThree,
+    ElowenEventFour,
+    MaveaEventThree,
+    MaveaEventFour,
+    SivrenEventThree,
+    SivrenEventFour,
+    DorrikEventThree,
+    DorrikEventFour,
+    NpcCElowenRainveilResponse,
+    NpcCMaveaRainResponse,
+    NpcCSivrenStarharvestResponse,
+    NpcCDorrikRainveilResponse,
+    NpcCGroupEvent,
+    NpcCGroupEventEnglish,
+    NpcCGroupEventPageTwoEnglish,
+    NpcCGroupEventPageThreeEnglish,
+    NpcCGroupEventPageFourEnglish,
+    NpcCGroupEventPageFiveEnglish,
+    NpcCGroupEventWrongTool,
+    YvaraEventThree,
+    YvaraEventFour,
+    BrialEventThree,
+    BrialEventFour,
+    PavriEventThree,
+    PavriEventFour,
+    RovenEventThree,
+    RovenEventFour,
+    NpcDYvaraRainResponse,
+    NpcDBrialLongnightResponse,
+    NpcDPavriRainveilResponse,
+    NpcDRovenRainResponse,
+    NpcDGroupEvent,
+    NpcDGroupEventEnglish,
+    NpcDGroupEventPageTwoEnglish,
+    NpcDGroupEventPageThreeEnglish,
+    NpcDGroupEventPageFourEnglish,
+    NpcDGroupEventPageFiveEnglish,
+    NpcDGroupEventWrongTool,
     VessaEventWrongTool,
     RelationshipMailsEnglish,
     VillageExpansionWave3,
@@ -737,6 +825,54 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-stellar-convergence"
         ),
         new(
+            PlaytestScenarioId.Story01WoodlandDiscovery,
+            "--playtest-story01-woodland-discovery"
+        ),
+        new(
+            PlaytestScenarioId.Story01WoodlandRestoration,
+            "--playtest-story01-woodland-restoration"
+        ),
+        new(
+            PlaytestScenarioId.Story01WoodlandResponse,
+            "--playtest-story01-woodland-response"
+        ),
+        new(
+            PlaytestScenarioId.Story01WoodlandRevisitEnglish,
+            "--playtest-story01-woodland-revisit-en"
+        ),
+        new(
+            PlaytestScenarioId.Story01FinalRevisitEnglish,
+            "--playtest-story01-final-revisit-en"
+        ),
+        new(
+            PlaytestScenarioId.Story01FinalRevisitPageTwoEnglish,
+            "--playtest-story01-final-revisit-page-2-en"
+        ),
+        new(
+            PlaytestScenarioId.Story01FinalRevisitPageThreeEnglish,
+            "--playtest-story01-final-revisit-page-3-en"
+        ),
+        new(
+            PlaytestScenarioId.Story01HomesteadResponse,
+            "--playtest-story01-homestead-response"
+        ),
+        new(
+            PlaytestScenarioId.Story01MeadowResponse,
+            "--playtest-story01-meadow-response"
+        ),
+        new(
+            PlaytestScenarioId.Story01MoonwaterResponse,
+            "--playtest-story01-moonwater-response"
+        ),
+        new(
+            PlaytestScenarioId.Story01CrystalValeResponse,
+            "--playtest-story01-crystal-vale-response"
+        ),
+        new(
+            PlaytestScenarioId.Story01StarfallRuinsResponse,
+            "--playtest-story01-starfall-ruins-response"
+        ),
+        new(
             PlaytestScenarioId.AccessibilitySettings,
             "--playtest-accessibility-settings"
         ),
@@ -749,12 +885,28 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-liora-event-two"
         ),
         new(
+            PlaytestScenarioId.LioraEventThree,
+            "--playtest-liora-event-three"
+        ),
+        new(
+            PlaytestScenarioId.LioraEventFour,
+            "--playtest-liora-event-four"
+        ),
+        new(
             PlaytestScenarioId.TaviEventOne,
             "--playtest-tavi-event-one"
         ),
         new(
             PlaytestScenarioId.TaviEventTwo,
             "--playtest-tavi-event-two"
+        ),
+        new(
+            PlaytestScenarioId.TaviEventThree,
+            "--playtest-tavi-event-three"
+        ),
+        new(
+            PlaytestScenarioId.TaviEventFour,
+            "--playtest-tavi-event-four"
         ),
         new(
             PlaytestScenarioId.NemiEventOne,
@@ -765,12 +917,28 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-nemi-event-two"
         ),
         new(
+            PlaytestScenarioId.NemiEventThree,
+            "--playtest-nemi-event-three"
+        ),
+        new(
+            PlaytestScenarioId.NemiEventFour,
+            "--playtest-nemi-event-four"
+        ),
+        new(
             PlaytestScenarioId.KaelEventOne,
             "--playtest-kael-event-one"
         ),
         new(
             PlaytestScenarioId.KaelEventTwo,
             "--playtest-kael-event-two"
+        ),
+        new(
+            PlaytestScenarioId.KaelEventThree,
+            "--playtest-kael-event-three"
+        ),
+        new(
+            PlaytestScenarioId.KaelEventFour,
+            "--playtest-kael-event-four"
         ),
         new(
             PlaytestScenarioId.SelaEventOne,
@@ -781,12 +949,36 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-sela-event-two"
         ),
         new(
+            PlaytestScenarioId.SelaEventThree,
+            "--playtest-sela-event-three"
+        ),
+        new(
+            PlaytestScenarioId.SelaEventFour,
+            "--playtest-sela-event-four"
+        ),
+        new(
+            PlaytestScenarioId.HaldenEventThree,
+            "--playtest-halden-event-three"
+        ),
+        new(
+            PlaytestScenarioId.HaldenEventFour,
+            "--playtest-halden-event-four"
+        ),
+        new(
             PlaytestScenarioId.OrinEventOne,
             "--playtest-orin-event-one"
         ),
         new(
             PlaytestScenarioId.OrinEventTwo,
             "--playtest-orin-event-two"
+        ),
+        new(
+            PlaytestScenarioId.OrinEventThree,
+            "--playtest-orin-event-three"
+        ),
+        new(
+            PlaytestScenarioId.OrinEventFour,
+            "--playtest-orin-event-four"
         ),
         new(
             PlaytestScenarioId.ElowenEventOne,
@@ -803,6 +995,254 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.VessaEventTwo,
             "--playtest-vessa-event-two"
+        ),
+        new(
+            PlaytestScenarioId.VessaEventThree,
+            "--playtest-vessa-event-three"
+        ),
+        new(
+            PlaytestScenarioId.VessaEventFour,
+            "--playtest-vessa-event-four"
+        ),
+        new(
+            PlaytestScenarioId.NpcALioraRainResponse,
+            "--playtest-npc-a-liora-rain-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcATaviLongnightResponse,
+            "--playtest-npc-a-tavi-longnight-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcAVessaStardustResponse,
+            "--playtest-npc-a-vessa-stardust-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcAOrinLongnightSnowResponse,
+            "--playtest-npc-a-orin-longnight-snow-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEvent,
+            "--playtest-npc-a-group-event"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventEnglish,
+            "--playtest-npc-a-group-event-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventPageTwoEnglish,
+            "--playtest-npc-a-group-event-page-2-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventPageThreeEnglish,
+            "--playtest-npc-a-group-event-page-3-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventPageFourEnglish,
+            "--playtest-npc-a-group-event-page-4-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventPageFiveEnglish,
+            "--playtest-npc-a-group-event-page-5-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcAGroupEventWrongTool,
+            "--playtest-npc-a-group-event-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.NpcBNemiStardustResponse,
+            "--playtest-npc-b-nemi-stardust-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcBKaelLongnightResponse,
+            "--playtest-npc-b-kael-longnight-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcBSelaStarharvestResponse,
+            "--playtest-npc-b-sela-starharvest-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcBHaldenStardustResponse,
+            "--playtest-npc-b-halden-stardust-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEvent,
+            "--playtest-npc-b-group-event"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventEnglish,
+            "--playtest-npc-b-group-event-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventPageTwoEnglish,
+            "--playtest-npc-b-group-event-page-2-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventPageThreeEnglish,
+            "--playtest-npc-b-group-event-page-3-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventPageFourEnglish,
+            "--playtest-npc-b-group-event-page-4-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventPageFiveEnglish,
+            "--playtest-npc-b-group-event-page-5-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcBGroupEventWrongTool,
+            "--playtest-npc-b-group-event-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.ElowenEventThree,
+            "--playtest-elowen-event-three"
+        ),
+        new(
+            PlaytestScenarioId.ElowenEventFour,
+            "--playtest-elowen-event-four"
+        ),
+        new(
+            PlaytestScenarioId.MaveaEventThree,
+            "--playtest-mavea-event-three"
+        ),
+        new(
+            PlaytestScenarioId.MaveaEventFour,
+            "--playtest-mavea-event-four"
+        ),
+        new(
+            PlaytestScenarioId.SivrenEventThree,
+            "--playtest-sivren-event-three"
+        ),
+        new(
+            PlaytestScenarioId.SivrenEventFour,
+            "--playtest-sivren-event-four"
+        ),
+        new(
+            PlaytestScenarioId.DorrikEventThree,
+            "--playtest-dorrik-event-three"
+        ),
+        new(
+            PlaytestScenarioId.DorrikEventFour,
+            "--playtest-dorrik-event-four"
+        ),
+        new(
+            PlaytestScenarioId.NpcCElowenRainveilResponse,
+            "--playtest-npc-c-elowen-rainveil-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcCMaveaRainResponse,
+            "--playtest-npc-c-mavea-rain-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcCSivrenStarharvestResponse,
+            "--playtest-npc-c-sivren-starharvest-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcCDorrikRainveilResponse,
+            "--playtest-npc-c-dorrik-rainveil-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEvent,
+            "--playtest-npc-c-group-event"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventEnglish,
+            "--playtest-npc-c-group-event-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventPageTwoEnglish,
+            "--playtest-npc-c-group-event-page-2-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventPageThreeEnglish,
+            "--playtest-npc-c-group-event-page-3-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventPageFourEnglish,
+            "--playtest-npc-c-group-event-page-4-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventPageFiveEnglish,
+            "--playtest-npc-c-group-event-page-5-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcCGroupEventWrongTool,
+            "--playtest-npc-c-group-event-wrong-tool"
+        ),
+        new(
+            PlaytestScenarioId.YvaraEventThree,
+            "--playtest-yvara-event-three"
+        ),
+        new(
+            PlaytestScenarioId.YvaraEventFour,
+            "--playtest-yvara-event-four"
+        ),
+        new(
+            PlaytestScenarioId.BrialEventThree,
+            "--playtest-brial-event-three"
+        ),
+        new(
+            PlaytestScenarioId.BrialEventFour,
+            "--playtest-brial-event-four"
+        ),
+        new(
+            PlaytestScenarioId.PavriEventThree,
+            "--playtest-pavri-event-three"
+        ),
+        new(
+            PlaytestScenarioId.PavriEventFour,
+            "--playtest-pavri-event-four"
+        ),
+        new(
+            PlaytestScenarioId.RovenEventThree,
+            "--playtest-roven-event-three"
+        ),
+        new(
+            PlaytestScenarioId.RovenEventFour,
+            "--playtest-roven-event-four"
+        ),
+        new(
+            PlaytestScenarioId.NpcDYvaraRainResponse,
+            "--playtest-npc-d-yvara-rain-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcDBrialLongnightResponse,
+            "--playtest-npc-d-brial-longnight-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcDPavriRainveilResponse,
+            "--playtest-npc-d-pavri-rainveil-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcDRovenRainResponse,
+            "--playtest-npc-d-roven-rain-response"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEvent,
+            "--playtest-npc-d-group-event"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventEnglish,
+            "--playtest-npc-d-group-event-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventPageTwoEnglish,
+            "--playtest-npc-d-group-event-page-2-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventPageThreeEnglish,
+            "--playtest-npc-d-group-event-page-3-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventPageFourEnglish,
+            "--playtest-npc-d-group-event-page-4-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventPageFiveEnglish,
+            "--playtest-npc-d-group-event-page-5-en"
+        ),
+        new(
+            PlaytestScenarioId.NpcDGroupEventWrongTool,
+            "--playtest-npc-d-group-event-wrong-tool"
         ),
         new(
             PlaytestScenarioId.VessaEventWrongTool,

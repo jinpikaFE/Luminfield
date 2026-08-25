@@ -59,6 +59,7 @@ public sealed partial class Main : Node
     private DeepMineOverlay? _deepMineOverlay;
     private StarGateOverlay? _starGateOverlay;
     private StellarResonanceOverlay? _stellarResonanceOverlay;
+    private JourneyRecapOverlay? _journeyRecapOverlay;
     private MainStoryEndingOverlay? _mainStoryEndingOverlay;
     private AccessibilitySettingsOverlay? _settingsOverlay;
     private FarmingSpecializationOverlay? _farmingSpecializationOverlay;
@@ -114,6 +115,10 @@ public sealed partial class Main : Node
 
         _session.NewGame(_locale.CurrentLocale);
         _session.CollectionEntryDiscovered += OnCollectionEntryDiscovered;
+        _session.StarlightPedestalRestored += pedestalId =>
+            Callable.From(() => TryShowRestoredStarlightStory(
+                pedestalId
+            )).CallDeferred();
         _locale.LocaleChanged += OnLocaleChanged;
         ShowTitle();
 
@@ -391,6 +396,7 @@ public sealed partial class Main : Node
         _deepMineOverlay is not null ||
         _starGateOverlay is not null ||
         _stellarResonanceOverlay is not null ||
+        _journeyRecapOverlay is not null ||
         _mainStoryEndingOverlay is not null ||
         _settingsOverlay is not null ||
         _gleamriseSeasonOverlay is not null ||
@@ -438,6 +444,7 @@ public sealed partial class Main : Node
         _deepMineOverlay is null &&
         _starGateOverlay is null &&
         _stellarResonanceOverlay is null &&
+        _journeyRecapOverlay is null &&
         _mainStoryEndingOverlay is null &&
         _settingsOverlay is null &&
         _gleamriseSeasonOverlay is null &&
@@ -472,6 +479,7 @@ public sealed partial class Main : Node
         _pauseOverlay = null;
         FreeUi(_dialogueOverlay);
         _dialogueOverlay = null;
+        _session.StarlightStory.CancelActive();
         FreeUi(_completionOverlay);
         _completionOverlay = null;
         FreeUi(_shopOverlay);
@@ -514,6 +522,8 @@ public sealed partial class Main : Node
         _starGateOverlay = null;
         FreeUi(_stellarResonanceOverlay);
         _stellarResonanceOverlay = null;
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
         FreeUi(_mainStoryEndingOverlay);
         _mainStoryEndingOverlay = null;
         FreeUi(_settingsOverlay);
@@ -858,6 +868,17 @@ public sealed partial class Main : Node
         }
 
         _audio.Play(PixelSound.Chime);
+        if (conversation.StarlightStory is { } starlightStory)
+        {
+            ShowStarlightStory(starlightStory);
+            return;
+        }
+        if (conversation.GroupCharacterEvent is { } groupCharacterEvent)
+        {
+            ShowGroupCharacterEvent(groupCharacterEvent);
+            return;
+        }
+
         var icon = conversation.GiftReaction is { } giftReaction
             ? GeneratedArt.GiftReactionIcon(giftReaction)
             : GeneratedArt.RelationshipIcon(
@@ -896,6 +917,35 @@ public sealed partial class Main : Node
             },
             icon,
             relationshipStatus
+        );
+    }
+
+    private void ShowGroupCharacterEvent(
+        GroupCharacterEventDialogue groupEvent
+    )
+    {
+        var speakerKeys = groupEvent.Pages
+            .Select(page => VillageCatalog.Npcs[
+                page.SpeakerNpcId
+            ].NameKey)
+            .ToArray();
+        ShowDialoguePages(
+            speakerKeys[0],
+            groupEvent.Pages.Select(page => page.DialogueKey).ToArray(),
+            () =>
+            {
+                var completion = _session.CompleteGroupCharacterEvent(
+                    groupEvent.EventId
+                );
+                if (!completion.Succeeded)
+                {
+                    _hud?.ShowNotice(completion.MessageKey);
+                    return;
+                }
+
+                SaveNow(false);
+            },
+            speakerKeys: speakerKeys
         );
     }
 
@@ -1518,27 +1568,110 @@ public sealed partial class Main : Node
         IReadOnlyList<string> dialogueKeys,
         Action closed,
         Texture2D? icon = null,
-        string status = ""
+        string status = "",
+        IReadOnlyList<IReadOnlyList<object>>? dialogueArguments = null,
+        IReadOnlyList<string>? speakerKeys = null
     )
     {
         SetWorldControls(false);
         _dialogueOverlay = new DialogueOverlay(_theme, _locale);
         _dialogueOverlay.ShowDialoguePages(
             _locale.Tr(speakerKey),
-            dialogueKeys.Select(key => _locale.Tr(key)).ToList(),
+            dialogueKeys.Select((key, index) =>
+            {
+                var arguments = dialogueArguments is not null &&
+                    index < dialogueArguments.Count
+                        ? dialogueArguments[index]
+                            .Select(ResolveStarlightStoryArgument)
+                            .ToArray()
+                        : [];
+                return _locale.Tr(key, arguments);
+            }).ToList(),
             () =>
             {
                 _dialogueOverlay = null;
                 closed();
                 if (CanRestoreWorldControls)
                 {
+                    TryShowCurrentRegionStory();
+                }
+                if (CanRestoreWorldControls)
+                {
                     SetWorldControls(true);
                 }
             },
             icon,
-            status
+            status,
+            speakerKeys?.Select(key => _locale.Tr(key)).ToArray()
         );
         _uiLayer.AddChild(_dialogueOverlay);
+    }
+
+    private void ShowStarlightStory(
+        StarlightStoryDialogue story,
+        Action? closed = null
+    )
+    {
+        ShowDialoguePages(
+            story.SpeakerKey,
+            story.DialogueKeys,
+            () =>
+            {
+                var result = _session.CompleteStarlightStoryBeat(
+                    story.BeatId
+                );
+                if (!result.Succeeded)
+                {
+                    _hud?.ShowNotice(result.MessageKey);
+                    return;
+                }
+
+                SaveNow(false);
+                closed?.Invoke();
+            },
+            status: _locale.Tr(story.StatusKey),
+            dialogueArguments: story.DialogueArguments
+        );
+    }
+
+    private object ResolveStarlightStoryArgument(object argument) =>
+        argument is StarlightStoryLocalizedListArgument list
+            ? list.Keys.Count == 0
+                ? _locale.Tr(list.EmptyKey)
+                : string.Join(
+                    _locale.Tr(list.SeparatorKey),
+                    list.Keys.Select(key => _locale.Tr(key))
+                )
+            : argument;
+
+    private void HandleWorldStep()
+    {
+        _audio.Play(PixelSound.Step);
+        TryShowCurrentRegionStory();
+    }
+
+    private void HandleRegionEntered(string regionKey)
+    {
+        _hud?.ShowNotice(regionKey, 2.6);
+        TryShowCurrentRegionStory();
+    }
+
+    private void TryShowCurrentRegionStory()
+    {
+        if (_dialogueOverlay is not null ||
+            _farm is null ||
+            _session.PlayerLocationId != PlayerLocationIds.World)
+        {
+            return;
+        }
+
+        var story = _session.BeginStarlightRegionResponse(
+            WorldDefinition.GetBiome(_session.PlayerCell)
+        );
+        if (story is not null)
+        {
+            ShowStarlightStory(story);
+        }
     }
 
     private static string RelationshipTierKey(
@@ -1934,13 +2067,41 @@ public sealed partial class Main : Node
             return;
         }
 
-        var result = _session.CompleteMainStory();
-        if (!result.Succeeded)
+        if (_journeyRecapOverlay is not null)
         {
-            _starGateOverlay?.ShowNotice(result.MessageKey);
             return;
         }
 
+        var readiness = _session.CheckMainStoryCompletion();
+        if (!readiness.Succeeded)
+        {
+            _starGateOverlay?.ShowNotice(readiness.MessageKey);
+            return;
+        }
+
+        SetWorldControls(false);
+        _journeyRecapOverlay = new JourneyRecapOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _journeyRecapOverlay.ConfirmRequested += ConfirmMainStoryFinale;
+        _journeyRecapOverlay.CloseRequested += CloseJourneyRecap;
+        _uiLayer.AddChild(_journeyRecapOverlay);
+    }
+
+    private void ConfirmMainStoryFinale()
+    {
+        var result = _session.CompleteMainStory();
+        if (!result.Succeeded)
+        {
+            _hud?.ShowNotice(result.MessageKey);
+            CloseJourneyRecap();
+            return;
+        }
+
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
         FreeUi(_starGateOverlay);
         _starGateOverlay = null;
         SaveNow(false);
@@ -1953,6 +2114,16 @@ public sealed partial class Main : Node
         );
         _mainStoryEndingOverlay.ContinueRequested += CloseMainStoryEnding;
         _uiLayer.AddChild(_mainStoryEndingOverlay);
+    }
+
+    private void CloseJourneyRecap()
+    {
+        FreeUi(_journeyRecapOverlay);
+        _journeyRecapOverlay = null;
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
     }
 
     private void CloseMainStoryEnding()

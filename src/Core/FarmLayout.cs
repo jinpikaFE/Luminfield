@@ -26,6 +26,8 @@ public static class FarmLayout
         CityExpansionLayout.MoonfleeceBarnReturnCell;
     public static readonly GridPosition HomesteadStarlightCell =
         CityExpansionLayout.CityStarlightCell;
+    public static readonly GridPosition HomesteadStoryResponseCell =
+        new(15, 16);
     public static readonly GridPosition StarGateCell =
         CityExpansionLayout.StarGateCell;
     public static readonly GridPosition StarGateArrivalCell =

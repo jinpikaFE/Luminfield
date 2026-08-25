@@ -89,6 +89,7 @@ public sealed partial class FarmView : Node2D
         _canvasModulate = new CanvasModulate { Color = Colors.White };
         AddChild(_canvasModulate);
         AddChild(new FarmWeatherOverlay(session));
+        AddChild(new Story01WorldResponseVisual(session));
 
         AddChild(new FarmSoilStateLayer(session.Farm));
         AddChild(new GeneratedCropLayer(session.Farm));
@@ -394,6 +395,12 @@ public sealed partial class FarmView : Node2D
         add => _player.Stepped += value;
         remove => _player.Stepped -= value;
     }
+
+    public void EmitCurrentRegion() => RegionEntered?.Invoke(
+        WorldDefinition.RegionNameKey(
+            WorldDefinition.GetBiome(_player.CurrentCell)
+        )
+    );
 
     public Vector2 PlayerPosition => _player.Position;
 

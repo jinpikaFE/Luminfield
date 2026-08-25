@@ -32,6 +32,7 @@ public sealed class MainExperienceIntegrationArchitectureTests
         "_fishingMinigameOverlay is not null",
         "_fishingGearOverlay is not null",
         "_deepMineOverlay is not null",
+        "_journeyRecapOverlay is not null",
         "_starGateOverlay is not null",
         "_stellarResonanceOverlay is not null",
         "_mainStoryEndingOverlay is not null",

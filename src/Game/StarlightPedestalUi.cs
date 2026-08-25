@@ -175,6 +175,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? StarlightChanged;
+    public event Action<string>? StoryBeatRequested;
 
     public void RefreshText()
     {
@@ -356,6 +357,10 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         if (result.Succeeded)
         {
             StarlightChanged?.Invoke();
+            if (result.Activated)
+            {
+                StoryBeatRequested?.Invoke(_pedestalId);
+            }
         }
         RefreshText();
     }
@@ -370,6 +375,7 @@ public sealed partial class StarlightPedestalOverlay : FullScreenUi
         if (result.Succeeded)
         {
             StarlightChanged?.Invoke();
+            StoryBeatRequested?.Invoke(_pedestalId);
         }
         RefreshText();
     }

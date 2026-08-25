@@ -133,7 +133,9 @@ public sealed record VillageConversation(
     GiftReaction? GiftReaction,
     int RelationshipPoints,
     RelationshipTier RelationshipTier,
-    CharacterEventDialogue? CharacterEvent = null
+    CharacterEventDialogue? CharacterEvent = null,
+    StarlightStoryDialogue? StarlightStory = null,
+    GroupCharacterEventDialogue? GroupCharacterEvent = null
 );
 
 public sealed record VillageInteractionCheck(
@@ -150,7 +152,16 @@ public static class VillageCatalog
     public const int SeasonSchedulePriority = 10;
     public const int WeatherSchedulePriority = 20;
     public const int RestdaySchedulePriority = 100;
+    public const int GroupEventSchedulePriority = 150;
     public const int FestivalSchedulePriority = 200;
+    public const int NpcAGroupStartMinute = 13 * 60;
+    public const int NpcAGroupEndMinute = 17 * 60;
+    public const int NpcBGroupStartMinute = 9 * 60;
+    public const int NpcBGroupEndMinute = 12 * 60;
+    public const int NpcCGroupStartMinute = 17 * 60;
+    public const int NpcCGroupEndMinute = 20 * 60;
+    public const int NpcDGroupStartMinute = 7 * 60;
+    public const int NpcDGroupEndMinute = 9 * 60;
     public const string LioraId = "liora";
     public const string TaviId = "tavi";
     public const string NemiId = "nemi";
@@ -181,6 +192,94 @@ public static class VillageCatalog
     public static readonly GridArea VillageBounds = new(64, 32, 191, 127);
     public static readonly GridPosition VillageCenterCell = new(128, 80);
     public static readonly GridPosition VillageGateCell = new(128, 127);
+    public static readonly GridArea NpcAGroupMeetingArea =
+        new(124, 76, 132, 84);
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcAGroupMeetingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [LioraId] = new(126, 78),
+            [TaviId] = new(130, 78),
+            [VessaId] = new(126, 82),
+            [OrinId] = new(130, 82)
+        };
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcAGroupStagingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [LioraId] = new(123, 78),
+            [TaviId] = new(133, 78),
+            [VessaId] = new(126, 85),
+            [OrinId] = new(130, 85)
+        };
+    public static readonly GridArea NpcBGroupMeetingArea =
+        new(84, 78, 92, 82);
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcBGroupMeetingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [NemiId] = new(86, 79),
+            [KaelId] = new(90, 79),
+            [SelaId] = new(86, 81),
+            [HaldenId] = new(90, 81)
+        };
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcBGroupStagingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [NemiId] = new(83, 79),
+            [KaelId] = new(93, 79),
+            [SelaId] = new(83, 81),
+            [HaldenId] = new(93, 81)
+        };
+    public static readonly GridArea NpcCGroupMeetingArea =
+        new(144, 76, 152, 84);
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcCGroupMeetingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [ElowenId] = new(146, 78),
+            [MaveaId] = new(150, 78),
+            [SivrenId] = new(146, 82),
+            [DorrikId] = new(150, 82)
+        };
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcCGroupStagingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [ElowenId] = new(143, 78),
+            [MaveaId] = new(153, 78),
+            [SivrenId] = new(146, 85),
+            [DorrikId] = new(150, 85)
+        };
+    public static readonly GridArea NpcDGroupMeetingArea =
+        new(142, 75, 150, 79);
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcDGroupMeetingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [YvaraId] = new(144, 76),
+            [BrialId] = new(148, 76),
+            [PavriId] = new(144, 79),
+            [RovenId] = new(148, 79)
+        };
+    public static readonly IReadOnlyDictionary<string, GridPosition>
+        NpcDGroupStagingCells = new Dictionary<string, GridPosition>(
+            StringComparer.Ordinal
+        )
+        {
+            [YvaraId] = new(141, 76),
+            [BrialId] = new(151, 76),
+            [PavriId] = new(141, 79),
+            [RovenId] = new(151, 79)
+        };
     public static readonly GridPosition MoonlitArchiveDoorCell = new(100, 59);
     public static readonly GridPosition MoonlitArchiveExitCell = new(20, 18);
     public static readonly GridPosition MoonlitArchiveDeskCell = new(20, 9);
@@ -359,6 +458,34 @@ public static class VillageCatalog
                         NpcFacing.Down,
                         LioraId
                     ),
+                    GroupStagingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupStagingCells[LioraId],
+                        NpcFacing.Right,
+                        "village.npc.liora.restday"
+                    ),
+                    GroupTravelSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupMeetingCells[LioraId],
+                        NpcFacing.Right,
+                        "village.npc.liora.npc_a_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupEndMinute,
+                        NpcAGroupMeetingCells[LioraId],
+                        NpcFacing.Right,
+                        "village.npc.liora.npc_a_group"
+                    ),
+                    WeatherSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonlitArchive,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.liora.weather_rain",
+                        DataCatalog.RainWeatherId
+                    ),
                     SeasonSlot(
                         13,
                         17,
@@ -428,6 +555,25 @@ public static class VillageCatalog
                         NpcFacing.Right,
                         TaviId
                     ),
+                    GroupStagingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupStagingCells[TaviId],
+                        NpcFacing.Left,
+                        "village.npc.tavi.restday"
+                    ),
+                    GroupTravelSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupMeetingCells[TaviId],
+                        NpcFacing.Left,
+                        "village.npc.tavi.npc_a_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupEndMinute,
+                        NpcAGroupMeetingCells[TaviId],
+                        NpcFacing.Left,
+                        "village.npc.tavi.npc_a_group"
+                    ),
                     WeatherSlot(
                         13,
                         16,
@@ -436,6 +582,15 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.tavi.weather_stardust",
                         DataCatalog.StardustWindWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        16,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.tavi.season_longnight",
+                        CalendarSystem.LongnightSeasonId
                     ),
                     Slot(
                         9,
@@ -496,6 +651,34 @@ public static class VillageCatalog
                         StarharvestMarketLayout.NpcAnchors[NemiId],
                         NpcFacing.Left,
                         NemiId
+                    ),
+                    GroupStagingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupStagingCells[NemiId],
+                        NpcFacing.Right,
+                        "village.npc.nemi.npc_b_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupMeetingCells[NemiId],
+                        NpcFacing.Right,
+                        "village.npc.nemi.npc_b_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupEndMinute,
+                        NpcBGroupMeetingCells[NemiId],
+                        NpcFacing.Right,
+                        "village.npc.nemi.npc_b_group"
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarlightPost,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.nemi.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
                     ),
                     WeatherSlot(
                         13,
@@ -575,6 +758,25 @@ public static class VillageCatalog
                         NpcFacing.Right,
                         SelaId
                     ),
+                    GroupStagingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupStagingCells[SelaId],
+                        NpcFacing.Right,
+                        "village.npc.sela.npc_b_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupMeetingCells[SelaId],
+                        NpcFacing.Right,
+                        "village.npc.sela.npc_b_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupEndMinute,
+                        NpcBGroupMeetingCells[SelaId],
+                        NpcFacing.Right,
+                        "village.npc.sela.npc_b_group"
+                    ),
                     WeatherSlot(
                         13,
                         17,
@@ -583,6 +785,15 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.sela.weather_rain",
                         DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(13, 14),
+                        NpcFacing.Right,
+                        "village.npc.sela.season_starharvest",
+                        CalendarSystem.StarharvestSeasonId
                     ),
                     Slot(
                         9,
@@ -644,6 +855,25 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         ElowenId
                     ),
+                    GroupStagingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupStagingCells[ElowenId],
+                        NpcFacing.Right,
+                        "village.npc.elowen.npc_c_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupMeetingCells[ElowenId],
+                        NpcFacing.Right,
+                        "village.npc.elowen.npc_c_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupEndMinute,
+                        NpcCGroupMeetingCells[ElowenId],
+                        NpcFacing.Right,
+                        "village.npc.elowen.npc_c_group"
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -652,6 +882,15 @@ public static class VillageCatalog
                         NpcFacing.Down,
                         "village.npc.elowen.weather_stardust",
                         DataCatalog.StardustWindWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(108, 56),
+                        NpcFacing.Right,
+                        "village.npc.elowen.season_rainveil",
+                        CalendarSystem.RainveilSeasonId
                     ),
                     Slot(
                         9,
@@ -712,6 +951,34 @@ public static class VillageCatalog
                         StarharvestMarketLayout.NpcAnchors[VessaId],
                         NpcFacing.Up,
                         VessaId
+                    ),
+                    GroupStagingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupStagingCells[VessaId],
+                        NpcFacing.Right,
+                        "village.npc.vessa.restday"
+                    ),
+                    GroupTravelSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupMeetingCells[VessaId],
+                        NpcFacing.Right,
+                        "village.npc.vessa.npc_a_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupEndMinute,
+                        NpcAGroupMeetingCells[VessaId],
+                        NpcFacing.Right,
+                        "village.npc.vessa.npc_a_group"
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(27, 13),
+                        NpcFacing.Left,
+                        "village.npc.vessa.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
                     ),
                     SeasonSlot(
                         13,
@@ -782,14 +1049,42 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         OrinId
                     ),
+                    GroupStagingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupStagingCells[OrinId],
+                        NpcFacing.Left,
+                        "village.npc.orin.restday"
+                    ),
+                    GroupTravelSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupMeetingCells[OrinId],
+                        NpcFacing.Left,
+                        "village.npc.orin.npc_a_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcAGroupStartMinute,
+                        NpcAGroupEndMinute,
+                        NpcAGroupMeetingCells[OrinId],
+                        NpcFacing.Left,
+                        "village.npc.orin.npc_a_group"
+                    ),
                     WeatherSlot(
+                        10,
                         13,
-                        18,
                         PlayerLocationIds.TwilightEmporium,
                         new GridPosition(14, 12),
                         NpcFacing.Right,
                         "village.npc.orin.weather_rain",
                         DataCatalog.RainWeatherId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.TwilightEmporium,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.orin.weather_longnight_snow",
+                        DataCatalog.LongnightSnowWeatherId
                     ),
                     SeasonSlot(
                         13,
@@ -867,6 +1162,25 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         KaelId
                     ),
+                    GroupStagingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupStagingCells[KaelId],
+                        NpcFacing.Left,
+                        "village.npc.kael.npc_b_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupMeetingCells[KaelId],
+                        NpcFacing.Left,
+                        "village.npc.kael.npc_b_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupEndMinute,
+                        NpcBGroupMeetingCells[KaelId],
+                        NpcFacing.Left,
+                        "village.npc.kael.npc_b_group"
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -875,6 +1189,15 @@ public static class VillageCatalog
                         NpcFacing.Right,
                         "village.npc.kael.weather_stardust",
                         DataCatalog.StardustWindWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarfallWatch,
+                        new GridPosition(27, 12),
+                        NpcFacing.Left,
+                        "village.npc.kael.season_longnight",
+                        CalendarSystem.LongnightSeasonId
                     ),
                     Slot(
                         9,
@@ -935,6 +1258,34 @@ public static class VillageCatalog
                         StarharvestMarketLayout.NpcAnchors[HaldenId],
                         NpcFacing.Right,
                         HaldenId
+                    ),
+                    GroupStagingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupStagingCells[HaldenId],
+                        NpcFacing.Left,
+                        "village.npc.halden.npc_b_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupMeetingCells[HaldenId],
+                        NpcFacing.Left,
+                        "village.npc.halden.npc_b_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcBGroupStartMinute,
+                        NpcBGroupEndMinute,
+                        NpcBGroupMeetingCells[HaldenId],
+                        NpcFacing.Left,
+                        "village.npc.halden.npc_b_group"
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(107, 66),
+                        NpcFacing.Down,
+                        "village.npc.halden.weather_stardust",
+                        DataCatalog.StardustWindWeatherId
                     ),
                     WeatherSlot(
                         13,
@@ -1005,6 +1356,34 @@ public static class VillageCatalog
                         StarharvestMarketLayout.NpcAnchors[MaveaId],
                         NpcFacing.Left,
                         MaveaId
+                    ),
+                    GroupStagingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupStagingCells[MaveaId],
+                        NpcFacing.Left,
+                        "village.npc.mavea.npc_c_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupMeetingCells[MaveaId],
+                        NpcFacing.Left,
+                        "village.npc.mavea.npc_c_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupEndMinute,
+                        NpcCGroupMeetingCells[MaveaId],
+                        NpcFacing.Left,
+                        "village.npc.mavea.npc_c_group"
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(25, 13),
+                        NpcFacing.Right,
+                        "village.npc.mavea.weather_rain",
+                        DataCatalog.RainWeatherId
                     ),
                     SeasonSlot(
                         13,
@@ -1082,6 +1461,25 @@ public static class VillageCatalog
                         NpcFacing.Down,
                         SivrenId
                     ),
+                    GroupStagingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupStagingCells[SivrenId],
+                        NpcFacing.Right,
+                        "village.npc.sivren.npc_c_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupMeetingCells[SivrenId],
+                        NpcFacing.Right,
+                        "village.npc.sivren.npc_c_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupEndMinute,
+                        NpcCGroupMeetingCells[SivrenId],
+                        NpcFacing.Right,
+                        "village.npc.sivren.npc_c_group"
+                    ),
                     WeatherSlot(
                         13,
                         17,
@@ -1090,6 +1488,15 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.sivren.weather_rain",
                         DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        17,
+                        PlayerLocationIds.MoonlitArchive,
+                        new GridPosition(26, 12),
+                        NpcFacing.Left,
+                        "village.npc.sivren.season_starharvest",
+                        CalendarSystem.StarharvestSeasonId
                     ),
                     Slot(
                         9,
@@ -1144,6 +1551,25 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         DorrikId
                     ),
+                    GroupStagingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupStagingCells[DorrikId],
+                        NpcFacing.Left,
+                        "village.npc.dorrik.npc_c_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupMeetingCells[DorrikId],
+                        NpcFacing.Left,
+                        "village.npc.dorrik.npc_c_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcCGroupStartMinute,
+                        NpcCGroupEndMinute,
+                        NpcCGroupMeetingCells[DorrikId],
+                        NpcFacing.Left,
+                        "village.npc.dorrik.npc_c_group"
+                    ),
                     WeatherSlot(
                         13,
                         17,
@@ -1152,6 +1578,15 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.dorrik.weather_stardust",
                         DataCatalog.StardustWindWeatherId
+                    ),
+                    SeasonSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(99, 78),
+                        NpcFacing.Up,
+                        "village.npc.dorrik.season_rainveil",
+                        CalendarSystem.RainveilSeasonId
                     ),
                     Slot(
                         9,
@@ -1212,6 +1647,34 @@ public static class VillageCatalog
                         StarharvestMarketLayout.NpcAnchors[YvaraId],
                         NpcFacing.Right,
                         YvaraId
+                    ),
+                    GroupStagingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupStagingCells[YvaraId],
+                        NpcFacing.Right,
+                        "village.npc.yvara.npc_d_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupMeetingCells[YvaraId],
+                        NpcFacing.Right,
+                        "village.npc.yvara.npc_d_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupEndMinute,
+                        NpcDGroupMeetingCells[YvaraId],
+                        NpcFacing.Right,
+                        "village.npc.yvara.npc_d_group"
+                    ),
+                    WeatherSlot(
+                        10,
+                        13,
+                        PlayerLocationIds.TwilightEmporium,
+                        new GridPosition(26, 10),
+                        NpcFacing.Left,
+                        "village.npc.yvara.weather_rain",
+                        DataCatalog.RainWeatherId
                     ),
                     SeasonSlot(
                         13,
@@ -1282,6 +1745,25 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         BrialId
                     ),
+                    GroupStagingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupStagingCells[BrialId],
+                        NpcFacing.Left,
+                        "village.npc.brial.npc_d_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupMeetingCells[BrialId],
+                        NpcFacing.Left,
+                        "village.npc.brial.npc_d_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupEndMinute,
+                        NpcDGroupMeetingCells[BrialId],
+                        NpcFacing.Left,
+                        "village.npc.brial.npc_d_group"
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -1290,6 +1772,15 @@ public static class VillageCatalog
                         NpcFacing.Right,
                         "village.npc.brial.weather_rain",
                         DataCatalog.RainWeatherId
+                    ),
+                    SeasonSlot(
+                        9,
+                        13,
+                        PlayerLocationIds.StarweaverTeaHouse,
+                        new GridPosition(27, 13),
+                        NpcFacing.Left,
+                        "village.npc.brial.season_longnight",
+                        CalendarSystem.LongnightSeasonId
                     ),
                     SeasonSlot(
                         13,
@@ -1360,6 +1851,34 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         PavriId
                     ),
+                    GroupStagingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupStagingCells[PavriId],
+                        NpcFacing.Right,
+                        "village.npc.pavri.npc_d_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupMeetingCells[PavriId],
+                        NpcFacing.Right,
+                        "village.npc.pavri.npc_d_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupEndMinute,
+                        NpcDGroupMeetingCells[PavriId],
+                        NpcFacing.Right,
+                        "village.npc.pavri.npc_d_group"
+                    ),
+                    SeasonSlot(
+                        9,
+                        13,
+                        PlayerLocationIds.MoonstoneWorkshop,
+                        new GridPosition(13, 12),
+                        NpcFacing.Right,
+                        "village.npc.pavri.season_rainveil",
+                        CalendarSystem.RainveilSeasonId
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -1429,6 +1948,25 @@ public static class VillageCatalog
                         NpcFacing.Up,
                         RovenId
                     ),
+                    GroupStagingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupStagingCells[RovenId],
+                        NpcFacing.Left,
+                        "village.npc.roven.npc_d_group_wait"
+                    ),
+                    GroupTravelSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupMeetingCells[RovenId],
+                        NpcFacing.Left,
+                        "village.npc.roven.npc_d_group"
+                    ),
+                    GroupMeetingSlot(
+                        NpcDGroupStartMinute,
+                        NpcDGroupEndMinute,
+                        NpcDGroupMeetingCells[RovenId],
+                        NpcFacing.Left,
+                        "village.npc.roven.npc_d_group"
+                    ),
                     WeatherSlot(
                         13,
                         18,
@@ -1437,6 +1975,15 @@ public static class VillageCatalog
                         NpcFacing.Left,
                         "village.npc.roven.weather_stardust",
                         DataCatalog.StardustWindWeatherId
+                    ),
+                    WeatherSlot(
+                        13,
+                        18,
+                        PlayerLocationIds.World,
+                        new GridPosition(93, 76),
+                        NpcFacing.Right,
+                        "village.npc.roven.weather_rain",
+                        DataCatalog.RainWeatherId
                     ),
                     SeasonSlot(
                         18,
@@ -1450,7 +1997,7 @@ public static class VillageCatalog
                     Slot(
                         9,
                         18,
-                        new GridPosition(107, 76),
+                        new GridPosition(106, 76),
                         NpcFacing.Left,
                         "village.npc.roven.restday",
                         CalendarSystem.LanternrestWeekdayIndex
@@ -1757,6 +2304,55 @@ public static class VillageCatalog
             : BaseSchedulePriority
     );
 
+    private static NpcScheduleEntry GroupStagingSlot(
+        int meetingStartMinute,
+        GridPosition stagingCell,
+        NpcFacing facing,
+        string dialogueKey
+    ) => new(
+        GameClock.StartMinute,
+        meetingStartMinute - 30,
+        PlayerLocationIds.World,
+        stagingCell,
+        facing,
+        dialogueKey,
+        [CalendarSystem.LanternrestWeekdayIndex],
+        Priority: GroupEventSchedulePriority
+    );
+
+    private static NpcScheduleEntry GroupTravelSlot(
+        int meetingStartMinute,
+        GridPosition meetingCell,
+        NpcFacing facing,
+        string dialogueKey
+    ) => new(
+        meetingStartMinute - 30,
+        meetingStartMinute,
+        PlayerLocationIds.World,
+        meetingCell,
+        facing,
+        dialogueKey,
+        [CalendarSystem.LanternrestWeekdayIndex],
+        Priority: GroupEventSchedulePriority
+    );
+
+    private static NpcScheduleEntry GroupMeetingSlot(
+        int meetingStartMinute,
+        int meetingEndMinute,
+        GridPosition meetingCell,
+        NpcFacing facing,
+        string dialogueKey
+    ) => new(
+        meetingStartMinute,
+        meetingEndMinute,
+        PlayerLocationIds.World,
+        meetingCell,
+        facing,
+        dialogueKey,
+        [CalendarSystem.LanternrestWeekdayIndex],
+        Priority: GroupEventSchedulePriority
+    );
+
     private static NpcScheduleEntry WeatherSlot(
         int startHour,
         int endHour,
@@ -1957,6 +2553,8 @@ public sealed class VillageSystem
 
     public IReadOnlySet<string> MetNpcIds => _metNpcIds;
     public const int MaximumRelationshipPoints = 100;
+    public const int TrustedFriendThreshold = 25;
+    public const int KindredLightThreshold = 60;
 
     public event Action? Changed;
 
@@ -2439,12 +3037,12 @@ public sealed class VillageSystem
 
     public static RelationshipTier TierFor(int points)
     {
-        if (points >= 60)
+        if (points >= KindredLightThreshold)
         {
             return RelationshipTier.KindredLight;
         }
 
-        return points >= 25
+        return points >= TrustedFriendThreshold
             ? RelationshipTier.TrustedFriend
             : RelationshipTier.NewAcquaintance;
     }

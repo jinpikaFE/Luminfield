@@ -194,17 +194,18 @@ public sealed partial class Main : Node
         _farm.ShippingRequested += OpenShipping;
         _farm.CommissionRequested += OpenCommissionBoard;
         _farm.MailRequested += OpenStarlightMail;
-        _farm.StarlightRequested += OpenStarlightPedestal;
+        _farm.StarlightRequested += OpenStarlightPedestalFromWorld;
         _farm.VillagerRequested += TalkToVillager;
         _farm.StorageRequested += OpenStorage;
         _farm.HomesteadWorkbenchRequested +=
             OpenHomesteadConstructionPanel;
         _farm.NoticeRequested += key => _hud?.ShowNotice(key);
-        _farm.RegionEntered += key => _hud?.ShowNotice(key, 2.6);
-        _farm.StepRequested += () => _audio.Play(PixelSound.Step);
+        _farm.RegionEntered += HandleRegionEntered;
+        _farm.StepRequested += HandleWorldStep;
         _world = _farm;
         AddChild(_world);
         MoveChild(_world, 1);
+        _farm.EmitCurrentRegion();
         if (fromCottage)
         {
             _hud?.ShowNotice("notice.leave_cottage");

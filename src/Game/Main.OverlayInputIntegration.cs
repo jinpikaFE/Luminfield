@@ -41,6 +41,14 @@ public sealed partial class Main : Node
         }
 
         if (overlayCancelPressed &&
+            _journeyRecapOverlay is not null)
+        {
+            CloseJourneyRecap();
+            GetViewport().SetInputAsHandled();
+            return true;
+        }
+
+        if (overlayCancelPressed &&
             _starGateOverlay is not null)
         {
             CloseStarGate();

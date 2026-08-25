@@ -21,66 +21,175 @@ public static class CharacterEventCatalog
         "liora_faded_return_route";
     public const string LioraRememberedWayHomeId =
         "liora_remembered_way_home";
+    public const string NpcALioraMarginOfLivingRoutesId =
+        "npc_a_liora_margin_of_living_routes";
+    public const string NpcALioraFirstUncopiedChartId =
+        "npc_a_liora_first_uncopied_chart";
     public const string TaviCrackedMoonRuneId =
         "tavi_cracked_moon_rune";
     public const string TaviMendedLightId =
         "tavi_mended_light";
+    public const string NpcATaviStoneThatAnswersFootstepsId =
+        "npc_a_tavi_stone_that_answers_footsteps";
+    public const string NpcATaviJointWithRoomToMoveId =
+        "npc_a_tavi_joint_with_room_to_move";
     public const string NemiUndeliverableLetterId =
         "nemi_undeliverable_letter";
     public const string NemiStarChartRouteId =
         "nemi_star_chart_route";
+    public const string NpcBNemiDeliveryThatNeededNoAnswerId =
+        "npc_b_nemi_delivery_that_needed_no_answer";
+    public const string NpcBNemiHookForHerOwnMailbagId =
+        "npc_b_nemi_hook_for_her_own_mailbag";
     public const string KaelBrokenBlueRuneId =
         "kael_broken_blue_rune";
     public const string KaelSafeReturnRouteId =
         "kael_safe_return_route";
+    public const string NpcBKaelPatrolLeftUnfinishedOnPurposeId =
+        "npc_b_kael_patrol_left_unfinished_on_purpose";
+    public const string NpcBKaelLastMarkerOnTheReturnBoardId =
+        "npc_b_kael_last_marker_on_the_return_board";
     public const string SelaTemperedStarlightId =
         "sela_tempered_starlight";
     public const string SelaSharedForgeRhythmId =
         "sela_shared_forge_rhythm";
+    public const string NpcBSelaInstructionsBeyondHerHandsId =
+        "npc_b_sela_instructions_beyond_her_hands";
+    public const string NpcBSelaHammerFittedToHerHandId =
+        "npc_b_sela_hammer_fitted_to_her_hand";
     public const string OrinUnpricedWaybillId =
         "orin_unpriced_waybill";
     public const string OrinSharedLanternRouteId =
         "orin_shared_lantern_route";
+    public const string NpcAOrinOrderHeDeclinedId =
+        "npc_a_orin_order_he_declined";
+    public const string NpcAOrinCaseHeUnpackedId =
+        "npc_a_orin_case_he_unpacked";
     public const string ElowenTideMarksAtTheWellId =
         "elowen_tide_marks_at_the_well";
     public const string ElowenWaterlineReadTogetherId =
         "elowen_waterline_read_together";
+    public const string NpcCElowenWaterWithTwoHonestNamesId =
+        "npc_c_elowen_water_with_two_honest_names";
+    public const string NpcCElowenMarkerAllowedToDriftId =
+        "npc_c_elowen_marker_allowed_to_drift";
     public const string VessaBitterLeafWarmCupId =
         "vessa_bitter_leaf_warm_cup";
     public const string VessaPathThatListensBackId =
         "vessa_path_that_listens_back";
+    public const string NpcAVessaPatchLeftUngatheredId =
+        "npc_a_vessa_patch_left_ungathered";
+    public const string NpcAVessaCupBrewedForHerselfId =
+        "npc_a_vessa_cup_brewed_for_herself";
     public const string HaldenWeatherInTheFodderId =
         "halden_weather_in_the_fodder";
     public const string HaldenThreeBreathsOneRhythmId =
         "halden_three_breaths_one_rhythm";
+    public const string NpcBHaldenBowlThatDidNotNeedEmptyingId =
+        "npc_b_halden_bowl_that_did_not_need_emptying";
+    public const string NpcBHaldenBellHeChoseNotToRingId =
+        "npc_b_halden_bell_he_chose_not_to_ring";
     public const string MaveaFourBowlsOneTableId =
         "mavea_four_bowls_one_table";
     public const string MaveaWarmthThatKeepsId =
         "mavea_warmth_that_keeps";
+    public const string NpcCMaveaRecipeThatChangedWithTheTableId =
+        "npc_c_mavea_recipe_that_changed_with_the_table";
+    public const string NpcCMaveaLastJarOpenedOnAnOrdinaryDayId =
+        "npc_c_mavea_last_jar_opened_on_an_ordinary_day";
     public const string SivrenUnfiledLanternsId =
         "sivren_unfiled_lanterns";
     public const string SivrenYearInThreeLightsId =
         "sivren_year_in_three_lights";
+    public const string NpcCSivrenTwoMemoriesUnderOneDateId =
+        "npc_c_sivren_two_memories_under_one_date";
+    public const string NpcCSivrenFirstPersonFootnoteId =
+        "npc_c_sivren_first_person_footnote";
     public const string DorrikChalkBeyondWallsId =
         "dorrik_chalk_beyond_walls";
     public const string DorrikRoomsThatBreatheId =
         "dorrik_rooms_that_breathe";
+    public const string NpcCDorrikMaintenancePathBehindTheBraceId =
+        "npc_c_dorrik_maintenance_path_behind_the_brace";
+    public const string NpcCDorrikPlanReturnedToItsUsersId =
+        "npc_c_dorrik_plan_returned_to_its_users";
     public const string YvaraSeedsBeyondTheCalendarId =
         "yvara_seeds_beyond_the_calendar";
     public const string YvaraASeasonCarriedGentlyId =
         "yvara_a_season_carried_gently";
+    public const string NpcDYvaraTheDaySheLeftTheCaseClosedId =
+        "npc_d_yvara_the_day_she_left_the_case_closed";
+    public const string NpcDYvaraASeedRecordInTwoHandsId =
+        "npc_d_yvara_a_seed_record_in_two_hands";
     public const string BrialBlossomsBetweenHarvestsId =
         "brial_blossoms_between_harvests";
     public const string BrialAPathLeftForTheBeesId =
         "brial_a_path_left_for_the_bees";
+    public const string NpcDBrialTheOrchardRoundWithAnEmptyBasketId =
+        "npc_d_brial_the_orchard_round_with_an_empty_basket";
+    public const string NpcDBrialThePruningMarkHeErasedId =
+        "npc_d_brial_the_pruning_mark_he_erased";
     public const string PavriTheVisibleMendId =
         "pavri_the_visible_mend";
     public const string PavriClothThatKeepsWarmthId =
         "pavri_cloth_that_keeps_warmth";
+    public const string NpcDPavriTheCuffTestedInMotionId =
+        "npc_d_pavri_the_cuff_tested_in_motion";
+    public const string NpcDPavriOneStitchBesideTheOldId =
+        "npc_d_pavri_one_stitch_beside_the_old";
     public const string RovenTheRouteWithRoomToRestId =
         "roven_the_route_with_room_to_rest";
     public const string RovenLightsThatWaitForReturnId =
         "roven_lights_that_wait_for_return";
+    public const string NpcDRovenTheCornerPeopleAlreadyChoseId =
+        "npc_d_roven_the_corner_people_already_chose";
+    public const string NpcDRovenARouteForAnOrdinaryDayId =
+        "npc_d_roven_a_route_for_an_ordinary_day";
+    public static readonly IReadOnlySet<string> NpcAIds =
+        new HashSet<string>(
+            [
+                VillageCatalog.LioraId,
+                VillageCatalog.TaviId,
+                VillageCatalog.OrinId,
+                VillageCatalog.VessaId
+            ],
+            StringComparer.Ordinal
+        );
+    public static readonly IReadOnlySet<string> NpcBIds =
+        new HashSet<string>(
+            [
+                VillageCatalog.NemiId,
+                VillageCatalog.KaelId,
+                VillageCatalog.SelaId,
+                VillageCatalog.HaldenId
+            ],
+            StringComparer.Ordinal
+        );
+    public static readonly IReadOnlySet<string> NpcCIds =
+        new HashSet<string>(
+            [
+                VillageCatalog.ElowenId,
+                VillageCatalog.MaveaId,
+                VillageCatalog.SivrenId,
+                VillageCatalog.DorrikId
+            ],
+            StringComparer.Ordinal
+        );
+    public static readonly IReadOnlySet<string> NpcDIds =
+        new HashSet<string>(
+            [
+                VillageCatalog.YvaraId,
+                VillageCatalog.BrialId,
+                VillageCatalog.PavriId,
+                VillageCatalog.RovenId
+            ],
+            StringComparer.Ordinal
+        );
+    public static readonly IReadOnlySet<string> FourEventNpcIds =
+        new HashSet<string>(
+            NpcAIds.Concat(NpcBIds).Concat(NpcCIds).Concat(NpcDIds),
+            StringComparer.Ordinal
+        );
 
     public static readonly IReadOnlyList<CharacterEventDefinition>
         Definitions =
@@ -109,6 +218,32 @@ public static class CharacterEventCatalog
                 LioraFadedReturnRouteId
             ),
             new(
+                NpcALioraMarginOfLivingRoutesId,
+                VillageCatalog.LioraId,
+                75,
+                PlayerLocationIds.MoonlitArchive,
+                [
+                    "character_event.npc_a.liora.margin_of_living_routes.1",
+                    "character_event.npc_a.liora.margin_of_living_routes.2",
+                    "character_event.npc_a.liora.margin_of_living_routes.3"
+                ],
+                RequiredPreviousEventId: LioraRememberedWayHomeId,
+                RequiredNpcDialogueKey: "village.npc.liora.archive"
+            ),
+            new(
+                NpcALioraFirstUncopiedChartId,
+                VillageCatalog.LioraId,
+                90,
+                PlayerLocationIds.MoonlitArchive,
+                [
+                    "character_event.npc_a.liora.first_uncopied_chart.1",
+                    "character_event.npc_a.liora.first_uncopied_chart.2",
+                    "character_event.npc_a.liora.first_uncopied_chart.3"
+                ],
+                RequiredPreviousEventId: NpcALioraMarginOfLivingRoutesId,
+                RequiredNpcDialogueKey: "village.npc.liora.archive"
+            ),
+            new(
                 TaviCrackedMoonRuneId,
                 VillageCatalog.TaviId,
                 25,
@@ -130,6 +265,33 @@ public static class CharacterEventCatalog
                     "character_event.tavi.mended_light.3"
                 ],
                 TaviCrackedMoonRuneId
+            ),
+            new(
+                NpcATaviStoneThatAnswersFootstepsId,
+                VillageCatalog.TaviId,
+                75,
+                PlayerLocationIds.MoonstoneWorkshop,
+                [
+                    "character_event.npc_a.tavi.stone_that_answers_footsteps.1",
+                    "character_event.npc_a.tavi.stone_that_answers_footsteps.2",
+                    "character_event.npc_a.tavi.stone_that_answers_footsteps.3"
+                ],
+                RequiredPreviousEventId: TaviMendedLightId,
+                RequiredNpcDialogueKey: "village.npc.tavi.workshop"
+            ),
+            new(
+                NpcATaviJointWithRoomToMoveId,
+                VillageCatalog.TaviId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_a.tavi.joint_with_room_to_move.1",
+                    "character_event.npc_a.tavi.joint_with_room_to_move.2",
+                    "character_event.npc_a.tavi.joint_with_room_to_move.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcATaviStoneThatAnswersFootstepsId,
+                RequiredNpcDialogueKey: "village.npc.tavi.plaza"
             ),
             new(
                 NemiUndeliverableLetterId,
@@ -155,6 +317,33 @@ public static class CharacterEventCatalog
                 NemiUndeliverableLetterId
             ),
             new(
+                NpcBNemiDeliveryThatNeededNoAnswerId,
+                VillageCatalog.NemiId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.nemi.delivery_that_needed_no_answer.1",
+                    "character_event.npc_b.nemi.delivery_that_needed_no_answer.2",
+                    "character_event.npc_b.nemi.delivery_that_needed_no_answer.3"
+                ],
+                RequiredPreviousEventId: NemiStarChartRouteId,
+                RequiredNpcDialogueKey: "village.npc.nemi.route"
+            ),
+            new(
+                NpcBNemiHookForHerOwnMailbagId,
+                VillageCatalog.NemiId,
+                90,
+                PlayerLocationIds.StarlightPost,
+                [
+                    "character_event.npc_b.nemi.hook_for_her_own_mailbag.1",
+                    "character_event.npc_b.nemi.hook_for_her_own_mailbag.2",
+                    "character_event.npc_b.nemi.hook_for_her_own_mailbag.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcBNemiDeliveryThatNeededNoAnswerId,
+                RequiredNpcDialogueKey: "village.npc.nemi.starlight_post"
+            ),
+            new(
                 KaelBrokenBlueRuneId,
                 VillageCatalog.KaelId,
                 25,
@@ -178,6 +367,33 @@ public static class CharacterEventCatalog
                 KaelBrokenBlueRuneId
             ),
             new(
+                NpcBKaelPatrolLeftUnfinishedOnPurposeId,
+                VillageCatalog.KaelId,
+                75,
+                PlayerLocationIds.StarfallWatch,
+                [
+                    "character_event.npc_b.kael.patrol_left_unfinished_on_purpose.1",
+                    "character_event.npc_b.kael.patrol_left_unfinished_on_purpose.2",
+                    "character_event.npc_b.kael.patrol_left_unfinished_on_purpose.3"
+                ],
+                RequiredPreviousEventId: KaelSafeReturnRouteId,
+                RequiredNpcDialogueKey: "village.npc.kael.starfall_watch"
+            ),
+            new(
+                NpcBKaelLastMarkerOnTheReturnBoardId,
+                VillageCatalog.KaelId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.kael.last_marker_on_the_return_board.1",
+                    "character_event.npc_b.kael.last_marker_on_the_return_board.2",
+                    "character_event.npc_b.kael.last_marker_on_the_return_board.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcBKaelPatrolLeftUnfinishedOnPurposeId,
+                RequiredNpcDialogueKey: "village.npc.kael.plaza"
+            ),
+            new(
                 SelaTemperedStarlightId,
                 VillageCatalog.SelaId,
                 25,
@@ -199,6 +415,33 @@ public static class CharacterEventCatalog
                     "character_event.sela.shared_forge_rhythm.3"
                 ],
                 SelaTemperedStarlightId
+            ),
+            new(
+                NpcBSelaInstructionsBeyondHerHandsId,
+                VillageCatalog.SelaId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.sela.instructions_beyond_her_hands.1",
+                    "character_event.npc_b.sela.instructions_beyond_her_hands.2",
+                    "character_event.npc_b.sela.instructions_beyond_her_hands.3"
+                ],
+                RequiredPreviousEventId: SelaSharedForgeRhythmId,
+                RequiredNpcDialogueKey: "village.npc.sela.plaza"
+            ),
+            new(
+                NpcBSelaHammerFittedToHerHandId,
+                VillageCatalog.SelaId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.sela.hammer_fitted_to_her_hand.1",
+                    "character_event.npc_b.sela.hammer_fitted_to_her_hand.2",
+                    "character_event.npc_b.sela.hammer_fitted_to_her_hand.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcBSelaInstructionsBeyondHerHandsId,
+                RequiredNpcDialogueKey: "village.npc.sela.workshop"
             ),
             new(
                 OrinUnpricedWaybillId,
@@ -226,6 +469,32 @@ public static class CharacterEventCatalog
                 RequiredNpcDialogueKey: "village.npc.orin.plaza"
             ),
             new(
+                NpcAOrinOrderHeDeclinedId,
+                VillageCatalog.OrinId,
+                75,
+                PlayerLocationIds.TwilightEmporium,
+                [
+                    "character_event.npc_a.orin.order_he_declined.1",
+                    "character_event.npc_a.orin.order_he_declined.2",
+                    "character_event.npc_a.orin.order_he_declined.3"
+                ],
+                RequiredPreviousEventId: OrinSharedLanternRouteId,
+                RequiredNpcDialogueKey: "village.npc.orin.emporium"
+            ),
+            new(
+                NpcAOrinCaseHeUnpackedId,
+                VillageCatalog.OrinId,
+                90,
+                PlayerLocationIds.TwilightEmporium,
+                [
+                    "character_event.npc_a.orin.case_he_unpacked.1",
+                    "character_event.npc_a.orin.case_he_unpacked.2",
+                    "character_event.npc_a.orin.case_he_unpacked.3"
+                ],
+                RequiredPreviousEventId: NpcAOrinOrderHeDeclinedId,
+                RequiredNpcDialogueKey: "village.npc.orin.emporium"
+            ),
+            new(
                 HaldenWeatherInTheFodderId,
                 VillageCatalog.HaldenId,
                 25,
@@ -249,6 +518,33 @@ public static class CharacterEventCatalog
                 ],
                 RequiredPreviousEventId: HaldenWeatherInTheFodderId,
                 RequiredNpcDialogueKey: "village.npc.halden.plaza"
+            ),
+            new(
+                NpcBHaldenBowlThatDidNotNeedEmptyingId,
+                VillageCatalog.HaldenId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.halden.bowl_that_did_not_need_emptying.1",
+                    "character_event.npc_b.halden.bowl_that_did_not_need_emptying.2",
+                    "character_event.npc_b.halden.bowl_that_did_not_need_emptying.3"
+                ],
+                RequiredPreviousEventId: HaldenThreeBreathsOneRhythmId,
+                RequiredNpcDialogueKey: "village.npc.halden.stocktake"
+            ),
+            new(
+                NpcBHaldenBellHeChoseNotToRingId,
+                VillageCatalog.HaldenId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_b.halden.bell_he_chose_not_to_ring.1",
+                    "character_event.npc_b.halden.bell_he_chose_not_to_ring.2",
+                    "character_event.npc_b.halden.bell_he_chose_not_to_ring.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcBHaldenBowlThatDidNotNeedEmptyingId,
+                RequiredNpcDialogueKey: "village.npc.halden.evening"
             ),
             new(
                 MaveaFourBowlsOneTableId,
@@ -276,6 +572,33 @@ public static class CharacterEventCatalog
                 RequiredNpcDialogueKey: "village.npc.mavea.tea_house"
             ),
             new(
+                NpcCMaveaRecipeThatChangedWithTheTableId,
+                VillageCatalog.MaveaId,
+                75,
+                PlayerLocationIds.StarweaverTeaHouse,
+                [
+                    "character_event.npc_c.mavea.recipe_that_changed_with_the_table.1",
+                    "character_event.npc_c.mavea.recipe_that_changed_with_the_table.2",
+                    "character_event.npc_c.mavea.recipe_that_changed_with_the_table.3"
+                ],
+                RequiredPreviousEventId: MaveaWarmthThatKeepsId,
+                RequiredNpcDialogueKey: "village.npc.mavea.tea_house"
+            ),
+            new(
+                NpcCMaveaLastJarOpenedOnAnOrdinaryDayId,
+                VillageCatalog.MaveaId,
+                90,
+                PlayerLocationIds.StarweaverTeaHouse,
+                [
+                    "character_event.npc_c.mavea.last_jar_opened_on_an_ordinary_day.1",
+                    "character_event.npc_c.mavea.last_jar_opened_on_an_ordinary_day.2",
+                    "character_event.npc_c.mavea.last_jar_opened_on_an_ordinary_day.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcCMaveaRecipeThatChangedWithTheTableId,
+                RequiredNpcDialogueKey: "village.npc.mavea.evening"
+            ),
+            new(
                 SivrenUnfiledLanternsId,
                 VillageCatalog.SivrenId,
                 25,
@@ -299,6 +622,33 @@ public static class CharacterEventCatalog
                 ],
                 RequiredPreviousEventId: SivrenUnfiledLanternsId,
                 RequiredNpcDialogueKey: "village.npc.sivren.archive"
+            ),
+            new(
+                NpcCSivrenTwoMemoriesUnderOneDateId,
+                VillageCatalog.SivrenId,
+                75,
+                PlayerLocationIds.MoonlitArchive,
+                [
+                    "character_event.npc_c.sivren.two_memories_under_one_date.1",
+                    "character_event.npc_c.sivren.two_memories_under_one_date.2",
+                    "character_event.npc_c.sivren.two_memories_under_one_date.3"
+                ],
+                RequiredPreviousEventId: SivrenYearInThreeLightsId,
+                RequiredNpcDialogueKey: "village.npc.sivren.archive"
+            ),
+            new(
+                NpcCSivrenFirstPersonFootnoteId,
+                VillageCatalog.SivrenId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_c.sivren.first_person_footnote.1",
+                    "character_event.npc_c.sivren.first_person_footnote.2",
+                    "character_event.npc_c.sivren.first_person_footnote.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcCSivrenTwoMemoriesUnderOneDateId,
+                RequiredNpcDialogueKey: "village.npc.sivren.evening"
             ),
             new(
                 DorrikChalkBeyondWallsId,
@@ -326,6 +676,33 @@ public static class CharacterEventCatalog
                 RequiredNpcDialogueKey: "village.npc.dorrik.workshop"
             ),
             new(
+                NpcCDorrikMaintenancePathBehindTheBraceId,
+                VillageCatalog.DorrikId,
+                75,
+                PlayerLocationIds.MoonstoneWorkshop,
+                [
+                    "character_event.npc_c.dorrik.maintenance_path_behind_the_brace.1",
+                    "character_event.npc_c.dorrik.maintenance_path_behind_the_brace.2",
+                    "character_event.npc_c.dorrik.maintenance_path_behind_the_brace.3"
+                ],
+                RequiredPreviousEventId: DorrikRoomsThatBreatheId,
+                RequiredNpcDialogueKey: "village.npc.dorrik.workshop"
+            ),
+            new(
+                NpcCDorrikPlanReturnedToItsUsersId,
+                VillageCatalog.DorrikId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_c.dorrik.plan_returned_to_its_users.1",
+                    "character_event.npc_c.dorrik.plan_returned_to_its_users.2",
+                    "character_event.npc_c.dorrik.plan_returned_to_its_users.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcCDorrikMaintenancePathBehindTheBraceId,
+                RequiredNpcDialogueKey: "village.npc.dorrik.plaza"
+            ),
+            new(
                 ElowenTideMarksAtTheWellId,
                 VillageCatalog.ElowenId,
                 25,
@@ -348,6 +725,33 @@ public static class CharacterEventCatalog
                     "character_event.elowen.waterline_read_together.3"
                 ],
                 RequiredPreviousEventId: ElowenTideMarksAtTheWellId,
+                RequiredNpcDialogueKey: "village.npc.elowen.plaza"
+            ),
+            new(
+                NpcCElowenWaterWithTwoHonestNamesId,
+                VillageCatalog.ElowenId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_c.elowen.water_with_two_honest_names.1",
+                    "character_event.npc_c.elowen.water_with_two_honest_names.2",
+                    "character_event.npc_c.elowen.water_with_two_honest_names.3"
+                ],
+                RequiredPreviousEventId: ElowenWaterlineReadTogetherId,
+                RequiredNpcDialogueKey: "village.npc.elowen.well"
+            ),
+            new(
+                NpcCElowenMarkerAllowedToDriftId,
+                VillageCatalog.ElowenId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_c.elowen.marker_allowed_to_drift.1",
+                    "character_event.npc_c.elowen.marker_allowed_to_drift.2",
+                    "character_event.npc_c.elowen.marker_allowed_to_drift.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcCElowenWaterWithTwoHonestNamesId,
                 RequiredNpcDialogueKey: "village.npc.elowen.plaza"
             ),
             new(
@@ -376,6 +780,32 @@ public static class CharacterEventCatalog
                 RequiredNpcDialogueKey: "village.npc.vessa.route"
             ),
             new(
+                NpcAVessaPatchLeftUngatheredId,
+                VillageCatalog.VessaId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_a.vessa.patch_left_ungathered.1",
+                    "character_event.npc_a.vessa.patch_left_ungathered.2",
+                    "character_event.npc_a.vessa.patch_left_ungathered.3"
+                ],
+                RequiredPreviousEventId: VessaPathThatListensBackId,
+                RequiredNpcDialogueKey: "village.npc.vessa.route"
+            ),
+            new(
+                NpcAVessaCupBrewedForHerselfId,
+                VillageCatalog.VessaId,
+                90,
+                PlayerLocationIds.StarweaverTeaHouse,
+                [
+                    "character_event.npc_a.vessa.cup_brewed_for_herself.1",
+                    "character_event.npc_a.vessa.cup_brewed_for_herself.2",
+                    "character_event.npc_a.vessa.cup_brewed_for_herself.3"
+                ],
+                RequiredPreviousEventId: NpcAVessaPatchLeftUngatheredId,
+                RequiredNpcDialogueKey: "village.npc.vessa.tea_house"
+            ),
+            new(
                 YvaraSeedsBeyondTheCalendarId,
                 VillageCatalog.YvaraId,
                 25,
@@ -399,6 +829,33 @@ public static class CharacterEventCatalog
                 ],
                 RequiredPreviousEventId: YvaraSeedsBeyondTheCalendarId,
                 RequiredNpcDialogueKey: "village.npc.yvara.emporium"
+            ),
+            new(
+                NpcDYvaraTheDaySheLeftTheCaseClosedId,
+                VillageCatalog.YvaraId,
+                75,
+                PlayerLocationIds.TwilightEmporium,
+                [
+                    "character_event.npc_d.yvara.the_day_she_left_the_case_closed.1",
+                    "character_event.npc_d.yvara.the_day_she_left_the_case_closed.2",
+                    "character_event.npc_d.yvara.the_day_she_left_the_case_closed.3"
+                ],
+                RequiredPreviousEventId: YvaraASeasonCarriedGentlyId,
+                RequiredNpcDialogueKey: "village.npc.yvara.emporium"
+            ),
+            new(
+                NpcDYvaraASeedRecordInTwoHandsId,
+                VillageCatalog.YvaraId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_d.yvara.a_seed_record_in_two_hands.1",
+                    "character_event.npc_d.yvara.a_seed_record_in_two_hands.2",
+                    "character_event.npc_d.yvara.a_seed_record_in_two_hands.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcDYvaraTheDaySheLeftTheCaseClosedId,
+                RequiredNpcDialogueKey: "village.npc.yvara.plaza"
             ),
             new(
                 BrialBlossomsBetweenHarvestsId,
@@ -426,6 +883,33 @@ public static class CharacterEventCatalog
                 RequiredNpcDialogueKey: "village.npc.brial.tea_house"
             ),
             new(
+                NpcDBrialTheOrchardRoundWithAnEmptyBasketId,
+                VillageCatalog.BrialId,
+                75,
+                PlayerLocationIds.StarweaverTeaHouse,
+                [
+                    "character_event.npc_d.brial.the_orchard_round_with_an_empty_basket.1",
+                    "character_event.npc_d.brial.the_orchard_round_with_an_empty_basket.2",
+                    "character_event.npc_d.brial.the_orchard_round_with_an_empty_basket.3"
+                ],
+                RequiredPreviousEventId: BrialAPathLeftForTheBeesId,
+                RequiredNpcDialogueKey: "village.npc.brial.tea_house"
+            ),
+            new(
+                NpcDBrialThePruningMarkHeErasedId,
+                VillageCatalog.BrialId,
+                90,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_d.brial.the_pruning_mark_he_erased.1",
+                    "character_event.npc_d.brial.the_pruning_mark_he_erased.2",
+                    "character_event.npc_d.brial.the_pruning_mark_he_erased.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcDBrialTheOrchardRoundWithAnEmptyBasketId,
+                RequiredNpcDialogueKey: "village.npc.brial.plaza"
+            ),
+            new(
                 PavriTheVisibleMendId,
                 VillageCatalog.PavriId,
                 25,
@@ -448,6 +932,32 @@ public static class CharacterEventCatalog
                     "character_event.pavri.cloth_that_keeps_warmth.3"
                 ],
                 RequiredPreviousEventId: PavriTheVisibleMendId,
+                RequiredNpcDialogueKey: "village.npc.pavri.workshop"
+            ),
+            new(
+                NpcDPavriTheCuffTestedInMotionId,
+                VillageCatalog.PavriId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_d.pavri.the_cuff_tested_in_motion.1",
+                    "character_event.npc_d.pavri.the_cuff_tested_in_motion.2",
+                    "character_event.npc_d.pavri.the_cuff_tested_in_motion.3"
+                ],
+                RequiredPreviousEventId: PavriClothThatKeepsWarmthId,
+                RequiredNpcDialogueKey: "village.npc.pavri.plaza"
+            ),
+            new(
+                NpcDPavriOneStitchBesideTheOldId,
+                VillageCatalog.PavriId,
+                90,
+                PlayerLocationIds.MoonstoneWorkshop,
+                [
+                    "character_event.npc_d.pavri.one_stitch_beside_the_old.1",
+                    "character_event.npc_d.pavri.one_stitch_beside_the_old.2",
+                    "character_event.npc_d.pavri.one_stitch_beside_the_old.3"
+                ],
+                RequiredPreviousEventId: NpcDPavriTheCuffTestedInMotionId,
                 RequiredNpcDialogueKey: "village.npc.pavri.workshop"
             ),
             new(
@@ -474,6 +984,33 @@ public static class CharacterEventCatalog
                 ],
                 RequiredPreviousEventId: RovenTheRouteWithRoomToRestId,
                 RequiredNpcDialogueKey: "village.npc.roven.plaza"
+            ),
+            new(
+                NpcDRovenTheCornerPeopleAlreadyChoseId,
+                VillageCatalog.RovenId,
+                75,
+                PlayerLocationIds.World,
+                [
+                    "character_event.npc_d.roven.the_corner_people_already_chose.1",
+                    "character_event.npc_d.roven.the_corner_people_already_chose.2",
+                    "character_event.npc_d.roven.the_corner_people_already_chose.3"
+                ],
+                RequiredPreviousEventId: RovenLightsThatWaitForReturnId,
+                RequiredNpcDialogueKey: "village.npc.roven.plaza"
+            ),
+            new(
+                NpcDRovenARouteForAnOrdinaryDayId,
+                VillageCatalog.RovenId,
+                90,
+                PlayerLocationIds.StarlightPost,
+                [
+                    "character_event.npc_d.roven.a_route_for_an_ordinary_day.1",
+                    "character_event.npc_d.roven.a_route_for_an_ordinary_day.2",
+                    "character_event.npc_d.roven.a_route_for_an_ordinary_day.3"
+                ],
+                RequiredPreviousEventId:
+                    NpcDRovenTheCornerPeopleAlreadyChoseId,
+                RequiredNpcDialogueKey: "village.npc.roven.starlight_post"
             )
         ];
 
@@ -544,15 +1081,29 @@ public static class CharacterEventCatalog
                 .OrderBy(definition =>
                     definition.RequiredRelationshipPoints)
                 .ToArray();
-            if (chain.Length != 2 ||
-                chain[0].RequiredRelationshipPoints != 25 ||
-                chain[0].RequiredPreviousEventId is not null ||
-                chain[1].RequiredRelationshipPoints != 60 ||
-                chain[1].RequiredPreviousEventId != chain[0].Id)
+            var expectedThresholds = FourEventNpcIds.Contains(npcId)
+                ? new[] { 25, 60, 75, 90 }
+                : new[] { 25, 60 };
+            if (chain.Length != expectedThresholds.Length)
             {
                 throw new InvalidOperationException(
-                    $"Village NPC {npcId} requires one complete 25/60 event chain."
+                    $"Village NPC {npcId} has an incomplete event chain."
                 );
+            }
+
+            for (var index = 0; index < chain.Length; index++)
+            {
+                var expectedPrevious = index == 0
+                    ? null
+                    : chain[index - 1].Id;
+                if (chain[index].RequiredRelationshipPoints !=
+                        expectedThresholds[index] ||
+                    chain[index].RequiredPreviousEventId != expectedPrevious)
+                {
+                    throw new InvalidOperationException(
+                        $"Village NPC {npcId} has an invalid event sequence."
+                    );
+                }
             }
         }
 

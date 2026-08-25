@@ -38,9 +38,11 @@ public sealed partial class GameSession
     public DailyCommissionSystem Commission { get; } = new();
     public WeeklyCommissionSystem WeeklyCommission { get; } = new();
     public StarlightSystem Starlight { get; } = new();
+    public StarlightStorySystem StarlightStory { get; } = new();
     public VillageSystem Village { get; }
     public MailSystem Mail { get; } = new();
     public CharacterEventSystem CharacterEvents { get; } = new();
+    public GroupCharacterEventSystem GroupCharacterEvents { get; } = new();
     public ConstructionSystem Construction { get; } = new();
     public StarGateSystem StarGate { get; } = new();
     public FarmingSkillSystem FarmingSkill { get; } = new();
@@ -166,6 +168,7 @@ public sealed partial class GameSession
     public event Action? EnergyChanged;
     public event Action? WaterChanged;
     public event Action? DayEnded;
+    public event Action<string>? StarlightPedestalRestored;
 
     public void ConfigureAccessibility(
         float fishingAssistBonus,
@@ -215,9 +218,18 @@ public sealed partial class GameSession
         Commission.Changed += NotifyChanged;
         WeeklyCommission.Changed += NotifyChanged;
         Starlight.Changed += NotifyChanged;
+        Starlight.PedestalRestored += pedestalId =>
+        {
+            if (!_restoring)
+            {
+                StarlightPedestalRestored?.Invoke(pedestalId);
+            }
+        };
+        StarlightStory.Changed += NotifyChanged;
         Village.Changed += NotifyChanged;
         Mail.Changed += NotifyChanged;
         CharacterEvents.Changed += NotifyChanged;
+        GroupCharacterEvents.Changed += NotifyChanged;
         Construction.Changed += NotifyChanged;
         StarGate.Changed += NotifyChanged;
         FarmingSkill.Changed += NotifyChanged;
@@ -272,9 +284,11 @@ public sealed partial class GameSession
         Commission.Reset(Clock.Day);
         WeeklyCommission.Reset(Clock.Day);
         Starlight.Reset();
+        StarlightStory.Reset();
         Village.Reset();
         Mail.Reset();
         CharacterEvents.Reset();
+        GroupCharacterEvents.Reset();
         Construction.Reset();
         StarGate.Reset();
         FarmingSkill.Reset();
@@ -341,6 +355,11 @@ public sealed partial class GameSession
         TeaHouse.Restore(save.TeaHouse, save.Day);
         PostDelivery.Restore(save.PostDelivery, save.Day);
         StarfallWatch.Restore(save.StarfallWatch, save.Day);
+        GroupCharacterEvents.Restore(
+            save.GroupCharacterEvents,
+            save.Day,
+            CharacterEvents
+        );
         Construction.Restore(save.Construction);
         StarGate.Restore(
             save.StarGate,
@@ -399,6 +418,11 @@ public sealed partial class GameSession
         NormalizeFestivalPlayerPosition();
         NormalizeCrystalGrottoSurveyPlayerPosition();
         NormalizeStarfallRuinsTrialPlayerPosition();
+        StarlightStory.Restore(
+            save.StarlightStory,
+            save.Day,
+            StarlightStoryProgress()
+        );
         Locale = save.Locale;
         _restoring = false;
         EnergyChanged?.Invoke();
@@ -2559,6 +2583,92 @@ public sealed partial class GameSession
             AllFiveSkillsAtMaximum
         );
 
+    public JourneyRecapSnapshot JourneyRecap()
+    {
+        var pedestalOrder = new[]
+        {
+            DataCatalog.WoodlandStarlightId,
+            DataCatalog.HomesteadStarlightId,
+            DataCatalog.MeadowStarlightId,
+            DataCatalog.MoonwaterStarlightId,
+            DataCatalog.CrystalValeStarlightId,
+            DataCatalog.StarfallRuinsStarlightId
+        };
+        var starlights = pedestalOrder
+            .Select(pedestalId =>
+            {
+                var restorationBeat = StarlightStoryCatalog.Find(
+                    pedestalId,
+                    StarlightStoryBeatKind.Restoration
+                );
+                var recordedDay = restorationBeat is null
+                    ? 0
+                    : StarlightStory.CompletedDay(restorationBeat.Id);
+                return new JourneyRecapStarlightSnapshot(
+                    pedestalId,
+                    Starlight.IsRewardUnlocked(pedestalId),
+                    recordedDay > 0 ? recordedDay : null
+                );
+            })
+            .ToArray();
+        var npcOrder = VillageCatalog.Npcs.Values
+            .OrderBy(npc => npc.ScheduleOrder)
+            .Select((npc, index) => (npc.Id, index))
+            .ToDictionary(
+                entry => entry.Id,
+                entry => entry.index,
+                StringComparer.Ordinal
+            );
+        var relationships = Village.MetNpcIds
+            .Where(VillageCatalog.Npcs.ContainsKey)
+            .Select(npcId => new
+            {
+                NpcId = npcId,
+                Points = Village.Relationship(npcId).Points,
+                Order = npcOrder[npcId]
+            })
+            .ToArray();
+        var topCompanions = relationships
+            .Where(entry => entry.Points > 0)
+            .OrderByDescending(entry => entry.Points)
+            .ThenBy(entry => entry.Order)
+            .Take(3)
+            .Select(entry => new JourneyRecapCompanionSnapshot(
+                entry.NpcId,
+                entry.Points
+            ))
+            .ToArray();
+        var storyProgress = StarlightStoryProgress();
+        var completedCharacterEvents = CharacterEvents.Capture().Entries
+            .Select(entry => entry.EventId)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        return new JourneyRecapSnapshot(
+            starlights,
+            relationships.Length,
+            relationships.Count(entry =>
+                entry.Points < VillageSystem.TrustedFriendThreshold
+            ),
+            relationships.Count(entry =>
+                entry.Points >= VillageSystem.TrustedFriendThreshold
+            ),
+            relationships.Count(entry =>
+                entry.Points >= VillageSystem.KindredLightThreshold
+            ),
+            topCompanions,
+            Exploration.DiscoveredChunks.Count,
+            WorldDefinition.ChunkColumns * WorldDefinition.ChunkRows,
+            storyProgress.ExploredBiomes.Count,
+            Enum.GetValues<WorldBiome>().Length,
+            completedCharacterEvents,
+            CharacterEventCatalog.Definitions.Count,
+            StarlightStory.CompletedDays.Count,
+            StarlightStoryCatalog.Beats.Count,
+            StellarResonance.MainStoryCompleted
+        );
+    }
+
     public ActionResult CompleteMainStory()
     {
         if (!IsStarGateInReach(FarmLayout.StarGateCell))
@@ -3164,6 +3274,117 @@ public sealed partial class GameSession
         );
     }
 
+    public StarlightStoryDialogue? BeginNextPedestalStory(
+        string pedestalId
+    )
+    {
+        if (!DataCatalog.StarlightPedestals.ContainsKey(pedestalId) ||
+            !CheckStarlightPedestal(
+                pedestalId,
+                StarlightSpatialCatalog.ForPedestal(pedestalId).Cell
+            ).Succeeded)
+        {
+            return null;
+        }
+
+        var context = StarlightStoryProgress();
+        foreach (var beat in StarlightStoryCatalog.ForPedestal(pedestalId)
+                     .Where(beat => beat.Kind is
+                         StarlightStoryBeatKind.Discovery or
+                         StarlightStoryBeatKind.Restoration))
+        {
+            var story = StarlightStory.TryBegin(beat.Id, context);
+            if (story is not null)
+            {
+                return story;
+            }
+        }
+
+        return null;
+    }
+
+    public StarlightStoryDialogue? BeginStarlightDiscoveryStory(
+        string pedestalId
+    ) => BeginPedestalStory(pedestalId, StarlightStoryBeatKind.Discovery);
+
+    public StarlightStoryDialogue? BeginStarlightRestorationStory(
+        string pedestalId
+    ) => BeginPedestalStory(pedestalId, StarlightStoryBeatKind.Restoration);
+
+    private StarlightStoryDialogue? BeginPedestalStory(
+        string pedestalId,
+        StarlightStoryBeatKind kind
+    )
+    {
+        var beat = StarlightStoryCatalog.Find(pedestalId, kind);
+        if (beat is null ||
+            !CheckStarlightPedestal(
+                pedestalId,
+                StarlightSpatialCatalog.ForPedestal(pedestalId).Cell
+            ).Succeeded)
+        {
+            return null;
+        }
+
+        return StarlightStory.TryBegin(beat.Id, StarlightStoryProgress());
+    }
+
+    public StarlightStoryDialogue? BeginStarlightRegionResponse(
+        WorldBiome biome
+    )
+    {
+        var context = StarlightStoryProgress();
+        if (context.CurrentLocationId != PlayerLocationIds.World ||
+            context.CurrentBiome != biome)
+        {
+            return null;
+        }
+
+        foreach (var beat in StarlightStoryCatalog.Beats.Where(beat =>
+                     beat.Kind == StarlightStoryBeatKind.RegionResponse &&
+                     beat.RequiredBiome == biome))
+        {
+            var story = StarlightStory.TryBegin(beat.Id, context);
+            if (story is not null)
+            {
+                return story;
+            }
+        }
+
+        return null;
+    }
+
+    private StarlightStoryBeatDefinition? EligibleStarlightRevisitWithVillager(
+        GridPosition target
+    )
+    {
+        var selectedId = Inventory.Selected.IsEmpty
+            ? string.Empty
+            : Inventory.Selected.ItemId;
+        var check = Village.CheckInteraction(
+            target,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            PlayerLocationId,
+            selectedId,
+            PlayerCell
+        );
+        if (!check.IsAvailable || check.IsGift || check.Npc is null)
+        {
+            return null;
+        }
+
+        var context = StarlightStoryProgress();
+        return StarlightStoryCatalog.Beats.FirstOrDefault(beat =>
+            beat.Kind == StarlightStoryBeatKind.MainStoryRevisit &&
+            beat.RequiredNpcId == check.Npc.Definition.Id &&
+            StarlightStory.CanBegin(beat.Id, context)
+        );
+    }
+
+    public ActionResult CompleteStarlightStoryBeat(string beatId) =>
+        StarlightStory.Complete(beatId, Clock.Day);
+
     private TargetPreview PreviewStarlightPedestal(
         string pedestalId,
         GridPosition target
@@ -3624,15 +3845,36 @@ public sealed partial class GameSession
         out ActionResult result
     )
     {
-        var eligibleCharacterEvent = CharacterEvents.EligibleEvent(
-            target,
-            Clock.Day,
-            Clock.MinuteOfDay,
-            PlayerLocationId,
-            Inventory.Selected.ItemId,
-            Village,
-            PlayerCell
-        );
+        var hasActiveNarrative =
+            StarlightStory.ActiveBeatId is not null ||
+            GroupCharacterEvents.ActiveEventId is not null ||
+            CharacterEvents.ActiveEventId is not null;
+        var eligibleStarlightStory = hasActiveNarrative
+            ? null
+            : EligibleStarlightRevisitWithVillager(target);
+        var eligibleGroupCharacterEvent = hasActiveNarrative
+            ? null
+            : GroupCharacterEvents.EligibleEvent(
+                target,
+                Clock.Day,
+                Clock.MinuteOfDay,
+                PlayerLocationId,
+                Inventory.Selected.ItemId,
+                Village,
+                CharacterEvents,
+                PlayerCell
+            );
+        var eligibleCharacterEvent = hasActiveNarrative
+            ? null
+            : CharacterEvents.EligibleEvent(
+                target,
+                Clock.Day,
+                Clock.MinuteOfDay,
+                PlayerLocationId,
+                Inventory.Selected.ItemId,
+                Village,
+                PlayerCell
+            );
         var conversation = Village.Interact(
             target,
             Clock.Day,
@@ -3645,14 +3887,38 @@ public sealed partial class GameSession
         );
         if (conversation is not null)
         {
-            if (conversation.GiftReaction is null &&
-                eligibleCharacterEvent is not null)
+            if (conversation.GiftReaction is null)
             {
-                var characterEvent = CharacterEvents.BeginEvent(
-                    eligibleCharacterEvent
-                );
+                StarlightStoryDialogue? story = null;
+                if (eligibleStarlightStory is not null)
+                {
+                    story = StarlightStory.TryBegin(
+                        eligibleStarlightStory.Id,
+                        StarlightStoryProgress()
+                    );
+                    if (story is not null)
+                    {
+                        story = ResolveStarlightStoryDialogue(story);
+                    }
+                }
+
+                var groupCharacterEvent = story is null &&
+                    eligibleGroupCharacterEvent is not null
+                        ? GroupCharacterEvents.BeginEvent(
+                            eligibleGroupCharacterEvent
+                        )
+                        : null;
+                var characterEvent = story is null &&
+                    groupCharacterEvent is null &&
+                    eligibleCharacterEvent is not null
+                        ? CharacterEvents.BeginEvent(
+                            eligibleCharacterEvent
+                        )
+                        : null;
                 conversation = conversation with
                 {
+                    StarlightStory = story,
+                    GroupCharacterEvent = groupCharacterEvent,
                     CharacterEvent = characterEvent
                 };
             }
@@ -3665,6 +3931,9 @@ public sealed partial class GameSession
 
     public ActionResult CompleteCharacterEvent(string eventId) =>
         CharacterEvents.CompleteActiveEvent(eventId, Clock.Day);
+
+    public ActionResult CompleteGroupCharacterEvent(string eventId) =>
+        GroupCharacterEvents.CompleteActiveEvent(eventId, Clock.Day);
 
     public ActionResult TryEnterGreenhouse(GridPosition target)
     {
@@ -5170,9 +5439,11 @@ public sealed partial class GameSession
         Commission = Commission.Capture(),
         WeeklyCommission = WeeklyCommission.Capture(),
         Starlight = Starlight.Capture(),
+        StarlightStory = StarlightStory.Capture(),
         Village = Village.Capture(),
         Mail = Mail.Capture(),
         CharacterEvents = CharacterEvents.Capture(),
+        GroupCharacterEvents = GroupCharacterEvents.Capture(),
         Construction = Construction.Capture(),
         FarmingSkill = FarmingSkill.Capture(),
         GatheringSkill = GatheringSkill.Capture(),
@@ -5555,6 +5826,97 @@ public sealed partial class GameSession
             milestones,
             completedPedestals
         );
+    }
+
+    private StarlightStoryProgressContext StarlightStoryProgress()
+    {
+        var discoveredPedestals = DataCatalog.StarlightPedestals.Keys
+            .Where(Starlight.IsDiscovered)
+            .ToHashSet(StringComparer.Ordinal);
+        var restoredPedestals = DataCatalog.StarlightPedestals.Keys
+            .Where(Starlight.IsRewardUnlocked)
+            .ToHashSet(StringComparer.Ordinal);
+        var currentBiome = PlayerLocationId == PlayerLocationIds.World &&
+            WorldDefinition.IsInBounds(PlayerCell)
+                ? WorldDefinition.GetBiome(PlayerCell)
+                : (WorldBiome?)null;
+        var completedCharacterEvents = CharacterEvents.Capture().Entries
+            .Select(entry => entry.EventId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return new StarlightStoryProgressContext(
+            Clock.Day,
+            PlayerLocationId,
+            currentBiome,
+            discoveredPedestals,
+            restoredPedestals,
+            Village.MetNpcIds.ToHashSet(StringComparer.Ordinal),
+            StarlightStoryProgressContext.ExploredBiomesFrom(
+                Exploration.DiscoveredChunks
+            ),
+            completedCharacterEvents,
+            StellarResonance.MainStoryCompleted,
+            PlayerLocationId == PlayerLocationIds.World
+                ? PlayerCell
+                : null
+        );
+    }
+
+    private StarlightStoryDialogue ResolveStarlightStoryDialogue(
+        StarlightStoryDialogue story
+    )
+    {
+        if (story.BeatId != StarlightStoryCatalog.StarfallRuinsRevisitId)
+        {
+            return story;
+        }
+
+        var recap = JourneyRecap();
+        var restoredNames = recap.Starlights
+            .Where(starlight => starlight.Restored)
+            .Select(starlight => DataCatalog.StarlightPedestal(
+                starlight.PedestalId
+            ).NameKey)
+            .ToArray();
+        var companionNames = recap.TopCompanions
+            .Select(companion => VillageCatalog.Npcs[
+                companion.NpcId
+            ].NameKey)
+            .ToArray();
+        IReadOnlyList<IReadOnlyList<object>> arguments =
+        [
+            new object[]
+            {
+                restoredNames.Length,
+                recap.TotalPedestalCount,
+                new StarlightStoryLocalizedListArgument(
+                    restoredNames,
+                    "story01.recap.list.separator",
+                    "story01.recap.lights.none"
+                )
+            },
+            new object[]
+            {
+                recap.MetNpcCount,
+                VillageCatalog.Npcs.Count,
+                recap.TrustedFriendCount,
+                recap.KindredLightCount,
+                new StarlightStoryLocalizedListArgument(
+                    companionNames,
+                    "story01.recap.list.separator",
+                    "story01.recap.companions.none"
+                )
+            },
+            new object[]
+            {
+                recap.ExploredChunkCount,
+                recap.TotalChunkCount,
+                recap.ExploredRegionCount,
+                recap.TotalRegionCount
+            }
+        ];
+
+        return story with { DialogueArguments = arguments };
     }
 
     private TargetPreview PreviewArchiveTarget(GridPosition target)

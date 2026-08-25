@@ -1,3 +1,5 @@
+using Luminfield.Core;
+
 namespace Luminfield.Game;
 
 public sealed partial class Main
@@ -473,6 +475,242 @@ public sealed partial class Main
                     StartOrchardHivesPlaytest,
                 [PlaytestScenarioId.FarmingSpecialization] =
                     StartFarmingSpecializationPlaytest,
+                [PlaytestScenarioId.Story01WoodlandDiscovery] =
+                    StartStory01WoodlandDiscoveryPlaytest,
+                [PlaytestScenarioId.Story01WoodlandRestoration] =
+                    StartStory01WoodlandRestorationPlaytest,
+                [PlaytestScenarioId.Story01WoodlandResponse] =
+                    StartStory01WoodlandResponsePlaytest,
+                [PlaytestScenarioId.Story01WoodlandRevisitEnglish] =
+                    StartStory01WoodlandRevisitEnglishPlaytest,
+                [PlaytestScenarioId.Story01FinalRevisitEnglish] =
+                    StartStory01FinalRevisitEnglishPlaytest,
+                [PlaytestScenarioId.Story01FinalRevisitPageTwoEnglish] =
+                    () => StartStory01FinalRevisitEnglishPlaytest(2),
+                [PlaytestScenarioId.Story01FinalRevisitPageThreeEnglish] =
+                    () => StartStory01FinalRevisitEnglishPlaytest(3),
+                [PlaytestScenarioId.Story01HomesteadResponse] =
+                    StartStory01HomesteadResponsePlaytest,
+                [PlaytestScenarioId.Story01MeadowResponse] =
+                    StartStory01MeadowResponsePlaytest,
+                [PlaytestScenarioId.Story01MoonwaterResponse] =
+                    StartStory01MoonwaterResponsePlaytest,
+                [PlaytestScenarioId.Story01CrystalValeResponse] =
+                    StartStory01CrystalValeResponsePlaytest,
+                [PlaytestScenarioId.Story01StarfallRuinsResponse] =
+                    StartStory01StarfallRuinsResponsePlaytest,
+                [PlaytestScenarioId.LioraEventThree] =
+                    StartLioraEventThreePlaytest,
+                [PlaytestScenarioId.LioraEventFour] =
+                    StartLioraEventFourPlaytest,
+                [PlaytestScenarioId.TaviEventThree] =
+                    StartTaviEventThreePlaytest,
+                [PlaytestScenarioId.TaviEventFour] =
+                    StartTaviEventFourPlaytest,
+                [PlaytestScenarioId.NemiEventThree] =
+                    StartNemiEventThreePlaytest,
+                [PlaytestScenarioId.NemiEventFour] =
+                    StartNemiEventFourPlaytest,
+                [PlaytestScenarioId.KaelEventThree] =
+                    StartKaelEventThreePlaytest,
+                [PlaytestScenarioId.KaelEventFour] =
+                    StartKaelEventFourPlaytest,
+                [PlaytestScenarioId.SelaEventThree] =
+                    StartSelaEventThreePlaytest,
+                [PlaytestScenarioId.SelaEventFour] =
+                    StartSelaEventFourPlaytest,
+                [PlaytestScenarioId.HaldenEventThree] =
+                    StartHaldenEventThreePlaytest,
+                [PlaytestScenarioId.HaldenEventFour] =
+                    StartHaldenEventFourPlaytest,
+                [PlaytestScenarioId.OrinEventThree] =
+                    StartOrinEventThreePlaytest,
+                [PlaytestScenarioId.OrinEventFour] =
+                    StartOrinEventFourPlaytest,
+                [PlaytestScenarioId.VessaEventThree] =
+                    StartVessaEventThreePlaytest,
+                [PlaytestScenarioId.VessaEventFour] =
+                    StartVessaEventFourPlaytest,
+                [PlaytestScenarioId.NpcALioraRainResponse] =
+                    StartNpcALioraRainResponsePlaytest,
+                [PlaytestScenarioId.NpcATaviLongnightResponse] =
+                    StartNpcATaviLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcAVessaStardustResponse] =
+                    StartNpcAVessaStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcAOrinLongnightSnowResponse] =
+                    StartNpcAOrinLongnightSnowResponsePlaytest,
+                [PlaytestScenarioId.NpcAGroupEvent] =
+                    StartNpcAGroupEventPlaytest,
+                [PlaytestScenarioId.NpcAGroupEventEnglish] =
+                    StartNpcAGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcAGroupEventPageTwoEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageThreeEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageFourEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventPageFiveEnglish] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcAGroupEventWrongTool] =
+                    () => StartNpcAGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.NpcBNemiStardustResponse] =
+                    StartNpcBNemiStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcBKaelLongnightResponse] =
+                    StartNpcBKaelLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcBSelaStarharvestResponse] =
+                    StartNpcBSelaStarharvestResponsePlaytest,
+                [PlaytestScenarioId.NpcBHaldenStardustResponse] =
+                    StartNpcBHaldenStardustResponsePlaytest,
+                [PlaytestScenarioId.NpcBGroupEvent] =
+                    StartNpcBGroupEventPlaytest,
+                [PlaytestScenarioId.NpcBGroupEventEnglish] =
+                    StartNpcBGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcBGroupEventPageTwoEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageThreeEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageFourEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventPageFiveEnglish] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcBGroupEventWrongTool] =
+                    () => StartNpcBGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.ElowenEventThree] =
+                    StartElowenEventThreePlaytest,
+                [PlaytestScenarioId.ElowenEventFour] =
+                    StartElowenEventFourPlaytest,
+                [PlaytestScenarioId.MaveaEventThree] =
+                    StartMaveaEventThreePlaytest,
+                [PlaytestScenarioId.MaveaEventFour] =
+                    StartMaveaEventFourPlaytest,
+                [PlaytestScenarioId.SivrenEventThree] =
+                    StartSivrenEventThreePlaytest,
+                [PlaytestScenarioId.SivrenEventFour] =
+                    StartSivrenEventFourPlaytest,
+                [PlaytestScenarioId.DorrikEventThree] =
+                    StartDorrikEventThreePlaytest,
+                [PlaytestScenarioId.DorrikEventFour] =
+                    StartDorrikEventFourPlaytest,
+                [PlaytestScenarioId.NpcCElowenRainveilResponse] =
+                    StartNpcCElowenRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcCMaveaRainResponse] =
+                    StartNpcCMaveaRainResponsePlaytest,
+                [PlaytestScenarioId.NpcCSivrenStarharvestResponse] =
+                    StartNpcCSivrenStarharvestResponsePlaytest,
+                [PlaytestScenarioId.NpcCDorrikRainveilResponse] =
+                    StartNpcCDorrikRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcCGroupEvent] =
+                    StartNpcCGroupEventPlaytest,
+                [PlaytestScenarioId.NpcCGroupEventEnglish] =
+                    StartNpcCGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcCGroupEventPageTwoEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageThreeEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageFourEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventPageFiveEnglish] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcCGroupEventWrongTool] =
+                    () => StartNpcCGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
+                [PlaytestScenarioId.YvaraEventThree] =
+                    StartYvaraEventThreePlaytest,
+                [PlaytestScenarioId.YvaraEventFour] =
+                    StartYvaraEventFourPlaytest,
+                [PlaytestScenarioId.BrialEventThree] =
+                    StartBrialEventThreePlaytest,
+                [PlaytestScenarioId.BrialEventFour] =
+                    StartBrialEventFourPlaytest,
+                [PlaytestScenarioId.PavriEventThree] =
+                    StartPavriEventThreePlaytest,
+                [PlaytestScenarioId.PavriEventFour] =
+                    StartPavriEventFourPlaytest,
+                [PlaytestScenarioId.RovenEventThree] =
+                    StartRovenEventThreePlaytest,
+                [PlaytestScenarioId.RovenEventFour] =
+                    StartRovenEventFourPlaytest,
+                [PlaytestScenarioId.NpcDYvaraRainResponse] =
+                    StartNpcDYvaraRainResponsePlaytest,
+                [PlaytestScenarioId.NpcDBrialLongnightResponse] =
+                    StartNpcDBrialLongnightResponsePlaytest,
+                [PlaytestScenarioId.NpcDPavriRainveilResponse] =
+                    StartNpcDPavriRainveilResponsePlaytest,
+                [PlaytestScenarioId.NpcDRovenRainResponse] =
+                    StartNpcDRovenRainResponsePlaytest,
+                [PlaytestScenarioId.NpcDGroupEvent] =
+                    StartNpcDGroupEventPlaytest,
+                [PlaytestScenarioId.NpcDGroupEventEnglish] =
+                    StartNpcDGroupEventEnglishPlaytest,
+                [PlaytestScenarioId.NpcDGroupEventPageTwoEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 2
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageThreeEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 3
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageFourEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 4
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventPageFiveEnglish] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.English,
+                        page: 5
+                    ),
+                [PlaytestScenarioId.NpcDGroupEventWrongTool] =
+                    () => StartNpcDGroupEventPlaytest(
+                        LocaleService.SimplifiedChinese,
+                        wrongTool: true
+                    ),
                 [PlaytestScenarioId.Farm] = StartNewGame
             }
         );

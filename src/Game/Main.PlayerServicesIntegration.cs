@@ -205,6 +205,21 @@ public sealed partial class Main
         DataCatalog.WoodlandStarlightId
     );
 
+    private void OpenStarlightPedestalFromWorld(string pedestalId)
+    {
+        var story = _session.BeginNextPedestalStory(pedestalId);
+        if (story is not null)
+        {
+            ShowStarlightStory(
+                story,
+                () => OpenStarlightPedestalFromWorld(pedestalId)
+            );
+            return;
+        }
+
+        OpenStarlightPedestal(pedestalId);
+    }
+
     private void OpenStarlightPedestal(string pedestalId)
     {
         if (_starlightOverlay is not null)
@@ -213,7 +228,6 @@ public sealed partial class Main
         }
 
         SetWorldControls(false);
-        _session.Starlight.Discover(pedestalId);
         _starlightOverlay = new StarlightPedestalOverlay(
             _theme,
             _session,
@@ -226,7 +240,30 @@ public sealed partial class Main
             _audio.Play(PixelSound.Chime);
             SaveNow(false);
         };
+        _starlightOverlay.StoryBeatRequested += ResumeStarlightStory;
         _uiLayer.AddChild(_starlightOverlay);
+    }
+
+    private void ResumeStarlightStory(string pedestalId)
+    {
+        CloseStarlightPedestal();
+        OpenStarlightPedestalFromWorld(pedestalId);
+    }
+
+    private void TryShowRestoredStarlightStory(string pedestalId)
+    {
+        if (!_playing ||
+            _dialogueOverlay is not null ||
+            _farm is null)
+        {
+            return;
+        }
+
+        var story = _session.BeginNextPedestalStory(pedestalId);
+        if (story is not null)
+        {
+            ShowStarlightStory(story);
+        }
     }
 
     private void CloseStarlightPedestal()

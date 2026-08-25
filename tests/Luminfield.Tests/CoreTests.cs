@@ -4128,7 +4128,7 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void RestdayOverridesWeatherAndSeasonConditions()
+    public void RestdayOverridesConditionsWhileNpcAGroupOverridesRestday()
     {
         var rainyRestday = VillageCatalog.CurrentNpc(
             VillageCatalog.SelaId,
@@ -4148,7 +4148,21 @@ public sealed class VillageSystemTests
         Assert.Equal("village.npc.sela.restday", rainyRestday.DialogueKey);
         Assert.NotNull(windyRestday);
         Assert.Equal(PlayerLocationIds.World, windyRestday.LocationId);
-        Assert.Equal("village.npc.tavi.restday", windyRestday.DialogueKey);
+        Assert.Equal(
+            "village.npc.tavi.npc_a_group",
+            windyRestday.DialogueKey
+        );
+        Assert.Equal(
+            VillageCatalog.GroupEventSchedulePriority,
+            windyRestday.Definition.Schedule.Single(entry =>
+                entry.DialogueKey == windyRestday.DialogueKey &&
+                entry.Matches(
+                    CalendarSystem.DaysPerWeek,
+                    14 * 60,
+                    DataCatalog.StardustWindWeatherId
+                )
+            ).Priority
+        );
     }
 
     [Fact]
@@ -7646,7 +7660,7 @@ public sealed class CharacterEventSystemTests
     }
 
     [Theory]
-    [InlineData(7, 14 * 60, "village.npc.orin.restday")]
+    [InlineData(7, 14 * 60, "village.npc.orin.npc_a_group")]
     [InlineData(15, 8 * 60, "village.npc.orin.morning")]
     [InlineData(15, 19 * 60, "village.npc.orin.evening")]
     public void OrinEventsRequireTheOrdinaryAfternoonPlazaSchedule(
@@ -8965,6 +8979,11 @@ public sealed class LocaleTests
         );
         var dialogueKeys = CharacterEventCatalog.Definitions
             .SelectMany(definition => definition.DialogueKeys)
+            .Concat(GroupCharacterEventCatalog.Definitions.SelectMany(
+                definition => definition.Pages.Select(page =>
+                    page.DialogueKey
+                )
+            ))
             .ToArray();
 
         foreach (var language in new[]
@@ -9512,6 +9531,83 @@ public sealed class SaveServiceTests : IDisposable
         );
         Assert.NotNull(result.Save.CharacterEvents);
         Assert.Empty(result.Save.CharacterEvents.Entries);
+    }
+
+    [Fact]
+    public void SchemaTwoWithoutGroupCharacterEventsPreservesExistingState()
+    {
+        var path = Path.Combine(_directory, "slot_1.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            $$"""
+            {
+              "schemaVersion": 2,
+              "day": 9,
+              "minuteOfDay": 840,
+              "village": {
+                "metNpcIds": ["{{VillageCatalog.LioraId}}"],
+                "relationships": [
+                  {
+                    "npcId": "{{VillageCatalog.LioraId}}",
+                    "points": 47,
+                    "lastTalkDay": 8
+                  }
+                ]
+              },
+              "characterEvents": {
+                "entries": [
+                  {
+                    "eventId": "{{CharacterEventCatalog.LioraFadedReturnRouteId}}",
+                    "completedDay": 7
+                  }
+                ]
+              }
+            }
+            """
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(9, result.Save.Day);
+        Assert.Equal(47, result.Save.Village.Relationships.Single(
+            entry => entry.NpcId == VillageCatalog.LioraId
+        ).Points);
+        Assert.Contains(result.Save.CharacterEvents.Entries, entry =>
+            entry.EventId ==
+                CharacterEventCatalog.LioraFadedReturnRouteId &&
+            entry.CompletedDay == 7
+        );
+        Assert.NotNull(result.Save.GroupCharacterEvents);
+        Assert.Empty(result.Save.GroupCharacterEvents.Entries);
+
+        var restored = new GameSession();
+        restored.Restore(result.Save);
+        Assert.True(restored.CharacterEvents.IsCompleted(
+            CharacterEventCatalog.LioraFadedReturnRouteId
+        ));
+        Assert.Empty(restored.GroupCharacterEvents.Capture().Entries);
+    }
+
+    [Fact]
+    public void SchemaTwoNullGroupCharacterEventsNormalizesToEmpty()
+    {
+        var path = Path.Combine(_directory, "slot_2.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            path,
+            """{"schemaVersion":2,"day":5,"groupCharacterEvents":null}"""
+        );
+
+        var result = new SaveService(path).Load();
+
+        Assert.Equal(SaveLoadStatus.Loaded, result.Status);
+        Assert.NotNull(result.Save);
+        Assert.Equal(5, result.Save.Day);
+        Assert.NotNull(result.Save.GroupCharacterEvents);
+        Assert.Empty(result.Save.GroupCharacterEvents.Entries);
     }
 
     [Fact]

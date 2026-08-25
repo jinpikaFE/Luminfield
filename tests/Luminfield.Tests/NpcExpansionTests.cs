@@ -261,13 +261,20 @@ public sealed class NpcExpansionTests
         var definitions = CharacterEventCatalog.Definitions
             .Where(definition => NewNpcIds.Contains(definition.NpcId))
             .ToArray();
-        Assert.Equal(8, definitions.Length);
+        Assert.Equal(
+            NewNpcIds.Sum(npcId =>
+                CharacterEventCatalog.FourEventNpcIds.Contains(npcId)
+                    ? 4
+                    : 2
+            ),
+            definitions.Length
+        );
         Assert.All(definitions, definition =>
         {
             Assert.Equal(3, definition.DialogueKeys.Count);
             Assert.Contains(
                 definition.RequiredRelationshipPoints,
-                new[] { 25, 60 }
+                new[] { 25, 60, 75, 90 }
             );
         });
 
@@ -275,10 +282,24 @@ public sealed class NpcExpansionTests
         {
             var chain = definitions
                 .Where(definition => definition.NpcId == npcId)
+                .OrderBy(definition =>
+                    definition.RequiredRelationshipPoints
+                )
                 .ToArray();
-            Assert.Equal(2, chain.Length);
-            Assert.Null(chain[0].RequiredPreviousEventId);
-            Assert.Equal(chain[0].Id, chain[1].RequiredPreviousEventId);
+            var expectedThresholds =
+                CharacterEventCatalog.FourEventNpcIds.Contains(npcId)
+                    ? new[] { 25, 60, 75, 90 }
+                    : new[] { 25, 60 };
+            Assert.Equal(expectedThresholds, chain.Select(definition =>
+                definition.RequiredRelationshipPoints
+            ));
+            for (var index = 0; index < chain.Length; index++)
+            {
+                Assert.Equal(
+                    index == 0 ? null : chain[index - 1].Id,
+                    chain[index].RequiredPreviousEventId
+                );
+            }
 
             var normalized = CharacterEventSystem.NormalizeSave(
                 new CharacterEventSave

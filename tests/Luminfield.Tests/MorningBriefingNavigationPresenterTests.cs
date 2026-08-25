@@ -278,11 +278,15 @@ public sealed class MorningBriefingNavigationPresenterTests
             .Where(candidate =>
                 definition.RequiredNpcDialogueKey is null ||
                 candidate.DialogueKey == definition.RequiredNpcDialogueKey)
-            .First(candidate => candidate.Matches(
+            .Where(candidate => candidate.Matches(
                 session.Clock.Day,
                 Math.Max(candidate.StartMinute, GameClock.StartMinute),
                 session.Weather.CurrentId
-            ));
+            ))
+            .OrderBy(candidate =>
+                Math.Max(candidate.StartMinute, GameClock.StartMinute))
+            .ThenByDescending(candidate => candidate.Priority)
+            .First();
     }
 
     private static MorningBriefingDecisionSummaryItem Item(

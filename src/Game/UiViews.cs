@@ -2705,6 +2705,7 @@ public sealed partial class DialogueOverlay : FullScreenUi
     private readonly Label _continue;
     private Action? _closed;
     private IReadOnlyList<string> _pages = [];
+    private IReadOnlyList<string>? _pageSpeakers;
     private int _pageIndex;
     private double _inputDelay = 0.15;
     private double _pageElapsed;
@@ -2785,7 +2786,8 @@ public sealed partial class DialogueOverlay : FullScreenUi
         IReadOnlyList<string> pages,
         Action closed,
         Texture2D? icon = null,
-        string status = ""
+        string status = "",
+        IReadOnlyList<string>? pageSpeakers = null
     )
     {
         if (pages.Count == 0)
@@ -2795,11 +2797,20 @@ public sealed partial class DialogueOverlay : FullScreenUi
                 nameof(pages)
             );
         }
+        if (pageSpeakers is not null &&
+            pageSpeakers.Count != pages.Count)
+        {
+            throw new ArgumentException(
+                "Dialogue page speakers must match the page count.",
+                nameof(pageSpeakers)
+            );
+        }
 
-        _speaker.Text = speaker;
+        _pageSpeakers = pageSpeakers;
         _pages = pages;
         _pageIndex = 0;
         _pageElapsed = 0;
+        _speaker.Text = SpeakerForPage(speaker, _pageIndex);
         _body.Text = _pages[_pageIndex];
         _icon.Texture = icon;
         _icon.Visible = icon is not null;
@@ -2837,6 +2848,10 @@ public sealed partial class DialogueOverlay : FullScreenUi
         if (_pageIndex + 1 < _pages.Count)
         {
             _pageIndex++;
+            _speaker.Text = SpeakerForPage(
+                _speaker.Text,
+                _pageIndex
+            );
             _body.Text = _pages[_pageIndex];
             _inputDelay = 0.08;
             return;
@@ -2847,6 +2862,13 @@ public sealed partial class DialogueOverlay : FullScreenUi
         callback?.Invoke();
         QueueFree();
     }
+
+    private string SpeakerForPage(string fallback, int pageIndex) =>
+        _pageSpeakers is not null && pageIndex < _pageSpeakers.Count
+            ? _pageSpeakers[pageIndex]
+            : fallback;
+
+    internal void AdvanceOnePageForPlaytest() => AdvanceDialogue();
 }
 
 public sealed partial class PauseOverlay : FullScreenUi

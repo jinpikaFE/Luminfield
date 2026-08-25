@@ -372,6 +372,17 @@ public sealed class StarlightPedestalSave
     public List<StarlightNodeSave> Nodes { get; set; } = [];
 }
 
+public sealed class StarlightStoryEntrySave
+{
+    public string BeatId { get; set; } = string.Empty;
+    public int CompletedDay { get; set; } = 1;
+}
+
+public sealed class StarlightStorySave
+{
+    public List<StarlightStoryEntrySave> Entries { get; set; } = [];
+}
+
 public sealed class VillageSave
 {
     public List<string> MetNpcIds { get; set; } = [];
@@ -408,6 +419,17 @@ public sealed class CharacterEventEntrySave
 public sealed class CharacterEventSave
 {
     public List<CharacterEventEntrySave> Entries { get; set; } = [];
+}
+
+public sealed class GroupCharacterEventEntrySave
+{
+    public string EventId { get; set; } = string.Empty;
+    public int CompletedDay { get; set; } = 1;
+}
+
+public sealed class GroupCharacterEventSave
+{
+    public List<GroupCharacterEventEntrySave> Entries { get; set; } = [];
 }
 
 public sealed class ConstructionSave
@@ -625,9 +647,11 @@ public sealed class GameSaveV1
     public DailyCommissionSave Commission { get; set; } = new();
     public WeeklyCommissionSave WeeklyCommission { get; set; } = new();
     public StarlightSave Starlight { get; set; } = new();
+    public StarlightStorySave StarlightStory { get; set; } = new();
     public VillageSave Village { get; set; } = new();
     public MailSave Mail { get; set; } = new();
     public CharacterEventSave CharacterEvents { get; set; } = new();
+    public GroupCharacterEventSave GroupCharacterEvents { get; set; } = new();
     public ConstructionSave Construction { get; set; } = new();
     public FarmingSkillSave FarmingSkill { get; set; } = new();
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
