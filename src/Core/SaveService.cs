@@ -616,6 +616,24 @@ public sealed class SaveService
             save.Collection,
             CollectionSystem.LegacyEvidenceItemIds(save)
         );
+        save.ExperienceGuidance ??= new ExperienceGuidanceSave();
+        save.ExperienceGuidance.LastMorningBriefingDay = Math.Clamp(
+            save.ExperienceGuidance.LastMorningBriefingDay,
+            save.Day == 1 ? 1 : 0,
+            save.Day
+        );
+        save.TeaHouse = TeaHouseSystem.NormalizeSave(
+            save.TeaHouse,
+            save.Day
+        );
+        save.PostDelivery = PostDeliverySystem.NormalizeSave(
+            save.PostDelivery,
+            save.Day
+        );
+        save.StarfallWatch = StarfallWatchSystem.NormalizeSave(
+            save.StarfallWatch,
+            save.Day
+        );
         var starlightMilestones = MiningSystem.CompletedMilestoneIds(
                 save.Mining
             )

@@ -5,6 +5,8 @@ namespace Luminfield.Game;
 
 public sealed partial class AccessibilitySettingsOverlay : FullScreenUi
 {
+    public const string InitialFocusLabelKey = "settings.language";
+
     private readonly AccessibilitySettings _settings;
     private readonly LocaleService _locale;
     private readonly VBoxContainer _rows;
@@ -15,6 +17,9 @@ public sealed partial class AccessibilitySettingsOverlay : FullScreenUi
     private readonly Button _damage;
     private readonly Button _enemySpeed;
     private readonly Button _shake;
+    private readonly Button _masterVolume;
+    private readonly Button _ambientVolume;
+    private readonly Button _effectsVolume;
     private readonly Button _targetCues;
     private readonly Button _fontScale;
     private readonly Button _dialoguePace;
@@ -78,7 +83,10 @@ public sealed partial class AccessibilitySettingsOverlay : FullScreenUi
         _rows.AddThemeConstantOverride("separation", 4);
         scroll.AddChild(_rows);
 
-        _language = AddRow("settings.language");
+        _language = AddRow(InitialFocusLabelKey);
+        _masterVolume = AddRow("settings.master_volume");
+        _ambientVolume = AddRow("settings.ambient_volume");
+        _effectsVolume = AddRow("settings.effects_volume");
         _fishing = AddRow("settings.fishing_assist");
         _damage = AddRow("settings.incoming_damage");
         _enemySpeed = AddRow("settings.enemy_speed");
@@ -134,6 +142,30 @@ public sealed partial class AccessibilitySettingsOverlay : FullScreenUi
             _settings.ScreenShakePercent = NextPercent(
                 _settings.ScreenShakePercent,
                 [100, 50, 0]
+            );
+            Commit();
+        };
+        _masterVolume.Pressed += () =>
+        {
+            _settings.MasterVolumePercent = NextPercent(
+                _settings.MasterVolumePercent,
+                [100, 75, 50, 25, 0]
+            );
+            Commit();
+        };
+        _ambientVolume.Pressed += () =>
+        {
+            _settings.AmbientVolumePercent = NextPercent(
+                _settings.AmbientVolumePercent,
+                [100, 75, 50, 25, 0]
+            );
+            Commit();
+        };
+        _effectsVolume.Pressed += () =>
+        {
+            _settings.EffectsVolumePercent = NextPercent(
+                _settings.EffectsVolumePercent,
+                [100, 75, 50, 25, 0]
             );
             Commit();
         };
@@ -263,6 +295,18 @@ public sealed partial class AccessibilitySettingsOverlay : FullScreenUi
         _shake.Text = _locale.Tr(
             "settings.percent",
             _settings.ScreenShakePercent
+        );
+        _masterVolume.Text = _locale.Tr(
+            "settings.percent",
+            _settings.MasterVolumePercent
+        );
+        _ambientVolume.Text = _locale.Tr(
+            "settings.percent",
+            _settings.AmbientVolumePercent
+        );
+        _effectsVolume.Text = _locale.Tr(
+            "settings.percent",
+            _settings.EffectsVolumePercent
         );
         _targetCues.Text = EnumText("settings.cues", _settings.TargetCues);
         _fontScale.Text = _locale.Tr(

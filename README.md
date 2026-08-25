@@ -117,8 +117,13 @@ exploration state in the regular save file.
   complete the first cottage upgrade.
 - The Starweaver Tea House is the third enterable building and opens from 09:00
   to 21:00. Vessa works inside from 09:00 to 13:00 on ordinary days. Its
-  starwoven tea counter is a read-only inspection point and does not add
-  purchases, recipes, energy costs, or a new economy contract.
+  starwoven tea counter deterministically rotates Cloudleaf Focus Tea, Moonroot
+  Calm Draught, and Starbud Sharing Tea. With the hand selected, one daily
+  tasting atomically spends glow coins, adds the takeaway item to the backpack,
+  restores 10–18 energy, and raises outdoor movement speed by 8% for 120 game
+  minutes. From 13:00 to 18:00, at least two actually scheduled villagers can
+  join one afternoon gathering per day for 3 relationship points each. The
+  purchase, timed effect, gathering, and guest list persist within that day.
 - The Twilight Emporium is the fourth enterable building and opens from 10:00
   to 18:00. Orin checks travel inventory inside from 10:00 to 13:00 on ordinary
   days; the shop closes for all of Lanternrest. Its manifest shelf opens a
@@ -127,12 +132,22 @@ exploration state in the regular save file.
   capacity before changing coins or items. The farm stall remains independent.
 - The Starlight Post is the fifth enterable building and opens from 07:00 to
   19:00. Nemi sorts village routes inside from 09:00 to 13:00 on ordinary days.
-  Its route-sorting counter is read-only and adds no sending, receiving,
-  delivery, fee, item, or economy contract.
+  Its sorting counter deterministically offers two limited routes per day, with
+  one active route at a time and at most two completions. Recipients come from
+  the 16 villagers' real schedule projection; adjacent delivery with the Hand
+  atomically grants glow coins and 2 relationship points. Same-day progress is
+  restorable, stale routes expire across days, and delivery state remains fully
+  independent from Starlight Mail read and attachment state.
 - Starfall Watch is the sixth enterable building and opens from 06:00 to 20:00.
   Kael records patrol routes inside from 09:00 to 13:00 on ordinary days. Its
-  seal route table is read-only and does not open ruins, issue tasks, provide
-  equipment, charge fees, or grant items.
+  seal route table deterministically offers two patrols, one bounty, and one of
+  three ruins preparations each day. Patrols require a real visit to the target
+  region before returning for a reward, while bounties count only matching
+  enemies actually defeated in the Starfall Ruins or Deep Mine; defeat fails an
+  unfinished bounty. Patrol and bounty rewards atomically grant items, glow
+  coins, and Kael relationship points, with no changes when capacity is
+  insufficient. Preparations last only for the current day, and same-day state
+  restores from saves before resetting across days.
 - Select the Hand, then face or stand next to a villager to talk. A first
   meeting uses an introduction, and the first conversation each day adds two
   relationship points.
@@ -557,11 +572,156 @@ the day early.
 | Backpack | B / Tab | Y |
 | Crafting | C | X |
 | Toggle tool target lock | R | Right stick |
+| Open first-day tips | H | Pause menu |
+| Open morning briefing | J | Pause menu |
+| Choose route guidance | G | Pause menu |
+| Open full objectives | O | Back |
+| Collapse minimap | M | Left stick |
+| Cycle minimap filter | N / right-click minimap | — |
 | Pause | Esc | Start |
 
 Open **Settings & Accessibility** from the title or pause menu to remap keyboard
 actions and adjust assist options. Controller bindings remain available while
-keyboard bindings are changed.
+keyboard bindings are changed. The pause menu also exposes first-day tips, the
+morning briefing, route guidance, Gleamrise goals, the fish collection, fishing
+gear, stellar resonance, and settings through D-pad focus and A confirm; the
+first-day tip entry is disabled once every card has been skipped. Closing any of
+these pause-opened child panels returns focus to the pause-menu button that
+opened it. If a child panel cannot actually open because its state is empty or no
+longer valid, the pause menu is restored immediately instead of dropping
+controller focus back into the world.
+
+## Experience foundations
+
+A new game opens six dismissible guidance cards for the current quest, weather,
+shipping, processing, commissions, and first exploration. Press `H`, or choose
+**First-day tips** from the pause menu, after closing the panel to revisit cards
+that were not dismissed. The plan reads the existing `GameSession` and never
+changes quests, inventory, coins, weather, or save state while building
+guidance. Every card also presents an action, an entry location, and the current
+result, moving between not-started, active, and complete states from the real
+session projection. A six-capability overview remains visible above the active
+card for quest, weather, shipping, processing, commission, and exploration;
+its colors derive from the same coverage contract, so dismissing guidance does
+not manufacture completion or hide overall progress.
+
+The deterministic opening-flow audit now starts from `GameSession.NewGame()`
+and continues through quest, weather, commission, farming, shipping,
+processing, exploration, and save/restore checkpoints. It proves the 90-minute
+coverage contract without claiming a human 90-minute play session. Collected
+artisan goods remain complete through their existing compendium discovery
+evidence instead of adding a second progression flag. Fixed-target hints for
+Mira and the cottage entrance now also flow through
+`GameSession.PreviewSelectedTarget`, so hand availability and wrong-tool cues
+are no longer duplicated in the scene layer.
+
+An Apple M3 / Metal GUI-driven proxy run now reaches day two from the title
+screen through all six guidance cards, `H` reopen, `O` objective details,
+`M`/`N` minimap controls, Mira dialogue, tilling, planting, watering, cottage
+sleep, nightly settlement, the seven-card briefing, save-to-title, and same-day
+continue. The trace is recorded in
+`artifacts/screenshots/qa-01-runtime-route.md`. It is neither headless nor a
+restored completed state, but it still is not a human 90-minute session. A
+central input contract now registers Back, left-stick click, D-pad, and A/B;
+guidance and morning overlays close through controller B / `ui_cancel` while a
+physical controller remains pending.
+
+The persistent HUD keeps a one-line objective summary; press `O`, controller
+Back, or click the objective bar for the full list. The minimap can collapse and
+filter all, landmark, or forage markers. Press `G`, or choose **Route guidance**
+from the pause menu, to explicitly select a destination available from the
+player's current region or clear the current route. The six real road contracts
+produce 12 ephemeral direction options: the homestead and each outer region
+offer one onward/return destination, while the village offers the homestead and
+all five outer regions. The HUD then shows forward/recovery direction and
+remaining distance, while the minimap marks the next guide or endpoint. The
+game never guesses a destination. First-day tips, morning briefing, and route guidance are all
+controller-reachable with D-pad and A. Ambient audio automatically selects one
+of eight original procedural loops from homestead, village, wilderness,
+weather, festival, and combat context with a 0.45-second crossfade, while 15
+core effect profiles share the same synthesis entry point. Master, ambience,
+and effects volume are separately
+adjustable on the first settings screen and persist immediately.
+
+`artifacts/audio/audio-01-preview/audio-01-acceptance-tour.wav` provides one
+60.85-second deterministic technical audition of all eight ambient contexts,
+their 0.45-second transitions, and the 15 core effects, including distinct
+generic-failure, resource-blocked, and tool-mismatch cues. It remains a technical
+artifact; subjective loudness, fatigue, and transition feel still need human
+listening.
+The automated audio-quality gate additionally measures clipping, RMS level,
+crest factor, low/mid/high-band energy, 50 ms loop-edge windows, separation
+between all eight ambient fingerprints, and 0.45-second crossfade continuity.
+These waveform metrics reject clear technical regressions but cannot decide
+musical taste or long-session fatigue.
+
+After a nightly summary, or when continuing a save at 06:00, a read-only morning
+briefing presents weather, mail, festivals, eligible character events,
+commissions, and a region suggestion in a stable seven-card order. Press `J`, or
+choose **Morning briefing** from the pause menu, to reopen it manually. The first
+new-game morning keeps the six-card onboarding as
+its only automatic panel so the two explanations do not stack. The last shown
+morning is stored additively in the world save, preventing same-day automatic
+repeats after restart. Legacy day-one saves reserve that first morning for
+onboarding, while day-two and later legacy saves still open the briefing once.
+The briefing starts with a compact read-only decision summary containing at
+most three actionable Primary/Secondary cards in stable priority order, helping
+the player choose a useful goal without creating a second objective state.
+Rows that resolve to a real world region expose a Start navigation button. A
+route is planned and the briefing closes only after that explicit press;
+mail, daily/weekly commissions, festival entrances, character-event schedule
+points or exterior doors, and undiscovered landmarks also resolve to an exact
+world target. Same-region targets begin their final approach immediately;
+cross-region targets follow existing roads and hand off after the exact final
+regional endpoint. The briefing still never chooses a goal automatically.
+
+Immediate feedback now shares one HUD treatment for tool use, watering,
+harvest, pickup, processing, fishing, damage, dodge, and major rewards. Failure
+reasons keep their existing localized messages; generic failure, resource
+blockage, and wrong-tool cues now play separate procedural sounds while reduced
+effects only remove motion. Failure classification uses an explicit message-key
+catalog; unknown keys stay generic instead of being reclassified just because
+they contain fragments such as `missing`, `capacity`, or `needs_tool`. Pulse or shake intensity respects the accessibility
+settings. Use `--ui-feedback-gallery` with an
+optional `--ui-feedback-gallery-domain=<domain>` argument to inspect all 72
+standard/reduced feedback states or one eight-tile domain without changing the
+world session. Use `--ui-pause-experience-preview` to capture the real pause
+menu layout with both experience entries available. Fifty-seven non-interactive navigation
+guides reuse the seasonal exploration prop atlas around road edges, region
+thresholds, and landmark approaches. Six walkable route contracts connect the
+homestead, village, and every outer region while limiting unguided gaps to 18
+cells without changing collision, paths, resources, or save data.
+`artifacts/screenshots/world-01-route-walk-audit.md` reconstructs each complete
+four-direction route against real `WorldDefinition` passability; it proves the
+six contracts are continuously walkable, but does not replace human wayfinding.
+`WorldNavigationRouteProgressPresenter` also exposes the nearest path cell,
+next guide, dominant direction, recovery direction, off-route distance, and
+remaining steps as a read-only UI projection in both directions. Reverse options
+derive from the same six road contracts and reverse their path, guide order,
+endpoints, destination, directions, remaining steps, and arrival result. Route
+selection is ephemeral UI state: it does not write save, collision, or exploration
+state and never chooses a destination on behalf of the player.
+`WorldNavigationJourneyPlanner` now builds read-only multi-segment regional
+plans from those 12 direction options entirely in Core: same-region plans have
+zero segments, village routes are one segment, and homestead/peripheral
+cross-region plans stably route through the village in two segments. The
+selection layer stores the journey and advances only when the player reaches the
+exact current-segment endpoint; being nearby while off route does not count as
+arrival. The HUD keeps the final destination, current leg, current-leg region,
+direction, and recovery distance visible. Morning-briefing action rows can
+append an ephemeral four-direction final-approach path to the exact target. It
+uses `WorldDefinition` plus fixed homestead obstacles and arrives only on a
+walkable adjacent cell. Interior character-event targets carry both the exterior
+door and the indoor NPC target cell: reaching the door prompts the player to
+enter, then the standalone route HUD continues the final approach indoors while
+the minimap route marker stays world-only. The selection refreshes the final
+approach from the player's current cell when they leave the cached path or when
+the active walkability predicate blocks a cached cell; if no replacement path
+exists, the projection reports no valid final path until walkability changes
+again rather than drawing a step into a blocked cell. The plan writes no save,
+collision, exploration, or objective state and never chooses a destination
+automatically. Use
+`--select-route-destination=<WorldBiome>` for deterministic journey QA.
 
 ## Developer playtest scenarios
 
@@ -572,9 +732,51 @@ present, the first registered scenario wins. With no known playtest flag, the
 game keeps the normal title-screen startup.
 
 `Main.CreatePlaytestScenarioRegistry()` binds every scenario ID to its setup
-method. Add a new ID and flag to the registry, then add its setup binding in
-`Main`; focused tests lock the known flag catalog, uniqueness, priority, and
-normal fallback behavior.
+method. The binding map lives in
+[`Main.PlaytestBindings.cs`](src/Game/Main.PlaytestBindings.cs). Setup methods
+are grouped into four `Main.Playtests.*.cs` partials for farm/facilities,
+objectives/collections, activities/village, and world/foundation acceptance.
+Add a new ID and flag to the registry, add its setup-method mapping to the
+binding file, and place the setup method in the matching domain file. Focused
+tests lock the known flag catalog, uniqueness, priority, and normal fallback.
+
+Runtime scene construction and switching live in
+[`Main.ScenePresentation.cs`](src/Game/Main.ScenePresentation.cs), including
+HUD setup plus farm, interior, festival, and exploration presentation. Pause,
+onboarding, and briefing orchestration lives in
+[`Main.ExperienceIntegration.cs`](src/Game/Main.ExperienceIntegration.cs);
+feedback/audio context and route guidance live in
+[`Main.FeedbackIntegration.cs`](src/Game/Main.FeedbackIntegration.cs) and
+[`Main.RouteGuidanceIntegration.cs`](src/Game/Main.RouteGuidanceIntegration.cs);
+festival overlays live in
+[`Main.FestivalIntegration.cs`](src/Game/Main.FestivalIntegration.cs); and shop,
+processor, shipping, commission, mail, starlight, backpack, crafting, and
+storage overlays live in
+[`Main.PlayerServicesIntegration.cs`](src/Game/Main.PlayerServicesIntegration.cs).
+Player-overlay close dispatch lives in
+[`Main.OverlayInputIntegration.cs`](src/Game/Main.OverlayInputIntegration.cs).
+The shared `Main.cs` still owns the top-level lifecycle and business input
+dispatch without retaining those complete open/close flows.
+
+`GameSession` remains the sole global business entry point. Festival interaction
+is grouped in
+[`GameSession.Festivals.cs`](src/Core/GameSession.Festivals.cs), while animal and
+greenhouse rules live in
+[`GameSession.AnimalsAndGreenhouse.cs`](src/Core/GameSession.AnimalsAndGreenhouse.cs).
+These partials share the same state and events; they add no parallel session or
+save fields.
+
+Stable item, crop, fish, recipe, weather, commission, and starlight data lives
+in [`DataCatalog.cs`](src/Core/DataCatalog.cs), with processor-machine data in
+[`ProcessorCatalog.cs`](src/Core/ProcessorCatalog.cs).
+[`Definitions.cs`](src/Core/Definitions.cs) now contains only the shared
+definition types, so adding content does not require editing unrelated type
+declarations.
+
+[`GameLocaleBootstrap.cs`](src/Game/GameLocaleBootstrap.cs) owns the default
+English-then-Simplified-Chinese resource load order and selects Simplified
+Chinese for a new session. Resource paths no longer live inline in
+`Main._Ready()`.
 
 Use `--playtest-stellar-convergence` to open the completed five-skill main-story
 ending and `--playtest-accessibility-settings` to inspect the full settings and
@@ -591,7 +793,9 @@ Use `--playtest-nemi-event-one` and `--playtest-nemi-event-two` to open Nemi's
 two friendship stages on her ordinary 14:00 village route. Use
 `--playtest-starlight-post-door`, `--playtest-starlight-post`, and
 `--playtest-starlight-post-nemi` to inspect the fifth building's exterior,
-read-only sorting counter, and Nemi's indoor work position. Use
+sorting counter, and Nemi's indoor work position. Use
+`--playtest-starlight-post-delivery` to open the deterministic two-route board
+directly. Use
 `--playtest-starlight-post-wrong-tool` to verify the full counter outline uses
 the warm-gold tool-mismatch state.
 
@@ -599,9 +803,10 @@ Use `--playtest-kael-event-one` and `--playtest-kael-event-two` to open Kael's
 two friendship stages from his real ordinary-day 14:00 village projection. Use
 `--playtest-starfall-watch-door`, `--playtest-starfall-watch`, and
 `--playtest-starfall-watch-kael` to inspect the sixth building's exterior,
-read-only seal route table, and Kael's indoor work position. Use
-`--playtest-starfall-watch-wrong-tool` to verify the full table outline uses the
-warm-gold tool-mismatch state.
+seal route table, and Kael's indoor work position. Use
+`--playtest-starfall-watch-board` to open today's patrol, bounty, and ruins
+preparation board directly. Use `--playtest-starfall-watch-wrong-tool` to verify
+the full table outline uses the warm-gold tool-mismatch state.
 
 Use `--playtest-sela-event-one` and `--playtest-sela-event-two` to open Sela's
 two friendship stages from her real ordinary-day 14:00 village projection.
@@ -832,6 +1037,10 @@ additive orchard fields; invalid, overlapping, or orphaned orchard entries are
 filtered on load. The modern per-machine list safely migrates the legacy processing
 queue. Older saves receive safe defaults and tool-ID migration for the new
 additive fields.
+`ExperienceGuidance.LastMorningBriefingDay` is another additive field in the
+same schema. It records only UI display history, not quest or business progress;
+day-one legacy saves normalize to the onboarding-only policy, while later
+legacy days remain eligible for their first briefing.
 The Moondew Greenhouse's 24 cultivation cells use a separate additive
 `Greenhouse.Tiles` root, so indoor and outdoor cells with the same coordinates
 remain independent. Access is derived only from the completed
@@ -856,6 +1065,250 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-25 12:11:03 CST — Closed the final `LOC-WATCH` acceptance gaps.
+  The Seal Route Table target preview now uses the same opening-hours rule as
+  its action, so a player still inside after 20:00 sees the blocked status
+  instead of an executable prompt. The three-column board was compacted within
+  the 640×360 safe canvas so its Back button is fully visible. The mismatched
+  bounty case now runs through a real Starfall Ruins enemy defeat, and successful
+  patrol/bounty tests assert exact coins, items, and Kael relationship rewards.
+  Verification passes a zero-warning C# build, 10/10 LOC-WATCH checks, the
+  51/51 Phase G fast gate, 2336/2336 localization parity, Godot import and
+  180-frame startup, plus a renewed Apple M3 / Metal capture. Overall progress
+  remains **74%** and the free `BuildingSystem` remains untouched.
+
+- 2026-08-25 11:55:39 CST — Completed `LOC-WATCH`, turning Starfall Watch into
+  a playable location. Its seal route table deterministically offers two
+  completable patrols, one bounty, and one of three ruins preparations each
+  day. Patrols connect to real world regions; bounties advance only from real
+  matching-enemy defeats in the ruins or deep mine, fail on defeat, and reset
+  across days. Both reward paths atomically grant items, glow coins, and Kael
+  relationship points; insufficient capacity leaves the task, coins, items,
+  and relationship unchanged. Seal Ward, Route Threads, and Field Ration apply
+  daily incoming-damage, enemy-speed, and first-entry energy effects. Same-day
+  persistence, invalid-save normalization, the bilingual board, and a
+  deterministic playtest entry are included. Verification passes a zero-warning
+  C# build, 10/10 LOC-WATCH checks, the 51/51 Phase G fast gate, 2336/2336
+  localization-key parity, and Godot 4.7.1 import plus 180-frame startup. The
+  Apple M3 / Metal capture is `artifacts/screenshots/loc-watch-board.png`.
+  Overall progress is now **74%**; the free `BuildingSystem` remains
+  `deferred-explicit-reopen` and untouched.
+
+- 2026-08-25 11:12:05 CST — Completed `LOC-POST`, turning the Starlight Post
+  into a playable location. Its sorting counter offers two deterministic daily
+  routes, allows one active route at a time, and caps completion at two. Eight
+  stable routes reuse the 16 villagers' real schedule projection; delivery to
+  the correct recipient with the Hand atomically grants glow coins and 2
+  relationship points. Wrong recipients, wrong tools, and invalid routes are
+  side-effect free, while target preview and delivery share the same contract.
+  Same-day progress restores, unfinished routes expire across days, and the
+  delivery state neither copies nor mutates `MailSystem`. The bilingual route
+  board, recipient-specific replies, deterministic playtest entry, and macOS
+  640×360 visual capture are included. Verification passes a zero-warning C#
+  build, 9/9 post-delivery/playtest checks, 6/6 localization checks, the 51/51
+  Phase G fast gate, and Godot 4.7.1 import plus 180-frame startup. The Apple M3
+  / Metal capture is `artifacts/screenshots/loc-post-delivery-board.png`.
+  Overall progress is now **70%**; the free `BuildingSystem` remains
+  `deferred-explicit-reopen` and untouched.
+
+- 2026-08-25 10:23:53 CST — Completed `LOC-TEA`, turning the Starweaver Tea
+  House into a playable location. The counter now rotates three deterministic
+  teas; with the hand selected, one atomic tasting per day grants a takeaway
+  item, restores 10–18 energy, and applies +8% outdoor movement for 120 game
+  minutes. From 13:00 to 18:00, at least two actually scheduled villagers can
+  join one daily afternoon gathering for 3 relationship points each. The
+  purchase, effect, gathering, and guest list survive same-day saves and reset
+  across days; invalid or wrong-day offers normalize safely. The shared target
+  preview, bilingual menu, deterministic playtest entry, and 640×360 visual
+  capture are included. Verification passes a zero-warning C# build, 7/7 tea
+  house tests, the 51/51 Phase G fast gate, a Godot 4.7.1 editor import, and
+  2213/2213 localization-key parity. Overall progress is now **66%**; the free
+  `BuildingSystem` remains `deferred-explicit-reopen` and untouched.
+
+- 2026-08-25 09:33:45 CST — Closed the pause-menu child-panel return and focus
+  contract. First-day tips, the morning briefing, route guidance, Gleamrise
+  goals, the fish collection, fishing gear, stellar resonance, and settings all
+  enter through `OpenPauseChild(openChild, isChildOpen)`; if the target panel
+  does not actually open because its state is empty or no longer valid, the pause
+  menu is restored immediately. All matching close paths now restore the pause
+  menu through `RestorePauseAfterChild()`, so B / Start closes only the child
+  panel and returns to the original pause-menu button instead of closing pause or
+  restoring world controls in the same input. Focused persistence coverage now
+  exercises every accessibility setting, missing or corrupt files, and invalid
+  value normalization. C# builds with zero warnings and the combined focus,
+  input, Main integration, and accessibility checks pass 48/48; the Phase G
+  fast gate passes 51/51 and `git diff --check` is clean. Overall progress is
+  now **62%**; the free
+  `BuildingSystem` remains `deferred-explicit-reopen` and untouched.
+
+- 2026-08-24 23:23:56 CST — Made final-approach route guidance resilient to
+  detours, temporary walkability changes, and indoor character-event targets.
+  Character-event destinations can now carry an exterior door plus an indoor NPC
+  target cell; the HUD prompts at the entrance and continues the final approach
+  after location handoff, while the minimap route marker remains world-only.
+  When the player leaves the cached final path, or when the current walkability
+  predicate blocks a cached cell, the selection rebuilds a pure-Core
+  adjacent-target path from the current player cell; if an obstruction has
+  invalidated the cached path and rebuilding fails, the current projection
+  reports no valid final path until walkability changes again.
+  This remains ephemeral UI state and adds no save, collision, or objective
+  state. Verification now passes WorldNavigation 61/61, morning navigation 9/9,
+  Main integration architecture 9/9, Phase G fast 51/51, full C# 1127/1127,
+  localization 2184/2184, Godot import, 180-frame headless startup, and
+  `git diff --check`. No new
+  macOS visual inspection was claimed, the candidate is conservatively counted
+  as 60% of the independent content checklist, and the free `BuildingSystem`
+  remains paused.
+
+- 2026-08-24 23:08:02 CST — Closed morning navigation from a regional hint to
+  a precise entrance/object approach. Mail, daily/weekly commissions, all four
+  festival entrances, character-event schedule points or exterior doors, and
+  landmark suggestions now carry stable exact targets. Same-region selections
+  start the final approach directly; cross-region journeys hand off at the
+  exact last road endpoint. A pure-Core four-direction approach path, adjacent
+  arrival, fixed-obstacle avoidance, final-approach HUD, and dual minimap
+  markers add no save or business state. Precise tests pass 47/47, expanded
+  navigation/experience tests 159/159, Phase G fast 51/51, full C# 1118/1118,
+  localization 2183/2183, and Godot 4.7.1 import. The process confirmed Apple
+  M3 / Metal; macOS was locked, so this change does not claim a fresh visual
+  inspection of the new HUD/minimap. The free `BuildingSystem` remains paused.
+
+- 2026-08-24 22:30:29 CST — Added explicit Start navigation actions to
+  actionable morning-briefing summaries. Mail, commissions, festivals,
+  character events, and region suggestions resolve through real catalogs to a
+  world region. Route selection now runs 0/1/2-leg journeys, advances at exact
+  transfer endpoints, and keeps the final destination and leg number on the
+  HUD; nearby off-route cells no longer count as arrival. No save, collision,
+  exploration, or duplicate objective state was added. Focused tests pass
+  67/67, Phase G fast 51/51, full C# 1111/1111, localization 2181/2181, and
+  Godot import/180-frame startup. Apple M3 / Metal visuals cover the briefing
+  action and two-leg off-route HUD. The free `BuildingSystem` remains paused.
+
+- 2026-08-24 22:19:46 CST — Added the pure-Core
+  `WorldNavigationJourneyPlanner`, which creates stable shortest multi-segment
+  plans across all seven world regions from the 12 existing direction route
+  options. Same-region plans have 0 segments, village routes have 1, and
+  homestead/peripheral cross-region plans route through the village in 2. The
+  route-selection layer can store and advance the active segment without writing
+  save, collision, exploration, or scene state. New tests cover all 7×7 region
+  pairs, continuity, existing-route references, invalid enum boundaries, and
+  snapshot independence, and the morning-briefing navigation test now uses the
+  current mail-save field names. Focused planner tests pass 8/8, the world
+  navigation set passes 39/39, Phase G fast passes 51/51, and full C# passes
+  1106/1106. The free `BuildingSystem` remains paused.
+
+- 2026-08-24 22:08:01 CST — Derived 12 forward/return choices from the six real
+  road contracts. Route guidance now offers only destinations available from
+  the player's current world region, maps interiors back to their real region,
+  and reverses path, guides, endpoints, destination, directions, remaining
+  steps, and arrival without writing save, collision, or exploration state.
+  Single-return panels now use a compact full-width layout. Player-overlay close
+  dispatch also moved into its own `Main` partial with all 31 branches kept in
+  order. Route/input focus passes 69/69, Phase G fast passes 51/51, full C#
+  passes 1083/1083, localization matches 2176/2176, and Godot import/180-frame
+  startup passes. Apple M3 / Metal visuals cover the six-destination village
+  panel, one-destination woods return panel, and reverse-route HUD/minimap.
+  The explicitly paused free `BuildingSystem` remains untouched.
+
+- 2026-08-24 21:37:19 CST — Added player-selected six-route guidance through
+  `G` and the pause menu, with HUD direction/distance feedback and a minimap
+  marker for the next guide or endpoint. Off-route guidance uses a dedicated
+  recovery direction, never auto-selects a destination, and writes no save,
+  collision, or exploration state. Feedback/audio context also moved into its
+  own `Main` partial to reduce experience-integration contention. WORLD/UI/BASE
+  focus passes 73/73, Phase G fast passes 51/51, full C# passes 1058/1058,
+  localization matches 2176/2176, Godot import/180-frame startup passes, and
+  Apple M3 / Metal visuals cover both route selection and the active-route HUD.
+
+- 2026-08-24 21:16:40 CST — Added a read-only six-capability overview to
+  first-day guidance, moved feedback failures to an explicit message-key
+  catalog, and added a UI-ready next-guide/direction/remaining-route projection.
+  Festival and player-service overlays moved out of shared `Main.cs`, reducing
+  it from 3105 to 2454 lines with architecture tests preventing regressions.
+  Seven-module focus passes 431/431, Phase G fast passes 51/51, full C# passes
+  1041/1041, localization remains 2154/2154, Godot import/main startup passes,
+  and the Apple M3 / Metal capability-overview layout is visually accepted.
+
+- 2026-08-24 20:54:31 CST — Added the read-only three-item morning decision
+  summary, split clear ambience into homestead/village/wilderness soundscapes,
+  and added complete four-direction audits for all six navigation routes.
+  Pause and experience input orchestration now lives outside the shared
+  `Main.cs` hotspot. Combined focus tests pass 293/293, Phase G fast passes
+  51/51, full C# regression passes 987/987, localization remains 2154/2154,
+  and Godot import/main-scene startup plus Apple M3 / Metal morning layout pass.
+
+- 2026-08-24 20:40:32 CST — Added semantic feedback audio mapping so generic
+  failure, resource-blocked, and tool-mismatch cues resolve to distinct
+  procedural sounds while successful action sounds remain owned by their
+  original actions. Focused feedback/audio tests pass 168/168 and 67/67, the
+  preview audio package now exports 15 effect WAVs, Phase G fast remains 51/51,
+  and full C# regression passes 969/969.
+
+- 2026-08-24 20:21:20 CST — Added controller-reachable pause-menu entries for
+  first-day tips and the morning briefing, restored focus to the originating
+  pause button after tips/briefing/settings, and added a localized 72-state
+  FEEL acceptance gallery. Apple M3 / Metal captures now cover all nine
+  feedback domains plus the real pause layout; full C# regression passes
+  884/884. The live focus route remains pending because macOS was locked.
+
+- 2026-08-24 20:03:45 CST — Made first-day tips and the morning briefing
+  reachable from the pause menu for controller focus/A navigation, with the
+  first-day tip entry disabled after all cards are skipped and localized in both
+  languages.
+
+- 2026-08-24 19:34:47 CST — Added BASE candidate runtime and automatic quality
+  evidence: an Apple M3 / Metal GUI run covered new game, first-day farming,
+  sleep, the day-two briefing, and same-day resume; keyboard/controller bindings
+  now share a central contract and guidance/briefing accept B to go back; audio
+  gained clipping, loudness, band, loop, separation, and crossfade gates; Mira
+  and cottage fixed-target hints now resolve through GameSession. Human
+  90-minute play, listening, physical-controller, and free-building work remain
+  explicitly incomplete.
+
+- 2026-08-24 19:07:06 CST — Closed the next BASE experience acceptance slice:
+  added the real-action opening-flow audit and empty-shipping-day restore fix,
+  persisted morning-briefing display history with day-one legacy compatibility,
+  added a 45.75-second deterministic audio audition, expanded FEEL coverage to
+  a 72-case matrix, tightened 57 world guides to an 18-cell camera budget, and
+  added 24 HUD hierarchy combinations with four-season and 100%/120% Metal
+  captures. The deferred free-building scope remains untouched.
+
+- 2026-08-24 18:27:34 CST — Added bilingual action, entry, and current-result
+  guidance to all six opening cards; persisted separate master, ambience, and
+  effects volumes with a 0.45-second ambient crossfade; and expanded navigation
+  to 36 guides plus six walkable contracts spanning every outer region.
+
+- 2026-08-24 17:46:29 CST — Added the seven-card morning briefing with automatic
+  post-sleep and 06:00-continue entry plus a manual `J` shortcut; integrated
+  shared immediate feedback for processing, combat damage/dodge, fishing, core
+  farm actions, and major rewards; and registered 31 seasonal visual navigation
+  guides without changing collision, pathing, resources, save data, or the
+  deferred free-building scope.
+
+- 2026-08-24 18:05:00 CST — Integrated six dismissible first-day guidance
+  cards, full HUD objective details, minimap collapse/marker filtering, six
+  24–40 second procedural ambient loops, and 13 action-effect profiles. Added
+  explicit visual-capture flags and automatic audio context switching for
+  location, weather, festivals, and combat.
+
+- 2026-08-24 17:24:00 CST — Moved roughly 5,100 lines of playtest setup logic
+  out of `Main.cs` into four domain partials for farm/facilities,
+  objectives/collections, activities/village, and world/foundation acceptance,
+  then centralized HUD and all scene presentation/switching in
+  `Main.ScenePresentation.cs`. Roughly 2,700 lines of festival, animal, and
+  greenhouse rules also moved into two `GameSession` domain partials, and the
+  data and processor-machine catalogs moved out of the shared definition file.
+  `GameLocaleBootstrap` now provides the bilingual resource-loading entry point.
+  The byte-equivalent moves separate runtime entry, scene presentation,
+  playtest support, domain rules, content catalogs, and locale assembly without
+  changing behavior.
+
+- 2026-08-24 16:32:20 CST — Moved all 243 developer playtest scenario bindings
+  out of the oversized `Main.cs` into the dedicated
+  `Main.PlaytestBindings.cs` partial. Registration order, setup methods, normal
+  startup fallback, and gameplay behavior remain unchanged, giving concurrent
+  content modules one playtest-binding integration point.
 
 - 2026-08-24 14:00:21 CST — Separated the beginner processors, cleared the
   moon-lantern arch and widened cross-region road corridors, and moved the city

@@ -1,6 +1,6 @@
 namespace Luminfield.Core;
 
-public sealed class GameSession
+public sealed partial class GameSession
 {
     public const int MaxEnergy = 100;
     public const int MaxWateringCanWater = 12;
@@ -50,6 +50,10 @@ public sealed class GameSession
     public FestivalSystem Festival { get; } = new();
     public AnimalSystem Animals { get; } = new();
     public CollectionSystem Collection { get; } = new();
+    public ExperienceGuidanceSystem ExperienceGuidance { get; } = new();
+    public TeaHouseSystem TeaHouse { get; } = new();
+    public PostDeliverySystem PostDelivery { get; } = new();
+    public StarfallWatchSystem StarfallWatch { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -140,10 +144,19 @@ public sealed class GameSession
         StarfallRuinsTrial.IsCellPassable(cell);
     public string? CurrentFestivalId =>
         FestivalCatalog.FestivalAtLocation(PlayerLocationId)?.Id;
-    public float PlayerMovementMultiplier =>
-        PlayerLocationId == PlayerLocationIds.World
-            ? Weather.Current.OutdoorMovementMultiplier
-            : 1f;
+    public float PlayerMovementMultiplier
+    {
+        get
+        {
+            if (PlayerLocationId != PlayerLocationIds.World)
+            {
+                return 1f;
+            }
+
+            var teaMultiplier = ActiveTeaHouseEffect?.MovementMultiplier ?? 1f;
+            return Weather.Current.OutdoorMovementMultiplier * teaMultiplier;
+        }
+    }
     public string Locale { get; private set; } = LocaleService.SimplifiedChinese;
     public float FishingAssistBonus { get; private set; }
     public float IncomingDamageMultiplier { get; private set; } = 1f;
@@ -214,6 +227,10 @@ public sealed class GameSession
         Festival.Changed += NotifyChanged;
         Animals.Changed += NotifyChanged;
         Collection.Changed += NotifyChanged;
+        ExperienceGuidance.Changed += NotifyChanged;
+        TeaHouse.Changed += NotifyChanged;
+        PostDelivery.Changed += NotifyChanged;
+        StarfallWatch.Changed += NotifyChanged;
         Collection.EntryDiscovered += entryId =>
         {
             if (!_restoring)
@@ -227,6 +244,8 @@ public sealed class GameSession
     {
         Clock.Reset();
         Collection.Reset();
+        ExperienceGuidance.Reset();
+        ExperienceGuidance.MarkMorningBriefingShown(Clock.Day);
         Inventory.Reset();
         Farm.Reset();
         GreenhouseFarm.Reset();
@@ -264,6 +283,9 @@ public sealed class GameSession
         GleamriseSeason.Reset(Clock.Day);
         Festival.Reset();
         Animals.Reset();
+        TeaHouse.Reset(Clock.Day);
+        PostDelivery.Reset(Clock.Day);
+        StarfallWatch.Reset(Clock.Day);
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -285,6 +307,7 @@ public sealed class GameSession
             save.Collection,
             CollectionSystem.LegacyEvidenceItemIds(save)
         );
+        ExperienceGuidance.Restore(save.ExperienceGuidance, save.Day);
         Inventory.Restore(save.Inventory, save.Player.SelectedSlot);
         Farm.Restore(save.FarmTiles);
         GreenhouseFarm.Restore(save.Greenhouse?.Tiles);
@@ -315,6 +338,9 @@ public sealed class GameSession
         );
         Mail.Restore(save.Mail);
         CharacterEvents.Restore(save.CharacterEvents, save.Day);
+        TeaHouse.Restore(save.TeaHouse, save.Day);
+        PostDelivery.Restore(save.PostDelivery, save.Day);
+        StarfallWatch.Restore(save.StarfallWatch, save.Day);
         Construction.Restore(save.Construction);
         StarGate.Restore(
             save.StarGate,
@@ -467,6 +493,15 @@ public sealed class GameSession
             PlayerX = StarfallRuinsTrialLayout.SafeArrivalCell.X * 16 + 8;
             PlayerY = StarfallRuinsTrialLayout.SafeArrivalCell.Y * 16 + 8;
         }
+
+        if (PlayerLocationId == PlayerLocationIds.World)
+        {
+            StarfallWatch.RecordPatrolVisit(
+                WorldDefinition.GetBiome(PlayerCell),
+                Clock.Day
+            );
+        }
+        ApplyStarfallWatchFieldRation(previousLocationId);
 
         if (PlayerLocationId == PlayerLocationIds.CrystalGrottoSurvey &&
             Mining.ReachRoom(
@@ -946,6 +981,26 @@ public sealed class GameSession
 
         var selected = Inventory.Selected;
         var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
+        if (target == FarmLayout.MiraCell)
+        {
+            return PreviewHandOnlyTarget(
+                FarmLayout.MiraCell,
+                TargetPreviewKind.Character,
+                "target.action.talk",
+                selectedId
+            );
+        }
+
+        if (target == FarmLayout.CottageDoorCell)
+        {
+            return PreviewHandOnlyTarget(
+                FarmLayout.CottageDoorCell,
+                TargetPreviewKind.Door,
+                "target.action.enter",
+                selectedId
+            );
+        }
+
         if (CrabPots.HasPot(target))
         {
             return PreviewCrabPot(target, selectedId);
@@ -2170,6 +2225,10 @@ public sealed class GameSession
             if (damage.EnemyDefeated)
             {
                 Collection.RecordDiscovery(damage.EnemyId);
+                StarfallWatch.RecordEnemyDefeated(
+                    damage.EnemyId,
+                    Clock.Day
+                );
                 Starlight.RefreshRewardUnlocks(StarlightProgress());
             }
 
@@ -2208,9 +2267,16 @@ public sealed class GameSession
             );
         }
 
-        return Combat.ReceiveHit(
-            StarfallRuinsTrialCatalog.Enemy(instance.EnemyId).Damage
+        var baseDamage = StarfallRuinsTrialCatalog
+            .Enemy(instance.EnemyId)
+            .Damage;
+        var adjustedDamage = Math.Max(
+            1,
+            (int)MathF.Ceiling(
+                baseDamage * EffectiveIncomingDamageMultiplier
+            )
         );
+        return Combat.ReceiveHit(adjustedDamage);
     }
 
     public ActionResult CheckMoveStarfallEnemy(
@@ -2290,6 +2356,7 @@ public sealed class GameSession
             );
         }
 
+        StarfallWatch.FailActiveBounty(Clock.Day);
         var settlement = EndDay();
         Energy = 50;
         EnergyChanged?.Invoke();
@@ -2359,7 +2426,15 @@ public sealed class GameSession
 
         if (Mining.FifthRoomAnchorReached)
         {
-            return DeepMine.Start(Clock.Day, Inventory);
+            var result = DeepMine.Start(Clock.Day, Inventory);
+            if (result.Succeeded)
+            {
+                ApplyStarfallWatchFieldRation(
+                    PlayerLocationIds.CrystalGrottoSurvey,
+                    enteringDeepMine: true
+                );
+            }
+            return result;
         }
 
         Mining.ReachRoom(CrystalGrottoSurveyLayout.RoomCount);
@@ -2370,6 +2445,7 @@ public sealed class GameSession
 
     public DeepMineAttackResult AttackDeepMineEnemy()
     {
+        var enemyId = DeepMine.Snapshot().EnemyId;
         var selectedId = Inventory.Selected.IsEmpty
             ? string.Empty
             : Inventory.Selected.ItemId;
@@ -2379,11 +2455,12 @@ public sealed class GameSession
             Combat,
             Collection,
             StellarResonance.CombatDamageBonus,
-            IncomingDamageMultiplier,
-            EnemySpeedMultiplier
+            EffectiveIncomingDamageMultiplier,
+            EffectiveEnemySpeedMultiplier
         );
         if (result.Succeeded && result.EnemyDefeated)
         {
+            StarfallWatch.RecordEnemyDefeated(enemyId, Clock.Day);
             StellarResonance.RecordPostgameActivity(
                 StellarSkillKind.Nightwatch
             );
@@ -2510,6 +2587,7 @@ public sealed class GameSession
             );
         }
 
+        StarfallWatch.FailActiveBounty(Clock.Day);
         var settlement = EndDay();
         Energy = 50;
         EnergyChanged?.Invoke();
@@ -3588,751 +3666,6 @@ public sealed class GameSession
     public ActionResult CompleteCharacterEvent(string eventId) =>
         CharacterEvents.CompleteActiveEvent(eventId, Clock.Day);
 
-    public ActionResult CheckFestivalEntrance(
-        string festivalId,
-        GridPosition target
-    )
-    {
-        if (!FestivalSpatialCatalog.TryByFestivalId(
-                festivalId,
-                out var spatial
-            ) || PlayerLocationId != PlayerLocationIds.World ||
-            target != spatial.WorldEntryCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return FestivalCatalog.IsOpen(
-            festivalId,
-            Clock.Day,
-            Clock.MinuteOfDay
-        )
-            ? ActionResult.Success(
-                messageKey: FestivalCatalog.EnterNoticeKey(festivalId)
-            )
-            : ActionResult.Fail(FestivalCatalog.ClosedKey(festivalId));
-    }
-
-    public ActionResult TryEnterFestival(
-        string festivalId,
-        GridPosition target
-    )
-    {
-        var result = CheckFestivalEntrance(festivalId, target);
-        if (result.Succeeded &&
-            festivalId == FestivalCatalog.GleamrisePlantingFestivalId)
-        {
-            GleamriseSeason.RecordMilestone(
-                GleamriseSeasonGoalSystem.CounterFestivalJoined
-            );
-        }
-
-        return result;
-    }
-
-    public ActionResult CheckStarharvestMarketEntrance(GridPosition target) =>
-        CheckFestivalEntrance(
-            FestivalCatalog.StarharvestMarketFestivalId,
-            target
-        );
-
-    public ActionResult TryEnterStarharvestMarket(GridPosition target) =>
-        TryEnterFestival(
-            FestivalCatalog.StarharvestMarketFestivalId,
-            target
-        );
-
-    public ActionResult CheckFestivalExit(GridPosition target)
-    {
-        if (!FestivalSpatialCatalog.TryByLocationId(
-                PlayerLocationId,
-                out var spatial
-            ) || target != spatial.ExitCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        return Inventory.Selected.ItemId == DataCatalog.HandId
-            ? ActionResult.Success(
-                messageKey: FestivalCatalog.LeaveNoticeKey(
-                    spatial.FestivalId
-                )
-            )
-            : ActionResult.Fail("notice.needs_hand");
-    }
-
-    public ActionResult TryExitFestival(GridPosition target) =>
-        CheckFestivalExit(target);
-
-    public ActionResult CheckStarharvestMarketExit(GridPosition target) =>
-        InsideStarharvestMarket
-            ? CheckFestivalExit(target)
-            : ActionResult.Fail("notice.nothing_to_interact");
-
-    public ActionResult TryExitStarharvestMarket(GridPosition target) =>
-        CheckStarharvestMarketExit(target);
-
-    public ActionResult CheckFestivalStation(
-        string stationId,
-        GridPosition target
-    )
-    {
-        if (!FestivalSpatialCatalog.TryByLocationId(
-                PlayerLocationId,
-                out var spatial
-            ))
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var station = spatial.Stations.FirstOrDefault(entry =>
-            entry.Id == stationId);
-        if (station is null || target != station.Cell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        if (!FestivalCatalog.IsOpen(
-                spatial.FestivalId,
-                Clock.Day,
-                Clock.MinuteOfDay
-            ))
-        {
-            return ActionResult.Fail(
-                FestivalCatalog.ClosedKey(spatial.FestivalId)
-            );
-        }
-
-        return ActionResult.Success(messageKey: station.Id switch
-        {
-            FestivalCatalog.StarharvestShopId => "festival.shop.opened",
-            FestivalCatalog.GleamriseSharedBloomfieldActivityId =>
-                "festival.gleamrise.activity.opened",
-            FestivalCatalog.GleamriseSeedExchangeId =>
-                "festival.gleamrise.exchange.opened",
-            FestivalCatalog.LongnightSharedTableId =>
-                "festival.longnight.activity.opened",
-            FestivalCatalog.LongnightGiftExchangeId =>
-                "festival.longnight.exchange.opened",
-            FestivalCatalog.LongnightStarlightRiteId =>
-                "festival.longnight.rite.opened",
-            FestivalCatalog.LongnightLanternStallId =>
-                "festival.longnight.stall.opened",
-            FestivalCatalog.FireflyLanternLaunchId =>
-                "festival.firefly.activity.opened",
-            FestivalCatalog.FireflyFishBasinId =>
-                "festival.firefly.basin.opened",
-            FestivalCatalog.FireflyTideAltarId =>
-                "festival.firefly.altar.opened",
-            FestivalCatalog.FireflyGlowshopId =>
-                "festival.firefly.shop.opened",
-            _ => "festival.showcase.opened"
-        });
-    }
-
-    public ActionResult CheckFestivalStation(GridPosition target)
-    {
-        if (!InsideStarharvestMarket)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var station = FestivalSpatialCatalog.StarharvestMarket.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        return station is null
-            ? ActionResult.Fail("notice.nothing_to_interact")
-            : CheckFestivalStation(station.Id, target);
-    }
-
-    public FestivalSubmissionPreview PreviewFestivalSubmission(
-        IReadOnlyList<string>? itemIds
-    )
-    {
-        if (!InsideStarharvestMarket ||
-            !FestivalCatalog.IsOpen(
-                FestivalCatalog.StarharvestMarketFestivalId,
-                Clock.Day,
-                Clock.MinuteOfDay
-            ))
-        {
-            return new FestivalSubmissionPreview(
-                false,
-                "festival.starharvest.closed",
-                itemIds?.ToArray() ?? [],
-                0,
-                string.Empty,
-                0,
-                0
-            );
-        }
-
-        return Festival.CheckSubmission(
-            FestivalCatalog.StarharvestMarketFestivalId,
-            CalendarSystem.YearNumber(Clock.Day),
-            itemIds,
-            Inventory
-        );
-    }
-
-    public FestivalSubmissionResult SubmitFestivalExhibit(
-        IReadOnlyList<string> itemIds
-    )
-    {
-        var preview = PreviewFestivalSubmission(itemIds);
-        if (!preview.CanSubmit)
-        {
-            return new FestivalSubmissionResult(false, preview.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            var result = Festival.Submit(
-                FestivalCatalog.StarharvestMarketFestivalId,
-                CalendarSystem.YearNumber(Clock.Day),
-                itemIds,
-                Inventory
-            );
-            if (!result.Succeeded || result.Result is null)
-            {
-                return result;
-            }
-
-            Coins += result.Result.AuctionCoins;
-            Starlight.RefreshRewardUnlocks(StarlightProgress());
-            NotifyChanged();
-            return result;
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPurchaseCheck CheckFestivalPurchase(string offerId)
-    {
-        if (!InsideStarharvestMarket ||
-            !FestivalCatalog.IsOpen(
-                FestivalCatalog.StarharvestMarketFestivalId,
-                Clock.Day,
-                Clock.MinuteOfDay
-            ))
-        {
-            return new FestivalPurchaseCheck(
-                false,
-                "festival.starharvest.closed",
-                null
-            );
-        }
-
-        return Festival.CheckPurchase(offerId, Inventory);
-    }
-
-    public ActionResult BuyFestivalItem(string offerId)
-    {
-        var check = CheckFestivalPurchase(offerId);
-        if (!check.CanPurchase)
-        {
-            return ActionResult.Fail(check.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.Purchase(offerId, Inventory);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalLongnightPreview CheckLongnightFeastParticipation(
-        GridPosition target,
-        IReadOnlyList<string>? dishItemIds,
-        string exchangeId
-    )
-    {
-        var station = FestivalSpatialCatalog.LongnightLanternFeast.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        if (station is null || station.Id is not (
-                FestivalCatalog.LongnightSharedTableId or
-                FestivalCatalog.LongnightGiftExchangeId or
-                FestivalCatalog.LongnightStarlightRiteId))
-        {
-            return InvalidLongnightPreview(
-                "notice.nothing_to_interact",
-                dishItemIds
-            );
-        }
-
-        var access = CheckFestivalStation(station.Id, target);
-        if (!access.Succeeded)
-        {
-            return InvalidLongnightPreview(
-                access.MessageKey,
-                dishItemIds
-            );
-        }
-
-        return Festival.CheckLongnightContribution(
-            CalendarSystem.YearNumber(Clock.Day),
-            dishItemIds,
-            exchangeId,
-            Inventory
-        );
-    }
-
-    public FestivalLongnightResult CompleteLongnightFeast(
-        GridPosition target,
-        IReadOnlyList<string> dishItemIds,
-        string exchangeId
-    )
-    {
-        var preview = CheckLongnightFeastParticipation(
-            target,
-            dishItemIds,
-            exchangeId
-        );
-        if (!preview.CanComplete)
-        {
-            return new FestivalLongnightResult(
-                false,
-                preview.FailureKey
-            );
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            var result = Festival.SubmitLongnightContribution(
-                CalendarSystem.YearNumber(Clock.Day),
-                dishItemIds,
-                exchangeId,
-                Inventory
-            );
-            if (result.Succeeded)
-            {
-                Starlight.RefreshRewardUnlocks(StarlightProgress());
-                NotifyChanged();
-            }
-            return result;
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPurchaseCheck CheckLongnightStallPurchase(
-        GridPosition target,
-        string offerId
-    )
-    {
-        var access = CheckFestivalStation(
-            FestivalCatalog.LongnightLanternStallId,
-            target
-        );
-        return access.Succeeded
-            ? Festival.CheckLongnightPurchase(offerId, Inventory)
-            : new FestivalPurchaseCheck(false, access.MessageKey, null);
-    }
-
-    public ActionResult BuyLongnightStallItem(
-        GridPosition target,
-        string offerId
-    )
-    {
-        var check = CheckLongnightStallPurchase(target, offerId);
-        if (!check.CanPurchase)
-        {
-            return ActionResult.Fail(check.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.PurchaseLongnightOffer(offerId, Inventory);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalSubmissionPreview CheckFireflyTideParticipation(
-        GridPosition target,
-        IReadOnlyList<string>? fishItemIds
-    )
-    {
-        var station = FestivalSpatialCatalog.FireflyTide.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        if (station is null || station.Id is not (
-                FestivalCatalog.FireflyLanternLaunchId or
-                FestivalCatalog.FireflyFishBasinId or
-                FestivalCatalog.FireflyTideAltarId))
-        {
-            return new FestivalSubmissionPreview(
-                false,
-                "notice.nothing_to_interact",
-                fishItemIds?.ToArray() ?? [],
-                0,
-                string.Empty,
-                0,
-                0
-            );
-        }
-
-        var access = CheckFestivalStation(station.Id, target);
-        if (!access.Succeeded)
-        {
-            return new FestivalSubmissionPreview(
-                false,
-                access.MessageKey,
-                fishItemIds?.ToArray() ?? [],
-                0,
-                string.Empty,
-                0,
-                0
-            );
-        }
-
-        return Festival.CheckFireflyTideContribution(
-            CalendarSystem.YearNumber(Clock.Day),
-            fishItemIds,
-            Inventory
-        );
-    }
-
-    public FestivalSubmissionResult CompleteFireflyTide(
-        GridPosition target,
-        IReadOnlyList<string> fishItemIds
-    )
-    {
-        var preview = CheckFireflyTideParticipation(target, fishItemIds);
-        if (!preview.CanSubmit)
-        {
-            return new FestivalSubmissionResult(
-                false,
-                preview.FailureKey
-            );
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            var result = Festival.SubmitFireflyTideContribution(
-                CalendarSystem.YearNumber(Clock.Day),
-                fishItemIds,
-                Inventory
-            );
-            if (result.Succeeded)
-            {
-                Starlight.RefreshRewardUnlocks(StarlightProgress());
-                NotifyChanged();
-            }
-            return result;
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPurchaseCheck CheckFireflyShopPurchase(
-        GridPosition target,
-        string offerId
-    )
-    {
-        var access = CheckFestivalStation(
-            FestivalCatalog.FireflyGlowshopId,
-            target
-        );
-        return access.Succeeded
-            ? Festival.CheckFireflyPurchase(offerId, Inventory)
-            : new FestivalPurchaseCheck(false, access.MessageKey, null);
-    }
-
-    public ActionResult BuyFireflyShopItem(
-        GridPosition target,
-        string offerId
-    )
-    {
-        var check = CheckFireflyShopPurchase(target, offerId);
-        if (!check.CanPurchase)
-        {
-            return ActionResult.Fail(check.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.PurchaseFireflyOffer(offerId, Inventory);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPlantingStartCheck CheckStartGleamriseChallenge(
-        IReadOnlyList<string>? selectedSeedItemIds
-    )
-    {
-        var station = CheckFestivalStation(
-            FestivalCatalog.GleamriseSharedBloomfieldActivityId,
-            GleamrisePlantingFestivalLayout.ActivityTableCell
-        );
-        if (!station.Succeeded)
-        {
-            return new FestivalPlantingStartCheck(
-                false,
-                station.MessageKey,
-                selectedSeedItemIds?.ToArray() ?? []
-            );
-        }
-
-        return Festival.CheckStartPlantingChallenge(
-            CalendarSystem.YearNumber(Clock.Day),
-            Clock.MinuteOfDay,
-            selectedSeedItemIds
-        );
-    }
-
-    public ActionResult StartGleamriseChallenge(
-        IReadOnlyList<string> selectedSeedItemIds
-    )
-    {
-        var check = CheckStartGleamriseChallenge(selectedSeedItemIds);
-        if (!check.CanStart)
-        {
-            return ActionResult.Fail(check.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.StartPlantingChallenge(
-                CalendarSystem.YearNumber(Clock.Day),
-                Clock.MinuteOfDay,
-                selectedSeedItemIds
-            );
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public ActionResult CheckSelectGleamriseSeed(string seedItemId)
-    {
-        var station = CheckFestivalStation(
-            FestivalCatalog.GleamriseSharedBloomfieldActivityId,
-            GleamrisePlantingFestivalLayout.ActivityTableCell
-        );
-        return station.Succeeded
-            ? Festival.CheckSelectPlantingSeed(
-                CalendarSystem.YearNumber(Clock.Day),
-                seedItemId
-            )
-            : station;
-    }
-
-    public ActionResult SelectGleamriseSeed(string seedItemId)
-    {
-        var check = CheckSelectGleamriseSeed(seedItemId);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.SelectPlantingSeed(
-                CalendarSystem.YearNumber(Clock.Day),
-                seedItemId
-            );
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPlantingCheck CheckGleamrisePlot(GridPosition target)
-    {
-        if (!InsideGleamrisePlantingFestival ||
-            !GleamrisePlantingFestivalLayout.PlotIdsByCell.TryGetValue(
-                target,
-                out var plotId
-            ) || Distance(PlayerCell, target) != 1)
-        {
-            return new FestivalPlantingCheck(
-                false,
-                "notice.nothing_to_interact",
-                string.Empty,
-                string.Empty
-            );
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return new FestivalPlantingCheck(
-                false,
-                "notice.needs_hand",
-                plotId,
-                string.Empty
-            );
-        }
-
-        if (!FestivalCatalog.IsOpen(
-                FestivalCatalog.GleamrisePlantingFestivalId,
-                Clock.Day,
-                Clock.MinuteOfDay
-            ))
-        {
-            return new FestivalPlantingCheck(
-                false,
-                "festival.gleamrise.closed",
-                plotId,
-                string.Empty
-            );
-        }
-
-        return Festival.CheckPlantingPlot(
-            CalendarSystem.YearNumber(Clock.Day),
-            Clock.MinuteOfDay,
-            plotId
-        );
-    }
-
-    public FestivalPlantingResolution PlantGleamrisePlot(
-        GridPosition target
-    )
-    {
-        var check = CheckGleamrisePlot(target);
-        if (!check.CanPlant)
-        {
-            return new FestivalPlantingResolution(
-                false,
-                false,
-                check.FailureKey
-            );
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            var result = Festival.PlantPlot(
-                CalendarSystem.YearNumber(Clock.Day),
-                Clock.MinuteOfDay,
-                check.PlotId
-            );
-            if (result.Completed)
-            {
-                Starlight.RefreshRewardUnlocks(StarlightProgress());
-            }
-
-            return result;
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPurchaseCheck CheckGleamriseSeedPurchase(
-        string offerId
-    )
-    {
-        var station = CheckFestivalStation(
-            FestivalCatalog.GleamriseSeedExchangeId,
-            GleamrisePlantingFestivalLayout.SeedExchangeCell
-        );
-        return station.Succeeded
-            ? Festival.CheckGleamrisePurchase(offerId, Inventory)
-            : new FestivalPurchaseCheck(false, station.MessageKey, null);
-    }
-
-    public ActionResult BuyGleamriseSeeds(string offerId)
-    {
-        var check = CheckGleamriseSeedPurchase(offerId);
-        if (!check.CanPurchase)
-        {
-            return ActionResult.Fail(check.FailureKey);
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            return Festival.PurchaseGleamriseSeeds(offerId, Inventory);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-    }
-
-    public FestivalPlantingResolution ResolveGleamriseChallengeDeadline(
-        bool force = false
-    )
-    {
-        var result = Festival.ResolvePlantingAttempt(
-            CalendarSystem.YearNumber(Clock.Day),
-            Clock.MinuteOfDay,
-            force
-        );
-        if (result.Completed)
-        {
-            Starlight.RefreshRewardUnlocks(StarlightProgress());
-        }
-
-        return result;
-    }
-
-    public bool LeaveFestivalIfClosed()
-    {
-        if (!FestivalSpatialCatalog.TryByLocationId(
-                PlayerLocationId,
-                out var spatial
-            ) ||
-            FestivalCatalog.IsOpen(
-                spatial.FestivalId,
-                Clock.Day,
-                Clock.MinuteOfDay
-            ))
-        {
-            return false;
-        }
-
-        if (spatial.FestivalId ==
-            FestivalCatalog.GleamrisePlantingFestivalId)
-        {
-            _ = ResolveGleamriseChallengeDeadline(true);
-        }
-
-        SetPlayerLocation(
-            spatial.WorldReturnCell.X * 16 + 8,
-            spatial.WorldReturnCell.Y * 16 + 8,
-            PlayerLocationIds.World
-        );
-        return true;
-    }
-
     public ActionResult TryEnterGreenhouse(GridPosition target)
     {
         var check = CheckGreenhouseEntrance(target);
@@ -5158,19 +4491,12 @@ public sealed class GameSession
 
     public ActionResult InspectStarwovenTeaCounter()
     {
-        if (!InsideTeaHouse)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return ActionResult.Success(
-            messageKey: "tea_house.counter.dialogue"
-        );
+        var access = CheckTeaHouseCounterAccess();
+        return access.Succeeded
+            ? ActionResult.Success(
+                messageKey: "tea_house.counter.dialogue"
+            )
+            : access;
     }
 
     public ActionResult TryExitStarweaverTeaHouse()
@@ -5263,19 +4589,7 @@ public sealed class GameSession
 
     public ActionResult InspectRouteSortingCounter()
     {
-        if (!InsideStarlightPost)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return ActionResult.Success(
-            messageKey: "starlight_post.counter.dialogue"
-        );
+        return CheckPostDeliveryCounterAccess();
     }
 
     public ActionResult TryExitStarlightPost()
@@ -5312,21 +4626,7 @@ public sealed class GameSession
     }
 
     public ActionResult InspectSealRouteTable()
-    {
-        if (!InsideStarfallWatch)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return ActionResult.Success(
-            messageKey: "starfall_watch.table.dialogue"
-        );
-    }
+        => CheckStarfallWatchTableAccess();
 
     public ActionResult TryExitStarfallWatch()
     {
@@ -5799,6 +5099,9 @@ public sealed class GameSession
         Commission.RefreshForDay(Clock.Day);
         WeeklyCommission.RefreshForDay(Clock.Day);
         GleamriseSeason.RefreshForDay(Clock.Day);
+        TeaHouse.Reset(Clock.Day);
+        PostDelivery.AdvanceToDay(Clock.Day);
+        StarfallWatch.AdvanceToDay(Clock.Day);
         Mail.DeliverForDay(Clock.Day, Village, CharacterEvents);
         LastRespawnedResources = Resources.ResolveDay(
             Clock.Day,
@@ -5876,6 +5179,10 @@ public sealed class GameSession
         GleamriseSeason = GleamriseSeason.Capture(),
         Festival = Festival.Capture(),
         Collection = Collection.Capture(),
+        ExperienceGuidance = ExperienceGuidance.Capture(),
+        TeaHouse = TeaHouse.Capture(),
+        PostDelivery = PostDelivery.Capture(),
+        StarfallWatch = StarfallWatch.Capture(),
         StarGate = StarGate.Capture(),
         StellarResonance = StellarResonance.Capture()
     };
@@ -5898,1928 +5205,6 @@ public sealed class GameSession
     public ActionResult ChooseFarmingSpecialization(
         string specializationId
     ) => FarmingSkill.ChooseSpecialization(specializationId);
-
-    private ActionResult UseStarharvestMarketSelected(GridPosition target)
-    {
-        if (target == StarharvestMarketLayout.ExitCell)
-        {
-            return TryExitStarharvestMarket(target);
-        }
-
-        if (target == StarharvestMarketLayout.ExhibitCell ||
-            target == StarharvestMarketLayout.BidBoardCell ||
-            target == StarharvestMarketLayout.ShopCell)
-        {
-            return CheckFestivalStation(target);
-        }
-
-        return ActionResult.Fail("notice.nothing_to_interact");
-    }
-
-    private ActionResult UseGleamrisePlantingFestivalSelected(
-        GridPosition target
-    )
-    {
-        if (target == GleamrisePlantingFestivalLayout.ExitCell)
-        {
-            return TryExitFestival(target);
-        }
-
-        if (GleamrisePlantingFestivalLayout.PlotIdsByCell.ContainsKey(target))
-        {
-            var planted = PlantGleamrisePlot(target);
-            return planted.Succeeded
-                ? ActionResult.Success(messageKey: planted.MessageKey)
-                : ActionResult.Fail(planted.MessageKey);
-        }
-
-        var station = FestivalSpatialCatalog.GleamrisePlanting.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        return station is null
-            ? ActionResult.Fail("notice.nothing_to_interact")
-            : CheckFestivalStation(station.Id, target);
-    }
-
-    private ActionResult UseLongnightLanternFeastSelected(
-        GridPosition target
-    )
-    {
-        if (target == LongnightLanternFeastLayout.ExitCell)
-        {
-            return TryExitFestival(target);
-        }
-
-        var station = FestivalSpatialCatalog.LongnightLanternFeast.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        return station is null
-            ? ActionResult.Fail("notice.nothing_to_interact")
-            : CheckFestivalStation(station.Id, target);
-    }
-
-    private ActionResult UseFireflyTideSelected(GridPosition target)
-    {
-        if (target == FireflyTideLayout.ExitCell)
-        {
-            return TryExitFestival(target);
-        }
-
-        var station = FestivalSpatialCatalog.FireflyTide.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        return station is null
-            ? ActionResult.Fail("notice.nothing_to_interact")
-            : CheckFestivalStation(station.Id, target);
-    }
-
-    private TargetPreview PreviewFestivalEntrance(
-        string festivalId,
-        GridPosition target
-    )
-    {
-        if (!FestivalSpatialCatalog.TryByFestivalId(
-                festivalId,
-                out var spatial
-            ))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var check = CheckFestivalEntrance(festivalId, target);
-        var actionKey = FestivalCatalog.EnterActionKey(festivalId);
-        var blockedKey = FestivalCatalog.ClosedKey(festivalId);
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                spatial.WorldEntryCell,
-                TargetPreviewKind.FestivalPortal,
-                actionKey
-            );
-        }
-
-        if (check.MessageKey == "notice.needs_hand")
-        {
-            return TargetPreview.NeedsTool(
-                spatial.WorldEntryCell,
-                TargetPreviewKind.FestivalPortal,
-                "target.need.hand"
-            );
-        }
-
-        return TargetPreview.Blocked(
-            spatial.WorldEntryCell,
-            TargetPreviewKind.FestivalPortal,
-            blockedKey
-        );
-    }
-
-    private TargetPreview PreviewStarharvestMarketEntrance(
-        GridPosition target
-    ) => PreviewFestivalEntrance(
-        FestivalCatalog.StarharvestMarketFestivalId,
-        target
-    );
-
-    private TargetPreview PreviewStarharvestMarketTarget(GridPosition target)
-    {
-        if (!StarharvestMarketLayout.IsInBounds(target))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var villager = Village.NpcAt(
-            target,
-            Clock.Day,
-            Clock.MinuteOfDay,
-            PlayerLocationIds.StarharvestMarket,
-            PlayerCell
-        );
-        if (villager is not null)
-        {
-            return PreviewVillagerInteraction(
-                villager,
-                Inventory.Selected.IsEmpty
-                    ? string.Empty
-                    : Inventory.Selected.ItemId
-            );
-        }
-
-        if (target == StarharvestMarketLayout.ExitCell)
-        {
-            var check = CheckStarharvestMarketExit(target);
-            return check.Succeeded
-                ? TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.FestivalExit,
-                    "target.action.exit_starharvest_market"
-                )
-                : check.MessageKey == "notice.needs_hand"
-                    ? TargetPreview.NeedsTool(
-                        target,
-                        TargetPreviewKind.FestivalExit,
-                        "target.need.hand"
-                    )
-                    : TargetPreview.Neutral(target);
-        }
-
-        var kind = target == StarharvestMarketLayout.ExhibitCell
-            ? TargetPreviewKind.FestivalExhibit
-            : target == StarharvestMarketLayout.BidBoardCell
-                ? TargetPreviewKind.FestivalBidBoard
-                : target == StarharvestMarketLayout.ShopCell
-                    ? TargetPreviewKind.FestivalShop
-                    : TargetPreviewKind.None;
-        if (kind == TargetPreviewKind.None)
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var station = CheckFestivalStation(target);
-        if (station.Succeeded)
-        {
-            var actionKey = kind switch
-            {
-                TargetPreviewKind.FestivalShop =>
-                    "target.action.open_festival_shop",
-                TargetPreviewKind.FestivalBidBoard =>
-                    "target.action.review_festival_bid",
-                _ => "target.action.open_festival_showcase"
-            };
-            return TargetPreview.Available(target, kind, actionKey);
-        }
-
-        if (station.MessageKey == "notice.needs_hand")
-        {
-            return TargetPreview.NeedsTool(
-                target,
-                kind,
-                "target.need.hand"
-            );
-        }
-
-        return TargetPreview.Blocked(
-            target,
-            kind,
-            station.MessageKey
-        );
-    }
-
-    private TargetPreview PreviewGleamrisePlantingFestivalTarget(
-        GridPosition target
-    )
-    {
-        if (!GleamrisePlantingFestivalLayout.IsInBounds(target))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var villager = Village.NpcAt(
-            target,
-            Clock.Day,
-            Clock.MinuteOfDay,
-            PlayerLocationIds.GleamrisePlantingFestival,
-            PlayerCell
-        );
-        if (villager is not null)
-        {
-            return PreviewVillagerInteraction(
-                villager,
-                Inventory.Selected.IsEmpty
-                    ? string.Empty
-                    : Inventory.Selected.ItemId
-            );
-        }
-
-        if (target == GleamrisePlantingFestivalLayout.ExitCell)
-        {
-            var exit = CheckFestivalExit(target);
-            return exit.Succeeded
-                ? TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.FestivalExit,
-                    "target.action.exit_gleamrise_festival"
-                )
-                : exit.MessageKey == "notice.needs_hand"
-                    ? TargetPreview.NeedsTool(
-                        target,
-                        TargetPreviewKind.FestivalExit,
-                        "target.need.hand"
-                    )
-                    : TargetPreview.Neutral(target);
-        }
-
-        if (GleamrisePlantingFestivalLayout.PlotIdsByCell.ContainsKey(target))
-        {
-            var planting = CheckGleamrisePlot(target);
-            if (planting.CanPlant)
-            {
-                return TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.FestivalPlantingPlot,
-                    "target.action.plant_festival_seed"
-                );
-            }
-
-            return planting.FailureKey == "notice.needs_hand"
-                ? TargetPreview.NeedsTool(
-                    target,
-                    TargetPreviewKind.FestivalPlantingPlot,
-                    "target.need.hand"
-                )
-                : TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.FestivalPlantingPlot,
-                    planting.FailureKey
-                );
-        }
-
-        var station = FestivalSpatialCatalog.GleamrisePlanting.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        if (station is null)
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var check = CheckFestivalStation(station.Id, target);
-        var actionKey = station.PreviewKind ==
-            TargetPreviewKind.FestivalSeedExchange
-                ? "target.action.open_sowing_seed_exchange"
-                : "target.action.open_sowing_activity";
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                target,
-                station.PreviewKind,
-                actionKey
-            );
-        }
-
-        return check.MessageKey == "notice.needs_hand"
-            ? TargetPreview.NeedsTool(
-                target,
-                station.PreviewKind,
-                "target.need.hand"
-            )
-            : TargetPreview.Blocked(
-                target,
-                station.PreviewKind,
-                check.MessageKey
-            );
-    }
-
-    private TargetPreview PreviewLongnightLanternFeastTarget(
-        GridPosition target
-    )
-    {
-        if (!LongnightLanternFeastLayout.IsInBounds(target))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var villager = Village.NpcAt(
-            target,
-            Clock.Day,
-            Clock.MinuteOfDay,
-            PlayerLocationIds.LongnightLanternFeast,
-            PlayerCell
-        );
-        if (villager is not null)
-        {
-            return PreviewVillagerInteraction(
-                villager,
-                Inventory.Selected.IsEmpty
-                    ? string.Empty
-                    : Inventory.Selected.ItemId
-            );
-        }
-
-        if (target == LongnightLanternFeastLayout.ExitCell)
-        {
-            var exit = CheckFestivalExit(target);
-            return exit.Succeeded
-                ? TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.FestivalExit,
-                    FestivalCatalog.ExitActionKey(
-                        FestivalCatalog.LongnightLanternFeastFestivalId
-                    )
-                )
-                : exit.MessageKey == "notice.needs_hand"
-                    ? TargetPreview.NeedsTool(
-                        target,
-                        TargetPreviewKind.FestivalExit,
-                        "target.need.hand"
-                    )
-                    : TargetPreview.Neutral(target);
-        }
-
-        var station = FestivalSpatialCatalog.LongnightLanternFeast.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        if (station is null)
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var check = CheckFestivalStation(station.Id, target);
-        var completed = Festival.HasParticipated(
-            FestivalCatalog.LongnightLanternFeastFestivalId,
-            CalendarSystem.YearNumber(Clock.Day)
-        );
-        var actionKey = station.Id switch
-        {
-            FestivalCatalog.LongnightLanternStallId =>
-                "target.action.open_longnight_stall",
-            FestivalCatalog.LongnightGiftExchangeId => completed
-                ? "target.action.view_longnight_result"
-                : "target.action.open_longnight_exchange",
-            FestivalCatalog.LongnightStarlightRiteId => completed
-                ? "target.action.view_longnight_result"
-                : "target.action.open_longnight_rite",
-            _ => completed
-                ? "target.action.view_longnight_result"
-                : "target.action.open_longnight_feast"
-        };
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                target,
-                station.PreviewKind,
-                actionKey
-            );
-        }
-
-        return check.MessageKey == "notice.needs_hand"
-            ? TargetPreview.NeedsTool(
-                target,
-                station.PreviewKind,
-                "target.need.hand"
-            )
-            : TargetPreview.Blocked(
-                target,
-                station.PreviewKind,
-                check.MessageKey
-            );
-    }
-
-    private TargetPreview PreviewFireflyTideTarget(GridPosition target)
-    {
-        if (!FireflyTideLayout.IsInBounds(target))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var villager = Village.NpcAt(
-            target,
-            Clock.Day,
-            Clock.MinuteOfDay,
-            PlayerLocationIds.FireflyTide,
-            PlayerCell
-        );
-        if (villager is not null)
-        {
-            return PreviewVillagerInteraction(
-                villager,
-                Inventory.Selected.IsEmpty
-                    ? string.Empty
-                    : Inventory.Selected.ItemId
-            );
-        }
-
-        if (target == FireflyTideLayout.ExitCell)
-        {
-            var exit = CheckFestivalExit(target);
-            return exit.Succeeded
-                ? TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.FestivalExit,
-                    FestivalCatalog.ExitActionKey(
-                        FestivalCatalog.FireflyTideFestivalId
-                    )
-                )
-                : exit.MessageKey == "notice.needs_hand"
-                    ? TargetPreview.NeedsTool(
-                        target,
-                        TargetPreviewKind.FestivalExit,
-                        "target.need.hand"
-                    )
-                    : TargetPreview.Neutral(target);
-        }
-
-        var station = FestivalSpatialCatalog.FireflyTide.Stations
-            .FirstOrDefault(entry => entry.Cell == target);
-        if (station is null)
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        var check = CheckFestivalStation(station.Id, target);
-        var completed = Festival.HasParticipated(
-            FestivalCatalog.FireflyTideFestivalId,
-            CalendarSystem.YearNumber(Clock.Day)
-        );
-        var actionKey = station.Id switch
-        {
-            FestivalCatalog.FireflyGlowshopId =>
-                "target.action.open_firefly_shop",
-            FestivalCatalog.FireflyFishBasinId => completed
-                ? "target.action.view_firefly_result"
-                : "target.action.open_firefly_basin",
-            FestivalCatalog.FireflyTideAltarId => completed
-                ? "target.action.view_firefly_result"
-                : "target.action.open_firefly_altar",
-            _ => completed
-                ? "target.action.view_firefly_result"
-                : "target.action.open_firefly_launch"
-        };
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                target,
-                station.PreviewKind,
-                actionKey
-            );
-        }
-
-        return check.MessageKey == "notice.needs_hand"
-            ? TargetPreview.NeedsTool(
-                target,
-                station.PreviewKind,
-                "target.need.hand"
-            )
-            : TargetPreview.Blocked(
-                target,
-                station.PreviewKind,
-                check.MessageKey
-            );
-    }
-
-    public IReadOnlyList<AnimalProjection> VisibleAnimalProjections
-    {
-        get
-        {
-            var projections = new List<AnimalProjection>();
-            foreach (var spatial in AnimalBuildingSpatialCatalog.Definitions)
-            {
-                var residents = Animals.AnimalsInBuilding(spatial.BuildingId);
-                if (residents.Count == 0)
-                {
-                    continue;
-                }
-
-                var outdoor = OutdoorAnimalAssignmentsFor(spatial.BuildingId);
-                var physicallyOutside =
-                    Clock.MinuteOfDay >= StarfeatherCoopLayout.GrazingStartMinute &&
-                    Clock.MinuteOfDay < StarfeatherCoopLayout.GrazingEndMinute;
-                if (PlayerLocationId == PlayerLocationIds.World &&
-                    physicallyOutside)
-                {
-                    projections.AddRange(residents
-                        .Where(animal => outdoor.ContainsKey(animal.InstanceId))
-                        .Select(animal => new AnimalProjection(
-                            animal.InstanceId,
-                            animal.SpeciesId,
-                            animal.BuildingId,
-                            PlayerLocationIds.World,
-                            outdoor[animal.InstanceId],
-                            true
-                        )));
-                    continue;
-                }
-
-                if (PlayerLocationId != spatial.LocationId)
-                {
-                    continue;
-                }
-
-                var indoors = residents
-                    .Where(animal =>
-                        !physicallyOutside ||
-                        !outdoor.ContainsKey(animal.InstanceId)
-                    )
-                    .Zip(
-                        spatial.IndoorAnimalCells,
-                        (animal, cell) => new AnimalProjection(
-                            animal.InstanceId,
-                            animal.SpeciesId,
-                            animal.BuildingId,
-                            spatial.LocationId,
-                            cell,
-                            false
-                        )
-                    );
-                projections.AddRange(indoors);
-            }
-
-            return projections;
-        }
-    }
-
-    public bool StarfeatherChickenCanGrazeToday => GrazingInstanceIdsFor(
-        AnimalCatalog.StarfeatherCoopId
-    ).Contains(AnimalCatalog.StarterStarfeatherChickenId);
-
-    public bool StarfeatherChickenIsOutdoors =>
-        VisibleAnimalProjections.Any(projection =>
-            projection.InstanceId ==
-                AnimalCatalog.StarterStarfeatherChickenId &&
-            projection.IsOutdoors
-        );
-
-    public GridPosition? StarfeatherChickenWorldCell
-    {
-        get
-        {
-            var assignments = OutdoorAnimalAssignmentsFor(
-                AnimalCatalog.StarfeatherCoopId
-            );
-            return assignments.TryGetValue(
-                AnimalCatalog.StarterStarfeatherChickenId,
-                out var cell
-            )
-                ? cell
-                : null;
-        }
-    }
-
-    public GridPosition? VisibleStarfeatherChickenCell =>
-        VisibleAnimalProjections.FirstOrDefault(projection =>
-            projection.InstanceId ==
-                AnimalCatalog.StarterStarfeatherChickenId
-        )?.Cell;
-
-    public ActionResult CheckStarfeatherFeedTrough(GridPosition target) =>
-        CheckAnimalFeedTrough(AnimalCatalog.StarfeatherCoopId, target);
-
-    public ActionResult FeedStarfeatherCoop(GridPosition target) =>
-        FeedAnimalBuilding(AnimalCatalog.StarfeatherCoopId, target);
-
-    public ActionResult CheckAnimalFeedTrough(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            PlayerLocationId != spatial.LocationId ||
-            target != spatial.FeedTroughCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return Animals.CheckFeedBuilding(
-            buildingId,
-            Clock.Day,
-            GrazingInstanceIdsFor(buildingId),
-            Inventory
-        );
-    }
-
-    public ActionResult FeedAnimalBuilding(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var check = CheckAnimalFeedTrough(buildingId, target);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        var building = AnimalCatalog.Building(buildingId);
-        var grazing = GrazingInstanceIdsFor(buildingId);
-        var unfedCount = Animals.AnimalsInBuilding(buildingId)
-            .Count(animal =>
-                !grazing.Contains(animal.InstanceId) &&
-                animal.LastFedDay != Clock.Day
-            );
-        BeginChangedBatch();
-        try
-        {
-            if (!Inventory.Remove(building.FeedItemId, unfedCount))
-            {
-                return ActionResult.Fail(
-                    "animal.feed.insufficient_fodder"
-                );
-            }
-
-            Animals.FeedBuildingChecked(buildingId, Clock.Day, grazing);
-            RecordFarmingSkillAction(
-                FarmingSkillAction.FeedAnimal
-            );
-            GleamriseSeason.RecordMilestone(
-                GleamriseSeasonGoalSystem.CounterAnimalFeedPrepared
-            );
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
-            definition => definition.BuildingId == buildingId
-        );
-        return ActionResult.Success(messageKey: spatial.FeedCompletedKey);
-    }
-
-    public ActionResult CheckPetAnimal(
-        string instanceId,
-        GridPosition target
-    )
-    {
-        var projection = AnimalProjectionAtCurrentLocation(target);
-        if (projection is null ||
-            projection.InstanceId != instanceId ||
-            Distance(PlayerCell, target) != 1 ||
-            Animals.Animal(instanceId) is null)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return Animals.CheckPet(instanceId, Clock.Day);
-    }
-
-    public ActionResult PetAnimal(
-        string instanceId,
-        GridPosition target
-    )
-    {
-        var check = CheckPetAnimal(instanceId, target);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        BeginChangedBatch();
-        try
-        {
-            Animals.PetChecked(instanceId, Clock.Day);
-            RecordFarmingSkillAction(
-                FarmingSkillAction.PetAnimal
-            );
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        return ActionResult.Success(messageKey: "animal.pet.completed");
-    }
-
-    public ActionResult CheckStarfeatherNest(GridPosition target) =>
-        CheckAnimalProductStation(AnimalCatalog.StarfeatherCoopId, target);
-
-    public ActionResult CollectStarfeatherEggs(GridPosition target) =>
-        CollectAnimalProducts(AnimalCatalog.StarfeatherCoopId, target);
-
-    public ActionResult CheckAnimalProductStation(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            PlayerLocationId != spatial.LocationId ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var station = spatial.ProductStations.FirstOrDefault(candidate =>
-            candidate.Cell == target
-        );
-        if (station is null)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        var products = Animals.PendingProductsForBuilding(
-            buildingId,
-            station.ProductBaseItemId
-        );
-        if (products.Count == 0)
-        {
-            return ActionResult.Fail(station.NotReadyKey);
-        }
-
-        return Inventory.CanAddMany(products)
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.inventory_full");
-    }
-
-    public ActionResult CollectAnimalProducts(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var check = CheckAnimalProductStation(buildingId, target);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
-            definition => definition.BuildingId == buildingId
-        );
-        var station = spatial.ProductStations.Single(candidate =>
-            candidate.Cell == target
-        );
-        var products = Animals.PendingProductsForBuilding(
-            buildingId,
-            station.ProductBaseItemId
-        );
-        BeginChangedBatch();
-        try
-        {
-            if (!Inventory.TryAddMany(products))
-            {
-                return ActionResult.Fail("notice.inventory_full");
-            }
-
-            Animals.ClearCollectedProductsChecked(
-                buildingId,
-                station.ProductBaseItemId
-            );
-            RecordFarmingSkillAction(
-                FarmingSkillAction.CollectAnimalProduct
-            );
-            if (products.Any(product =>
-                    DataCatalog.BaseItemId(product.ItemId) ==
-                        DataCatalog.StarfeatherEggId
-                ))
-            {
-                GleamriseSeason.RecordMilestone(
-                    GleamriseSeasonGoalSystem.CounterAnimalFirstEgg
-                );
-            }
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        return products.Count == 1
-            ? ActionResult.Grant(
-                products[0].ItemId,
-                products[0].Count,
-                0,
-                station.CollectedKey
-            )
-            : ActionResult.Success(
-                messageKey: station.CollectedKey
-            );
-    }
-
-    public AnimalAutomationState AnimalAutomationFor(string buildingId) =>
-        Animals.AutomationFor(buildingId);
-
-    public int AnimalAutomationFeedNeedFor(string buildingId)
-    {
-        var grazing = GrazingInstanceIdsFor(buildingId);
-        return Animals.AnimalsInBuilding(buildingId).Count(animal =>
-            !grazing.Contains(animal.InstanceId) &&
-            animal.LastFedDay != Clock.Day
-        );
-    }
-
-    public ActionResult CheckAnimalAutomationStation(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            PlayerLocationId != spatial.LocationId ||
-            target != spatial.AutomationStationCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var phase = Construction.PhaseFor(
-            ConstructionCatalog.HomesteadLivestockAutomationProjectId
-        );
-        if (phase == ConstructionPhase.NotStarted)
-        {
-            return ActionResult.Fail(
-                "construction.homestead_livestock_automation.not_started"
-            );
-        }
-
-        if (phase == ConstructionPhase.InProgress)
-        {
-            return ActionResult.Fail(
-                "construction.homestead_livestock_automation.in_progress"
-            );
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.HandId)
-        {
-            return ActionResult.Fail("notice.needs_hand");
-        }
-
-        return ActionResult.Success(
-            messageKey: "animal.automation.panel.opened"
-        );
-    }
-
-    public ActionResult OpenAnimalAutomationStation(
-        string buildingId,
-        GridPosition target
-    ) => CheckAnimalAutomationStation(buildingId, target);
-
-    public ActionResult CheckDepositAnimalAutomationFeed(
-        string buildingId,
-        GridPosition target,
-        int count
-    )
-    {
-        var access = CheckAnimalAutomationStation(buildingId, target);
-        return access.Succeeded
-            ? Animals.CheckStoreAutomationFeed(buildingId, count, Inventory)
-            : access;
-    }
-
-    public ActionResult DepositAnimalAutomationFeed(
-        string buildingId,
-        GridPosition target,
-        int count
-    )
-    {
-        var check = CheckDepositAnimalAutomationFeed(
-            buildingId,
-            target,
-            count
-        );
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        var feedItemId = AnimalCatalog.Building(buildingId).FeedItemId;
-        BeginChangedBatch();
-        try
-        {
-            if (!Inventory.Remove(feedItemId, count))
-            {
-                return ActionResult.Fail(
-                    "animal.feed.insufficient_fodder"
-                );
-            }
-
-            Animals.StoreAutomationFeedChecked(buildingId, count);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        return ActionResult.Success(
-            messageKey: "animal.automation.feed_deposited"
-        );
-    }
-
-    public ActionResult CheckWithdrawAnimalAutomationFeed(
-        string buildingId,
-        GridPosition target,
-        int count
-    )
-    {
-        var access = CheckAnimalAutomationStation(buildingId, target);
-        return access.Succeeded
-            ? Animals.CheckTakeAutomationFeed(buildingId, count, Inventory)
-            : access;
-    }
-
-    public ActionResult WithdrawAnimalAutomationFeed(
-        string buildingId,
-        GridPosition target,
-        int count
-    )
-    {
-        var check = CheckWithdrawAnimalAutomationFeed(
-            buildingId,
-            target,
-            count
-        );
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        var feedItemId = AnimalCatalog.Building(buildingId).FeedItemId;
-        BeginChangedBatch();
-        try
-        {
-            if (!Inventory.Add(feedItemId, count))
-            {
-                return ActionResult.Fail("notice.inventory_full");
-            }
-
-            Animals.TakeAutomationFeedChecked(buildingId, count);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        return ActionResult.Success(
-            messageKey: "animal.automation.feed_withdrawn"
-        );
-    }
-
-    public ActionResult CheckCollectAnimalAutomationProducts(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var access = CheckAnimalAutomationStation(buildingId, target);
-        if (!access.Succeeded)
-        {
-            return access;
-        }
-
-        var products = Animals.StoredAutomationProducts(buildingId);
-        if (products.Count == 0)
-        {
-            return ActionResult.Fail("animal.automation.no_products");
-        }
-
-        return Inventory.CanAddMany(products)
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.inventory_full");
-    }
-
-    public ActionResult CollectAnimalAutomationProducts(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var check = CheckCollectAnimalAutomationProducts(buildingId, target);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        var products = Animals.StoredAutomationProducts(buildingId);
-        BeginChangedBatch();
-        try
-        {
-            if (!Inventory.TryAddMany(products))
-            {
-                return ActionResult.Fail("notice.inventory_full");
-            }
-
-            Animals.ClearAutomationProductsChecked(buildingId);
-        }
-        finally
-        {
-            EndChangedBatch();
-        }
-
-        return ActionResult.Success(
-            messageKey: "animal.automation.products_collected"
-        );
-    }
-
-    private ActionResult UseAnimalBuildingSelected(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
-            definition => definition.BuildingId == buildingId
-        );
-        if (target == spatial.ExitCell)
-        {
-            return TryExitAnimalBuilding(buildingId, target);
-        }
-
-        if (target == spatial.FeedTroughCell)
-        {
-            return FeedAnimalBuilding(buildingId, target);
-        }
-
-        if (target == spatial.AutomationStationCell)
-        {
-            return OpenAnimalAutomationStation(buildingId, target);
-        }
-
-        if (spatial.ProductStations.Any(station => station.Cell == target))
-        {
-            return CollectAnimalProducts(buildingId, target);
-        }
-
-        return AnimalAtCurrentLocation(target) is { } animal
-            ? PetAnimal(animal.InstanceId, target)
-            : ActionResult.Fail("notice.nothing_to_interact");
-    }
-
-    private TargetPreview PreviewAnimalBuildingEntrance(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
-            definition => definition.BuildingId == buildingId
-        );
-        var check = CheckAnimalBuildingEntrance(buildingId, target);
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                spatial.WorldDoorCell,
-                spatial.PortalKind,
-                spatial.EnterActionKey
-            );
-        }
-
-        if (check.MessageKey == "notice.needs_hand")
-        {
-            return TargetPreview.NeedsTool(
-                spatial.WorldDoorCell,
-                spatial.PortalKind,
-                "target.need.hand"
-            );
-        }
-
-        if (check.MessageKey.StartsWith(
-                "construction.",
-                StringComparison.Ordinal
-            ))
-        {
-            return TargetPreview.Blocked(
-                spatial.WorldDoorCell,
-                spatial.PortalKind,
-                check.MessageKey
-            );
-        }
-
-        return TargetPreview.Neutral(target);
-    }
-
-    private TargetPreview PreviewAnimalBuildingTarget(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        var spatial = AnimalBuildingSpatialCatalog.Definitions.Single(
-            definition => definition.BuildingId == buildingId
-        );
-        if (PlayerLocationId != spatial.LocationId)
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        if (target == spatial.ExitCell)
-        {
-            var exit = CheckAnimalBuildingExit(buildingId, target);
-            return exit.Succeeded
-                ? TargetPreview.Available(
-                    target,
-                    spatial.ExitKind,
-                    spatial.ExitActionKey
-                )
-                : exit.MessageKey == "notice.needs_hand"
-                    ? TargetPreview.NeedsTool(
-                        target,
-                        spatial.ExitKind,
-                        "target.need.hand"
-                    )
-                    : TargetPreview.Neutral(target);
-        }
-
-        if (target == spatial.FeedTroughCell)
-        {
-            var feed = CheckAnimalFeedTrough(buildingId, target);
-            if (feed.Succeeded)
-            {
-                return TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.AnimalFeedTrough,
-                    "target.action.feed_animals"
-                );
-            }
-
-            if (feed.MessageKey == "notice.needs_hand")
-            {
-                return TargetPreview.NeedsTool(
-                    target,
-                    TargetPreviewKind.AnimalFeedTrough,
-                    "target.need.hand"
-                );
-            }
-
-            var feedLabel = feed.MessageKey switch
-            {
-                "animal.feed.grazing" => "target.status.animals_grazing",
-                "animal.feed.all_fed" => "target.status.animals_fed",
-                "animal.feed.no_animals" => "target.status.no_animals",
-                _ => "target.blocked.no_fodder"
-            };
-            return TargetPreview.Blocked(
-                target,
-                TargetPreviewKind.AnimalFeedTrough,
-                feedLabel
-            );
-        }
-
-        if (target == spatial.AutomationStationCell)
-        {
-            var automation = CheckAnimalAutomationStation(
-                buildingId,
-                target
-            );
-            if (automation.Succeeded)
-            {
-                return TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.AnimalAutomationStation,
-                    "target.action.open_livestock_automation"
-                );
-            }
-
-            if (automation.MessageKey == "notice.needs_hand")
-            {
-                return TargetPreview.NeedsTool(
-                    target,
-                    TargetPreviewKind.AnimalAutomationStation,
-                    "target.need.hand"
-                );
-            }
-
-            return TargetPreview.Blocked(
-                target,
-                TargetPreviewKind.AnimalAutomationStation,
-                automation.MessageKey
-            );
-        }
-
-        var station = spatial.ProductStations.FirstOrDefault(candidate =>
-            candidate.Cell == target
-        );
-        if (station is not null)
-        {
-            var product = CheckAnimalProductStation(buildingId, target);
-            if (product.Succeeded)
-            {
-                return TargetPreview.Available(
-                    target,
-                    station.Kind,
-                    station.ActionKey
-                );
-            }
-
-            if (product.MessageKey == "notice.needs_hand")
-            {
-                return TargetPreview.NeedsTool(
-                    target,
-                    station.Kind,
-                    "target.need.hand"
-                );
-            }
-
-            return TargetPreview.Blocked(
-                target,
-                station.Kind,
-                product.MessageKey == "notice.inventory_full"
-                    ? "target.blocked.backpack_full"
-                    : station.NotReadyStatusKey
-            );
-        }
-
-        return AnimalAtCurrentLocation(target) is { } animal
-            ? PreviewAnimal(animal, target)
-            : TargetPreview.Neutral(target);
-    }
-
-    private TargetPreview PreviewAnimal(
-        AnimalState animal,
-        GridPosition target
-    )
-    {
-        var kind = animal.SpeciesId switch
-        {
-            AnimalCatalog.MoonfleeceSheepId =>
-                TargetPreviewKind.MoonfleeceSheep,
-            AnimalCatalog.DewhornId => TargetPreviewKind.Dewhorn,
-            _ => TargetPreviewKind.Animal
-        };
-        var check = CheckPetAnimal(animal.InstanceId, target);
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                target,
-                kind,
-                "target.action.pet_animal"
-            );
-        }
-
-        return check.MessageKey switch
-        {
-            "notice.needs_hand" => TargetPreview.NeedsTool(
-                target,
-                kind,
-                "target.need.hand"
-            ),
-            "animal.pet.already_petted" => TargetPreview.Blocked(
-                target,
-                kind,
-                "target.status.animal_petted"
-            ),
-            _ => TargetPreview.Neutral(target)
-        };
-    }
-
-    private AnimalState? AnimalAtCurrentLocation(GridPosition target)
-    {
-        var projection = AnimalProjectionAtCurrentLocation(target);
-        return projection is null
-            ? null
-            : Animals.Animal(projection.InstanceId);
-    }
-
-    private AnimalProjection? AnimalProjectionAtCurrentLocation(
-        GridPosition target
-    ) => VisibleAnimalProjections.FirstOrDefault(projection =>
-        projection.Cell == target
-    );
-
-    private IReadOnlyDictionary<string, GridPosition>
-        OutdoorAnimalAssignmentsFor(string buildingId)
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            !AnimalCatalog.TryBuilding(buildingId, out var building) ||
-            !Construction.IsCompletedFor(building.ConstructionProjectId) ||
-            !AnimalSystem.CanGraze(Clock.Day, Weather.CurrentId))
-        {
-            return new Dictionary<string, GridPosition>(
-                StringComparer.Ordinal
-            );
-        }
-
-        var available = spatial.WorldPastureCells.Where(cell =>
-            !Storage.HasChest(cell) &&
-            FarmObjects.ItemAt(cell) is null &&
-            !Orchard.BlocksMovement(cell) &&
-            string.IsNullOrWhiteSpace(
-                Farm.Tiles.GetValueOrDefault(cell)?.CropId
-            )
-        ).ToArray();
-        return Animals.AnimalsInBuilding(buildingId)
-            .Zip(available, (animal, cell) => (animal.InstanceId, cell))
-            .ToDictionary(
-                pair => pair.InstanceId,
-                pair => pair.cell,
-                StringComparer.Ordinal
-            );
-    }
-
-    private IReadOnlySet<string> GrazingInstanceIdsFor(string buildingId) =>
-        OutdoorAnimalAssignmentsFor(buildingId).Keys.ToHashSet(
-            StringComparer.Ordinal
-        );
-
-    private ActionResult UseGreenhouseSelected(GridPosition target)
-    {
-        if (target == GreenhouseLayout.ExitCell)
-        {
-            return TryExitGreenhouse(target);
-        }
-
-        if (target == GreenhouseLayout.CisternCell)
-        {
-            return RefillFromGreenhouseCistern(target);
-        }
-
-        if (!GreenhouseLayout.IsPlantingBed(target))
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var selected = Inventory.Selected;
-        ActionResult result;
-        FarmingSkillAction? farmingSkillAction = null;
-        switch (selected.ItemId)
-        {
-            case DataCatalog.HandId:
-                return HarvestGreenhouseCrop(target);
-            case DataCatalog.ShovelId:
-                result = GreenhouseFarm.TryTill(target, Energy);
-                if (result.Succeeded)
-                {
-                    Quest.OnTilled();
-                    farmingSkillAction = FarmingSkillAction.Till;
-                }
-                break;
-            case DataCatalog.WateringCanId:
-                if (WateringCanWater <= 0)
-                {
-                    return ActionResult.Fail("notice.watering_can_empty");
-                }
-
-                var cropId = GreenhouseFarm.Tiles
-                    .GetValueOrDefault(target)?.CropId;
-                result = GreenhouseFarm.TryWater(
-                    target,
-                    Energy,
-                    EffectiveWateringEnergyCost
-                );
-                if (result.Succeeded)
-                {
-                    WateringCanWater--;
-                    WaterChanged?.Invoke();
-                    Quest.OnWatered(cropId);
-                    farmingSkillAction = FarmingSkillAction.Water;
-                }
-                break;
-            default:
-                var item = DataCatalog.Item(selected.ItemId);
-                if (item.Kind == ItemKind.Fertilizer)
-                {
-                    result = GreenhouseFarm.TryFertilize(target, item.Id);
-                    if (result.Succeeded)
-                    {
-                        Inventory.Remove(item.Id, 1);
-                    }
-                    break;
-                }
-
-                if (item.Kind != ItemKind.Seed || item.CropId is null)
-                {
-                    return ActionResult.Fail("notice.not_ready");
-                }
-
-                if (selected.Count <= 0)
-                {
-                    return ActionResult.Fail("notice.no_seed");
-                }
-
-                result = GreenhouseFarm.TryPlant(
-                    target,
-                    item.CropId,
-                    Clock.Day
-                );
-                if (result.Succeeded)
-                {
-                    Inventory.Remove(selected.ItemId, 1);
-                    Quest.OnPlanted(item.CropId);
-                    Commission.RecordPlant(item.CropId);
-                    WeeklyCommission.RecordPlant(item.CropId);
-                    farmingSkillAction = FarmingSkillAction.Plant;
-                }
-                break;
-        }
-
-        if (result.Succeeded && result.EnergyCost > 0)
-        {
-            Energy = Math.Max(0, Energy - result.EnergyCost);
-            EnergyChanged?.Invoke();
-            Changed?.Invoke();
-        }
-
-        if (result.Succeeded && farmingSkillAction is { } successfulAction)
-        {
-            RecordFarmingSkillAction(successfulAction);
-        }
-
-        return result;
-    }
-
-    private ActionResult HarvestGreenhouseCrop(GridPosition target)
-    {
-        var tile = GreenhouseFarm.Tiles.GetValueOrDefault(target);
-        if (tile?.CropId is null)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var crop = DataCatalog.Crop(tile.CropId);
-        if (!crop.IsMature(tile.WateredNights))
-        {
-            return ActionResult.Fail("notice.not_ready");
-        }
-
-        var harvestItemId = GreenhouseFarm.HarvestItemIdAt(target)
-            ?? crop.HarvestItemId;
-        if (!Inventory.CanAdd(harvestItemId, 1))
-        {
-            return ActionResult.Fail("notice.inventory_full");
-        }
-
-        var harvested = GreenhouseFarm.TryHarvest(target);
-        if (!harvested.Succeeded || harvested.GrantedItemId is null)
-        {
-            return harvested;
-        }
-
-        Inventory.Add(
-            harvested.GrantedItemId,
-            harvested.GrantedItemCount
-        );
-        var baseItemId = DataCatalog.BaseItemId(harvested.GrantedItemId);
-        Quest.OnHarvested(baseItemId);
-        Commission.RecordGather(baseItemId, harvested.GrantedItemCount);
-        WeeklyCommission.RecordGather(
-            baseItemId,
-            harvested.GrantedItemCount
-        );
-        RecordFarmingSkillAction(FarmingSkillAction.Harvest);
-        return harvested;
-    }
-
-    private ActionResult RefillFromGreenhouseCistern(GridPosition target)
-    {
-        var check = CheckGreenhouseCistern(target);
-        if (!check.Succeeded)
-        {
-            return check;
-        }
-
-        WateringCanWater = MaxWateringCanWater;
-        WaterChanged?.Invoke();
-        Changed?.Invoke();
-        return ActionResult.Success(messageKey: "notice.water_refilled");
-    }
-
-    private TargetPreview PreviewGreenhouseEntrance(GridPosition target)
-    {
-        var check = CheckGreenhouseEntrance(target);
-        if (check.Succeeded)
-        {
-            return TargetPreview.Available(
-                FarmLayout.GreenhouseDoorCell,
-                TargetPreviewKind.GreenhousePortal,
-                "target.action.enter_greenhouse"
-            );
-        }
-
-        if (check.MessageKey == "notice.needs_hand")
-        {
-            return TargetPreview.NeedsTool(
-                FarmLayout.GreenhouseDoorCell,
-                TargetPreviewKind.GreenhousePortal,
-                "target.need.hand"
-            );
-        }
-
-        if (check.MessageKey is
-            "construction.homestead_greenhouse.not_started" or
-            "construction.homestead_greenhouse.in_progress")
-        {
-            return TargetPreview.Blocked(
-                FarmLayout.GreenhouseDoorCell,
-                TargetPreviewKind.GreenhousePortal,
-                check.MessageKey
-            );
-        }
-
-        return TargetPreview.Neutral(target);
-    }
-
-    private TargetPreview PreviewGreenhouseTarget(GridPosition target)
-    {
-        if (!GreenhouseLayout.IsInBounds(target))
-        {
-            return TargetPreview.Neutral(target);
-        }
-
-        if (target == GreenhouseLayout.ExitCell)
-        {
-            var exit = CheckGreenhouseExit(target);
-            if (exit.Succeeded)
-            {
-                return TargetPreview.Available(
-                    GreenhouseLayout.ExitCell,
-                    TargetPreviewKind.GreenhouseExit,
-                    "target.action.exit_greenhouse"
-                );
-            }
-
-            return exit.MessageKey == "notice.needs_hand"
-                ? TargetPreview.NeedsTool(
-                    GreenhouseLayout.ExitCell,
-                    TargetPreviewKind.GreenhouseExit,
-                    "target.need.hand"
-                )
-                : TargetPreview.Neutral(target);
-        }
-
-        if (target == GreenhouseLayout.CisternCell)
-        {
-            var cistern = CheckGreenhouseCistern(target);
-            if (cistern.Succeeded)
-            {
-                return TargetPreview.Available(
-                    GreenhouseLayout.CisternCell,
-                    TargetPreviewKind.Cistern,
-                    "target.action.draw_water"
-                );
-            }
-
-            return cistern.MessageKey switch
-            {
-                "target.need.bucket" => TargetPreview.NeedsTool(
-                    GreenhouseLayout.CisternCell,
-                    TargetPreviewKind.Cistern,
-                    "target.need.bucket"
-                ),
-                "notice.water_full" => TargetPreview.Blocked(
-                    GreenhouseLayout.CisternCell,
-                    TargetPreviewKind.Cistern,
-                    "target.status.water_full"
-                ),
-                _ => TargetPreview.Neutral(target)
-            };
-        }
-
-        return PreviewGreenhouseCultivationTarget(target);
-    }
-
-    private TargetPreview PreviewGreenhouseCultivationTarget(
-        GridPosition target
-    )
-    {
-        var selected = Inventory.Selected;
-        var selectedId = selected.IsEmpty ? string.Empty : selected.ItemId;
-        if (!GreenhouseLayout.IsPlantingBed(target))
-        {
-            return selectedId == DataCatalog.StarsoilFertilizerId
-                ? TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Ground,
-                    "target.blocked.fertilizer_needs_tilled"
-                )
-                : TargetPreview.Neutral(target);
-        }
-
-        GreenhouseFarm.Tiles.TryGetValue(target, out var tile);
-        if (!string.IsNullOrWhiteSpace(tile?.CropId))
-        {
-            if (selectedId == DataCatalog.StarsoilFertilizerId)
-            {
-                return TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.blocked.fertilizer_before_planting"
-                );
-            }
-
-            var crop = DataCatalog.Crop(tile.CropId);
-            if (crop.IsMature(tile.WateredNights))
-            {
-                if (selectedId != DataCatalog.HandId)
-                {
-                    return TargetPreview.NeedsTool(
-                        target,
-                        TargetPreviewKind.Crop,
-                        "target.need.hand"
-                    );
-                }
-
-                var harvestItemId = GreenhouseFarm.HarvestItemIdAt(target)
-                    ?? crop.HarvestItemId;
-                return Inventory.CanAdd(harvestItemId, 1)
-                    ? TargetPreview.Available(
-                        target,
-                        TargetPreviewKind.Crop,
-                        "target.action.harvest"
-                    )
-                    : TargetPreview.Blocked(
-                        target,
-                        TargetPreviewKind.Crop,
-                        "target.blocked.backpack_full"
-                    );
-            }
-
-            if (tile.Watered)
-            {
-                return TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.status.watered"
-                );
-            }
-
-            if (selectedId != DataCatalog.WateringCanId)
-            {
-                return TargetPreview.NeedsTool(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.need.watering_can"
-                );
-            }
-
-            if (WateringCanWater <= 0)
-            {
-                return TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.blocked.no_water"
-                );
-            }
-
-            return Energy < EffectiveWateringEnergyCost
-                ? TargetPreview.Blocked(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.blocked.no_energy"
-                )
-                : TargetPreview.Available(
-                    target,
-                    TargetPreviewKind.Crop,
-                    "target.action.water"
-                );
-        }
-
-        if (tile?.Tilled == true)
-        {
-            if (selectedId == DataCatalog.StarsoilFertilizerId)
-            {
-                if (!string.IsNullOrWhiteSpace(tile.FertilizerId))
-                {
-                    return TargetPreview.Blocked(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.status.fertilized"
-                    );
-                }
-
-                return selected.Count > 0
-                    ? TargetPreview.Available(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.action.fertilize"
-                    )
-                    : TargetPreview.Blocked(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.blocked.no_fertilizer"
-                    );
-            }
-
-            if (DataCatalog.Items.TryGetValue(selectedId, out var item) &&
-                item.Kind == ItemKind.Seed &&
-                item.CropId is not null)
-            {
-                if (!GreenhouseFarm.IsCropAvailableForPlanting(
-                        item.CropId,
-                        Clock.Day
-                    ))
-                {
-                    return TargetPreview.Blocked(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.blocked.seed_out_of_season"
-                    );
-                }
-
-                return selected.Count > 0
-                    ? TargetPreview.Available(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.action.plant"
-                    )
-                    : TargetPreview.Blocked(
-                        target,
-                        TargetPreviewKind.Soil,
-                        "target.blocked.no_seed"
-                    );
-            }
-
-            return TargetPreview.NeedsTool(
-                target,
-                TargetPreviewKind.Soil,
-                "target.need.seed"
-            );
-        }
-
-        if (selectedId == DataCatalog.StarsoilFertilizerId)
-        {
-            return TargetPreview.Blocked(
-                target,
-                TargetPreviewKind.Ground,
-                "target.blocked.fertilizer_needs_tilled"
-            );
-        }
-
-        if (selectedId != DataCatalog.ShovelId)
-        {
-            return TargetPreview.NeedsTool(
-                target,
-                TargetPreviewKind.Ground,
-                "target.need.shovel_till"
-            );
-        }
-
-        return Energy < 2
-            ? TargetPreview.Blocked(
-                target,
-                TargetPreviewKind.Ground,
-                "target.blocked.no_energy"
-            )
-            : TargetPreview.Available(
-                target,
-                TargetPreviewKind.Ground,
-                "target.action.till"
-            );
-    }
-
-    private ActionResult CheckGreenhouseEntrance(GridPosition target)
-    {
-        if (PlayerLocationId != PlayerLocationIds.World ||
-            target != FarmLayout.GreenhouseDoorCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var phase = Construction.PhaseFor(
-            ConstructionCatalog.HomesteadGreenhouseProjectId
-        );
-        if (phase == ConstructionPhase.NotStarted)
-        {
-            return ActionResult.Fail(
-                "construction.homestead_greenhouse.not_started"
-            );
-        }
-
-        if (phase == ConstructionPhase.InProgress)
-        {
-            return ActionResult.Fail(
-                "construction.homestead_greenhouse.in_progress"
-            );
-        }
-
-        return Inventory.Selected.ItemId == DataCatalog.HandId
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.needs_hand");
-    }
-
-    private ActionResult CheckStarfeatherCoopEntrance(GridPosition target) =>
-        CheckAnimalBuildingEntrance(AnimalCatalog.StarfeatherCoopId, target);
-
-    private ActionResult CheckAnimalBuildingEntrance(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            !AnimalCatalog.TryBuilding(buildingId, out var building) ||
-            PlayerLocationId != PlayerLocationIds.World ||
-            target != spatial.WorldDoorCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        var phase = Construction.PhaseFor(
-            building.ConstructionProjectId
-        );
-        if (phase == ConstructionPhase.NotStarted)
-        {
-            return ActionResult.Fail(
-                $"construction.{building.ConstructionProjectId}.not_started"
-            );
-        }
-
-        if (phase == ConstructionPhase.InProgress)
-        {
-            return ActionResult.Fail(
-                $"construction.{building.ConstructionProjectId}.in_progress"
-            );
-        }
-
-        return Inventory.Selected.ItemId == DataCatalog.HandId
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.needs_hand");
-    }
-
-    private ActionResult CheckStarfeatherCoopExit(GridPosition target) =>
-        CheckAnimalBuildingExit(AnimalCatalog.StarfeatherCoopId, target);
-
-    private ActionResult CheckAnimalBuildingExit(
-        string buildingId,
-        GridPosition target
-    )
-    {
-        if (!AnimalBuildingSpatialCatalog.TryByBuildingId(
-                buildingId,
-                out var spatial
-            ) ||
-            PlayerLocationId != spatial.LocationId ||
-            target != spatial.ExitCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        return Inventory.Selected.ItemId == DataCatalog.HandId
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.needs_hand");
-    }
-
-    private ActionResult CheckGreenhouseExit(GridPosition target)
-    {
-        if (!InsideGreenhouse ||
-            target != GreenhouseLayout.ExitCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        return Inventory.Selected.ItemId == DataCatalog.HandId
-            ? ActionResult.Success()
-            : ActionResult.Fail("notice.needs_hand");
-    }
-
-    private ActionResult CheckGreenhouseCistern(GridPosition target)
-    {
-        if (!InsideGreenhouse ||
-            target != GreenhouseLayout.CisternCell ||
-            Distance(PlayerCell, target) != 1)
-        {
-            return ActionResult.Fail("notice.nothing_to_interact");
-        }
-
-        if (Inventory.Selected.ItemId != DataCatalog.BucketId)
-        {
-            return ActionResult.Fail("target.need.bucket");
-        }
-
-        return WateringCanWater >= MaxWateringCanWater
-            ? ActionResult.Fail("notice.water_full")
-            : ActionResult.Success();
-    }
-
-    private static int Distance(
-        GridPosition first,
-        GridPosition second
-    ) => Math.Abs(first.X - second.X) + Math.Abs(first.Y - second.Y);
 
     private TargetPreview PreviewCottageTarget(GridPosition target)
     {
@@ -8309,7 +5694,7 @@ public sealed class GameSession
                 return TargetPreview.Available(
                     VillageCatalog.StarwovenTeaCounterCell,
                     TargetPreviewKind.Station,
-                    "target.action.inspect_tea_counter"
+                    "target.action.open_tea_menu"
                 );
             }
 
@@ -8438,7 +5823,7 @@ public sealed class GameSession
                 return TargetPreview.Available(
                     VillageCatalog.RouteSortingCounterCell,
                     TargetPreviewKind.Station,
-                    "target.action.inspect_sorting_counter"
+                    "target.action.open_post_routes"
                 );
             }
 
@@ -8491,20 +5876,26 @@ public sealed class GameSession
 
         if (target == VillageCatalog.SealRouteTableCell)
         {
-            if (selectedId == DataCatalog.HandId)
+            if (selectedId != DataCatalog.HandId)
             {
-                return TargetPreview.Available(
+                return TargetPreview.NeedsTool(
                     VillageCatalog.SealRouteTableCell,
                     TargetPreviewKind.Station,
-                    "target.action.inspect_seal_route_table"
+                    "target.need.hand"
                 );
             }
 
-            return TargetPreview.NeedsTool(
-                VillageCatalog.SealRouteTableCell,
-                TargetPreviewKind.Station,
-                "target.need.hand"
-            );
+            return VillageCatalog.IsStarfallWatchOpen(Clock.MinuteOfDay)
+                ? TargetPreview.Available(
+                    VillageCatalog.SealRouteTableCell,
+                    TargetPreviewKind.Station,
+                    "target.action.open_watch_board"
+                )
+                : TargetPreview.Blocked(
+                    VillageCatalog.SealRouteTableCell,
+                    TargetPreviewKind.Station,
+                    "target.status.starfall_watch_closed"
+                );
         }
 
         if (target == VillageCatalog.StarfallWatchExitCell)
@@ -8533,6 +5924,31 @@ public sealed class GameSession
         string selectedItemId
     )
     {
+        var deliveryRoute = ActivePostDeliveryRoute;
+        if (deliveryRoute is not null)
+        {
+            if (deliveryRoute.TargetNpcId != villager.Definition.Id)
+            {
+                return TargetPreview.Blocked(
+                    villager.Position,
+                    TargetPreviewKind.Character,
+                    "post.delivery.wrong_recipient"
+                );
+            }
+
+            return selectedItemId == DataCatalog.HandId
+                ? TargetPreview.Available(
+                    villager.Position,
+                    TargetPreviewKind.Character,
+                    "target.action.deliver_post"
+                )
+                : TargetPreview.NeedsTool(
+                    villager.Position,
+                    TargetPreviewKind.Character,
+                    "target.need.hand"
+                );
+        }
+
         var check = Village.CheckInteraction(
             villager.Position,
             Clock.Day,
@@ -8567,6 +5983,15 @@ public sealed class GameSession
             check.FailureKey
         );
     }
+
+    private static TargetPreview PreviewHandOnlyTarget(
+        GridPosition target,
+        TargetPreviewKind kind,
+        string actionKey,
+        string selectedItemId
+    ) => selectedItemId == DataCatalog.HandId
+        ? TargetPreview.Available(target, kind, actionKey)
+        : TargetPreview.NeedsTool(target, kind, "target.need.hand");
 
     private void ApplyCurrentWeatherTo(GridPosition target)
     {

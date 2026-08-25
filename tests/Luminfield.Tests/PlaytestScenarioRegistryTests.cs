@@ -633,6 +633,10 @@ public sealed class PlaytestScenarioRegistryTests
             PlaytestScenarioId.StarlightPost
         ),
         (
+            "--playtest-starlight-post-delivery",
+            PlaytestScenarioId.StarlightPostDelivery
+        ),
+        (
             "--playtest-starlight-post-wrong-tool",
             PlaytestScenarioId.StarlightPostWrongTool
         ),
@@ -647,6 +651,10 @@ public sealed class PlaytestScenarioRegistryTests
         (
             "--playtest-starfall-watch",
             PlaytestScenarioId.StarfallWatch
+        ),
+        (
+            "--playtest-starfall-watch-board",
+            PlaytestScenarioId.StarfallWatchBoard
         ),
         (
             "--playtest-starfall-watch-wrong-tool",

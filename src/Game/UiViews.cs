@@ -161,8 +161,15 @@ public sealed partial class HudView : Control
     private readonly PanelContainer _noticePanel;
     private readonly Label _notice;
     private readonly MinimapView _minimap;
+    private readonly ImmediateFeedbackOverlay _feedback;
+    private readonly PanelContainer _objectiveDetailsPanel;
+    private readonly Label _objectiveDetailsTitle;
+    private readonly Label _objectiveDetailsBody;
+    private readonly Button _objectiveDetailsClose;
     private readonly List<PanelContainer> _slots = [];
     private readonly List<HotbarSlotContent> _slotContents = [];
+    private string _objectiveDetailsText = string.Empty;
+    private HudMinimapState _minimapState = HudMinimapState.Default;
     private double _noticeRemaining;
 
     public HudView(Theme theme, GameSession session, LocaleService locale)
@@ -212,9 +219,10 @@ public sealed partial class HudView : Control
         _objectivePanel = new Panel
         {
             Position = new Vector2(138, 8),
-            Size = new Vector2(302, 36),
-            MouseFilter = MouseFilterEnum.Ignore
+            Size = new Vector2(302, 26),
+            MouseFilter = MouseFilterEnum.Stop
         };
+        _objectivePanel.GuiInput += OnObjectivePanelGuiInput;
         AddChild(_objectivePanel);
         _objectivePanel.AddThemeStyleboxOverride(
             "panel",
@@ -227,11 +235,12 @@ public sealed partial class HudView : Control
             )
         );
         _objective = ThemeFactory.Label(size: 8);
-        _objective.Position = new Vector2(7, 5);
-        _objective.Size = new Vector2(288, 26);
-        _objective.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _objective.Position = new Vector2(7, 6);
+        _objective.Size = new Vector2(288, 14);
+        _objective.AutowrapMode = TextServer.AutowrapMode.Off;
         _objective.ClipText = true;
-        _objective.MaxLinesVisible = 6;
+        _objective.MaxLinesVisible = 1;
+        _objective.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _objective.VerticalAlignment = VerticalAlignment.Center;
         _objectivePanel.AddChild(_objective);
 
@@ -333,13 +342,81 @@ public sealed partial class HudView : Control
         _notice.VerticalAlignment = VerticalAlignment.Center;
         _noticePanel.AddChild(_notice);
 
+        _feedback = new ImmediateFeedbackOverlay(locale)
+        {
+            Position = new Vector2(214, 202),
+            Size = new Vector2(212, 36),
+            ZIndex = 200,
+            ZAsRelative = false
+        };
+        AddChild(_feedback);
+
         _minimap = new MinimapView(session)
         {
             Position = new Vector2(500, 74),
             Size = new Vector2(132, 92),
             ZIndex = 20
         };
+        _minimap.GuiInput += OnMinimapGuiInput;
         AddChild(_minimap);
+
+        _objectiveDetailsPanel = new PanelContainer
+        {
+            Position = new Vector2(142, 70),
+            Size = new Vector2(356, 172),
+            ZIndex = 60,
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        _objectiveDetailsPanel.AddThemeStyleboxOverride(
+            "panel",
+            ThemeFactory.CompactBox(
+                new Color("#101a31f8"),
+                ThemeFactory.Mint,
+                2,
+                8,
+                8
+            )
+        );
+        var detailMargin = new MarginContainer();
+        detailMargin.AddThemeConstantOverride("margin_left", 10);
+        detailMargin.AddThemeConstantOverride("margin_right", 10);
+        detailMargin.AddThemeConstantOverride("margin_top", 8);
+        detailMargin.AddThemeConstantOverride("margin_bottom", 8);
+        _objectiveDetailsPanel.AddChild(detailMargin);
+
+        var detailColumn = new VBoxContainer();
+        detailColumn.AddThemeConstantOverride("separation", 6);
+        detailMargin.AddChild(detailColumn);
+
+        _objectiveDetailsTitle = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
+        _objectiveDetailsTitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _objectiveDetailsTitle.MaxLinesVisible = 2;
+        detailColumn.AddChild(_objectiveDetailsTitle);
+
+        var detailScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(330, 94),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        detailColumn.AddChild(detailScroll);
+        _objectiveDetailsBody = ThemeFactory.Label(size: 9, color: ThemeFactory.Ink);
+        _objectiveDetailsBody.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _objectiveDetailsBody.CustomMinimumSize = new Vector2(320, 0);
+        detailScroll.AddChild(_objectiveDetailsBody);
+
+        _objectiveDetailsClose = ThemeFactory.Button("");
+        _objectiveDetailsClose.CustomMinimumSize = new Vector2(112, 24);
+        _objectiveDetailsClose.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        _objectiveDetailsClose.Pressed += () => SetObjectiveDetailsVisible(false);
+        detailColumn.AddChild(_objectiveDetailsClose);
+        AddChild(_objectiveDetailsPanel);
+
+        var startupArguments = OS.GetCmdlineUserArgs();
+        _minimapState = HudMinimapState.FromArguments(startupArguments);
+        ApplyMinimapState();
 
         session.Changed += Refresh;
         session.EnergyChanged += Refresh;
@@ -347,6 +424,20 @@ public sealed partial class HudView : Control
         session.PlayerMoved += RefreshLocationChrome;
         locale.LocaleChanged += Refresh;
         Refresh();
+        if (HudObjectiveDetailsStartup.ShouldOpen(startupArguments))
+        {
+            Callable.From(() => SetObjectiveDetailsVisible(true)).CallDeferred();
+        }
+        if (ImmediateFeedbackStartup.ShouldShowDemo(startupArguments))
+        {
+            Callable.From(() => ShowImmediateFeedback(
+                ImmediateFeedbackPresenter.FromActionResult(
+                    ImmediateFeedbackDomain.Watering,
+                    ActionResult.Fail("notice.no_energy"),
+                    AccessibilityRuntime.Settings
+                )
+            )).CallDeferred();
+        }
     }
 
     public override void _Process(double delta)
@@ -363,6 +454,44 @@ public sealed partial class HudView : Control
         }
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (_objectiveDetailsPanel.Visible)
+        {
+            HandleObjectiveDetailsInput(@event);
+            return;
+        }
+
+        if (_objectivePanel.Visible &&
+            @event.IsActionPressed(
+                HudInputNavigationContract.ObjectiveDetailsOpenAction
+            ))
+        {
+            SetObjectiveDetailsVisible(true);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (_minimap.Visible &&
+            @event.IsActionPressed(
+                HudInputNavigationContract.MinimapToggleAction
+            ))
+        {
+            ToggleMinimapCollapsed();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (_minimap.Visible &&
+            @event.IsActionPressed(
+                HudInputNavigationContract.MinimapFilterAction
+            ))
+        {
+            CycleMinimapFilter();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
     public void ShowNotice(string key, double seconds = 2.2)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -374,6 +503,14 @@ public sealed partial class HudView : Control
         _noticePanel.Visible = true;
         _noticeRemaining = seconds;
     }
+
+    public void ShowImmediateFeedback(ImmediateFeedbackCue cue) =>
+        _feedback.Show(cue);
+
+    public void SetNavigationProgress(
+        WorldNavigationRouteProgress? progress,
+        WorldNavigationDestination? destination = null
+    ) => _minimap.SetNavigation(progress, destination);
 
     public void ShowNoticeFormatted(
         string key,
@@ -500,17 +637,7 @@ public sealed partial class HudView : Control
                 _session.Mail.UnreadCount
             );
         }
-        var todayFestival = FestivalCatalog.FestivalOnDay(
-            _session.Clock.Day
-        );
-        var tomorrowFestival = FestivalCatalog.FestivalOnDay(
-            _session.Clock.Day + 1
-        );
-        var festivalNoticeKey = todayFestival is not null
-            ? FestivalHudKey(todayFestival.Id, true)
-            : tomorrowFestival is not null
-                ? FestivalHudKey(tomorrowFestival.Id, false)
-                : string.Empty;
+        var festivalNoticeKey = FestivalHudKeyForDay(_session.Clock.Day);
         if (!string.IsNullOrWhiteSpace(festivalNoticeKey))
         {
             objectiveText = _locale.Tr(
@@ -519,8 +646,12 @@ public sealed partial class HudView : Control
                 _locale.Tr(festivalNoticeKey)
             );
         }
-        _objective.Text = objectiveText;
-        ResizeObjectivePanel(objectiveText);
+        var objectiveSummary = HudObjectiveSummaryFormatter.Create(objectiveText);
+        _objective.Text = objectiveSummary.VisibleText;
+        _objective.TooltipText = objectiveSummary.FullText;
+        _objectivePanel.TooltipText = objectiveSummary.FullText;
+        ResizeObjectivePanel(objectiveSummary);
+        RefreshObjectiveDetails(objectiveSummary);
         _controls.Text = _locale.Tr("hud.controls");
         RefreshLocationChrome();
 
@@ -583,27 +714,134 @@ public sealed partial class HudView : Control
     private static string FestivalHudKey(string festivalId, bool today) =>
         FestivalCatalog.HudKey(festivalId, !today);
 
-    private void ResizeObjectivePanel(string text)
+    private static string FestivalHudKeyForDay(int day)
     {
-        var font = _objective.GetThemeFont("font");
-        var fontSize = _objective.GetThemeFontSize("font_size");
-        var measured = font.GetMultilineStringSize(
-            text,
-            HorizontalAlignment.Left,
-            288,
-            fontSize,
-            -1,
-            TextServer.LineBreakFlag.Mandatory |
-                TextServer.LineBreakFlag.WordBound |
-                TextServer.LineBreakFlag.Adaptive
-        );
-        var height = measured.Y <= 14
-            ? 36
-            : measured.Y <= 36
-                ? 56
-                : 72;
+        var todayFestival = FestivalCatalog.FestivalOnDay(day);
+        if (todayFestival is not null)
+        {
+            return FestivalHudKey(todayFestival.Id, true);
+        }
+
+        var tomorrowFestival = FestivalCatalog.FestivalOnDay(day + 1);
+        if (tomorrowFestival is not null)
+        {
+            return FestivalHudKey(tomorrowFestival.Id, false);
+        }
+
+        return string.Empty;
+    }
+
+    private void ResizeObjectivePanel(HudObjectiveSummary objectiveSummary)
+    {
+        var height = objectiveSummary.HasHiddenLines ? 28 : 26;
         _objectivePanel.Size = new Vector2(302, height);
-        _objective.Size = new Vector2(288, height - 10);
+        _objective.Size = new Vector2(288, height - 12);
+    }
+
+    private void RefreshObjectiveDetails(HudObjectiveSummary objectiveSummary)
+    {
+        _objectiveDetailsText = objectiveSummary.FullText;
+        _objectiveDetailsTitle.Text = objectiveSummary.VisibleText;
+        _objectiveDetailsTitle.TooltipText = objectiveSummary.FullText;
+        _objectiveDetailsBody.Text = objectiveSummary.FullText;
+        _objectiveDetailsBody.TooltipText = objectiveSummary.FullText;
+        _objectiveDetailsClose.Text = _locale.Tr(
+            HudInputNavigationContract.ObjectiveDetailsFocusedControlKey
+        );
+        if (string.IsNullOrWhiteSpace(_objectiveDetailsText))
+        {
+            SetObjectiveDetailsVisible(false);
+        }
+    }
+
+    private void SetObjectiveDetailsVisible(bool visible)
+    {
+        if (visible && string.IsNullOrWhiteSpace(_objectiveDetailsText))
+        {
+            return;
+        }
+
+        _objectiveDetailsPanel.Visible = visible;
+        if (visible)
+        {
+            _objectiveDetailsClose.CallDeferred(Control.MethodName.GrabFocus);
+        }
+    }
+
+    private void HandleObjectiveDetailsInput(InputEvent @event)
+    {
+        if (HudInputNavigationContract.ObjectiveDetailsCloseActions.Any(
+            action => @event.IsActionPressed(action)
+        ))
+        {
+            SetObjectiveDetailsVisible(false);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event is InputEventKey or InputEventJoypadButton or InputEventJoypadMotion)
+        {
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void ToggleMinimapCollapsed()
+    {
+        _minimapState = _minimapState.ToggleCollapsed();
+        ApplyMinimapState();
+    }
+
+    private void CycleMinimapFilter()
+    {
+        _minimapState = _minimapState.NextFilter();
+        ApplyMinimapState();
+    }
+
+    private void ApplyMinimapState()
+    {
+        _minimap.Collapsed = _minimapState.Collapsed;
+        _minimap.MarkerFilter = _minimapState.MarkerFilter;
+        if (_minimapState.Collapsed)
+        {
+            _minimap.Position = new Vector2(588, 74);
+            _minimap.Size = new Vector2(44, 28);
+            return;
+        }
+
+        _minimap.Position = new Vector2(500, 74);
+        _minimap.Size = new Vector2(132, 92);
+    }
+
+    private void OnObjectivePanelGuiInput(InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton mouse ||
+            !mouse.Pressed ||
+            mouse.ButtonIndex != MouseButton.Left)
+        {
+            return;
+        }
+
+        SetObjectiveDetailsVisible(true);
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void OnMinimapGuiInput(InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton mouse || !mouse.Pressed)
+        {
+            return;
+        }
+
+        if (mouse.ButtonIndex == MouseButton.Left)
+        {
+            ToggleMinimapCollapsed();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mouse.ButtonIndex == MouseButton.Right)
+        {
+            CycleMinimapFilter();
+            GetViewport().SetInputAsHandled();
+        }
     }
 
     public override void _ExitTree()
@@ -613,6 +851,8 @@ public sealed partial class HudView : Control
         _session.WaterChanged -= Refresh;
         _session.PlayerMoved -= RefreshLocationChrome;
         _locale.LocaleChanged -= Refresh;
+        _objectivePanel.GuiInput -= OnObjectivePanelGuiInput;
+        _minimap.GuiInput -= OnMinimapGuiInput;
     }
 
     private void RefreshLocationChrome()
@@ -623,6 +863,10 @@ public sealed partial class HudView : Control
         _energyPanel.Visible = !grotto;
         _minimap.Visible =
             _session.PlayerLocationId == PlayerLocationIds.World;
+        if (grotto && _objectiveDetailsPanel.Visible)
+        {
+            SetObjectiveDetailsVisible(false);
+        }
     }
 
     private PanelContainer PanelAt(Vector2 position, Vector2 size)
@@ -646,11 +890,70 @@ internal sealed partial class MinimapView : Control
     private readonly GameSession _session;
     private Texture2D _backdrop = null!;
     private WorldSeasonVisualVariant? _backdropVariant;
+    private bool _collapsed;
+    private HudMinimapMarkerFilter _markerFilter = HudMinimapMarkerFilter.All;
+    private WorldNavigationRouteProgress? _navigationProgress;
+    private WorldNavigationDestination? _navigationDestination;
+
+    public bool Collapsed
+    {
+        get => _collapsed;
+        set
+        {
+            if (_collapsed == value)
+            {
+                return;
+            }
+
+            _collapsed = value;
+            QueueRedraw();
+        }
+    }
+
+    public HudMinimapMarkerFilter MarkerFilter
+    {
+        get => _markerFilter;
+        set
+        {
+            if (_markerFilter == value)
+            {
+                return;
+            }
+
+            _markerFilter = value;
+            QueueRedraw();
+        }
+    }
+
+    public WorldNavigationRouteProgress? NavigationProgress
+    {
+        get => _navigationProgress;
+        set
+        {
+            SetNavigation(value, destination: null);
+        }
+    }
+
+    public void SetNavigation(
+        WorldNavigationRouteProgress? progress,
+        WorldNavigationDestination? destination
+    )
+    {
+        if (_navigationProgress == progress &&
+            _navigationDestination == destination)
+        {
+            return;
+        }
+
+        _navigationProgress = progress;
+        _navigationDestination = destination;
+        QueueRedraw();
+    }
 
     public MinimapView(GameSession session)
     {
         _session = session;
-        MouseFilter = MouseFilterEnum.Ignore;
+        MouseFilter = MouseFilterEnum.Stop;
         RefreshBackdrop();
         session.PlayerMoved += OnWorldChanged;
         session.Exploration.Changed += OnWorldChanged;
@@ -671,6 +974,12 @@ internal sealed partial class MinimapView : Control
             ),
             new Rect2(Vector2.Zero, Size)
         );
+        if (Collapsed)
+        {
+            DrawCollapsedMap();
+            return;
+        }
+
         DrawRect(new Rect2(MapOrigin, MapSize), new Color("#0b1328"));
 
         var chunkSize = new Vector2(
@@ -748,27 +1057,31 @@ internal sealed partial class MinimapView : Control
         );
         DrawRect(cityRect, new Color("#86d9ffcc"), false, 1.5f);
 
-        foreach (var landmark in WorldDefinition.Landmarks)
+        if (MarkerFilter is HudMinimapMarkerFilter.All or HudMinimapMarkerFilter.Landmarks)
         {
-            var chunk = WorldDefinition.GetChunk(landmark.Position);
-            if (!_session.Exploration.IsDiscovered(chunk))
+            foreach (var landmark in WorldDefinition.Landmarks)
             {
-                continue;
-            }
+                var chunk = WorldDefinition.GetChunk(landmark.Position);
+                if (!_session.Exploration.IsDiscovered(chunk))
+                {
+                    continue;
+                }
 
-            var point = WorldToMap(landmark.Position.X, landmark.Position.Y);
-            DrawColoredPolygon(
-                [
-                    point + new Vector2(0, -2),
-                    point + new Vector2(2, 0),
-                    point + new Vector2(0, 2),
-                    point + new Vector2(-2, 0)
-                ],
-                ThemeFactory.Gold
-            );
+                var point = WorldToMap(landmark.Position.X, landmark.Position.Y);
+                DrawColoredPolygon(
+                    [
+                        point + new Vector2(0, -2),
+                        point + new Vector2(2, 0),
+                        point + new Vector2(0, 2),
+                        point + new Vector2(-2, 0)
+                    ],
+                    ThemeFactory.Gold
+                );
+            }
         }
 
-        if (_session.ForageMapUnlocked)
+        if (_session.ForageMapUnlocked &&
+            MarkerFilter is HudMinimapMarkerFilter.All or HudMinimapMarkerFilter.Forage)
         {
             foreach (var spawn in _session.Forage.ActiveSpawns)
             {
@@ -785,6 +1098,7 @@ internal sealed partial class MinimapView : Control
             }
         }
 
+        DrawNavigationTargets();
         var player = WorldToMap(_session.PlayerX / 16f, _session.PlayerY / 16f);
         DrawCircle(player, 2.6f, new Color("#07132b"));
         DrawCircle(player, 1.8f, ThemeFactory.Mint);
@@ -794,6 +1108,58 @@ internal sealed partial class MinimapView : Control
             new Color("#f3ca78aa"),
             1
         );
+        DrawFilterLegend();
+    }
+
+    private void DrawNavigationTargets()
+    {
+        var destinationCell = _navigationDestination?.TargetCell;
+        var nextTarget = _navigationProgress?.NextTarget;
+        if (nextTarget is { } target &&
+            destinationCell != target.Position)
+        {
+            DrawRouteTarget(target.Position);
+        }
+
+        if (destinationCell is GridPosition finalTarget)
+        {
+            DrawFinalTarget(finalTarget);
+        }
+    }
+
+    private void DrawRouteTarget(GridPosition target)
+    {
+        var point = WorldToMap(target.X, target.Y);
+        DrawCircle(point, 3.5f, new Color("#07132b"));
+        DrawCircle(point, 2.5f, ThemeFactory.Gold, false, 1.25f);
+        DrawLine(
+            point + new Vector2(-3, 0),
+            point + new Vector2(3, 0),
+            ThemeFactory.Gold,
+            1
+        );
+        DrawLine(
+            point + new Vector2(0, -3),
+            point + new Vector2(0, 3),
+            ThemeFactory.Gold,
+            1
+        );
+    }
+
+    private void DrawFinalTarget(GridPosition target)
+    {
+        var point = WorldToMap(target.X, target.Y);
+        DrawCircle(point, 4.2f, new Color("#07132b"));
+        DrawColoredPolygon(
+            [
+                point + new Vector2(0, -4),
+                point + new Vector2(4, 0),
+                point + new Vector2(0, 4),
+                point + new Vector2(-4, 0)
+            ],
+            new Color("#8bf0d0ee")
+        );
+        DrawCircle(point, 1.4f, ThemeFactory.Gold);
     }
 
     public override void _ExitTree()
@@ -844,6 +1210,43 @@ internal sealed partial class MinimapView : Control
             ),
             modulate
         );
+    }
+
+    private void DrawCollapsedMap()
+    {
+        var icon = new Rect2(new Vector2(8, 7), new Vector2(24, 14));
+        DrawRect(icon, new Color("#0b1328"));
+        DrawRect(icon, new Color("#8bf0d088"), false, 1);
+        DrawLine(
+            icon.Position + new Vector2(4, 4),
+            icon.Position + new Vector2(20, 10),
+            new Color("#3d6e7fcc"),
+            1
+        );
+        DrawCircle(icon.Position + new Vector2(15, 8), 2f, new Color("#07132b"));
+        DrawCircle(icon.Position + new Vector2(15, 8), 1.25f, ThemeFactory.Mint);
+        DrawFilterDot(new Vector2(35, 10), HudMinimapMarkerFilter.Landmarks);
+        DrawFilterDot(new Vector2(35, 18), HudMinimapMarkerFilter.Forage);
+    }
+
+    private void DrawFilterLegend()
+    {
+        DrawFilterDot(new Vector2(104, 86), HudMinimapMarkerFilter.Landmarks);
+        DrawFilterDot(new Vector2(114, 86), HudMinimapMarkerFilter.Forage);
+    }
+
+    private void DrawFilterDot(Vector2 position, HudMinimapMarkerFilter filter)
+    {
+        var active = MarkerFilter == HudMinimapMarkerFilter.All ||
+            MarkerFilter == filter;
+        var color = filter == HudMinimapMarkerFilter.Landmarks
+            ? ThemeFactory.Gold
+            : ThemeFactory.Mint;
+        var muted = filter == HudMinimapMarkerFilter.Landmarks
+            ? new Color("#6b5c42aa")
+            : new Color("#375f5aaa");
+        DrawCircle(position, 2.3f, new Color("#07132b"));
+        DrawCircle(position, active ? 1.7f : 1.2f, active ? color : muted);
     }
 
     private Vector2 WorldToMap(float x, float y) =>
@@ -1689,7 +2092,8 @@ public sealed partial class NightlySummaryOverlay : FullScreenUi
 public enum ShopOverlayMode
 {
     FarmStall,
-    TwilightEmporium
+    TwilightEmporium,
+    StarweaverTeaHouse
 }
 
 public sealed partial class ShopOverlay : FullScreenUi
@@ -1706,6 +2110,7 @@ public sealed partial class ShopOverlay : FullScreenUi
     private readonly Label _sellHeader;
     private readonly Label _status;
     private readonly Button _close;
+    private readonly Button _gathering;
     private readonly Dictionary<string, Button> _buyButtons = [];
     private readonly Dictionary<string, Button> _sellButtons = [];
 
@@ -1719,9 +2124,20 @@ public sealed partial class ShopOverlay : FullScreenUi
         _session = session;
         _locale = locale;
         _mode = mode;
-        _buyItemIds = mode == ShopOverlayMode.TwilightEmporium
-            ? session.TwilightEmporiumItemIds()
-            : DataCatalog.FarmShopItemIdsForDay(session.Clock.Day);
+        if (mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            _buyItemIds = [session.TodayTeaHouseOffer.ItemId];
+        }
+        else if (mode == ShopOverlayMode.TwilightEmporium)
+        {
+            _buyItemIds = session.TwilightEmporiumItemIds();
+        }
+        else
+        {
+            _buyItemIds = DataCatalog.FarmShopItemIdsForDay(
+                session.Clock.Day
+            );
+        }
         AddChild(Dim(new Color(0.02f, 0.03f, 0.1f, 0.72f)));
 
         var center = new CenterContainer();
@@ -1729,7 +2145,11 @@ public sealed partial class ShopOverlay : FullScreenUi
         AddChild(center);
 
         var panelSize = new Vector2(548, 332);
-        if (mode == ShopOverlayMode.TwilightEmporium)
+        if (mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            panelSize = new Vector2(440, 340);
+        }
+        else if (mode == ShopOverlayMode.TwilightEmporium)
         {
             panelSize = new Vector2(440, 322);
         }
@@ -1754,14 +2174,18 @@ public sealed partial class ShopOverlay : FullScreenUi
 
         _rotation = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
         _rotation.HorizontalAlignment = HorizontalAlignment.Center;
-        _rotation.Visible = mode == ShopOverlayMode.TwilightEmporium;
+        _rotation.Visible = mode != ShopOverlayMode.FarmStall;
         column.AddChild(_rotation);
 
         _description = ThemeFactory.Label(size: 9, color: ThemeFactory.MutedInk);
         _description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _description.HorizontalAlignment = HorizontalAlignment.Center;
         _description.CustomMinimumSize = new Vector2(400, 28);
-        _description.Visible = mode == ShopOverlayMode.TwilightEmporium;
+        _description.Visible = mode != ShopOverlayMode.FarmStall;
+        if (mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            _description.CustomMinimumSize = new Vector2(400, 42);
+        }
         column.AddChild(_description);
 
         var tradeColumns = new HBoxContainer();
@@ -1785,7 +2209,12 @@ public sealed partial class ShopOverlay : FullScreenUi
 
         var buyScrollSize = new Vector2(252, 190);
         var buyColumnSize = new Vector2(238, 0);
-        if (mode == ShopOverlayMode.TwilightEmporium)
+        if (mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            buyScrollSize = new Vector2(402, 80);
+            buyColumnSize = new Vector2(386, 0);
+        }
+        else if (mode == ShopOverlayMode.TwilightEmporium)
         {
             buyScrollSize = new Vector2(402, 126);
             buyColumnSize = new Vector2(386, 0);
@@ -1821,6 +2250,12 @@ public sealed partial class ShopOverlay : FullScreenUi
                 buyAction = () =>
                     _session.BuyTwilightEmporiumItem(itemId);
             }
+            else if (mode == ShopOverlayMode.StarweaverTeaHouse)
+            {
+                buyAction = () => _session.BuyTeaHouseOffer(
+                    _session.TodayTeaHouseOffer.Id
+                );
+            }
             AddTradeButton(
                 buyColumn,
                 _buyButtons,
@@ -1843,9 +2278,25 @@ public sealed partial class ShopOverlay : FullScreenUi
         }
 
         _status = ThemeFactory.Label(size: 10, color: ThemeFactory.Mint);
+        _gathering = ThemeFactory.Button("");
+        _gathering.CustomMinimumSize = new Vector2(386, 30);
+        _gathering.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        _gathering.Visible = mode == ShopOverlayMode.StarweaverTeaHouse;
+        _gathering.Pressed += () =>
+        {
+            var result = _session.HostTeaHouseGathering();
+            _status.Text = _locale.Tr(result.MessageKey);
+            if (result.Succeeded)
+            {
+                TransactionSucceeded?.Invoke();
+            }
+            RefreshText();
+        };
+        column.AddChild(_gathering);
+
         _status.HorizontalAlignment = HorizontalAlignment.Center;
         var statusWidth = 480f;
-        if (mode == ShopOverlayMode.TwilightEmporium)
+        if (mode != ShopOverlayMode.FarmStall)
         {
             statusWidth = 400f;
         }
@@ -1887,6 +2338,26 @@ public sealed partial class ShopOverlay : FullScreenUi
             );
             _buyHeader.Text = _locale.Tr("emporium.shop.buy_header");
         }
+        else if (_mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            var offer = _session.TodayTeaHouseOffer;
+            var gathering = _session.TeaHouseGathering();
+            _title.Text = _locale.Tr("tea_house.menu.title");
+            _rotation.Text = _locale.Tr(
+                "tea_house.menu.daily_offer",
+                _locale.Tr(offer.NameKey)
+            );
+            _description.Text = _locale.Tr(
+                "tea_house.menu.description",
+                _locale.Tr(offer.DescriptionKey),
+                _locale.Tr(offer.EffectDescriptionKey),
+                _locale.Tr(gathering.ReasonKey)
+            );
+            _buyHeader.Text = _locale.Tr("tea_house.menu.buy_header");
+            _gathering.Text = _locale.Tr("tea_house.gathering.action");
+            _gathering.Disabled = !gathering.CanHost;
+            _gathering.TooltipText = _locale.Tr(gathering.ReasonKey);
+        }
         else
         {
             _title.Text = _locale.Tr("shop.title");
@@ -1905,6 +2376,20 @@ public sealed partial class ShopOverlay : FullScreenUi
                 _session.PurchasePrice(pair.Key),
                 _session.Inventory.Count(pair.Key)
             );
+        }
+
+        if (_mode == ShopOverlayMode.StarweaverTeaHouse)
+        {
+            var offer = _session.TodayTeaHouseOffer;
+            var button = _buyButtons[offer.ItemId];
+            button.Text = _locale.Tr(
+                "tea_house.offer.buy_action",
+                _locale.Tr(offer.NameKey),
+                offer.Price,
+                _session.Inventory.Count(offer.ItemId)
+            );
+            button.Disabled =
+                _session.TeaHouse.PurchasedOfferId == offer.Id;
         }
 
         foreach (var pair in _sellButtons)
@@ -1937,7 +2422,7 @@ public sealed partial class ShopOverlay : FullScreenUi
     {
         var button = ThemeFactory.Button("");
         var buttonWidth = 238f;
-        if (_mode == ShopOverlayMode.TwilightEmporium)
+        if (_mode != ShopOverlayMode.FarmStall)
         {
             buttonWidth = 386f;
         }
@@ -2051,6 +2536,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? ProcessingSucceeded;
+    public event Action<ActionResult>? FeedbackRequested;
 
     public void RefreshText()
     {
@@ -2201,6 +2687,7 @@ public sealed partial class ProcessorOverlay : FullScreenUi
     {
         var result = action();
         _status.Text = _locale.Tr(result.MessageKey);
+        FeedbackRequested?.Invoke(result);
         if (result.Succeeded)
         {
             ProcessingSucceeded?.Invoke();
@@ -2364,9 +2851,27 @@ public sealed partial class DialogueOverlay : FullScreenUi
 
 public sealed partial class PauseOverlay : FullScreenUi
 {
+    public const string OnboardingPlanMenuKey = "menu.onboarding_plan";
+    public const string OnboardingPlanSkippedMenuKey =
+        "menu.onboarding_plan_skipped";
+    public const string MorningBriefingMenuKey = "menu.morning_briefing";
+    public const string RouteGuidanceMenuKey = "menu.route_guidance";
+
+    public static IReadOnlyList<string> ExperienceMenuLabelKeys { get; } =
+    [
+        OnboardingPlanMenuKey,
+        OnboardingPlanSkippedMenuKey,
+        MorningBriefingMenuKey,
+        RouteGuidanceMenuKey
+    ];
+
     private readonly LocaleService _locale;
+    private readonly bool _onboardingPlanAvailable;
     private readonly Label _title;
     private readonly Button _resume;
+    private readonly Button _onboardingPlan;
+    private readonly Button _morningBriefing;
+    private readonly Button _routeGuidance;
     private readonly Button _gleamriseGoals;
     private readonly Button _fishingCollection;
     private readonly Button _fishingGear;
@@ -2374,25 +2879,42 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly Button _language;
     private readonly Button _saveQuit;
 
-    public PauseOverlay(Theme theme, LocaleService locale) : base(theme)
+    public PauseOverlay(
+        Theme theme,
+        LocaleService locale,
+        bool onboardingPlanAvailable
+    ) : base(theme)
     {
         _locale = locale;
+        _onboardingPlanAvailable = onboardingPlanAvailable;
         AddChild(Dim(new Color(0.02f, 0.03f, 0.1f, 0.7f)));
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(320, 320) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(340, 336) };
         center.AddChild(panel);
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(300, 300),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        panel.AddChild(scroll);
         var column = new VBoxContainer
         {
-            Alignment = BoxContainer.AlignmentMode.Center
+            Alignment = BoxContainer.AlignmentMode.Center,
+            CustomMinimumSize = new Vector2(280, 0)
         };
-        column.AddThemeConstantOverride("separation", 10);
-        panel.AddChild(column);
+        column.AddThemeConstantOverride("separation", 6);
+        scroll.AddChild(column);
         _title = ThemeFactory.Label(size: 24, color: ThemeFactory.Mint);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
         _resume = ThemeFactory.Button("");
+        _onboardingPlan = ThemeFactory.Button("");
+        _morningBriefing = ThemeFactory.Button("");
+        _routeGuidance = ThemeFactory.Button("");
         _gleamriseGoals = ThemeFactory.Button("");
         _fishingCollection = ThemeFactory.Button("");
         _fishingGear = ThemeFactory.Button("");
@@ -2401,6 +2923,9 @@ public sealed partial class PauseOverlay : FullScreenUi
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
         column.AddChild(_resume);
+        column.AddChild(_onboardingPlan);
+        column.AddChild(_morningBriefing);
+        column.AddChild(_routeGuidance);
         column.AddChild(_gleamriseGoals);
         column.AddChild(_fishingCollection);
         column.AddChild(_fishingGear);
@@ -2409,6 +2934,10 @@ public sealed partial class PauseOverlay : FullScreenUi
         column.AddChild(_saveQuit);
 
         _resume.Pressed += () => ResumeRequested?.Invoke();
+        _onboardingPlan.Disabled = !_onboardingPlanAvailable;
+        _onboardingPlan.Pressed += () => OnboardingPlanRequested?.Invoke();
+        _morningBriefing.Pressed += () => MorningBriefingRequested?.Invoke();
+        _routeGuidance.Pressed += () => RouteGuidanceRequested?.Invoke();
         _gleamriseGoals.Pressed += () => GleamriseGoalsRequested?.Invoke();
         _fishingCollection.Pressed += () =>
             FishingCollectionRequested?.Invoke();
@@ -2422,6 +2951,9 @@ public sealed partial class PauseOverlay : FullScreenUi
     }
 
     public event Action? ResumeRequested;
+    public event Action? OnboardingPlanRequested;
+    public event Action? MorningBriefingRequested;
+    public event Action? RouteGuidanceRequested;
     public event Action? GleamriseGoalsRequested;
     public event Action? FishingCollectionRequested;
     public event Action? FishingGearRequested;
@@ -2433,6 +2965,16 @@ public sealed partial class PauseOverlay : FullScreenUi
     {
         _title.Text = _locale.Tr("menu.pause");
         _resume.Text = _locale.Tr("menu.resume");
+        if (_onboardingPlanAvailable)
+        {
+            _onboardingPlan.Text = _locale.Tr(OnboardingPlanMenuKey);
+        }
+        else
+        {
+            _onboardingPlan.Text = _locale.Tr(OnboardingPlanSkippedMenuKey);
+        }
+        _morningBriefing.Text = _locale.Tr(MorningBriefingMenuKey);
+        _routeGuidance.Text = _locale.Tr(RouteGuidanceMenuKey);
         _gleamriseGoals.Text = _locale.Tr("menu.gleamrise_goals");
         _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
         _fishingGear.Text = _locale.Tr("menu.fishing_gear");
@@ -2440,6 +2982,14 @@ public sealed partial class PauseOverlay : FullScreenUi
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }
+}
+
+public static class PauseOverlayExperiencePreviewStartup
+{
+    public const string OpenFlag = "--ui-pause-experience-preview";
+
+    public static bool ShouldOpen(IEnumerable<string> arguments) =>
+        arguments.Contains(OpenFlag, StringComparer.Ordinal);
 }
 
 public sealed partial class CompletionOverlay : FullScreenUi

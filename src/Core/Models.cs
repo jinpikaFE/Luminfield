@@ -557,6 +557,42 @@ public sealed class StarfallRuinsTrialSave
     public List<string> RecoveredArtifactIds { get; set; } = [];
 }
 
+public sealed class ExperienceGuidanceSave
+{
+    public int LastMorningBriefingDay { get; set; }
+}
+
+public sealed class TeaHouseSave
+{
+    public int Day { get; set; } = 1;
+    public string PurchasedOfferId { get; set; } = string.Empty;
+    public string ActiveEffectId { get; set; } = string.Empty;
+    public int EffectExpiresMinuteOfDay { get; set; }
+    public bool GatheringHosted { get; set; }
+    public List<string> GatheringGuestNpcIds { get; set; } = [];
+}
+
+public sealed class PostDeliverySave
+{
+    public int Day { get; set; } = 1;
+    public string ActiveRouteId { get; set; } = string.Empty;
+    public List<string> CompletedRouteIds { get; set; } = [];
+}
+
+public sealed class StarfallWatchSave
+{
+    public int Day { get; set; } = 1;
+    public string ActivePatrolId { get; set; } = string.Empty;
+    public bool PatrolTargetReached { get; set; }
+    public List<string> CompletedPatrolIds { get; set; } = [];
+    public string ActiveBountyId { get; set; } = string.Empty;
+    public int ActiveBountyProgress { get; set; }
+    public string FailedBountyId { get; set; } = string.Empty;
+    public List<string> CompletedBountyIds { get; set; } = [];
+    public string PreparationId { get; set; } = string.Empty;
+    public bool PreparationConsumed { get; set; }
+}
+
 public sealed class GameSaveV1
 {
     public int SchemaVersion { get; set; } = SaveService.CurrentSchemaVersion;
@@ -597,6 +633,10 @@ public sealed class GameSaveV1
     public GleamriseSeasonSave GleamriseSeason { get; set; } = new();
     public FestivalSave Festival { get; set; } = new();
     public CollectionSave Collection { get; set; } = new();
+    public ExperienceGuidanceSave ExperienceGuidance { get; set; } = new();
+    public TeaHouseSave TeaHouse { get; set; } = new();
+    public PostDeliverySave PostDelivery { get; set; } = new();
+    public StarfallWatchSave StarfallWatch { get; set; } = new();
     public StarGateSave StarGate { get; set; } = new();
     public StellarResonanceSave StellarResonance { get; set; } = new();
 }

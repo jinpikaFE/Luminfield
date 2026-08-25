@@ -138,6 +138,7 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
     }
 
     public event Action? CloseRequested;
+    public event Action<string>? RewardClaimed;
 
     public void RefreshText()
     {
@@ -244,6 +245,10 @@ public sealed partial class FishingCollectionOverlay : FullScreenUi
         var result = _session.ClaimFishingCollectionReward(_visibleRewardId);
         RefreshText();
         _notice.Text = _locale.Tr(result.MessageKey);
+        if (result.Succeeded)
+        {
+            RewardClaimed?.Invoke(result.MessageKey);
+        }
     }
 
     public override void _ExitTree()

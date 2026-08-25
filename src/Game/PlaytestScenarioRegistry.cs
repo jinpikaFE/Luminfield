@@ -168,10 +168,12 @@ public enum PlaytestScenarioId
     EmporiumRestdayDoor,
     StarlightPostNemi,
     StarlightPost,
+    StarlightPostDelivery,
     StarlightPostWrongTool,
     StarlightPostDoor,
     StarfallWatchKael,
     StarfallWatch,
+    StarfallWatchBoard,
     StarfallWatchWrongTool,
     StarfallWatchDoor,
     VillageDialogue,
@@ -882,6 +884,10 @@ public sealed class PlaytestScenarioRegistry
             "--playtest-starlight-post"
         ),
         new(
+            PlaytestScenarioId.StarlightPostDelivery,
+            "--playtest-starlight-post-delivery"
+        ),
+        new(
             PlaytestScenarioId.StarlightPostWrongTool,
             "--playtest-starlight-post-wrong-tool"
         ),
@@ -896,6 +902,10 @@ public sealed class PlaytestScenarioRegistry
         new(
             PlaytestScenarioId.StarfallWatch,
             "--playtest-starfall-watch"
+        ),
+        new(
+            PlaytestScenarioId.StarfallWatchBoard,
+            "--playtest-starfall-watch-board"
         ),
         new(
             PlaytestScenarioId.StarfallWatchWrongTool,

@@ -88,7 +88,7 @@ public sealed partial class GleamriseSeasonOverlay : FullScreenUi
     }
 
     public event Action? CloseRequested;
-    public event Action? GoalClaimed;
+    public event Action<string>? GoalClaimed;
 
     public override void _ExitTree()
     {
@@ -252,7 +252,7 @@ public sealed partial class GleamriseSeasonOverlay : FullScreenUi
         _notice.Text = _locale.Tr(result.MessageKey);
         if (result.Succeeded)
         {
-            GoalClaimed?.Invoke();
+            GoalClaimed?.Invoke(result.MessageKey);
         }
 
         RefreshText();

@@ -573,20 +573,12 @@ public sealed partial class FarmView : Node2D
 
         if (target == MiraCell || IsAdjacent(player, MiraCell))
         {
-            return PreviewHandInteraction(
-                MiraCell,
-                TargetPreviewKind.Character,
-                "target.action.talk"
-            );
+            return _session.PreviewSelectedTarget(MiraCell);
         }
 
         if (target == CottageDoorCell || IsAdjacent(player, CottageDoorCell))
         {
-            return PreviewHandInteraction(
-                CottageDoorCell,
-                TargetPreviewKind.Door,
-                "target.action.enter"
-            );
+            return _session.PreviewSelectedTarget(CottageDoorCell);
         }
 
         if (IsAdjacent(player, MoonlitArchiveDoorCell))
@@ -1415,65 +1407,7 @@ public sealed partial class FarmView : Node2D
             Mathf.FloorToInt(worldPosition.X / 16),
             Mathf.FloorToInt(worldPosition.Y / 16)
         );
-        if (!WorldDefinition.IsInBounds(cell))
-        {
-            return false;
-        }
-
-        if (FarmLayout.IsStaticBlocked(cell))
-        {
-            return false;
-        }
-
-        if (!WorldDefinition.IsHomeCell(cell))
-        {
-            if (WorldDefinition.IsBoundaryCell(cell))
-            {
-                return false;
-            }
-
-            if (_session.Village.NpcAt(
-                    cell,
-                    _session.Clock.Day,
-                    _session.Clock.MinuteOfDay,
-                    PlayerLocationIds.World,
-                    _player.CurrentCell
-                ) is not null)
-            {
-                return false;
-            }
-
-            if (_session.Forage.SpawnAt(cell) is not null)
-            {
-                return false;
-            }
-
-            return _session.Resources.IsRemoved(cell) ||
-                !WorldDefinition.IsBlocked(cell);
-        }
-
-        // Older saves may legitimately contain a chest, tree, or placeable on
-        // an animal-building approach. Keep that data, and keep water-built
-        // boardwalk approaches traversable so they cannot seal the only door.
-        if (FarmLayout.IsAnimalBuildingApproachCell(cell))
-        {
-            return true;
-        }
-
-        if (WorldDefinition.IsBlocked(cell))
-        {
-            return false;
-        }
-
-        if (_session.Farm.IsReserved(cell) ||
-            _session.Storage.HasChest(cell) ||
-            _session.FarmObjects.BlocksMovement(cell) ||
-            _session.Orchard.BlocksMovement(cell))
-        {
-            return false;
-        }
-
-        return true;
+        return _session.CanOccupyWorldCell(cell, _player.CurrentCell);
     }
 
     private static Vector2 CellCenter(GridPosition cell) =>

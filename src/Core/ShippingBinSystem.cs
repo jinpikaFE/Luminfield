@@ -73,7 +73,7 @@ public sealed class ShippingBinSystem
             })
             .OrderBy(line => SellableOrder(line.ItemId))
             .ToArray();
-        LastSettlement = last is { Day: > 0 } && lines.Length > 0
+        LastSettlement = last is { Day: > 0 }
             ? new ShippingSettlement(last.Day, lines)
             : ShippingSettlement.Empty;
         Changed?.Invoke();

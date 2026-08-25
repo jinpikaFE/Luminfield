@@ -34,6 +34,9 @@ public sealed class AccessibilitySettings
     public int IncomingDamagePercent { get; set; } = 100;
     public int EnemySpeedPercent { get; set; } = 100;
     public int ScreenShakePercent { get; set; } = 100;
+    public int MasterVolumePercent { get; set; } = 100;
+    public int AmbientVolumePercent { get; set; } = 100;
+    public int EffectsVolumePercent { get; set; } = 100;
     public TargetCueMode TargetCues { get; set; } = TargetCueMode.Standard;
     public int FontScalePercent { get; set; } = 100;
     public DialoguePace DialoguePace { get; set; } = DialoguePace.Standard;
@@ -41,6 +44,7 @@ public sealed class AccessibilitySettings
     public bool AutoRun { get; set; }
     public bool TargetLock { get; set; }
     public bool HoldToRepeatTools { get; set; }
+    public List<string> DismissedOnboardingCardIds { get; set; } = [];
     public Dictionary<string, long> KeyboardBindings { get; set; } =
         new(StringComparer.Ordinal);
 
@@ -80,6 +84,9 @@ public sealed class AccessibilitySettings
             [0, 50, 100],
             100
         );
+        MasterVolumePercent = NormalizePercent(MasterVolumePercent);
+        AmbientVolumePercent = NormalizePercent(AmbientVolumePercent);
+        EffectsVolumePercent = NormalizePercent(EffectsVolumePercent);
         FontScalePercent = NormalizeChoice(
             FontScalePercent,
             [100, 110, 120],
@@ -97,6 +104,11 @@ public sealed class AccessibilitySettings
         {
             DialoguePace = DialoguePace.Standard;
         }
+        DismissedOnboardingCardIds ??= [];
+        DismissedOnboardingCardIds = DismissedOnboardingCardIds
+            .Where(cardId => !string.IsNullOrWhiteSpace(cardId))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
         KeyboardBindings ??= new Dictionary<string, long>(
             StringComparer.Ordinal
         );
@@ -113,11 +125,30 @@ public sealed class AccessibilitySettings
             );
     }
 
+    public bool DismissOnboardingCard(string cardId)
+    {
+        if (string.IsNullOrWhiteSpace(cardId))
+        {
+            return false;
+        }
+
+        DismissedOnboardingCardIds ??= [];
+        if (DismissedOnboardingCardIds.Contains(cardId, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        DismissedOnboardingCardIds.Add(cardId);
+        return true;
+    }
+
     private static int NormalizeChoice(
         int value,
         IReadOnlyList<int> choices,
         int fallback
     ) => choices.Contains(value) ? value : fallback;
+
+    private static int NormalizePercent(int value) => Math.Clamp(value, 0, 100);
 }
 
 public sealed class AccessibilitySettingsService

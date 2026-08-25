@@ -180,6 +180,7 @@ public sealed partial class StarlightMailOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? MailChanged;
+    public event Action<ActionResult>? AttachmentClaimed;
 
     public void PressClaimForPlaytest()
     {
@@ -347,7 +348,7 @@ public sealed partial class StarlightMailOverlay : FullScreenUi
                 itemName,
                 selected.Definition.AttachmentCount
             );
-            MailChanged?.Invoke();
+            AttachmentClaimed?.Invoke(result);
         }
         else
         {

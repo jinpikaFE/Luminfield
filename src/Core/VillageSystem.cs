@@ -2345,6 +2345,38 @@ public sealed class VillageSystem
         return new VillageRelationshipSave { NpcId = npcId };
     }
 
+    public void AddRelationshipPoints(
+        IEnumerable<string> npcIds,
+        int points
+    )
+    {
+        if (points <= 0)
+        {
+            return;
+        }
+
+        var changed = false;
+        foreach (var npcId in npcIds
+                     .Where(VillageCatalog.Npcs.ContainsKey)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            var relationship = Relationship(npcId);
+            relationship.Points = Math.Clamp(
+                relationship.Points + points,
+                0,
+                MaximumRelationshipPoints
+            );
+            _metNpcIds.Add(npcId);
+            _relationships[npcId] = relationship;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            Changed?.Invoke();
+        }
+    }
+
     public VillageSave Capture() => new()
     {
         MetNpcIds = _metNpcIds

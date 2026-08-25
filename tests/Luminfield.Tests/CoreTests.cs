@@ -5073,7 +5073,7 @@ public sealed class VillageSystemTests
         );
         Assert.True(counter.IsAvailable);
         Assert.Equal(
-            "target.action.inspect_tea_counter",
+            "target.action.open_tea_menu",
             counter.LabelKey
         );
         Assert.True(exit.IsAvailable);
@@ -5287,7 +5287,7 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void StarlightPostDoorCounterAndExitShareReadOnlyHandRules()
+    public void StarlightPostDoorCounterAndExitShareLocationAwareHandRules()
     {
         var session = new GameSession();
         session.NewGame();
@@ -5366,13 +5366,13 @@ public sealed class VillageSystemTests
         );
         Assert.True(counter.IsAvailable);
         Assert.Equal(
-            "target.action.inspect_sorting_counter",
+            "target.action.open_post_routes",
             counter.LabelKey
         );
         Assert.True(exit.IsAvailable);
         var inspected = session.InspectRouteSortingCounter();
         Assert.True(inspected.Succeeded);
-        Assert.Equal("starlight_post.counter.dialogue", inspected.MessageKey);
+        Assert.Equal("post.delivery.board.opened", inspected.MessageKey);
         Assert.True(session.TryExitStarlightPost().Succeeded);
         Assert.Equal(energy, session.Energy);
         Assert.Equal(coins, session.Coins);
@@ -5527,7 +5527,7 @@ public sealed class VillageSystemTests
     }
 
     [Fact]
-    public void StarfallWatchDoorTableAndExitShareReadOnlyHandRules()
+    public void StarfallWatchDoorBoardAndExitShareHandRules()
     {
         var session = new GameSession();
         session.NewGame();
@@ -5606,13 +5606,13 @@ public sealed class VillageSystemTests
         );
         Assert.True(table.IsAvailable);
         Assert.Equal(
-            "target.action.inspect_seal_route_table",
+            "target.action.open_watch_board",
             table.LabelKey
         );
         Assert.True(exit.IsAvailable);
         var inspected = session.InspectSealRouteTable();
         Assert.True(inspected.Succeeded);
-        Assert.Equal("starfall_watch.table.dialogue", inspected.MessageKey);
+        Assert.Equal("watch.board.opened", inspected.MessageKey);
         Assert.True(session.TryExitStarfallWatch().Succeeded);
         Assert.Equal(energy, session.Energy);
         Assert.Equal(coins, session.Coins);
@@ -8848,14 +8848,14 @@ public sealed class LocaleTests
         {
             "target.action.enter_starfall_watch",
             "target.action.exit_starfall_watch",
-            "target.action.inspect_seal_route_table",
+            "target.action.open_watch_board",
             "target.status.starfall_watch_closed",
             "notice.enter_starfall_watch",
             "notice.leave_starfall_watch",
             "notice.starfall_watch_closed",
             "notice.starfall_watch_world_only",
             "starfall_watch.table.name",
-            "starfall_watch.table.dialogue",
+            "watch.board.opened",
             "village.landmark.starfall_watch",
             "village.npc.kael.starfall_watch"
         };

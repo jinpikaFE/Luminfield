@@ -179,6 +179,8 @@ public sealed partial class DeepMineOverlay : FullScreenUi
     public event Action? CloseRequested;
     public event Action? ProgressChanged;
     public event Action? DefeatRequested;
+    public event Action<ImmediateFeedbackDomain, ActionResult>?
+        FeedbackRequested;
 
     public override void _Process(double delta)
     {
@@ -226,6 +228,13 @@ public sealed partial class DeepMineOverlay : FullScreenUi
     {
         var result = _session.AttackDeepMineEnemy();
         _notice.Text = _locale.Tr(result.MessageKey);
+        if (result.DamageTaken > 0 || result.PlayerDefeated)
+        {
+            FeedbackRequested?.Invoke(
+                ImmediateFeedbackDomain.Damage,
+                ActionResult.Success(messageKey: result.MessageKey)
+            );
+        }
         if (result.Succeeded)
         {
             ProgressChanged?.Invoke();
@@ -237,6 +246,10 @@ public sealed partial class DeepMineOverlay : FullScreenUi
     {
         var result = _session.DodgeInDeepMine();
         _notice.Text = _locale.Tr(result.MessageKey);
+        FeedbackRequested?.Invoke(
+            ImmediateFeedbackDomain.Dodge,
+            new ActionResult(result.Succeeded, MessageKey: result.MessageKey)
+        );
         if (result.Succeeded)
         {
             ProgressChanged?.Invoke();

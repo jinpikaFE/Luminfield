@@ -253,6 +253,8 @@ internal sealed partial class WorldChunkProps : Node2D
                 DrawTextureRectRegion(_atlas, destination, source);
             }
         }
+
+        DrawNavigationGuides();
     }
 
     public override void _ExitTree()
@@ -420,6 +422,49 @@ internal sealed partial class WorldChunkProps : Node2D
             source
         );
     }
+
+    private void DrawNavigationGuides()
+    {
+        foreach (var guide in WorldNavigationGuideCatalog.ForChunk(_chunk)
+                     .OrderBy(value => value.Position.Y)
+                     .ThenBy(value => value.Position.X))
+        {
+            DrawNavigationGuide(guide);
+        }
+    }
+
+    private void DrawNavigationGuide(WorldNavigationGuide guide)
+    {
+        var localX = guide.Position.X -
+            _chunk.X * WorldDefinition.ChunkSize;
+        var localY = guide.Position.Y -
+            _chunk.Y * WorldDefinition.ChunkSize;
+        var anchor = new Vector2(localX * 16 + 8, localY * 16 + 15);
+        var size = NavigationGuideSize(guide);
+        var source = new Rect2(
+            guide.AtlasIndex % 4 * AtlasCell,
+            guide.AtlasIndex / 4 * AtlasCell,
+            AtlasCell,
+            AtlasCell
+        );
+        DrawTextureRectRegion(
+            _atlas,
+            new Rect2(
+                anchor - new Vector2(size.X / 2, size.Y),
+                size
+            ),
+            source
+        );
+    }
+
+    private static Vector2 NavigationGuideSize(
+        WorldNavigationGuide guide
+    ) => guide.Kind switch
+    {
+        WorldNavigationGuideKind.RegionThreshold => new Vector2(26, 34),
+        WorldNavigationGuideKind.LandmarkApproach => new Vector2(24, 32),
+        _ => new Vector2(20, 28)
+    };
 
     private static Vector2 PropSize(int index) => index switch
     {

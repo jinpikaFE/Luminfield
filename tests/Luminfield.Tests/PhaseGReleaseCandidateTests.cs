@@ -30,6 +30,12 @@ public sealed class PhaseGReleaseCandidateTests : IDisposable
             AutoRun = true,
             TargetLock = true,
             HoldToRepeatTools = true,
+            DismissedOnboardingCardIds =
+            [
+                OnboardingPlanSystem.ShippingCardId,
+                OnboardingPlanSystem.ShippingCardId,
+                ""
+            ],
             KeyboardBindings = new Dictionary<string, long>
             {
                 ["interact"] = 65,
@@ -46,6 +52,10 @@ public sealed class PhaseGReleaseCandidateTests : IDisposable
         Assert.Equal(0.5f, loaded.IncomingDamageMultiplier);
         Assert.Equal(0.75f, loaded.EnemySpeedMultiplier);
         Assert.Equal(1.25f, loaded.MovementMultiplier);
+        Assert.Equal(
+            [OnboardingPlanSystem.ShippingCardId],
+            loaded.DismissedOnboardingCardIds
+        );
         Assert.Equal(65, loaded.KeyboardBindings["interact"]);
         Assert.False(loaded.KeyboardBindings.ContainsKey("target_lock"));
         Assert.False(loaded.KeyboardBindings.ContainsKey("crafting"));

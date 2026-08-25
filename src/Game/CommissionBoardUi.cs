@@ -186,6 +186,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
 
     public event Action? CloseRequested;
     public event Action? CommissionChanged;
+    public event Action<string>? RewardClaimed;
 
     public void RefreshText()
     {
@@ -384,6 +385,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
     {
         var succeeded = false;
         var messageKey = "commission.not_ready";
+        var rewardClaimed = false;
         if (!_session.Commission.Accepted)
         {
             var result = _session.AcceptDailyCommission();
@@ -395,10 +397,15 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
             var result = _session.ClaimDailyCommission();
             succeeded = result.Succeeded;
             messageKey = result.MessageKey;
+            rewardClaimed = result.Succeeded;
         }
 
         _notice.Text = _locale.Tr(messageKey);
-        if (succeeded)
+        if (rewardClaimed)
+        {
+            RewardClaimed?.Invoke(messageKey);
+        }
+        else if (succeeded)
         {
             CommissionChanged?.Invoke();
         }
@@ -409,6 +416,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
     {
         var succeeded = false;
         var messageKey = "weekly_commission.not_ready";
+        var rewardClaimed = false;
         var commission = _session.WeeklyCommission;
         if (!commission.Accepted)
         {
@@ -423,6 +431,7 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
                 var result = _session.ClaimWeeklyCommission();
                 succeeded = result.Succeeded;
                 messageKey = result.MessageKey;
+                rewardClaimed = result.Succeeded;
             }
             else
             {
@@ -433,7 +442,11 @@ public sealed partial class CommissionBoardOverlay : FullScreenUi
         }
 
         _notice.Text = _locale.Tr(messageKey);
-        if (succeeded)
+        if (rewardClaimed)
+        {
+            RewardClaimed?.Invoke(messageKey);
+        }
+        else if (succeeded)
         {
             CommissionChanged?.Invoke();
         }

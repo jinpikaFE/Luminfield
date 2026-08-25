@@ -68,6 +68,8 @@ public sealed partial class StarfallRuinsTrialView : Node2D
     public event Action? DefeatRequested;
     public event Action? ProgressChanged;
     public event Action<string>? NoticeRequested;
+    public event Action<ImmediateFeedbackDomain, ActionResult>?
+        FeedbackRequested;
     public event Action? StepRequested
     {
         add => _player.Stepped += value;
@@ -162,10 +164,18 @@ public sealed partial class StarfallRuinsTrialView : Node2D
         if (available <= 0.01f)
         {
             NoticeRequested?.Invoke("combat.enemy_move.blocked");
+            FeedbackRequested?.Invoke(
+                ImmediateFeedbackDomain.Dodge,
+                ActionResult.Fail("combat.enemy_move.blocked")
+            );
             return;
         }
 
         var result = _session.DodgeInStarfallRuinsTrial();
+        FeedbackRequested?.Invoke(
+            ImmediateFeedbackDomain.Dodge,
+            new ActionResult(result.Succeeded, MessageKey: result.MessageKey)
+        );
         if (!result.Succeeded)
         {
             NoticeRequested?.Invoke(result.MessageKey);
@@ -264,6 +274,10 @@ public sealed partial class StarfallRuinsTrialView : Node2D
     private void OnCombatNotice(string key)
     {
         NoticeRequested?.Invoke(key);
+        FeedbackRequested?.Invoke(
+            ImmediateFeedbackDomain.Damage,
+            ActionResult.Success(messageKey: key)
+        );
     }
 
     private static bool IsAdjacent(GridPosition first, GridPosition second) =>
@@ -441,7 +455,8 @@ internal sealed partial class StarfallRuinsCombatLayer : Node2D
     )
     {
         var speed = StarfallRuinsTrialCatalog.Enemy(enemy.EnemyId)
-            .MovementSpeedPixelsPerSecond;
+            .MovementSpeedPixelsPerSecond *
+            _session.EffectiveEnemySpeedMultiplier;
         var movement = direction.Normalized() * speed * delta;
         var horizontal = Math.Abs(movement.X) > 0.001f
             ? _session.MoveStarfallEnemyChecked(
