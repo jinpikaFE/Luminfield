@@ -68,7 +68,25 @@ public sealed partial class GameSession
             return CanOccupyWorldCell(cell);
         }
 
-        if (!NpcNavigationMap.IsWalkableGeometry(locationId, cell))
+        var geometryWalkable = locationId switch
+        {
+            PlayerLocationIds.Cottage => CottageLayout.IsWalkable(
+                cell,
+                Construction.IsCompleted
+            ),
+            PlayerLocationIds.Greenhouse =>
+                GreenhouseLayout.IsWalkable(cell),
+            PlayerLocationIds.StarfeatherCoop =>
+                StarfeatherCoopLayout.IsWalkable(cell),
+            PlayerLocationIds.MoonfleeceBarn =>
+                MoonfleeceBarnLayout.IsWalkable(cell),
+            PlayerLocationIds.CrystalGrottoSurvey =>
+                CrystalGrottoSurveyLayout.IsWalkable(cell),
+            PlayerLocationIds.StarfallRuinsTrial =>
+                StarfallRuinsTrialLayout.IsWalkable(cell),
+            _ => NpcNavigationMap.IsWalkableGeometry(locationId, cell)
+        };
+        if (!geometryWalkable)
         {
             return false;
         }

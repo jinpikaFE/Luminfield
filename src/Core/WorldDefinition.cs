@@ -42,6 +42,16 @@ public sealed record WorldPropPlacement(
 
 public static class WorldDefinition
 {
+    private static readonly GridPosition[] CardinalDirections =
+    [
+        new(1, 0),
+        new(-1, 0),
+        new(0, 1),
+        new(0, -1)
+    ];
+    private static readonly Lazy<HashSet<GridPosition>>
+        IsolatedWalkableCells = new(BuildIsolatedWalkableCells);
+
     public const int Width = 256;
     public const int Height = 192;
     public const int ChunkSize = 32;
@@ -577,6 +587,49 @@ public static class WorldDefinition
     }
 
     public static bool IsBlocked(GridPosition cell)
+    {
+        if (IsBaseBlocked(cell))
+        {
+            return true;
+        }
+
+        // Procedural water and prop noise can otherwise leave a one-cell
+        // pocket that is marked walkable despite having no cardinal entry.
+        // Treat that pocket as terrain so navigation and safe-position repair
+        // share one connected static world graph.
+        return IsolatedWalkableCells.Value.Contains(cell);
+    }
+
+    private static HashSet<GridPosition> BuildIsolatedWalkableCells()
+    {
+        var isolated = new HashSet<GridPosition>();
+        for (var y = 1; y < Height - 1; y++)
+        {
+            for (var x = 1; x < Width - 1; x++)
+            {
+                var cell = new GridPosition(x, y);
+                if (IsBaseBlocked(cell))
+                {
+                    continue;
+                }
+
+                var hasCardinalEntry = CardinalDirections.Any(direction =>
+                    !IsBaseBlocked(new GridPosition(
+                        cell.X + direction.X,
+                        cell.Y + direction.Y
+                    ))
+                );
+                if (!hasCardinalEntry)
+                {
+                    isolated.Add(cell);
+                }
+            }
+        }
+
+        return isolated;
+    }
+
+    private static bool IsBaseBlocked(GridPosition cell)
     {
         if (!IsInBounds(cell) || IsBoundaryCell(cell))
         {

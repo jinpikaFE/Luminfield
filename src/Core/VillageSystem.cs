@@ -354,28 +354,28 @@ public static class VillageCatalog
             MoonlitArchiveDoorCell,
             0,
             "village.landmark.archive",
-            [new GridArea(94, 45, 106, 57)]
+            [new GridArea(97, 53, 103, 57)]
         ),
         new(
             StarweaverTeaHouseLandmarkId,
             StarweaverTeaHouseDoorCell,
             1,
             "village.landmark.tea_house",
-            [new GridArea(151, 48, 165, 60)]
+            [new GridArea(155, 57, 161, 60)]
         ),
         new(
             MoonstoneWorkshopLandmarkId,
             MoonstoneWorkshopDoorCell,
             2,
             "village.landmark.workshop",
-            [new GridArea(91, 84, 104, 96)]
+            [new GridArea(95, 92, 101, 96)]
         ),
         new(
             "starlight_well",
             new GridPosition(112, 72),
             3,
             "village.landmark.well",
-            [new GridArea(108, 64, 116, 72)]
+            [new GridArea(110, 68, 114, 72)]
         ),
         new(
             VillageGateLandmarkId,
@@ -383,8 +383,9 @@ public static class VillageCatalog
             4,
             "world.landmark.village_gate",
             [
-                new GridArea(121, 120, 123, 127),
-                new GridArea(133, 120, 135, 127)
+                new GridArea(125, 126, 125, 127),
+                new GridArea(126, 123, 127, 127),
+                new GridArea(129, 123, 131, 127)
             ]
         ),
         new(
@@ -399,7 +400,7 @@ public static class VillageCatalog
             new GridPosition(146, 74),
             6,
             "village.landmark.bench",
-            [new GridArea(143, 74, 149, 74)]
+            [new GridArea(144, 74, 148, 74)]
         ),
         new(
             "glowflower_cart",
@@ -413,21 +414,21 @@ public static class VillageCatalog
             TwilightEmporiumDoorCell,
             8,
             "village.landmark.twilight_emporium",
-            [new GridArea(162, 86, 170, 96)]
+            [new GridArea(163, 92, 169, 96)]
         ),
         new(
             StarlightPostLandmarkId,
             StarlightPostDoorCell,
             9,
             "village.landmark.starlight_post",
-            [new GridArea(69, 45, 82, 57)]
+            [new GridArea(73, 53, 79, 57)]
         ),
         new(
             StarfallWatchLandmarkId,
             StarfallWatchDoorCell,
             10,
             "village.landmark.starfall_watch",
-            [new GridArea(69, 84, 82, 96)]
+            [new GridArea(74, 92, 78, 96)]
         )
     ];
 

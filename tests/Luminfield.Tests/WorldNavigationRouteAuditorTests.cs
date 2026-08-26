@@ -109,7 +109,7 @@ public sealed class WorldNavigationRouteAuditorTests
             StringComparer.Ordinal
         )
         {
-            ["route_home_to_lumen_village"] = new(159, 7, 18),
+            ["route_home_to_lumen_village"] = new(159, 5, 18),
             ["route_lumen_village_to_whispering_woods"] = new(174, 1, 18),
             ["route_lumen_village_to_starfall_meadow"] = new(64, 2, 17),
             ["route_lumen_village_to_crystal_vale"] = new(126, 3, 18),

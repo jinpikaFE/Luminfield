@@ -880,7 +880,18 @@ Use `--playtest-homestead-workshop-ready`,
 `--playtest-homestead-workshop-completed` to inspect the two-project panel,
 the blocked in-progress homestead entity, and the completed workshop with its
 true-object mint outline. With the Hand selected, the completed workshop opens
-the same plans at home and can commission an unfinished cottage upgrade.
+the same plans at home and can commission an unfinished cottage upgrade. The
+workshop collision no longer extends into the visible two-tile road on its west
+side, keeping that route continuously walkable between the garden and facility
+lane. Static world collision also closes procedurally generated one-cell
+pockets that have no cardinal entrance, so every walkable world cell belongs to
+the main component reached from the farm gate. Navigation occupancy now reads
+the actual layout geometry for every stable player location, including the
+cottage, greenhouse, animal buildings, grotto, ruins trial, and festivals. The
+village landmark collision now follows the scaled runtime sprites instead of
+their former atlas-scale footprints: the southern stone road remains open, the
+village gate keeps a walkable center opening, and only its visible pillars stop
+movement.
 
 Use `--playtest-greenhouse-ready`, `--playtest-greenhouse-in-progress`,
 `--playtest-greenhouse-exterior-completed`, `--playtest-greenhouse-completed`,
@@ -1085,6 +1096,19 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-26 14:25:00 CST — Realigned all eleven village landmark collision
+  footprints with their scaled runtime sprites, removed the transparent walls
+  around the southern gate and six public buildings, and preserved the gate's
+  visible pillars plus center passage. Added screenshot-time eastbound-road,
+  gate-column, gate-opening, and former-hidden-cell regression coverage.
+
+- 2026-08-26 10:21:43 CST — Narrowed the homestead workshop collision from an
+  oversized hidden rectangle to its stable interaction anchor, restored the
+  visible two-tile north-south passage beside the workshop, and closed 11
+  procedurally isolated one-cell terrain pockets. Focused regression coverage
+  now protects the facility corridor, full-world static connectivity, and
+  navigation geometry coverage for all stable player locations.
 
 - 2026-08-26 09:49:02 CST — Added three regional event packs, year-two festival
   replay rules and capacity-safe memorial rewards, plus four postgame Stellar

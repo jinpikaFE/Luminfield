@@ -1066,6 +1066,49 @@ public sealed class WorldDefinitionTests
     }
 
     [Fact]
+    public void EveryStaticWalkableCellBelongsToTheMainWorldComponent()
+    {
+        var start = new GridPosition(19, 30);
+        var walkable = Enumerable.Range(0, WorldDefinition.Height)
+            .SelectMany(y => Enumerable.Range(0, WorldDefinition.Width)
+                .Select(x => new GridPosition(x, y)))
+            .Where(cell => !WorldDefinition.IsBlocked(cell))
+            .ToHashSet();
+        var visited = new HashSet<GridPosition>();
+        var queue = new Queue<GridPosition>();
+        var directions = new[]
+        {
+            new GridPosition(1, 0),
+            new GridPosition(-1, 0),
+            new GridPosition(0, 1),
+            new GridPosition(0, -1)
+        };
+
+        Assert.Contains(start, walkable);
+        visited.Add(start);
+        queue.Enqueue(start);
+        while (queue.TryDequeue(out var current))
+        {
+            foreach (var direction in directions)
+            {
+                var next = new GridPosition(
+                    current.X + direction.X,
+                    current.Y + direction.Y
+                );
+                if (walkable.Contains(next) && visited.Add(next))
+                {
+                    queue.Enqueue(next);
+                }
+            }
+        }
+
+        Assert.True(
+            walkable.SetEquals(visited),
+            $"Unreachable walkable cells: {string.Join(", ", walkable.Except(visited).OrderBy(cell => cell.Y).ThenBy(cell => cell.X).Select(cell => $"({cell.X},{cell.Y})"))}"
+        );
+    }
+
+    [Fact]
     public void BeginnerProcessorsUseASpacedProcessingTerrace()
     {
         var machines = ProcessorCatalog.Machines.Values
@@ -3817,7 +3860,7 @@ public sealed class VillageSystemTests
         var invalidPrevious = new VillageNpcState(
             definition,
             PlayerLocationIds.World,
-            new GridPosition(94, 45),
+            new GridPosition(100, 55),
             NpcFacing.Down,
             entry.DialogueKey
         );
@@ -5676,7 +5719,7 @@ public sealed class VillageSystemTests
         Assert.False(WorldDefinition.IsBlocked(
             VillageCatalog.StarfallWatchDoorCell
         ));
-        Assert.True(WorldDefinition.IsBlocked(new GridPosition(70, 85)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(76, 94)));
         Assert.True(NpcNavigationMap.IsCriticalEntranceCell(
             PlayerLocationIds.World,
             VillageCatalog.StarfallWatchDoorCell
@@ -5738,7 +5781,8 @@ public sealed class VillageSystemTests
                 .Select(landmark => landmark.AtlasIndex)
                 .Order()
         );
-        Assert.True(WorldDefinition.IsBlocked(new GridPosition(94, 45)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(100, 55)));
+        Assert.False(WorldDefinition.IsBlocked(new GridPosition(94, 45)));
         Assert.False(WorldDefinition.IsBlocked(
             VillageCatalog.VillageGateCell
         ));
@@ -5764,6 +5808,36 @@ public sealed class VillageSystemTests
             Assert.Equal(WorldBiome.LumenVillage,
                 WorldDefinition.GetBiome(door));
         });
+
+        var villageGatePassage = Enumerable.Range(120, 8)
+            .Select(y => new GridPosition(
+                VillageCatalog.VillageGateCell.X,
+                y
+            ));
+        Assert.All(villageGatePassage, cell =>
+        {
+            Assert.False(WorldDefinition.IsBlocked(cell));
+            Assert.True(WorldDefinition.IsPath(cell));
+        });
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(126, 125)));
+        Assert.True(WorldDefinition.IsBlocked(new GridPosition(130, 125)));
+
+        var formerTransparentCollisionCells = new[]
+        {
+            new GridPosition(94, 45),
+            new GridPosition(151, 48),
+            new GridPosition(91, 84),
+            new GridPosition(108, 64),
+            new GridPosition(121, 120),
+            new GridPosition(135, 120),
+            new GridPosition(143, 74),
+            new GridPosition(162, 86),
+            new GridPosition(69, 45),
+            new GridPosition(69, 84)
+        };
+        Assert.All(formerTransparentCollisionCells, cell =>
+            Assert.False(WorldDefinition.IsBlocked(cell))
+        );
     }
 
     [Fact]
@@ -5850,6 +5924,13 @@ public sealed class VillageSystemTests
         Assert.True(WorldDefinition.IsBlocked(
             FarmLayout.HomesteadWorkbenchCell
         ));
+        var workshopPassageCells =
+            from x in Enumerable.Range(110, 2)
+            from y in Enumerable.Range(106, 15)
+            select new GridPosition(x, y);
+        Assert.All(workshopPassageCells, cell =>
+            Assert.False(WorldDefinition.IsBlocked(cell))
+        );
         Assert.True(WorldDefinition.IsBlocked(
             FarmLayout.HomesteadStarlightCell
         ));

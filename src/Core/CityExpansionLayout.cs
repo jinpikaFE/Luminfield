@@ -37,7 +37,7 @@ public static class CityExpansionLayout
 
     private static readonly IReadOnlyList<GridArea> CollisionAreas =
     [
-        new(109, 109, 115, 116),
+        new(112, 116, 112, 116),
         new(132, 108, 140, 116),
         new(152, 108, 160, 116),
         new(178, 108, 186, 116),
