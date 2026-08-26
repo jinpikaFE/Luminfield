@@ -47,12 +47,17 @@ public static class StellarResonanceCatalog
 
 public sealed class StellarResonanceSystem
 {
+    private readonly HashSet<string> _completedMilestoneIds =
+        new(StringComparer.Ordinal);
+
     public bool MainStoryCompleted { get; private set; }
     public int CompletionDay { get; private set; }
     public int Experience { get; private set; }
     public int Rank => RankForExperience(Experience);
     public int MaximumRank => StellarResonanceCatalog.RankThresholds.Count - 1;
     public bool IsMaximumRank => Rank >= MaximumRank;
+    public IReadOnlySet<string> CompletedMilestoneIds =>
+        _completedMilestoneIds;
     public int GatheringYieldBonus => Rank >= 1 ? 1 : 0;
     public float FishingCatchZoneBonus => Rank >= 2 ? 0.05f : 0f;
     public int MiningEnergyReduction => Rank >= 3 ? 1 : 0;
@@ -66,6 +71,7 @@ public sealed class StellarResonanceSystem
         MainStoryCompleted = false;
         CompletionDay = 0;
         Experience = 0;
+        _completedMilestoneIds.Clear();
         Changed?.Invoke();
     }
 
@@ -79,6 +85,10 @@ public sealed class StellarResonanceSystem
         MainStoryCompleted = normalized.MainStoryCompleted;
         CompletionDay = normalized.CompletionDay;
         Experience = normalized.Experience;
+        _completedMilestoneIds.Clear();
+        _completedMilestoneIds.UnionWith(
+            normalized.CompletedMilestoneIds
+        );
         Changed?.Invoke();
     }
 
@@ -152,11 +162,31 @@ public sealed class StellarResonanceSystem
         return applied;
     }
 
+    public int RecordPostgameMilestone(string milestoneId, int experience)
+    {
+        if (!MainStoryCompleted ||
+            string.IsNullOrWhiteSpace(milestoneId) ||
+            !_completedMilestoneIds.Add(milestoneId))
+        {
+            return 0;
+        }
+
+        var maximum = StellarResonanceCatalog.RankThresholds[^1];
+        var next = Math.Min(maximum, Experience + Math.Max(0, experience));
+        var applied = next - Experience;
+        Experience = next;
+        Changed?.Invoke();
+        return applied;
+    }
+
     public StellarResonanceSave Capture() => new()
     {
         MainStoryCompleted = MainStoryCompleted,
         CompletionDay = CompletionDay,
-        Experience = Experience
+        Experience = Experience,
+        CompletedMilestoneIds = _completedMilestoneIds
+            .Order(StringComparer.Ordinal)
+            .ToList()
     };
 
     public static StellarResonanceSave NormalizeSave(
@@ -183,7 +213,12 @@ public sealed class StellarResonanceSystem
                 save?.Experience ?? 0,
                 0,
                 StellarResonanceCatalog.RankThresholds[^1]
-            )
+            ),
+            CompletedMilestoneIds = (save?.CompletedMilestoneIds ?? [])
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToList()
         };
     }
 

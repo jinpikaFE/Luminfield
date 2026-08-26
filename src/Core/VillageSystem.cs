@@ -2915,6 +2915,15 @@ public sealed class VillageSystem
             {
                 dialogueKey = state.Definition.IntroductionKey;
             }
+            else
+            {
+                dialogueKey = FestivalCatalog.RelationshipDialogueKey(
+                    locationId,
+                    CalendarSystem.YearNumber(day),
+                    relationship.Points,
+                    dialogueKey
+                );
+            }
             result = ActionResult.Success(messageKey: "village.talked");
         }
 

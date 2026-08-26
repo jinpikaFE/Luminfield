@@ -2898,6 +2898,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     private readonly Button _fishingCollection;
     private readonly Button _fishingGear;
     private readonly Button _stellarResonance;
+    private readonly Button _festivalMemories;
     private readonly Button _language;
     private readonly Button _saveQuit;
 
@@ -2941,6 +2942,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _fishingCollection = ThemeFactory.Button("");
         _fishingGear = ThemeFactory.Button("");
         _stellarResonance = ThemeFactory.Button("");
+        _festivalMemories = ThemeFactory.Button("");
         _language = ThemeFactory.Button("");
         _saveQuit = ThemeFactory.Button("");
         column.AddChild(_title);
@@ -2952,6 +2954,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         column.AddChild(_fishingCollection);
         column.AddChild(_fishingGear);
         column.AddChild(_stellarResonance);
+        column.AddChild(_festivalMemories);
         column.AddChild(_language);
         column.AddChild(_saveQuit);
 
@@ -2966,6 +2969,8 @@ public sealed partial class PauseOverlay : FullScreenUi
         _fishingGear.Pressed += () => FishingGearRequested?.Invoke();
         _stellarResonance.Pressed += () =>
             StellarResonanceRequested?.Invoke();
+        _festivalMemories.Pressed += () =>
+            FestivalMemoriesRequested?.Invoke();
         _language.Pressed += () => LanguageRequested?.Invoke();
         _saveQuit.Pressed += () => SaveQuitRequested?.Invoke();
         RefreshText();
@@ -2980,6 +2985,7 @@ public sealed partial class PauseOverlay : FullScreenUi
     public event Action? FishingCollectionRequested;
     public event Action? FishingGearRequested;
     public event Action? StellarResonanceRequested;
+    public event Action? FestivalMemoriesRequested;
     public event Action? LanguageRequested;
     public event Action? SaveQuitRequested;
 
@@ -3001,6 +3007,7 @@ public sealed partial class PauseOverlay : FullScreenUi
         _fishingCollection.Text = _locale.Tr("menu.fishing_collection");
         _fishingGear.Text = _locale.Tr("menu.fishing_gear");
         _stellarResonance.Text = _locale.Tr("menu.stellar_resonance");
+        _festivalMemories.Text = _locale.Tr("menu.festival_memories");
         _language.Text = _locale.Tr("menu.settings");
         _saveQuit.Text = _locale.Tr("menu.save_quit");
     }

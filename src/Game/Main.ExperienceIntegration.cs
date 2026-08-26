@@ -189,6 +189,11 @@ public sealed partial class Main : Node
                 OpenStellarResonance,
                 () => _stellarResonanceOverlay is not null
             );
+        _pauseOverlay.FestivalMemoriesRequested += () =>
+            OpenPauseChild(
+                OpenFestivalMemories,
+                () => _festivalMemoriesOverlay is not null
+            );
         _pauseOverlay.LanguageRequested += () =>
             OpenPauseChild(
                 OpenSettings,

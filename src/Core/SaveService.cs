@@ -634,6 +634,10 @@ public sealed class SaveService
             save.StarfallWatch,
             save.Day
         );
+        save.RegionalEvents = RegionalEventSystem.NormalizeSave(
+            save.RegionalEvents,
+            save.Day
+        );
         var starlightMilestones = MiningSystem.CompletedMilestoneIds(
                 save.Mining
             )
@@ -723,18 +727,20 @@ public sealed class SaveService
         save.Construction = ConstructionSystem.NormalizeSave(
             save.Construction
         );
+        var savedMainStoryCompleted =
+            save.StellarResonance?.MainStoryCompleted == true;
         var starGateCompleted = save.Construction.Projects.Any(project =>
             project.ProjectId ==
                 ConstructionCatalog.SixfoldStarGateProjectId &&
             project.Completed
-        );
+        ) || savedMainStoryCompleted;
         save.StarGate = StarGateSystem.NormalizeSave(
             save.StarGate,
             starGateCompleted
         );
         save.StellarResonance = StellarResonanceSystem.NormalizeSave(
             save.StellarResonance,
-            save.StarGate.Activated,
+            save.StarGate.Activated || savedMainStoryCompleted,
             save.Day
         );
         var storyPlayerCell = new GridPosition(

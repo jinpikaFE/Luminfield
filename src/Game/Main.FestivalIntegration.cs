@@ -4,6 +4,38 @@ namespace Luminfield.Game;
 
 public sealed partial class Main
 {
+    private void OpenFestivalMemories()
+    {
+        if (_festivalMemoriesOverlay is not null)
+        {
+            return;
+        }
+
+        SetWorldControls(false);
+        _festivalMemoriesOverlay = new FestivalMemoriesOverlay(
+            _theme,
+            _session,
+            _locale
+        );
+        _festivalMemoriesOverlay.CloseRequested += CloseFestivalMemories;
+        _uiLayer.AddChild(_festivalMemoriesOverlay);
+    }
+
+    private void CloseFestivalMemories()
+    {
+        FreeUi(_festivalMemoriesOverlay);
+        _festivalMemoriesOverlay = null;
+        SaveNow(false);
+        if (RestorePauseAfterChild())
+        {
+            return;
+        }
+        if (CanRestoreWorldControls)
+        {
+            SetWorldControls(true);
+        }
+    }
+
     private void TryEnterStarharvestMarket()
     {
         var result = _session.TryEnterStarharvestMarket(

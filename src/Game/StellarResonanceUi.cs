@@ -11,7 +11,9 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
     private readonly Label _story;
     private readonly Label _rank;
     private readonly Label _effect;
+    private readonly Label _postgameObjectives;
     private readonly Label _notice;
+    private readonly HBoxContainer _specializationRow;
     private readonly Button _groveWarden;
     private readonly Button _starseeker;
     private readonly Button _close;
@@ -33,7 +35,7 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
 
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(470, 330)
+            CustomMinimumSize = new Vector2(470, 350)
         };
         panel.AddThemeStyleboxOverride(
             "panel",
@@ -65,18 +67,18 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
         }
         column.AddChild(skills);
 
-        var specializationRow = new HBoxContainer
+        _specializationRow = new HBoxContainer
         {
             Alignment = BoxContainer.AlignmentMode.Center
         };
-        specializationRow.AddThemeConstantOverride("separation", 8);
+        _specializationRow.AddThemeConstantOverride("separation", 8);
         _groveWarden = ThemeFactory.Button("");
         _starseeker = ThemeFactory.Button("");
         _groveWarden.CustomMinimumSize = new Vector2(194, 24);
         _starseeker.CustomMinimumSize = new Vector2(194, 24);
-        specializationRow.AddChild(_groveWarden);
-        specializationRow.AddChild(_starseeker);
-        column.AddChild(specializationRow);
+        _specializationRow.AddChild(_groveWarden);
+        _specializationRow.AddChild(_starseeker);
+        column.AddChild(_specializationRow);
 
         _story = ThemeFactory.Label(size: 10, color: ThemeFactory.Gold);
         _story.HorizontalAlignment = HorizontalAlignment.Center;
@@ -93,6 +95,14 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
         _effect.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _effect.CustomMinimumSize = new Vector2(420, 32);
         column.AddChild(_effect);
+
+        _postgameObjectives = ThemeFactory.Label(
+            size: 8,
+            color: ThemeFactory.Ink
+        );
+        _postgameObjectives.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _postgameObjectives.CustomMinimumSize = new Vector2(420, 54);
+        column.AddChild(_postgameObjectives);
 
         _notice = ThemeFactory.Label(size: 9, color: ThemeFactory.Gold);
         _notice.HorizontalAlignment = HorizontalAlignment.Center;
@@ -173,6 +183,7 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
             : _locale.Tr(readiness.MessageKey);
 
         var resonance = _session.StellarResonance;
+        _specializationRow.Visible = !resonance.MainStoryCompleted;
         _rank.Text = _locale.Tr(
             "stellar.panel.rank",
             resonance.Rank,
@@ -181,6 +192,20 @@ public sealed partial class StellarResonanceOverlay : FullScreenUi
         );
         _effect.Text = _locale.Tr(
             $"stellar.rank.{resonance.Rank}.description"
+        );
+        var objectives = _session.PostgameObjectives();
+        _postgameObjectives.Visible = objectives.Count > 0;
+        _postgameObjectives.Text = string.Join(
+            "\n",
+            objectives.Select(objective => _locale.Tr(
+                "postgame.objective.row",
+                _locale.Tr(objective.NameKey),
+                objective.Progress,
+                objective.Target,
+                _locale.Tr(objective.Completed
+                    ? "postgame.objective.completed"
+                    : "postgame.objective.active")
+            ))
         );
         _close.Text = _locale.Tr("menu.back");
         if (!keepNotice)

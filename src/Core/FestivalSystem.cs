@@ -71,6 +71,19 @@ public sealed record FestivalPurchaseCheck(
     FestivalOfferDefinition? Offer
 );
 
+public sealed record FestivalReplayRuleDefinition(
+    string Id,
+    string NameKey,
+    string DescriptionKey
+);
+
+public sealed record FestivalRewardChoiceDefinition(
+    string Id,
+    string FestivalId,
+    string ItemId,
+    int Count
+);
+
 public sealed record FestivalPlantingStartCheck(
     bool CanStart,
     string FailureKey,
@@ -94,6 +107,10 @@ public sealed record FestivalPlantingResolution(
 
 public static class FestivalCatalog
 {
+    public const string ClassicRuleId = "festival_rule_classic";
+    public const string SeasonalFocusRuleId =
+        "festival_rule_seasonal_focus";
+    public const string CraftFocusRuleId = "festival_rule_craft_focus";
     public const string StarharvestMarketFestivalId =
         "festival_starharvest_market";
     public const string StarharvestShowcaseActivityId =
@@ -208,6 +225,23 @@ public static class FestivalCatalog
     public const string FenceBundleOfferId =
         "starharvest_offer_fence_bundle";
 
+    public const string StarharvestSeedRewardId =
+        "festival_reward_starharvest_seeds";
+    public const string StarharvestSoilRewardId =
+        "festival_reward_starharvest_soil";
+    public const string GleamriseDawnRewardId =
+        "festival_reward_gleamrise_dawn";
+    public const string GleamriseGlimmerRewardId =
+        "festival_reward_gleamrise_glimmer";
+    public const string LongnightTorchRewardId =
+        "festival_reward_longnight_torches";
+    public const string LongnightFodderRewardId =
+        "festival_reward_longnight_fodder";
+    public const string FireflyLotusRewardId =
+        "festival_reward_firefly_lotus";
+    public const string FireflyPathRewardId =
+        "festival_reward_firefly_paths";
+
     public static readonly FestivalDefinition StarharvestMarket = new(
         StarharvestMarketFestivalId,
         PlayerLocationIds.StarharvestMarket,
@@ -258,6 +292,194 @@ public static class FestivalCatalog
             [LongnightLanternFeast.Id] = LongnightLanternFeast,
             [FireflyTide.Id] = FireflyTide
         };
+
+    public static readonly IReadOnlyDictionary<string,
+        FestivalReplayRuleDefinition> ReplayRules =
+            new Dictionary<string, FestivalReplayRuleDefinition>(
+                StringComparer.Ordinal
+            )
+            {
+                [ClassicRuleId] = new(
+                    ClassicRuleId,
+                    "festival.replay.rule.classic.name",
+                    "festival.replay.rule.classic.description"
+                ),
+                [SeasonalFocusRuleId] = new(
+                    SeasonalFocusRuleId,
+                    "festival.replay.rule.seasonal.name",
+                    "festival.replay.rule.seasonal.description"
+                ),
+                [CraftFocusRuleId] = new(
+                    CraftFocusRuleId,
+                    "festival.replay.rule.craft.name",
+                    "festival.replay.rule.craft.description"
+                )
+            };
+
+    public static readonly IReadOnlyDictionary<string,
+        FestivalRewardChoiceDefinition> RewardChoices =
+            new Dictionary<string, FestivalRewardChoiceDefinition>(
+                StringComparer.Ordinal
+            )
+            {
+                [StarharvestSeedRewardId] = new(
+                    StarharvestSeedRewardId,
+                    StarharvestMarketFestivalId,
+                    DataCatalog.AuricShootSeedId,
+                    4
+                ),
+                [StarharvestSoilRewardId] = new(
+                    StarharvestSoilRewardId,
+                    StarharvestMarketFestivalId,
+                    DataCatalog.StarsoilFertilizerId,
+                    3
+                ),
+                [GleamriseDawnRewardId] = new(
+                    GleamriseDawnRewardId,
+                    GleamrisePlantingFestivalId,
+                    DataCatalog.DawnlaceSeedId,
+                    4
+                ),
+                [GleamriseGlimmerRewardId] = new(
+                    GleamriseGlimmerRewardId,
+                    GleamrisePlantingFestivalId,
+                    DataCatalog.GlimmerpodSeedId,
+                    4
+                ),
+                [LongnightTorchRewardId] = new(
+                    LongnightTorchRewardId,
+                    LongnightLanternFeastFestivalId,
+                    DataCatalog.StarlightTorchId,
+                    3
+                ),
+                [LongnightFodderRewardId] = new(
+                    LongnightFodderRewardId,
+                    LongnightLanternFeastFestivalId,
+                    DataCatalog.MeadowFodderId,
+                    8
+                ),
+                [FireflyLotusRewardId] = new(
+                    FireflyLotusRewardId,
+                    FireflyTideFestivalId,
+                    DataCatalog.RainveilLotusSeedId,
+                    4
+                ),
+                [FireflyPathRewardId] = new(
+                    FireflyPathRewardId,
+                    FireflyTideFestivalId,
+                    DataCatalog.MoonstonePathId,
+                    6
+                )
+            };
+
+    public static FestivalReplayRuleDefinition ReplayRuleFor(
+        string festivalId,
+        int year
+    )
+    {
+        if (!Festivals.ContainsKey(festivalId) || year <= 1)
+        {
+            return ReplayRules[ClassicRuleId];
+        }
+
+        var ruleId = year % 2 == 0
+            ? SeasonalFocusRuleId
+            : CraftFocusRuleId;
+        return ReplayRules[ruleId];
+    }
+
+    public static IReadOnlyList<FestivalRewardChoiceDefinition>
+        RewardChoicesFor(string festivalId) => RewardChoices.Values
+            .Where(choice => choice.FestivalId == festivalId)
+            .OrderBy(choice => choice.Id, StringComparer.Ordinal)
+            .ToArray();
+
+    public static string RelationshipDialogueKey(
+        string locationId,
+        int year,
+        int relationshipPoints,
+        string fallbackKey
+    )
+    {
+        var festival = FestivalAtLocation(locationId);
+        if (festival is null || year <= 1)
+        {
+            return fallbackKey;
+        }
+
+        var prefix = festival.Id switch
+        {
+            GleamrisePlantingFestivalId => "festival.gleamrise.dialogue",
+            LongnightLanternFeastFestivalId => "festival.longnight.dialogue",
+            FireflyTideFestivalId => "festival.firefly.dialogue",
+            _ => "festival.starharvest.dialogue"
+        };
+        if (relationshipPoints >= VillageSystem.KindredLightThreshold)
+        {
+            return $"{prefix}.relationship.kindred";
+        }
+        if (relationshipPoints >= VillageSystem.TrustedFriendThreshold)
+        {
+            return $"{prefix}.relationship.trusted";
+        }
+
+        return $"{prefix}.returning";
+    }
+
+    public static int ReplayScoreBonus(
+        string festivalId,
+        int year,
+        IReadOnlyList<string> itemIds
+    )
+    {
+        var rule = ReplayRuleFor(festivalId, year);
+        if (rule.Id == ClassicRuleId || itemIds.Count == 0)
+        {
+            return 0;
+        }
+
+        if (rule.Id == SeasonalFocusRuleId)
+        {
+            return SeasonalFocusBonus(festivalId, itemIds);
+        }
+
+        return CraftFocusBonus(festivalId, itemIds);
+    }
+
+    private static int SeasonalFocusBonus(
+        string festivalId,
+        IReadOnlyList<string> itemIds
+    ) => festivalId switch
+    {
+        StarharvestMarketFestivalId => itemIds
+            .Select(DataCatalog.BaseItemId)
+            .All(DataCatalog.StarharvestCropIds.Contains) ? 4 : 0,
+        GleamrisePlantingFestivalId => itemIds
+            .Distinct(StringComparer.Ordinal)
+            .Count() >= 3 ? 4 : 0,
+        LongnightLanternFeastFestivalId => itemIds.Count(itemId =>
+            LongnightDishScores.GetValueOrDefault(itemId) >= 9) * 2,
+        FireflyTideFestivalId => itemIds.Count(FireflyWeatherFishIds.Contains),
+        _ => 0
+    };
+
+    private static int CraftFocusBonus(
+        string festivalId,
+        IReadOnlyList<string> itemIds
+    ) => festivalId switch
+    {
+        StarharvestMarketFestivalId => itemIds.Any(ArtisanItemIds.Contains)
+            ? 4
+            : 0,
+        GleamrisePlantingFestivalId => itemIds
+            .Distinct(StringComparer.Ordinal)
+            .Count() == 3 ? 4 : 0,
+        LongnightLanternFeastFestivalId => itemIds
+            .Distinct(StringComparer.Ordinal)
+            .Count() == 2 ? 3 : 0,
+        FireflyTideFestivalId => itemIds.Count(FireflySeasonalFishIds.Contains),
+        _ => 0
+    };
 
     public static readonly IReadOnlyList<FestivalAwardDefinition> Awards =
     [
@@ -902,6 +1124,83 @@ public sealed class FestivalSystem
     public int CurrencyBalance(string currencyId) =>
         _currencyBalances.GetValueOrDefault(currencyId);
 
+    public ActionResult CheckRewardChoice(
+        string festivalId,
+        int year,
+        string choiceId,
+        Inventory inventory
+    )
+    {
+        if (!_results.TryGetValue(
+                (festivalId, Math.Max(1, year)),
+                out var result
+            ))
+        {
+            return ActionResult.Fail("festival.replay.reward.no_result");
+        }
+        if (result.RewardClaimed)
+        {
+            return ActionResult.Fail("festival.replay.reward.already_claimed");
+        }
+        if (!FestivalCatalog.RewardChoices.TryGetValue(
+                choiceId,
+                out var choice
+            ) || choice.FestivalId != festivalId)
+        {
+            return ActionResult.Fail("festival.replay.reward.unknown");
+        }
+        if (!inventory.CanAdd(choice.ItemId, choice.Count))
+        {
+            return ActionResult.Fail("notice.inventory_full");
+        }
+
+        return ActionResult.Grant(
+            choice.ItemId,
+            choice.Count,
+            0,
+            "festival.replay.reward.ready"
+        );
+    }
+
+    public ActionResult ClaimRewardChoice(
+        string festivalId,
+        int year,
+        string choiceId,
+        Inventory inventory
+    )
+    {
+        var check = CheckRewardChoice(
+            festivalId,
+            year,
+            choiceId,
+            inventory
+        );
+        if (!check.Succeeded ||
+            !FestivalCatalog.RewardChoices.TryGetValue(
+                choiceId,
+                out var choice
+            ))
+        {
+            return check;
+        }
+        if (!inventory.Add(choice.ItemId, choice.Count))
+        {
+            return ActionResult.Fail("notice.inventory_full");
+        }
+
+        var key = (festivalId, Math.Max(1, year));
+        var result = _results[key];
+        result.RewardChoiceId = choice.Id;
+        result.RewardClaimed = true;
+        Changed?.Invoke();
+        return ActionResult.Grant(
+            choice.ItemId,
+            choice.Count,
+            0,
+            "festival.replay.reward.claimed"
+        );
+    }
+
     public FestivalSubmissionPreview CheckSubmission(
         string festivalId,
         int year,
@@ -948,7 +1247,8 @@ public sealed class FestivalSystem
             return Invalid("festival.submission.items_changed", items);
         }
 
-        var score = FestivalCatalog.Score(items);
+        var score = FestivalCatalog.Score(items) +
+            FestivalCatalog.ReplayScoreBonus(festivalId, year, items);
         var award = FestivalCatalog.AwardForScore(score);
         return new FestivalSubmissionPreview(
             true,
@@ -993,7 +1293,11 @@ public sealed class FestivalSystem
             ItemIds = preview.ItemIds.ToList(),
             Score = preview.Score,
             AwardId = preview.AwardId,
-            AuctionCoins = preview.AuctionCoins
+            AuctionCoins = preview.AuctionCoins,
+            RuleVariantId = FestivalCatalog.ReplayRuleFor(
+                festivalId,
+                year
+            ).Id
         };
         _results[(result.FestivalId, result.Year)] = result;
         Scrip += preview.ScripReward;
@@ -1098,6 +1402,11 @@ public sealed class FestivalSystem
 
         var score = dishes.Sum(itemId =>
             FestivalCatalog.LongnightDishScores[itemId]);
+        score += FestivalCatalog.ReplayScoreBonus(
+            FestivalCatalog.LongnightLanternFeastFestivalId,
+            normalizedYear,
+            dishes
+        );
         var award = FestivalCatalog.AwardForScore(
             FestivalCatalog.LongnightLanternFeastFestivalId,
             score
@@ -1164,7 +1473,11 @@ public sealed class FestivalSystem
             AuctionCoins = 0,
             GiftItemId = preview.Exchange.GiftItemId,
             GiftRewardItemId = preview.Exchange.RewardItemId,
-            RitualId = FestivalCatalog.LongnightStarlightRiteId
+            RitualId = FestivalCatalog.LongnightStarlightRiteId,
+            RuleVariantId = FestivalCatalog.ReplayRuleFor(
+                FestivalCatalog.LongnightLanternFeastFestivalId,
+                year
+            ).Id
         };
         _results[(result.FestivalId, result.Year)] = result;
         _currencyBalances[FestivalCatalog.LongnightLanternKnotId] =
@@ -1297,7 +1610,12 @@ public sealed class FestivalSystem
             );
         }
 
-        var score = FestivalCatalog.FireflyTideScore(fish);
+        var score = FestivalCatalog.FireflyTideScore(fish) +
+            FestivalCatalog.ReplayScoreBonus(
+                FestivalCatalog.FireflyTideFestivalId,
+                year,
+                fish
+            );
         var award = FestivalCatalog.AwardForScore(
             FestivalCatalog.FireflyTideFestivalId,
             score
@@ -1354,7 +1672,11 @@ public sealed class FestivalSystem
             ItemIds = preview.ItemIds.ToList(),
             Score = preview.Score,
             AwardId = preview.AwardId,
-            AuctionCoins = 0
+            AuctionCoins = 0,
+            RuleVariantId = FestivalCatalog.ReplayRuleFor(
+                FestivalCatalog.FireflyTideFestivalId,
+                year
+            ).Id
         };
         _results[(result.FestivalId, result.Year)] = result;
         _currencyBalances[FestivalCatalog.FireflyGlowmarkId] =
@@ -1991,14 +2313,49 @@ public sealed class FestivalSystem
                     .ToList();
             }
 
-            var score = isGleamrise
-                ? Math.Clamp(saved.Score, 0, 30)
-                : isLongnight
-                    ? itemIds.Sum(id =>
-                        FestivalCatalog.LongnightDishScores[id])
-                    : isFirefly
-                        ? FestivalCatalog.FireflyTideScore(itemIds)
-                        : Math.Max(0, saved.Score);
+            var ruleVariantId = FestivalCatalog.ReplayRules.ContainsKey(
+                saved.RuleVariantId
+            )
+                ? saved.RuleVariantId
+                : FestivalCatalog.ClassicRuleId;
+            var score = Math.Max(0, saved.Score);
+            if (isGleamrise)
+            {
+                score = Math.Clamp(saved.Score, 0, 34);
+            }
+            else if (isLongnight)
+            {
+                score = itemIds.Sum(id =>
+                    FestivalCatalog.LongnightDishScores[id]);
+                if (ruleVariantId != FestivalCatalog.ClassicRuleId)
+                {
+                    score += FestivalCatalog.ReplayScoreBonus(
+                        saved.FestivalId,
+                        saved.Year,
+                        itemIds
+                    );
+                }
+            }
+            else if (isFirefly)
+            {
+                score = FestivalCatalog.FireflyTideScore(itemIds);
+                if (ruleVariantId != FestivalCatalog.ClassicRuleId)
+                {
+                    score += FestivalCatalog.ReplayScoreBonus(
+                        saved.FestivalId,
+                        saved.Year,
+                        itemIds
+                    );
+                }
+            }
+            var rewardChoiceId = string.Empty;
+            if (FestivalCatalog.RewardChoices.TryGetValue(
+                    saved.RewardChoiceId,
+                    out var savedChoice
+                ) && savedChoice.FestivalId == saved.FestivalId)
+            {
+                rewardChoiceId = savedChoice.Id;
+            }
             var validAwards = FestivalCatalog.AwardsFor(saved.FestivalId);
             var awardId = !isLongnight && validAwards.Any(award =>
                 award.Id == saved.AwardId)
@@ -2022,7 +2379,11 @@ public sealed class FestivalSystem
                 GiftRewardItemId = giftExchange?.RewardItemId ?? string.Empty,
                 RitualId = isLongnight
                     ? FestivalCatalog.LongnightStarlightRiteId
-                    : string.Empty
+                    : string.Empty,
+                RuleVariantId = ruleVariantId,
+                RewardChoiceId = rewardChoiceId,
+                RewardClaimed = saved.RewardClaimed &&
+                    !string.IsNullOrEmpty(rewardChoiceId)
             };
             var key = (normalized.FestivalId, normalized.Year);
             if (!results.TryGetValue(key, out var existing) ||
@@ -2163,6 +2524,13 @@ public sealed class FestivalSystem
             orderedPlantings,
             elapsed
         );
+        score += FestivalCatalog.ReplayScoreBonus(
+            FestivalCatalog.GleamrisePlantingFestivalId,
+            attempt.Year,
+            orderedPlantings
+                .Select(planting => planting.SeedItemId)
+                .ToArray()
+        );
         var award = FestivalCatalog.AwardForScore(
             FestivalCatalog.GleamrisePlantingFestivalId,
             score
@@ -2177,7 +2545,11 @@ public sealed class FestivalSystem
             Score = score,
             AwardId = award.Id,
             AuctionCoins = 0,
-            Plantings = orderedPlantings
+            Plantings = orderedPlantings,
+            RuleVariantId = FestivalCatalog.ReplayRuleFor(
+                FestivalCatalog.GleamrisePlantingFestivalId,
+                attempt.Year
+            ).Id
         };
         var key = (result.FestivalId, result.Year);
         _results[key] = result;
@@ -2304,7 +2676,10 @@ public sealed class FestivalSystem
             Plantings = value.Plantings.Select(Clone).ToList(),
             GiftItemId = value.GiftItemId,
             GiftRewardItemId = value.GiftRewardItemId,
-            RitualId = value.RitualId
+            RitualId = value.RitualId,
+            RuleVariantId = value.RuleVariantId,
+            RewardChoiceId = value.RewardChoiceId,
+            RewardClaimed = value.RewardClaimed
         };
 
     private static FestivalPlantingAttemptSave Clone(

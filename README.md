@@ -79,6 +79,26 @@ The top-right minimap reveals chunks as the player enters them, keeps
 undiscovered territory hidden, marks discovered landmarks, and stores the
 exploration state in the regular save file.
 
+Long-term content now adds regional event packs without changing the map or
+reward economy. The woods/meadow, wetlands/crystal, and village/ruins packs
+listen to the player's real region visits: environment echoes can repeat,
+relationship narrative echoes are one-time scenes, and rare postgame echoes
+unlock only after the main story. These events do not grant ordinary items,
+coins, or festival currency; only rare postgame echoes award Stellar Resonance
+XP.
+
+The pause menu now includes a Festival Memories panel for reviewing each
+festival's yearly result, the classic/seasonal/craft replay rule set, year-two
+bonus scoring, and the annual memorial reward choice. Reward claims still go
+through the same backpack-capacity-safe inventory path used by the live
+festival stalls.
+
+After the main story, the Stellar Resonance panel also tracks four postgame
+objectives: annual festivals, rare regional echoes, postgame relationship
+revisits, and Codex discoveries. Objective milestones record resonance XP
+without resetting the save or duplicating the existing collection, relationship,
+festival, or regional systems.
+
 ## Central Lumen City and sixteen villagers
 
 - The central city now occupies a 128×96-cell district. The Moonlit Archive,
@@ -1065,6 +1085,13 @@ signing and notarization are intentionally outside this vertical slice.
 Key visual acceptance captures are kept under `artifacts/screenshots/`.
 
 ## Change log
+
+- 2026-08-26 09:49:02 CST — Added three regional event packs, year-two festival
+  replay rules and capacity-safe memorial rewards, plus four postgame Stellar
+  Resonance objectives. Regional and milestone state now persists additively,
+  the pause menu can review historic festival results, and bilingual text and
+  focused compatibility tests cover the new content without resuming the
+  deferred free-building system.
 
 - 2026-08-25 12:11:03 CST — Closed the final `LOC-WATCH` acceptance gaps.
   The Seal Route Table target preview now uses the same opening-hours rule as

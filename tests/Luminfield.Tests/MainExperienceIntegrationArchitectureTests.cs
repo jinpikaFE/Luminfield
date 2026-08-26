@@ -35,6 +35,7 @@ public sealed class MainExperienceIntegrationArchitectureTests
         "_journeyRecapOverlay is not null",
         "_starGateOverlay is not null",
         "_stellarResonanceOverlay is not null",
+        "_festivalMemoriesOverlay is not null",
         "_mainStoryEndingOverlay is not null",
         "_compendiumOverlay is not null",
         "_festivalShowcaseOverlay is not null",

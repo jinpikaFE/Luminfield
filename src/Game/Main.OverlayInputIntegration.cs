@@ -65,6 +65,14 @@ public sealed partial class Main : Node
         }
 
         if (overlayCancelPressed &&
+            _festivalMemoriesOverlay is not null)
+        {
+            CloseFestivalMemories();
+            GetViewport().SetInputAsHandled();
+            return true;
+        }
+
+        if (overlayCancelPressed &&
             _mainStoryEndingOverlay is not null)
         {
             GetViewport().SetInputAsHandled();

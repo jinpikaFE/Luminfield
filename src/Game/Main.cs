@@ -66,6 +66,7 @@ public sealed partial class Main : Node
     private GleamriseSeasonOverlay? _gleamriseSeasonOverlay;
     private FestivalShowcaseOverlay? _festivalShowcaseOverlay;
     private FestivalShopOverlay? _festivalShopOverlay;
+    private FestivalMemoriesOverlay? _festivalMemoriesOverlay;
     private GleamrisePlantingOverlay? _gleamrisePlantingOverlay;
     private GleamriseSeedExchangeOverlay? _gleamriseSeedExchangeOverlay;
     private LongnightLanternFeastOverlay? _longnightFeastOverlay;
@@ -403,6 +404,7 @@ public sealed partial class Main : Node
         _farmingSpecializationOverlay is not null ||
         _festivalShowcaseOverlay is not null ||
         _festivalShopOverlay is not null ||
+        _festivalMemoriesOverlay is not null ||
         _gleamrisePlantingOverlay is not null ||
         _gleamriseSeedExchangeOverlay is not null ||
         _longnightFeastOverlay is not null ||
@@ -451,6 +453,7 @@ public sealed partial class Main : Node
         _farmingSpecializationOverlay is null &&
         _festivalShowcaseOverlay is null &&
         _festivalShopOverlay is null &&
+        _festivalMemoriesOverlay is null &&
         _gleamrisePlantingOverlay is null &&
         _gleamriseSeedExchangeOverlay is null &&
         _longnightFeastOverlay is null &&
@@ -480,6 +483,7 @@ public sealed partial class Main : Node
         FreeUi(_dialogueOverlay);
         _dialogueOverlay = null;
         _session.StarlightStory.CancelActive();
+        _session.RegionalEvents.CancelActive();
         FreeUi(_completionOverlay);
         _completionOverlay = null;
         FreeUi(_shopOverlay);
@@ -536,6 +540,8 @@ public sealed partial class Main : Node
         _festivalShowcaseOverlay = null;
         FreeUi(_festivalShopOverlay);
         _festivalShopOverlay = null;
+        FreeUi(_festivalMemoriesOverlay);
+        _festivalMemoriesOverlay = null;
         FreeUi(_gleamrisePlantingOverlay);
         _gleamrisePlantingOverlay = null;
         FreeUi(_gleamriseSeedExchangeOverlay);
@@ -1671,7 +1677,38 @@ public sealed partial class Main : Node
         if (story is not null)
         {
             ShowStarlightStory(story);
+            return;
         }
+
+        var regionalEvent = _session.BeginRegionalEvent(
+            WorldDefinition.GetBiome(_session.PlayerCell)
+        );
+        if (regionalEvent is not null)
+        {
+            ShowRegionalEvent(regionalEvent);
+        }
+    }
+
+    private void ShowRegionalEvent(RegionalEventDialogue regionalEvent)
+    {
+        ShowDialoguePages(
+            regionalEvent.SpeakerKey,
+            regionalEvent.DialogueKeys,
+            () =>
+            {
+                var result = _session.CompleteRegionalEvent(
+                    regionalEvent.EventId
+                );
+                if (!result.Succeeded)
+                {
+                    _hud?.ShowNotice(result.MessageKey);
+                    return;
+                }
+
+                SaveNow(false);
+            },
+            status: _locale.Tr(regionalEvent.StatusKey)
+        );
     }
 
     private static string RelationshipTierKey(

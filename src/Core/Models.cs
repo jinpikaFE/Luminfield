@@ -216,6 +216,7 @@ public sealed class StellarResonanceSave
     public bool MainStoryCompleted { get; set; }
     public int CompletionDay { get; set; }
     public int Experience { get; set; }
+    public List<string> CompletedMilestoneIds { get; set; } = [];
 }
 
 public sealed class ForageSpawnSave
@@ -526,6 +527,9 @@ public sealed class FestivalYearResultSave
     public string GiftItemId { get; set; } = string.Empty;
     public string GiftRewardItemId { get; set; } = string.Empty;
     public string RitualId { get; set; } = string.Empty;
+    public string RuleVariantId { get; set; } = string.Empty;
+    public string RewardChoiceId { get; set; } = string.Empty;
+    public bool RewardClaimed { get; set; }
 }
 
 public sealed class FestivalPlotPlantingSave
@@ -556,6 +560,18 @@ public sealed class FestivalSave
     public List<FestivalYearResultSave> Results { get; set; } = [];
     public List<FestivalPlantingAttemptSave> PlantingAttempts { get; set; } = [];
     public List<FestivalCurrencySave> CurrencyBalances { get; set; } = [];
+}
+
+public sealed class RegionalEventSeenSave
+{
+    public string EventId { get; set; } = string.Empty;
+    public int Day { get; set; }
+}
+
+public sealed class RegionalEventSave
+{
+    public List<string> CompletedEventIds { get; set; } = [];
+    public List<RegionalEventSeenSave> LastSeenDays { get; set; } = [];
 }
 
 public sealed class CollectionSave
@@ -661,6 +677,7 @@ public sealed class GameSaveV1
     public TeaHouseSave TeaHouse { get; set; } = new();
     public PostDeliverySave PostDelivery { get; set; } = new();
     public StarfallWatchSave StarfallWatch { get; set; } = new();
+    public RegionalEventSave RegionalEvents { get; set; } = new();
     public StarGateSave StarGate { get; set; } = new();
     public StellarResonanceSave StellarResonance { get; set; } = new();
 }

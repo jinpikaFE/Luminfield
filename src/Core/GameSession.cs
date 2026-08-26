@@ -56,6 +56,7 @@ public sealed partial class GameSession
     public TeaHouseSystem TeaHouse { get; } = new();
     public PostDeliverySystem PostDelivery { get; } = new();
     public StarfallWatchSystem StarfallWatch { get; } = new();
+    public RegionalEventSystem RegionalEvents { get; } = new();
 
     private bool _suppressChanged;
     private bool _changedWhileSuppressed;
@@ -243,10 +244,12 @@ public sealed partial class GameSession
         TeaHouse.Changed += NotifyChanged;
         PostDelivery.Changed += NotifyChanged;
         StarfallWatch.Changed += NotifyChanged;
+        RegionalEvents.Changed += NotifyChanged;
         Collection.EntryDiscovered += entryId =>
         {
             if (!_restoring)
             {
+                RecordPostgameCollectionMilestones();
                 CollectionEntryDiscovered?.Invoke(entryId);
             }
         };
@@ -300,6 +303,7 @@ public sealed partial class GameSession
         TeaHouse.Reset(Clock.Day);
         PostDelivery.Reset(Clock.Day);
         StarfallWatch.Reset(Clock.Day);
+        RegionalEvents.Reset();
         Energy = MaxEnergy;
         WateringCanWater = MaxWateringCanWater;
         Coins = NewGameCoins;
@@ -355,17 +359,23 @@ public sealed partial class GameSession
         TeaHouse.Restore(save.TeaHouse, save.Day);
         PostDelivery.Restore(save.PostDelivery, save.Day);
         StarfallWatch.Restore(save.StarfallWatch, save.Day);
+        RegionalEvents.Restore(save.RegionalEvents, save.Day);
         GroupCharacterEvents.Restore(
             save.GroupCharacterEvents,
             save.Day,
             CharacterEvents
         );
         Construction.Restore(save.Construction);
-        StarGate.Restore(
-            save.StarGate,
+        var savedMainStoryCompleted =
+            save.StellarResonance?.MainStoryCompleted == true;
+        var starGateConstructionCompleted =
             Construction.IsCompletedFor(
                 ConstructionCatalog.SixfoldStarGateProjectId
-            )
+            ) ||
+            savedMainStoryCompleted;
+        StarGate.Restore(
+            save.StarGate,
+            starGateConstructionCompleted
         );
         Animals.Restore(save.Animals, save.Day);
         EnsureCompletedAnimalStarters();
@@ -385,7 +395,7 @@ public sealed partial class GameSession
         FishingProgression.Restore(save.Fishing);
         StellarResonance.Restore(
             save.StellarResonance,
-            StarGate.Activated,
+            StarGate.Activated || savedMainStoryCompleted,
             save.Day
         );
         FishingMinigame.Reset();
@@ -2583,6 +2593,56 @@ public sealed partial class GameSession
             AllFiveSkillsAtMaximum
         );
 
+    public IReadOnlyList<PostgameObjectiveSnapshot> PostgameObjectives()
+    {
+        if (!StellarResonance.MainStoryCompleted)
+        {
+            return [];
+        }
+
+        var currentYear = CalendarSystem.YearNumber(Clock.Day);
+        var annualProgress = Festival.Results
+            .Where(result => result.Year == currentYear)
+            .Select(result => result.FestivalId)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+        var relationshipProgress = Village.MetNpcIds.Count(npcId =>
+            Village.Relationship(npcId).LastTalkDay >
+                StellarResonance.CompletionDay
+        );
+        return
+        [
+            new PostgameObjectiveSnapshot(
+                PostgameObjectiveCatalog.AnnualChallengeId,
+                PostgameObjectiveKind.AnnualChallenge,
+                "postgame.objective.annual",
+                annualProgress,
+                FestivalCatalog.Festivals.Count
+            ),
+            new PostgameObjectiveSnapshot(
+                PostgameObjectiveCatalog.RareEventId,
+                PostgameObjectiveKind.RareEvent,
+                "postgame.objective.rare_events",
+                RegionalEvents.CompletedRareEventIds.Count,
+                RegionalEventCatalog.RareEventIds.Count
+            ),
+            new PostgameObjectiveSnapshot(
+                PostgameObjectiveCatalog.RelationshipRevisitId,
+                PostgameObjectiveKind.RelationshipRevisit,
+                "postgame.objective.relationship_revisits",
+                relationshipProgress,
+                PostgameObjectiveCatalog.RelationshipRevisitTarget
+            ),
+            new PostgameObjectiveSnapshot(
+                PostgameObjectiveCatalog.CollectionCompletionId,
+                PostgameObjectiveKind.CollectionCompletion,
+                "postgame.objective.collection_completion",
+                Collection.DiscoveredEntryIds.Count,
+                CompendiumCatalog.Entries.Count
+            )
+        ];
+    }
+
     public JourneyRecapSnapshot JourneyRecap()
     {
         var pedestalOrder = new[]
@@ -2680,11 +2740,56 @@ public sealed partial class GameSession
             return ActionResult.Fail("notice.needs_hand");
         }
 
-        return StellarResonance.CompleteMainStory(
+        var result = StellarResonance.CompleteMainStory(
             Clock.Day,
             StarGate.Activated,
             AllFiveSkillsAtMaximum
         );
+        if (result.Succeeded)
+        {
+            RecordPostgameCollectionMilestones();
+        }
+
+        return result;
+    }
+
+    public RegionalEventDialogue? BeginRegionalEvent(WorldBiome biome)
+    {
+        if (PlayerLocationId != PlayerLocationIds.World ||
+            WorldDefinition.GetBiome(PlayerCell) != biome)
+        {
+            return null;
+        }
+
+        return RegionalEvents.TryBegin(
+            biome,
+            Clock.Day,
+            Clock.MinuteOfDay,
+            Weather.CurrentId,
+            StellarResonance.MainStoryCompleted,
+            npcId => Village.Relationship(npcId).Points
+        );
+    }
+
+    public ActionResult CompleteRegionalEvent(string eventId)
+    {
+        if (RegionalEvents.ActiveEventId != eventId)
+        {
+            return ActionResult.Fail("regional_event.not_active");
+        }
+
+        var definition = RegionalEventCatalog.Definition(eventId);
+        var result = RegionalEvents.CompleteActive(eventId, Clock.Day);
+        if (result.Succeeded &&
+            definition.Kind == RegionalEventKind.PostgameRare)
+        {
+            StellarResonance.RecordPostgameMilestone(
+                $"postgame.rare.{eventId}.{CalendarSystem.YearNumber(Clock.Day)}",
+                30
+            );
+        }
+
+        return result;
     }
 
     public StarfallTrialDefeatResolution ResolveDeepMineDefeat()
@@ -3921,6 +4026,16 @@ public sealed partial class GameSession
                     GroupCharacterEvent = groupCharacterEvent,
                     CharacterEvent = characterEvent
                 };
+            }
+
+            if (conversation.GiftReaction is null &&
+                StellarResonance.MainStoryCompleted &&
+                Clock.Day > StellarResonance.CompletionDay)
+            {
+                StellarResonance.RecordPostgameMilestone(
+                    $"postgame.relationship.{conversation.NpcId}",
+                    12
+                );
             }
 
             Changed?.Invoke();
@@ -5454,6 +5569,7 @@ public sealed partial class GameSession
         TeaHouse = TeaHouse.Capture(),
         PostDelivery = PostDelivery.Capture(),
         StarfallWatch = StarfallWatch.Capture(),
+        RegionalEvents = RegionalEvents.Capture(),
         StarGate = StarGate.Capture(),
         StellarResonance = StellarResonance.Capture()
     };
@@ -6481,6 +6597,32 @@ public sealed partial class GameSession
         if (!Collection.ObserveInventory(Inventory))
         {
             NotifyChanged();
+        }
+    }
+
+    private void RecordPostgameCollectionMilestones()
+    {
+        if (!StellarResonance.MainStoryCompleted ||
+            CompendiumCatalog.Entries.Count == 0)
+        {
+            return;
+        }
+
+        var discovered = Collection.DiscoveredEntryIds.Count;
+        foreach (var percentage in new[] { 25, 50, 75, 100 })
+        {
+            var threshold = (int)Math.Ceiling(
+                CompendiumCatalog.Entries.Count * percentage / 100d
+            );
+            if (discovered < threshold)
+            {
+                continue;
+            }
+
+            StellarResonance.RecordPostgameMilestone(
+                $"postgame.collection.{percentage}",
+                10
+            );
         }
     }
 }

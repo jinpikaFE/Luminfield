@@ -227,6 +227,7 @@ public sealed partial class GameSession
 
             Coins += result.Result.AuctionCoins;
             Starlight.RefreshRewardUnlocks(StarlightProgress());
+            RecordFestivalPostgameMilestone(result.Result);
             NotifyChanged();
             return result;
         }
@@ -341,6 +342,7 @@ public sealed partial class GameSession
             if (result.Succeeded)
             {
                 Starlight.RefreshRewardUnlocks(StarlightProgress());
+                RecordFestivalPostgameMilestone(result.Result);
                 NotifyChanged();
             }
             return result;
@@ -456,6 +458,7 @@ public sealed partial class GameSession
             if (result.Succeeded)
             {
                 Starlight.RefreshRewardUnlocks(StarlightProgress());
+                RecordFestivalPostgameMilestone(result.Result);
                 NotifyChanged();
             }
             return result;
@@ -659,6 +662,7 @@ public sealed partial class GameSession
             if (result.Completed)
             {
                 Starlight.RefreshRewardUnlocks(StarlightProgress());
+                RecordFestivalPostgameMilestone(result.Result);
             }
 
             return result;
@@ -713,6 +717,7 @@ public sealed partial class GameSession
         if (result.Completed)
         {
             Starlight.RefreshRewardUnlocks(StarlightProgress());
+            RecordFestivalPostgameMilestone(result.Result);
         }
 
         return result;
@@ -745,6 +750,48 @@ public sealed partial class GameSession
             PlayerLocationIds.World
         );
         return true;
+    }
+
+    public ActionResult ClaimFestivalReplayReward(
+        string festivalId,
+        int year,
+        string choiceId
+    )
+    {
+        BeginChangedBatch();
+        try
+        {
+            var result = Festival.ClaimRewardChoice(
+                festivalId,
+                year,
+                choiceId,
+                Inventory
+            );
+            if (result.Succeeded)
+            {
+                NotifyChanged();
+            }
+            return result;
+        }
+        finally
+        {
+            EndChangedBatch();
+        }
+    }
+
+    private void RecordFestivalPostgameMilestone(
+        FestivalYearResultSave? result
+    )
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        StellarResonance.RecordPostgameMilestone(
+            $"postgame.annual.{result.FestivalId}.{result.Year}",
+            24
+        );
     }
 
     private ActionResult UseStarharvestMarketSelected(GridPosition target)
